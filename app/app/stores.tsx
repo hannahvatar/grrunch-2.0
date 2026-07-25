@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { TIER_LIMITS } from '../lib/tier';
 
@@ -25,10 +25,7 @@ const MOCK_STORES = [
 const storesEditable = TIER_LIMITS.free.storesEditable;
 
 function showUpgradePrompt() {
-  Alert.alert(
-    'Upgrade to customize',
-    'Free accounts use your 5 nearest stores automatically. Upgrade to Grrunch Plus to remove a store or choose a different location.'
-  );
+  router.push({ pathname: '/upgrade', params: { reason: 'remove a store or change its location' } });
 }
 
 export default function StoresScreen() {
