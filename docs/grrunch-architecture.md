@@ -82,9 +82,10 @@ nothing qualifies, show an empty state rather than padding.
 
 **Step 1 — Setup**
 - **Store selection (up to 5, one per supported chain):**
-  - **If location accepted:** app finds and shows the nearest physical location of each of the 5 supported chains, pre-selected as the user's stores. User can go into settings to add/remove which chains are included.
-  - **If location declined:** falls back to coarse IP-based location (city-level, no permission needed) to still estimate and show the nearest location per chain. User can go into settings to: accept precise geolocation later, or manually add/remove stores by search instead.
-  - Either way, the result is the same shape (up to 5 stores, one per chain, editable in settings) — location just determines how accurately the initial suggestion is targeted.
+  - **If location accepted:** app finds and shows the nearest physical location of each of the 5 supported chains, pre-selected as the user's stores.
+  - **If location declined:** falls back to coarse IP-based location (city-level, no permission needed) to still estimate and show the nearest location per chain.
+  - Either way, the result is the same shape (up to 5 stores, one per chain) — location just determines how accurately the initial suggestion is targeted.
+  - **Editing that selection (adding/removing a chain, swapping a location, searching manually) is a paid-tier feature** — free tier locks the 5 auto-selected stores as-is (see section 2.5).
 - User selects number of meals (default 10; excludes snacks/breakfast for MVP)
 - **User builds a household**: adds one or more people, each with their own portion targets (calories + macros) and their own exclusions (allergies, dietary restrictions)
   - e.g. a household of 4 (man, woman, 2 children) — each person gets their own profile, not one shared setting
@@ -144,7 +145,11 @@ reviewed/captured — no external benchmark or guessing needed, and the claim
 is literally true rather than modeled.
 
 **Free tier** (taste of the product, not crippled):
-- 1 store selection
+- All 5 nearest stores auto-selected (one per chain, per Step 1's location
+  logic) — locked as-is; removing a store or swapping a location requires
+  upgrading. (Supersedes an earlier draft of this section, which had free
+  tier capped at 1 store — the store *count* was never the free/paid split,
+  editability is.)
 - 5 meals per plan (grocery list fully priced/functional — not limited)
 - 1 household member profile (single set of macros/exclusions — no per-person customization)
 - No this-week's-deals notifications
@@ -152,7 +157,7 @@ is literally true rather than modeled.
 - 1–2 saved recipes max
 
 **Paid tier** (full experience, price TBD):
-- Up to 5 stores
+- Same 5 stores, fully editable — remove a store or change its location
 - 10 meals per plan
 - Multiple household member profiles (individual macros/exclusions per person, combined into shared meals)
 - Deal notifications enabled

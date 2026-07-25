@@ -2,20 +2,24 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+// Guest-mode onboarding stack — matches the wireframed flow:
+// Terms -> Login/Guest -> Location -> Stores -> Plan meals -> Main App (tabs).
+// Grocery list is a modal sheet over the Meals tab, not a pushed screen.
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <Stack screenOptions={{ headerShadowVisible: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="location" />
+        <Stack.Screen name="stores" />
+        <Stack.Screen name="plan-meals" />
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen
-          name="consent"
-          options={{ presentation: 'modal', title: 'Terms & Privacy' }}
+          name="grocery-list"
+          options={{ presentation: 'modal', headerShown: false }}
         />
-        <Stack.Screen name="plan/setup" options={{ title: 'Set up your plan' }} />
-        <Stack.Screen name="plan/household" options={{ title: 'Household' }} />
-        <Stack.Screen name="plan/preferences" options={{ title: 'Cost vs. variety' }} />
-        <Stack.Screen name="plan/meals" options={{ title: "This week's meals" }} />
-        <Stack.Screen name="plan/grocery-list" options={{ title: 'Grocery list' }} />
+        <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </SafeAreaProvider>
