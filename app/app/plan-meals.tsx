@@ -1,0 +1,144 @@
+import Slider from '@react-native-community/slider';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+// Guest-mode wireframe step 5 — Plan your meals.
+export default function PlanMealsScreen() {
+  const [mealCount, setMealCount] = useState(8);
+  const [calories, setCalories] = useState(600);
+  const [protein, setProtein] = useState(30);
+  const [pricePerPortion, setPricePerPortion] = useState(5);
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.title}>Plan your meals</Text>
+
+        <Text style={styles.label}>HOW MANY MEALS?</Text>
+        <View style={styles.stepperRow}>
+          <Pressable
+            style={styles.stepperButton}
+            onPress={() => setMealCount((n) => Math.max(1, n - 1))}
+          >
+            <Text style={styles.stepperButtonText}>−</Text>
+          </Pressable>
+          <Text style={styles.stepperValue}>{mealCount} meals</Text>
+          <Pressable
+            style={styles.stepperButton}
+            onPress={() => setMealCount((n) => Math.min(10, n + 1))}
+          >
+            <Text style={styles.stepperButtonText}>+</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.sliderBlock}>
+          <View style={styles.sliderHeaderRow}>
+            <Text style={styles.label}>CALORIES PER MEAL</Text>
+            <Text style={styles.sliderValue}>{calories} kcal</Text>
+          </View>
+          <Slider
+            minimumValue={200}
+            maximumValue={1000}
+            step={10}
+            value={calories}
+            onValueChange={setCalories}
+            minimumTrackTintColor="#111"
+            maximumTrackTintColor="#ddd"
+          />
+          <View style={styles.sliderBoundsRow}>
+            <Text style={styles.sliderBoundText}>200 kcal</Text>
+            <Text style={styles.sliderBoundText}>1000 kcal</Text>
+          </View>
+          <Text style={styles.hint}>Avg. recommended: man 700 kcal · woman 550 kcal · child 400 kcal</Text>
+        </View>
+
+        <View style={styles.sliderBlock}>
+          <View style={styles.sliderHeaderRow}>
+            <Text style={styles.label}>PROTEIN PER MEAL</Text>
+            <Text style={styles.sliderValue}>{protein} g</Text>
+          </View>
+          <Slider
+            minimumValue={10}
+            maximumValue={80}
+            step={1}
+            value={protein}
+            onValueChange={setProtein}
+            minimumTrackTintColor="#111"
+            maximumTrackTintColor="#ddd"
+          />
+          <View style={styles.sliderBoundsRow}>
+            <Text style={styles.sliderBoundText}>10 g</Text>
+            <Text style={styles.sliderBoundText}>80 g</Text>
+          </View>
+          <Text style={styles.hint}>Daily rec.: man 56 g · woman 46 g · child 19–34 g</Text>
+        </View>
+
+        <View style={styles.sliderBlock}>
+          <View style={styles.sliderHeaderRow}>
+            <Text style={styles.label}>TARGET PRICE PER PORTION</Text>
+            <Text style={styles.sliderValue}>${pricePerPortion.toFixed(2)}</Text>
+          </View>
+          <Slider
+            minimumValue={1}
+            maximumValue={10}
+            step={0.25}
+            value={pricePerPortion}
+            onValueChange={setPricePerPortion}
+            minimumTrackTintColor="#111"
+            maximumTrackTintColor="#ddd"
+          />
+          <View style={styles.sliderBoundsRow}>
+            <Text style={styles.sliderBoundText}>$1.00</Text>
+            <Text style={styles.sliderBoundText}>$10.00</Text>
+          </View>
+          <Text style={styles.hint}>Per person, per meal</Text>
+        </View>
+
+        <Text style={styles.footnote}>You can refine these targets anytime in your profile.</Text>
+      </ScrollView>
+      <View style={styles.footer}>
+        <Pressable style={styles.primaryButton} onPress={() => router.replace('/(tabs)/meals')}>
+          <Text style={styles.primaryButtonText}>Get my meals & grocery list</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  scrollContent: { padding: 24, paddingTop: 64, gap: 8 },
+  title: { fontSize: 26, fontWeight: '800', marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '700', color: '#888', letterSpacing: 0.5 },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  stepperButton: { padding: 8 },
+  stepperButtonText: { fontSize: 22, fontWeight: '700' },
+  stepperValue: { fontSize: 18, fontWeight: '700' },
+  sliderBlock: { marginBottom: 16 },
+  sliderHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  sliderValue: { fontSize: 20, fontWeight: '800' },
+  sliderBoundsRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  sliderBoundText: { fontSize: 12, color: '#999' },
+  hint: { fontSize: 13, color: '#666', marginTop: 4 },
+  footnote: { fontSize: 13, color: '#999', marginTop: 8 },
+  footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#eee' },
+  primaryButton: {
+    backgroundColor: '#111',
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+});
