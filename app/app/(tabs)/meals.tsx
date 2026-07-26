@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MEALS } from '../../lib/mealData';
@@ -17,19 +17,40 @@ function randomAvailableMealId(currentIds: string[]): string | undefined {
   return available[Math.floor(Math.random() * available.length)].id;
 }
 
+function planIdsFromParams(recipeCountParam?: string): string[] {
+  const parsed = Number(recipeCountParam);
+  const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MEALS.length) : 4;
+  return MEALS.slice(0, recipeCount).map((m) => m.id);
+}
+
+function defaultPortionsFromParams(portionsPerRecipeParam?: string): number {
+  const parsed = Number(portionsPerRecipeParam);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
 export default function MealsScreen() {
   const params = useLocalSearchParams<{ recipeCount?: string; portionsPerRecipe?: string }>();
 
-  const [planMealIds, setPlanMealIds] = useState<string[]>(() => {
-    const parsed = Number(params.recipeCount);
-    const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MEALS.length) : 4;
-    return MEALS.slice(0, recipeCount).map((m) => m.id);
-  });
+  const [planMealIds, setPlanMealIds] = useState<string[]>(() => planIdsFromParams(params.recipeCount));
   const [portionsById, setPortionsById] = useState<Record<string, number>>(() => {
-    const parsedPortions = Number(params.portionsPerRecipe);
-    const defaultPortions = Number.isFinite(parsedPortions) && parsedPortions > 0 ? parsedPortions : 1;
-    return Object.fromEntries(planMealIds.map((id) => [id, defaultPortions]));
+    const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
+    return Object.fromEntries(planIdsFromParams(params.recipeCount).map((id) => [id, defaultPortions]));
   });
+
+  // Tab screens stay mounted when you switch tabs (they don't remount), so
+  // if this screen was ever visited before "Get my meals & grocery list"
+  // was pressed, the useState initializers above already ran against stale
+  // params and won't re-run on their own. This effect re-applies the plan
+  // whenever recipeCount/portionsPerRecipe actually change, so pressing the
+  // button always takes effect even if the tab was mounted earlier.
+  useEffect(() => {
+    if (!params.recipeCount && !params.portionsPerRecipe) return;
+    const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
+    const nextPlanIds = planIdsFromParams(params.recipeCount);
+    setPlanMealIds(nextPlanIds);
+    setPortionsById(Object.fromEntries(nextPlanIds.map((id) => [id, defaultPortions])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.recipeCount, params.portionsPerRecipe]);
 
   const planMeals = planMealIds
     .map((id) => MEALS.find((m) => m.id === id))
