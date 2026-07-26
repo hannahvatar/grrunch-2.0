@@ -10,11 +10,11 @@ export default function TabsLayout() {
     <Tabs screenOptions={{ headerShown: false }}>
       <Tabs.Screen
         name="plan-meals"
-        options={{ title: 'Meals', tabBarIcon: () => <TabIcon symbol="🍽️" /> }}
+        options={{ title: 'Plan', tabBarIcon: () => <TabIcon symbol="🍴" /> }}
       />
       <Tabs.Screen
         name="meals"
-        options={{ title: 'Plan', tabBarIcon: () => <TabIcon symbol="🍴" /> }}
+        options={{ title: 'Meals', tabBarIcon: () => <TabIcon symbol="🍽️" /> }}
       />
       <Tabs.Screen
         name="best-deals"
