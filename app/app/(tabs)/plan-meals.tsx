@@ -171,7 +171,7 @@ export default function PlanMealsScreen() {
             })
           }
         >
-          <Text style={styles.primaryButtonText}>Get my meals & grocery list</Text>
+          <Text style={styles.primaryButtonText}>Get my meals</Text>
         </Pressable>
       </View>
     </View>

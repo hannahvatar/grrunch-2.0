@@ -38,8 +38,8 @@ export default function MealsScreen() {
   });
 
   // Tab screens stay mounted when you switch tabs (they don't remount), so
-  // if this screen was ever visited before "Get my meals & grocery list"
-  // was pressed, the useState initializers above already ran against stale
+  // if this screen was ever visited before "Get my meals" was pressed, the
+  // useState initializers above already ran against stale
   // params and won't re-run on their own. This effect re-applies the plan
   // whenever recipeCount/portionsPerRecipe actually change, so pressing the
   // button always takes effect even if the tab was mounted earlier.
