@@ -1,10 +1,60 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MEALS } from '../../lib/mealData';
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
+const INITIAL_PLAN_IDS = MEALS.slice(0, 4).map((m) => m.id);
+
+function randomAvailableMealId(currentIds: string[]): string | undefined {
+  const available = MEALS.filter((m) => !currentIds.includes(m.id));
+  if (available.length === 0) return undefined;
+  return available[Math.floor(Math.random() * available.length)].id;
+}
+
 export default function MealsScreen() {
+  const [planMealIds, setPlanMealIds] = useState<string[]>(INITIAL_PLAN_IDS);
+  const [portionsById, setPortionsById] = useState<Record<string, number>>(() =>
+    Object.fromEntries(INITIAL_PLAN_IDS.map((id) => [id, 1]))
+  );
+
+  const planMeals = planMealIds
+    .map((id) => MEALS.find((m) => m.id === id))
+    .filter((m): m is (typeof MEALS)[number] => m !== undefined);
+
+  const totalPortions = planMeals.reduce((sum, meal) => sum + (portionsById[meal.id] ?? 1), 0);
+  const totalPrice = planMeals.reduce(
+    (sum, meal) => sum + meal.price * (portionsById[meal.id] ?? 1),
+    0
+  );
+  const avgPerPortion = totalPortions > 0 ? totalPrice / totalPortions : 0;
+
+  function setPortions(id: string, delta: number) {
+    setPortionsById((prev) => ({
+      ...prev,
+      [id]: Math.max(1, (prev[id] ?? 1) + delta),
+    }));
+  }
+
+  function swapMeal(id: string) {
+    const replacementId = randomAvailableMealId(planMealIds);
+    if (!replacementId) return;
+    setPlanMealIds((prev) => prev.map((mealId) => (mealId === id ? replacementId : mealId)));
+    setPortionsById((prev) => {
+      const { [id]: _removed, ...rest } = prev;
+      return { ...rest, [replacementId]: 1 };
+    });
+  }
+
+  function deleteMeal(id: string) {
+    setPlanMealIds((prev) => prev.filter((mealId) => mealId !== id));
+    setPortionsById((prev) => {
+      const { [id]: _removed, ...rest } = prev;
+      return rest;
+    });
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -14,42 +64,83 @@ export default function MealsScreen() {
         </View>
 
         <Text style={styles.title}>Your meal plan</Text>
-        <Text style={styles.subtitle}>8 meals · based on this week's deals</Text>
+        <Text style={styles.subtitle}>
+          {planMeals.length} meal{planMeals.length === 1 ? '' : 's'} · based on this week's deals
+        </Text>
 
-        {MEALS.map((meal) => (
-          <View key={meal.id} style={styles.mealCard}>
-            <View style={styles.mealImagePlaceholder}>
-              <Text style={styles.mealImageIcon}>🍴</Text>
-            </View>
-            <View style={styles.mealCardBody}>
-              <View style={styles.mealHeaderRow}>
-                <Text style={styles.mealName}>{meal.name}</Text>
-                <View style={styles.priceBlock}>
-                  <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
-                  <Text style={styles.perPortion}>/ portion</Text>
+        {planMeals.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>
+              No meals left in your plan. Delete was a bit too enthusiastic — swap or start over.
+            </Text>
+          </View>
+        )}
+
+        {planMeals.map((meal) => {
+          const portions = portionsById[meal.id] ?? 1;
+          return (
+            <View key={meal.id} style={styles.mealCard}>
+              <View style={styles.mealImagePlaceholder}>
+                <Text style={styles.mealImageIcon}>🍴</Text>
+              </View>
+              <View style={styles.mealCardBody}>
+                <View style={styles.mealHeaderRow}>
+                  <Text style={styles.mealName}>{meal.name}</Text>
+                  <View style={styles.priceBlock}>
+                    <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
+                    <Text style={styles.perPortion}>/ portion</Text>
+                  </View>
                 </View>
-              </View>
-              <Text style={styles.mealTime}>🕐 {meal.minutes} min</Text>
-              <View style={styles.tagPill}>
-                <Text style={styles.tagText}>🏷️ {meal.tag}</Text>
-              </View>
-              <Pressable
-                style={styles.recipeButton}
-                onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
-              >
-                <Text style={styles.recipeButtonText}>View recipe</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
+                <Text style={styles.mealTime}>🕐 {meal.minutes} min</Text>
+                <View style={styles.tagPill}>
+                  <Text style={styles.tagText}>🏷️ {meal.tag}</Text>
+                </View>
 
-        <View style={styles.totalCard}>
-          <View>
-            <Text style={styles.totalLabel}>Total · 8 meals</Text>
-            <Text style={styles.totalSublabel}>avg. $3.56 / portion</Text>
+                <View style={styles.portionsRow}>
+                  <Text style={styles.portionsLabel}>Portions</Text>
+                  <View style={styles.stepper}>
+                    <Pressable
+                      style={styles.stepperButton}
+                      onPress={() => setPortions(meal.id, -1)}
+                    >
+                      <Text style={styles.stepperButtonText}>−</Text>
+                    </Pressable>
+                    <Text style={styles.stepperValue}>{portions}</Text>
+                    <Pressable style={styles.stepperButton} onPress={() => setPortions(meal.id, 1)}>
+                      <Text style={styles.stepperButtonText}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View style={styles.actionsRow}>
+                  <Pressable style={styles.actionButton} onPress={() => swapMeal(meal.id)}>
+                    <Text style={styles.actionButtonText}>🔄 Swap</Text>
+                  </Pressable>
+                  <Pressable style={styles.actionButton} onPress={() => deleteMeal(meal.id)}>
+                    <Text style={styles.actionButtonText}>🗑 Delete</Text>
+                  </Pressable>
+                </View>
+
+                <Pressable
+                  style={styles.recipeButton}
+                  onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
+                >
+                  <Text style={styles.recipeButtonText}>View recipe</Text>
+                </Pressable>
+              </View>
+            </View>
+          );
+        })}
+
+        {planMeals.length > 0 && (
+          <View style={styles.totalCard}>
+            <View>
+              <Text style={styles.totalLabel}>Total · {planMeals.length} meals</Text>
+              <Text style={styles.totalSublabel}>avg. ${avgPerPortion.toFixed(2)} / portion</Text>
+            </View>
+            <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
           </View>
-          <Text style={styles.totalValue}>$28.49</Text>
-        </View>
+        )}
       </ScrollView>
       <View style={styles.footer}>
         <Pressable style={styles.groceryButton} onPress={() => router.push('/grocery-list')}>
@@ -75,6 +166,8 @@ const styles = StyleSheet.create({
   signUpLink: { fontWeight: '700', textDecorationLine: 'underline' },
   title: { fontSize: 24, fontWeight: '800' },
   subtitle: { fontSize: 13, color: '#888', marginTop: -8 },
+  emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
+  emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
   mealCard: { borderWidth: 1, borderColor: '#eee', borderRadius: 14, overflow: 'hidden' },
   mealImagePlaceholder: {
     height: 100,
@@ -92,6 +185,37 @@ const styles = StyleSheet.create({
   mealTime: { fontSize: 13, color: '#888' },
   tagPill: { backgroundColor: '#EEF4FF', borderRadius: 10, padding: 10 },
   tagText: { color: '#2C5FD6', fontSize: 13, fontWeight: '600' },
+  portionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 8,
+  },
+  portionsLabel: { fontSize: 14, color: '#666', fontWeight: '600' },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepperButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperButtonText: { fontSize: 16, fontWeight: '700' },
+  stepperValue: { fontSize: 15, fontWeight: '700', minWidth: 16, textAlign: 'center' },
+  actionsRow: { flexDirection: 'row', gap: 8 },
+  actionButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  actionButtonText: { fontSize: 14, fontWeight: '700' },
   recipeButton: {
     borderWidth: 1,
     borderColor: '#ddd',

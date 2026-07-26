@@ -1,6 +1,7 @@
 // Sample meal + recipe data for the guest-mode flow's Main App screens.
 // Static for now — real generation (Claude API + curated_deals) isn't wired
-// up yet, this just backs the Meals list and its recipe detail view.
+// up yet. MEALS is a pool to draw from: the Meals screen's initial plan is
+// the first 4, and "Swap" picks a replacement from the rest of the pool.
 export interface Meal {
   id: string;
   name: string;
@@ -103,6 +104,98 @@ export const MEALS: Meal[] = [
       'Melt butter in a pan over medium heat and wilt the spinach, about 2 minutes.',
       'Whisk eggs, add to the pan, and scramble until just set.',
       'Season with salt and pepper and serve over the toast.',
+    ],
+  },
+  {
+    id: 'beef-broccoli-rice-bowl',
+    name: 'Beef & Broccoli Rice Bowl',
+    price: 4.15,
+    minutes: 25,
+    tag: 'Beef strips · 38% off · Broccoli · 40% off',
+    calories: 570,
+    protein: 32,
+    ingredients: [
+      '1 lb beef strips',
+      '3 cups broccoli florets',
+      '3 tbsp soy sauce',
+      '1 tbsp brown sugar',
+      '2 cloves garlic, minced',
+      '2 cups cooked rice',
+    ],
+    instructions: [
+      'Sear beef strips in a hot pan until browned, about 4 minutes, then set aside.',
+      'Steam or stir-fry broccoli until just tender, 3-4 minutes.',
+      'Whisk soy sauce, brown sugar, and garlic in the pan and simmer 1 minute.',
+      'Return beef to the pan, toss with broccoli and sauce, and serve over rice.',
+    ],
+  },
+  {
+    id: 'lentil-vegetable-curry',
+    name: 'Lentil & Vegetable Curry',
+    price: 2.68,
+    minutes: 35,
+    tag: 'Lentils · staple · Carrots · 30% off',
+    calories: 460,
+    protein: 22,
+    ingredients: [
+      '1.5 cups dried red lentils',
+      '2 carrots, diced',
+      '1 onion, diced',
+      '2 tbsp curry powder',
+      '1 can coconut milk',
+      '2 cups vegetable broth',
+    ],
+    instructions: [
+      'Sauté onion and carrots until softened, about 5 minutes.',
+      'Stir in curry powder and cook 1 minute until fragrant.',
+      'Add lentils, coconut milk, and broth, and bring to a simmer.',
+      'Cook uncovered, stirring occasionally, until lentils are tender, about 20 minutes.',
+    ],
+  },
+  {
+    id: 'baked-tilapia-with-rice',
+    name: 'Baked Tilapia with Rice',
+    price: 3.62,
+    minutes: 30,
+    tag: 'Tilapia · 33% off',
+    calories: 410,
+    protein: 30,
+    ingredients: [
+      '4 tilapia fillets',
+      '2 tbsp olive oil',
+      '1 lemon, sliced',
+      '1 tsp paprika',
+      '2 cups cooked rice',
+      'Salt and pepper, to taste',
+    ],
+    instructions: [
+      'Preheat oven to 400°F (200°C).',
+      'Arrange tilapia on a baking sheet, drizzle with olive oil, and season with paprika, salt, and pepper.',
+      'Top with lemon slices and bake until fish flakes easily, about 15 minutes.',
+      'Serve over rice with pan juices spooned over top.',
+    ],
+  },
+  {
+    id: 'turkey-chili',
+    name: 'Turkey Chili',
+    price: 3.29,
+    minutes: 40,
+    tag: 'Ground turkey · 37% off · Canned beans · staple',
+    calories: 490,
+    protein: 36,
+    ingredients: [
+      '1 lb ground turkey',
+      '1 can kidney beans, drained',
+      '1 can diced tomatoes',
+      '1 onion, diced',
+      '2 tbsp chili powder',
+      '1 bell pepper, diced',
+    ],
+    instructions: [
+      'Brown ground turkey with onion and bell pepper, about 6 minutes.',
+      'Stir in chili powder and cook 1 minute until fragrant.',
+      'Add beans and diced tomatoes, and bring to a simmer.',
+      'Simmer uncovered, stirring occasionally, until thickened, about 25 minutes.',
     ],
   },
 ];
