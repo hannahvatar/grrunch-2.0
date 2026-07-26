@@ -1,12 +1,16 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MEALS } from '../../lib/mealData';
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
-const INITIAL_PLAN_IDS = MEALS.slice(0, 4).map((m) => m.id);
-
+// recipeCount/portionsPerRecipe come from Plan your meals (the Quantity
+// section) via router params -- they're just the starting point here, since
+// swap/delete/portions edits below make this screen's own state the source
+// of truth afterward. Falls back to sane defaults if reached without them
+// (e.g. hot reload, or a direct link). Clamped to MEALS.length since the
+// sample pool only has 8 entries -- real generation isn't wired up yet.
 function randomAvailableMealId(currentIds: string[]): string | undefined {
   const available = MEALS.filter((m) => !currentIds.includes(m.id));
   if (available.length === 0) return undefined;
@@ -14,10 +18,18 @@ function randomAvailableMealId(currentIds: string[]): string | undefined {
 }
 
 export default function MealsScreen() {
-  const [planMealIds, setPlanMealIds] = useState<string[]>(INITIAL_PLAN_IDS);
-  const [portionsById, setPortionsById] = useState<Record<string, number>>(() =>
-    Object.fromEntries(INITIAL_PLAN_IDS.map((id) => [id, 1]))
-  );
+  const params = useLocalSearchParams<{ recipeCount?: string; portionsPerRecipe?: string }>();
+
+  const [planMealIds, setPlanMealIds] = useState<string[]>(() => {
+    const parsed = Number(params.recipeCount);
+    const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MEALS.length) : 4;
+    return MEALS.slice(0, recipeCount).map((m) => m.id);
+  });
+  const [portionsById, setPortionsById] = useState<Record<string, number>>(() => {
+    const parsedPortions = Number(params.portionsPerRecipe);
+    const defaultPortions = Number.isFinite(parsedPortions) && parsedPortions > 0 ? parsedPortions : 1;
+    return Object.fromEntries(planMealIds.map((id) => [id, defaultPortions]));
+  });
 
   const planMeals = planMealIds
     .map((id) => MEALS.find((m) => m.id === id))
@@ -65,7 +77,8 @@ export default function MealsScreen() {
 
         <Text style={styles.title}>Your meal plan</Text>
         <Text style={styles.subtitle}>
-          {planMeals.length} meal{planMeals.length === 1 ? '' : 's'} · based on this week's deals
+          {planMeals.length} recipe{planMeals.length === 1 ? '' : 's'} · {totalPortions} meal
+          {totalPortions === 1 ? '' : 's'} total
         </Text>
 
         {planMeals.length === 0 && (
@@ -135,7 +148,9 @@ export default function MealsScreen() {
         {planMeals.length > 0 && (
           <View style={styles.totalCard}>
             <View>
-              <Text style={styles.totalLabel}>Total · {planMeals.length} meals</Text>
+              <Text style={styles.totalLabel}>
+                Total · {totalPortions} meal{totalPortions === 1 ? '' : 's'}
+              </Text>
               <Text style={styles.totalSublabel}>avg. ${avgPerPortion.toFixed(2)} / portion</Text>
             </View>
             <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
