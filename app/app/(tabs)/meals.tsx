@@ -1,23 +1,56 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MEALS } from '../../lib/mealData';
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
-const INITIAL_PLAN_IDS = MEALS.slice(0, 4).map((m) => m.id);
-
+// recipeCount/portionsPerRecipe come from Plan your meals (the Quantity
+// section) via router params -- they're just the starting point here, since
+// swap/delete/portions edits below make this screen's own state the source
+// of truth afterward. Falls back to sane defaults if reached without them
+// (e.g. hot reload, or a direct link). Clamped to MEALS.length since the
+// sample pool only has 8 entries -- real generation isn't wired up yet.
 function randomAvailableMealId(currentIds: string[]): string | undefined {
   const available = MEALS.filter((m) => !currentIds.includes(m.id));
   if (available.length === 0) return undefined;
   return available[Math.floor(Math.random() * available.length)].id;
 }
 
+function planIdsFromParams(recipeCountParam?: string): string[] {
+  const parsed = Number(recipeCountParam);
+  const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MEALS.length) : 4;
+  return MEALS.slice(0, recipeCount).map((m) => m.id);
+}
+
+function defaultPortionsFromParams(portionsPerRecipeParam?: string): number {
+  const parsed = Number(portionsPerRecipeParam);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
 export default function MealsScreen() {
-  const [planMealIds, setPlanMealIds] = useState<string[]>(INITIAL_PLAN_IDS);
-  const [portionsById, setPortionsById] = useState<Record<string, number>>(() =>
-    Object.fromEntries(INITIAL_PLAN_IDS.map((id) => [id, 1]))
-  );
+  const params = useLocalSearchParams<{ recipeCount?: string; portionsPerRecipe?: string }>();
+
+  const [planMealIds, setPlanMealIds] = useState<string[]>(() => planIdsFromParams(params.recipeCount));
+  const [portionsById, setPortionsById] = useState<Record<string, number>>(() => {
+    const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
+    return Object.fromEntries(planIdsFromParams(params.recipeCount).map((id) => [id, defaultPortions]));
+  });
+
+  // Tab screens stay mounted when you switch tabs (they don't remount), so
+  // if this screen was ever visited before "Get my meals" was pressed, the
+  // useState initializers above already ran against stale
+  // params and won't re-run on their own. This effect re-applies the plan
+  // whenever recipeCount/portionsPerRecipe actually change, so pressing the
+  // button always takes effect even if the tab was mounted earlier.
+  useEffect(() => {
+    if (!params.recipeCount && !params.portionsPerRecipe) return;
+    const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
+    const nextPlanIds = planIdsFromParams(params.recipeCount);
+    setPlanMealIds(nextPlanIds);
+    setPortionsById(Object.fromEntries(nextPlanIds.map((id) => [id, defaultPortions])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.recipeCount, params.portionsPerRecipe]);
 
   const planMeals = planMealIds
     .map((id) => MEALS.find((m) => m.id === id))
@@ -65,7 +98,8 @@ export default function MealsScreen() {
 
         <Text style={styles.title}>Your meal plan</Text>
         <Text style={styles.subtitle}>
-          {planMeals.length} meal{planMeals.length === 1 ? '' : 's'} · based on this week's deals
+          {planMeals.length} recipe{planMeals.length === 1 ? '' : 's'} · {totalPortions} meal
+          {totalPortions === 1 ? '' : 's'} total
         </Text>
 
         {planMeals.length === 0 && (
@@ -135,7 +169,9 @@ export default function MealsScreen() {
         {planMeals.length > 0 && (
           <View style={styles.totalCard}>
             <View>
-              <Text style={styles.totalLabel}>Total · {planMeals.length} meals</Text>
+              <Text style={styles.totalLabel}>
+                Total · {totalPortions} meal{totalPortions === 1 ? '' : 's'}
+              </Text>
               <Text style={styles.totalSublabel}>avg. ${avgPerPortion.toFixed(2)} / portion</Text>
             </View>
             <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>

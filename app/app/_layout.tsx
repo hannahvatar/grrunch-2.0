@@ -3,8 +3,10 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Guest-mode onboarding stack — matches the wireframed flow:
-// Terms -> Login/Guest -> Location -> Stores -> Plan meals -> Main App (tabs).
-// Grocery list is a modal sheet over the Meals tab, not a pushed screen.
+// Terms -> Login/Guest -> Location -> Stores -> Main App (tabs, starting on
+// the "Meals" tab, i.e. Plan your meals). Grocery list is a modal sheet
+// over the Plan tab, not a pushed screen. Plan your meals lives inside the
+// (tabs) group (not here) so the bottom nav is present on it too.
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
@@ -13,7 +15,6 @@ export default function RootLayout() {
         <Stack.Screen name="login" />
         <Stack.Screen name="location" />
         <Stack.Screen name="stores" />
-        <Stack.Screen name="plan-meals" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="grocery-list"

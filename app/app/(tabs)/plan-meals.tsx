@@ -159,8 +159,19 @@ export default function PlanMealsScreen() {
         <Text style={styles.footnote}>You can refine these targets anytime in your profile.</Text>
       </ScrollView>
       <View style={styles.footer}>
-        <Pressable style={styles.primaryButton} onPress={() => router.replace('/(tabs)/meals')}>
-          <Text style={styles.primaryButtonText}>Get my meals & grocery list</Text>
+        <Pressable
+          style={styles.primaryButton}
+          onPress={() =>
+            router.replace({
+              pathname: '/(tabs)/meals',
+              params: {
+                recipeCount: String(recipeCount),
+                portionsPerRecipe: String(portionsPerRecipe),
+              },
+            })
+          }
+        >
+          <Text style={styles.primaryButtonText}>Get my meals</Text>
         </Pressable>
       </View>
     </View>
