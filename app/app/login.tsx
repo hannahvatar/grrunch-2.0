@@ -1,19 +1,63 @@
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 // Guest-mode wireframe step 2 — Sign up / Log in.
-// Only "Continue as guest" is wired to the guest-mode flow for now — Apple/
-// Google/email auth and the "Log in" link belong to the account-holder flow,
-// not yet built.
+// Only "Continue as guest" and Apple are wired up so far. Apple uses the
+// real native "Sign in with Apple" system sheet (Face ID / account picker)
+// via expo-apple-authentication -- that sheet is Apple's own UI, not
+// something to rebuild in React Native. Google/email auth and the "Log in"
+// link still belong to the account-holder flow, not yet built.
 export default function LoginScreen() {
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    AppleAuthentication.isAvailableAsync()
+      .then(setAppleAuthAvailable)
+      .catch(() => setAppleAuthAvailable(false));
+  }, []);
+
+  async function handleAppleSignIn() {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      // TODO: exchange credential.identityToken with Supabase
+      // (supabase.auth.signInWithIdToken({ provider: 'apple', token: ... }))
+      // once Apple Sign In is configured as an auth provider in the
+      // Supabase dashboard -- that needs an Apple Developer Services ID
+      // and key, which hasn't been set up yet.
+      void credential;
+      router.push('/location');
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Sign in failed', 'Something went wrong signing in with Apple.');
+      }
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Save deals & build your lists</Text>
       <Text style={styles.subtitle}>Create a free account to get started.</Text>
 
-      <Pressable style={styles.oauthButton}>
-        <Text style={styles.oauthText}>🍎  Continue with Apple</Text>
-      </Pressable>
+      {appleAuthAvailable ? (
+        <AppleAuthentication.AppleAuthenticationButton
+          buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+          cornerRadius={14}
+          style={styles.appleButton}
+          onPress={handleAppleSignIn}
+        />
+      ) : (
+        <Pressable style={styles.oauthButton}>
+          <Text style={styles.oauthText}>🍎  Continue with Apple</Text>
+        </Pressable>
+      )}
       <Pressable style={styles.oauthButton}>
         <Text style={styles.oauthText}>G  Continue with Google</Text>
       </Pressable>
@@ -55,6 +99,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   oauthText: { fontSize: 16, fontWeight: '600' },
+  appleButton: { width: '100%', height: 54 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 8, gap: 8 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#eee' },
   dividerText: { color: '#999', fontSize: 13 },
