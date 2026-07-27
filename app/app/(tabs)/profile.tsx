@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-// Not yet detailed in the wireframes — placeholder tab.
+// Not yet detailed in the wireframes — placeholder tab. Grocery list access
+// moved to its own tab (app/(tabs)/grocery.tsx) instead of living here.
 export default function ProfileScreen() {
   return (
     <View style={styles.container}>

@@ -17,6 +17,10 @@ export default function TabsLayout() {
         options={{ title: 'Meals', tabBarIcon: () => <TabIcon symbol="🍽️" /> }}
       />
       <Tabs.Screen
+        name="grocery"
+        options={{ title: 'Grocery', tabBarIcon: () => <TabIcon symbol="🧺" /> }}
+      />
+      <Tabs.Screen
         name="best-deals"
         options={{ title: 'Best Deals', tabBarIcon: () => <TabIcon symbol="🏷️" /> }}
       />
