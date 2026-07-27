@@ -47,6 +47,22 @@ export default function LoginScreen() {
     }
   }
 
+  // Expo Go (and web) can't run the real native module, so there's no real
+  // confirmation sheet or cancel event to hook into -- this simulates that
+  // same shape (a confirmation step with a Cancel option) using Alert,
+  // which is real native UI and works fine on Expo Go (unlike on web, where
+  // Alert.alert is a no-op). The banner fires specifically on "Cancel",
+  // matching how the real flow behaves, not on the initial button tap.
+  // Swap for the real thing once expo-apple-authentication actually works
+  // (i.e. once this whole function stops being reachable on iOS).
+  function handleAppleSignInFallback() {
+    setCancelledMessage(null);
+    Alert.alert('Sign in with Grrunch', 'Using your Apple Account', [
+      { text: 'Cancel', style: 'cancel', onPress: () => setCancelledMessage('Sign-in was cancelled.') },
+      { text: 'Continue', onPress: () => router.push('/location') },
+    ]);
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Save deals & build your lists</Text>
@@ -68,15 +84,7 @@ export default function LoginScreen() {
           onPress={handleAppleSignIn}
         />
       ) : (
-        // Expo Go (and web) can't run the real native module, so there's no
-        // real cancel event to hook into here -- this demos the cancelled
-        // banner directly so it's checkable without a dev-client build.
-        // Swap for real detection once expo-apple-authentication works
-        // (i.e. once this whole branch stops being reachable on iOS).
-        <Pressable
-          style={styles.oauthButton}
-          onPress={() => setCancelledMessage('Sign-in was cancelled.')}
-        >
+        <Pressable style={styles.oauthButton} onPress={handleAppleSignInFallback}>
           <Text style={styles.oauthText}>🍎  Continue with Apple</Text>
         </Pressable>
       )}
