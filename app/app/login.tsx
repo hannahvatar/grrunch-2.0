@@ -1,5 +1,6 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { router } from 'expo-router';
+import * as Network from 'expo-network';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -9,6 +10,22 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 // via expo-apple-authentication -- that sheet is Apple's own UI, not
 // something to rebuild in React Native. Google/email auth and the "Log in"
 // link still belong to the account-holder flow, not yet built.
+
+// Real connectivity check (expo-network works in Expo Go, unlike
+// expo-apple-authentication) -- checked before attempting sign-in so the
+// offline screen reflects an actual condition, not another demo trigger.
+// isInternetReachable can be null/undefined ("unknown") on some platforms;
+// only treat it as offline when we get an explicit false, so an
+// inconclusive check never blocks a sign-in attempt that might work.
+async function isOffline(): Promise<boolean> {
+  try {
+    const state = await Network.getNetworkStateAsync();
+    return state.isConnected === false || state.isInternetReachable === false;
+  } catch {
+    return false;
+  }
+}
+
 export default function LoginScreen() {
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   // Shared across Apple/Google/email -- whichever method gets cancelled
@@ -24,6 +41,10 @@ export default function LoginScreen() {
 
   async function handleAppleSignIn() {
     setCancelledMessage(null);
+    if (await isOffline()) {
+      router.push('/offline');
+      return;
+    }
     try {
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
@@ -55,8 +76,12 @@ export default function LoginScreen() {
   // matching how the real flow behaves, not on the initial button tap.
   // Swap for the real thing once expo-apple-authentication actually works
   // (i.e. once this whole function stops being reachable on iOS).
-  function handleAppleSignInFallback() {
+  async function handleAppleSignInFallback() {
     setCancelledMessage(null);
+    if (await isOffline()) {
+      router.push('/offline');
+      return;
+    }
     Alert.alert('Sign in with Grrunch', 'Using your Apple Account', [
       { text: 'Cancel', style: 'cancel', onPress: () => setCancelledMessage('Sign-in was cancelled.') },
       { text: 'Continue', onPress: () => router.push('/location') },
