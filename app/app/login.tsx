@@ -68,7 +68,15 @@ export default function LoginScreen() {
           onPress={handleAppleSignIn}
         />
       ) : (
-        <Pressable style={styles.oauthButton}>
+        // Expo Go (and web) can't run the real native module, so there's no
+        // real cancel event to hook into here -- this demos the cancelled
+        // banner directly so it's checkable without a dev-client build.
+        // Swap for real detection once expo-apple-authentication works
+        // (i.e. once this whole branch stops being reachable on iOS).
+        <Pressable
+          style={styles.oauthButton}
+          onPress={() => setCancelledMessage('Sign-in was cancelled.')}
+        >
           <Text style={styles.oauthText}>🍎  Continue with Apple</Text>
         </Pressable>
       )}
