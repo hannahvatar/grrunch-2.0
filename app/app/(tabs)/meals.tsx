@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MEALS } from '../../lib/mealData';
+import { useSavedRecipes } from '../../lib/savedRecipes';
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
 // recipeCount/portionsPerRecipe come from Plan your meals (the Quantity
@@ -30,6 +31,7 @@ function defaultPortionsFromParams(portionsPerRecipeParam?: string): number {
 
 export default function MealsScreen() {
   const params = useLocalSearchParams<{ recipeCount?: string; portionsPerRecipe?: string }>();
+  const { savedIds, toggleSaved } = useSavedRecipes();
 
   const [planMealIds, setPlanMealIds] = useState<string[]>(() => planIdsFromParams(params.recipeCount));
   const [portionsById, setPortionsById] = useState<Record<string, number>>(() => {
@@ -116,6 +118,13 @@ export default function MealsScreen() {
             <View key={meal.id} style={styles.mealCard}>
               <View style={styles.mealImagePlaceholder}>
                 <Text style={styles.mealImageIcon}>🍴</Text>
+                <Pressable
+                  style={styles.saveButton}
+                  onPress={() => toggleSaved(meal.id)}
+                  hitSlop={8}
+                >
+                  <Text style={styles.saveButtonIcon}>{savedIds.has(meal.id) ? '❤️' : '🤍'}</Text>
+                </Pressable>
               </View>
               <View style={styles.mealCardBody}>
                 <View style={styles.mealHeaderRow}>
@@ -212,6 +221,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mealImageIcon: { fontSize: 28, opacity: 0.4 },
+  saveButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#ffffffcc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonIcon: { fontSize: 16 },
   mealCardBody: { padding: 14, gap: 8 },
   mealHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   mealName: { fontSize: 16, fontWeight: '700', flex: 1, marginRight: 8 },
