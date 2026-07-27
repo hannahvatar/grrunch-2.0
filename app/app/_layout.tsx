@@ -25,6 +25,7 @@ export default function RootLayout() {
           />
           <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="upgrade" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="auth-error" options={{ presentation: 'modal', headerShown: false }} />
         </Stack>
       </SavedRecipesProvider>
       <StatusBar style="auto" />
