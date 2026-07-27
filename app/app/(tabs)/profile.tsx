@@ -12,7 +12,13 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Profile</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Profile</Text>
+        {/* No settings screen yet -- account settings will nest under here later. */}
+        <Pressable hitSlop={8}>
+          <Text style={styles.gearIcon}>⚙️</Text>
+        </Pressable>
+      </View>
 
       <Text style={styles.sectionTitle}>Saved recipes</Text>
       {savedMeals.length === 0 ? (
@@ -47,7 +53,9 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, paddingTop: 64, gap: 12 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: '800' },
+  gearIcon: { fontSize: 22 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 16 },
   emptyStateText: { color: '#666', fontSize: 14 },
