@@ -11,6 +11,10 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 // link still belong to the account-holder flow, not yet built.
 export default function LoginScreen() {
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+  // Shared across Apple/Google/email -- whichever method gets cancelled
+  // shows the same banner. Only Apple actually wires into it so far; Google
+  // and email aren't implemented yet, so they have nothing to cancel.
+  const [cancelledMessage, setCancelledMessage] = useState<string | null>(null);
 
   useEffect(() => {
     AppleAuthentication.isAvailableAsync()
@@ -19,6 +23,7 @@ export default function LoginScreen() {
   }, []);
 
   async function handleAppleSignIn() {
+    setCancelledMessage(null);
     try {
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
@@ -34,7 +39,9 @@ export default function LoginScreen() {
       void credential;
       router.push('/location');
     } catch (error) {
-      if ((error as { code?: string }).code !== 'ERR_REQUEST_CANCELED') {
+      if ((error as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
+        setCancelledMessage('Sign-in was cancelled.');
+      } else {
         Alert.alert('Sign in failed', 'Something went wrong signing in with Apple.');
       }
     }
@@ -44,6 +51,13 @@ export default function LoginScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Save deals & build your lists</Text>
       <Text style={styles.subtitle}>Create a free account to get started.</Text>
+
+      {cancelledMessage && (
+        <View style={styles.statusBanner}>
+          <Text style={styles.statusBannerIcon}>✕</Text>
+          <Text style={styles.statusBannerText}>{cancelledMessage}</Text>
+        </View>
+      )}
 
       {appleAuthAvailable ? (
         <AppleAuthentication.AppleAuthenticationButton
@@ -91,6 +105,17 @@ const styles = StyleSheet.create({
   container: { padding: 24, paddingTop: 64, gap: 12 },
   title: { fontSize: 26, fontWeight: '800' },
   subtitle: { fontSize: 15, color: '#666', marginBottom: 12 },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F2F2F2',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  statusBannerIcon: { fontSize: 14, color: '#888' },
+  statusBannerText: { fontSize: 14, color: '#555' },
   oauthButton: {
     borderWidth: 1,
     borderColor: '#ddd',
