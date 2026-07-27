@@ -63,7 +63,7 @@ export default function LoginScreen() {
       if ((error as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
         setCancelledMessage('Sign-in was cancelled.');
       } else {
-        router.push('/auth-error');
+        router.push({ pathname: '/auth-error', params: { provider: 'Apple' } });
       }
     }
   }
