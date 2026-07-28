@@ -26,7 +26,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Grrunch uses your location to find nearby grocery stores."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

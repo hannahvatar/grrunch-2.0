@@ -1,24 +1,42 @@
-import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { supabase } from '../lib/supabase';
 import { TIER_LIMITS } from '../lib/tier';
 
 // Guest-mode wireframe step 4 — Stores near you.
-// Static mock data matching the wireframe for now — wiring this to the real
-// nearest-stores Edge Function (needs device/browser geolocation) is a
-// separate follow-up, not part of this visual/structural pass.
-const MOCK_STORES = [
-  { initial: 'S', name: 'Save-On-Foods', subtitle: 'Loyalty rewards & flyer deals', distanceKm: 0.4 },
-  {
-    initial: 'R',
-    name: 'Real Canadian Superstore',
-    subtitle: 'No Frills · PC Optimum points',
-    distanceKm: 0.8,
-  },
-  { initial: 'S', name: 'Safeway', subtitle: 'Club Card savings', distanceKm: 1.1 },
-  { initial: 'T', name: 'T&T Supermarket', subtitle: 'Asian groceries & fresh produce', distanceKm: 1.6 },
-  { initial: 'W', name: 'Walmart', subtitle: 'Everyday low prices', distanceKm: 2.0 },
-];
+// Wired to the deployed nearest-stores Edge Function (see
+// supabase/functions/nearest-stores/index.ts) using coords forwarded from
+// the Location screen. If no coords were forwarded (manual/skip path — no
+// manual search UI exists yet), this shows an honest no-location state
+// instead of mock data.
+interface StoreRow {
+  id: string;
+  chain_name: string;
+  banner: string | null;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+interface DisplayStore {
+  id: string;
+  initial: string;
+  name: string;
+  subtitle: string;
+  distanceKm: number | null;
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 
 // Guest sessions are treated as free tier — no account/paid-tier check
 // exists yet, so this is hardcoded until that's built.
@@ -29,10 +47,96 @@ function showUpgradePrompt() {
 }
 
 export default function StoresScreen() {
-  // Free tier: all 5 nearest stores are selected by default and locked —
-  // removing one or swapping a location requires upgrading.
+  const { lat, lng } = useLocalSearchParams<{ lat?: string; lng?: string }>();
+  const hasLocation = typeof lat === 'string' && typeof lng === 'string';
+
+  const [loading, setLoading] = useState(hasLocation);
+  const [stores, setStores] = useState<DisplayStore[]>([]);
+
+  useEffect(() => {
+    if (!hasLocation) return;
+
+    const userLat = Number(lat);
+    const userLng = Number(lng);
+
+    let cancelled = false;
+    setLoading(true);
+
+    supabase.functions
+      .invoke<{ stores?: StoreRow[]; error?: string }>('nearest-stores', {
+        body: { lat: userLat, lng: userLng },
+      })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data?.stores) {
+          router.replace({
+            pathname: '/error',
+            params: {
+              body: "We couldn't load stores near you. Please try again.",
+              footnote: 'This uses your location and our stores database.',
+            },
+          });
+          return;
+        }
+        const display = data.stores
+          .map((store) => ({
+            id: store.id,
+            initial: store.chain_name.charAt(0),
+            name: store.chain_name,
+            subtitle: store.banner ?? store.address,
+            distanceKm:
+              store.lat !== null && store.lng !== null
+                ? haversineKm(userLat, userLng, store.lat, store.lng)
+                : null,
+          }))
+          .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+        setStores(display);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        router.replace({
+          pathname: '/error',
+          params: { body: "We couldn't load stores near you. Please try again." },
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLocation, lat, lng]);
+
   function goToPlanMeals() {
     router.push('/plan-meals');
+  }
+
+  if (!hasLocation) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>📍</Text>
+          <Text style={styles.title}>No location yet</Text>
+          <Text style={styles.subtitle}>
+            Turn on location to see the stores nearest you. Manual store search isn't available yet.
+          </Text>
+          <Pressable style={styles.primaryButton} onPress={() => router.back()}>
+            <Text style={styles.primaryButtonText}>Enable location</Text>
+          </Pressable>
+          <Pressable onPress={goToPlanMeals}>
+            <Text style={styles.skipText}>Skip for now</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#111" />
+        <Text style={styles.loadingText}>Finding stores near you…</Text>
+      </View>
+    );
   }
 
   return (
@@ -42,11 +146,11 @@ export default function StoresScreen() {
         <Text style={styles.subtitle}>
           {storesEditable
             ? 'Select the stores you want to track — you can refine this anytime in Profile settings.'
-            : 'Your 5 nearest stores, selected automatically. Upgrade to remove a store or change a location.'}
+            : 'Your nearest stores, selected automatically. Upgrade to remove a store or change a location.'}
         </Text>
-        {MOCK_STORES.map((store) => (
+        {stores.map((store) => (
           <Pressable
-            key={store.name}
+            key={store.id}
             style={styles.storeRow}
             onPress={storesEditable ? undefined : showUpgradePrompt}
           >
@@ -57,7 +161,9 @@ export default function StoresScreen() {
               <Text style={styles.storeName}>{store.name}</Text>
               <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
             </View>
-            <Text style={styles.distance}>{store.distanceKm} km</Text>
+            {store.distanceKm !== null && (
+              <Text style={styles.distance}>{store.distanceKm.toFixed(1)} km</Text>
+            )}
             <View style={styles.checkmarkOn}>
               <Text style={styles.checkmarkText}>✓</Text>
             </View>
@@ -67,7 +173,7 @@ export default function StoresScreen() {
       </ScrollView>
       <View style={styles.footer}>
         <Pressable style={styles.primaryButton} onPress={goToPlanMeals}>
-          <Text style={styles.primaryButtonText}>Track all {MOCK_STORES.length} stores</Text>
+          <Text style={styles.primaryButtonText}>Track all {stores.length} stores</Text>
         </Pressable>
         {!storesEditable && (
           <Pressable onPress={showUpgradePrompt}>
@@ -84,9 +190,13 @@ export default function StoresScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  centered: { alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loadingText: { fontSize: 14, color: '#888' },
   scrollContent: { padding: 24, paddingTop: 64, gap: 12 },
   title: { fontSize: 24, fontWeight: '800' },
   subtitle: { fontSize: 14, color: '#666', marginBottom: 8 },
+  emptyState: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  emptyIcon: { fontSize: 40, marginBottom: 8 },
   storeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,6 +232,7 @@ const styles = StyleSheet.create({
   checkmarkText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#eee' },
   primaryButton: {
+    width: '100%',
     backgroundColor: '#111',
     borderRadius: 14,
     paddingVertical: 18,
