@@ -27,6 +27,19 @@ export default function RootLayout() {
           <Stack.Screen name="upgrade" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="error" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="offline" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="no-account" options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen
+            name="account-unavailable"
+            options={{ presentation: 'modal', headerShown: false }}
+          />
+          <Stack.Screen
+            name="account-deleted"
+            options={{ presentation: 'modal', headerShown: false }}
+          />
+          <Stack.Screen
+            name="access-revoked"
+            options={{ presentation: 'modal', headerShown: false }}
+          />
         </Stack>
       </SavedRecipesProvider>
       <StatusBar style="auto" />

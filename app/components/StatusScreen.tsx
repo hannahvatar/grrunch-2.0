@@ -1,26 +1,39 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-// Shared layout for full-screen status states reached from auth flows (e.g.
-// error.tsx, offline.tsx): back chevron, circled icon, title, body, and a
-// primary action button. Presented as a modal by the screens that use it.
+export interface StatusAction {
+  label: string;
+  variant?: 'primary' | 'secondary' | 'text';
+  onPress?: () => void;
+}
+
+// Shared layout for full-screen status states reached from auth flows
+// (error.tsx, offline.tsx, no-account.tsx, etc.): back chevron, circled
+// icon, title, body, and one or more action buttons. Presented as a modal
+// by the screens that use it.
+//
+// `actions` defaults to a single "Try again" -> router.back(), matching
+// the original single-button screens. Pass an array for screens that need
+// 2-3 actions (e.g. "Try another method" / "Recover account" / "Contact
+// support") -- the first action defaults to 'primary' styling and the
+// rest to 'secondary' unless a variant is given explicitly.
 export function StatusScreen({
   icon,
   title,
   body,
   footnote,
-  actionLabel = 'Try again',
+  actions,
   onBack,
-  onAction,
 }: {
   icon: string;
   title: string;
   body: string;
   footnote?: string;
-  actionLabel?: string;
+  actions?: StatusAction[];
   onBack?: () => void;
-  onAction?: () => void;
 }) {
+  const resolvedActions: StatusAction[] = actions ?? [{ label: 'Try again' }];
+
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
@@ -39,9 +52,30 @@ export function StatusScreen({
         <Text style={styles.body}>{body}</Text>
       </View>
       <View style={styles.footer}>
-        <Pressable style={styles.primaryButton} onPress={onAction ?? (() => router.back())}>
-          <Text style={styles.primaryButtonText}>{actionLabel}</Text>
-        </Pressable>
+        {resolvedActions.map((action, index) => {
+          const variant = action.variant ?? (index === 0 ? 'primary' : 'secondary');
+          const onPress = action.onPress ?? (() => router.back());
+          if (variant === 'text') {
+            return (
+              <Pressable key={action.label} style={styles.textButton} onPress={onPress}>
+                <Text style={styles.textButtonLabel}>{action.label}</Text>
+              </Pressable>
+            );
+          }
+          return (
+            <Pressable
+              key={action.label}
+              style={variant === 'primary' ? styles.primaryButton : styles.secondaryButton}
+              onPress={onPress}
+            >
+              <Text
+                style={variant === 'primary' ? styles.primaryButtonText : styles.secondaryButtonText}
+              >
+                {action.label}
+              </Text>
+            </Pressable>
+          );
+        })}
         {footnote && <Text style={styles.footnote}>{footnote}</Text>}
       </View>
     </View>
@@ -74,7 +108,7 @@ const styles = StyleSheet.create({
   icon: { fontSize: 24, color: '#999' },
   title: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
   body: { fontSize: 15, color: '#666', textAlign: 'center' },
-  footer: { padding: 24 },
+  footer: { padding: 24, gap: 12 },
   primaryButton: {
     backgroundColor: '#111',
     borderRadius: 14,
@@ -82,5 +116,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  footnote: { fontSize: 12, color: '#999', textAlign: 'center', marginTop: 10 },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  secondaryButtonText: { color: '#111', fontSize: 17, fontWeight: '700' },
+  textButton: { alignItems: 'center', paddingVertical: 6 },
+  textButtonLabel: { color: '#666', fontSize: 15, fontWeight: '600' },
+  footnote: { fontSize: 12, color: '#999', textAlign: 'center', marginTop: -2 },
 });
