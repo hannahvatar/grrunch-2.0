@@ -71,17 +71,17 @@ const SEARCH_RADIUS_METERS = 25_000;
 interface ChainConfig {
   chainName: string;
   // Multiple queries let one MVP "chain" slot cover interchangeable banners
-  // (Real Canadian Superstore / No Frills are both Loblaws banners) — the
-  // nearest match across all of a chain's queries wins.
+  // that should count as the same tracked store. Real Canadian Superstore
+  // and No Frills are both Loblaws banners but have separate storefronts,
+  // separate flyers, and separate pricing — tracked as two distinct chains,
+  // not merged into one slot.
   queries: string[];
 }
 
 const MVP_CHAINS: ChainConfig[] = [
   { chainName: "Save-On-Foods", queries: ["Save-On-Foods"] },
-  {
-    chainName: "Real Canadian Superstore / No Frills",
-    queries: ["Real Canadian Superstore", "No Frills"],
-  },
+  { chainName: "Real Canadian Superstore", queries: ["Real Canadian Superstore"] },
+  { chainName: "No Frills", queries: ["No Frills"] },
   { chainName: "Safeway", queries: ["Safeway"] },
   { chainName: "T&T Supermarket", queries: ["T&T Supermarket"] },
   { chainName: "Walmart", queries: ["Walmart"] },
