@@ -2,12 +2,13 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 // Shared layout for full-screen status states reached from auth flows (e.g.
-// auth-error.tsx, offline.tsx): back chevron, circled icon, title, body, and
-// a primary action button. Presented as a modal by the screens that use it.
+// error.tsx, offline.tsx): back chevron, circled icon, title, body, and a
+// primary action button. Presented as a modal by the screens that use it.
 export function StatusScreen({
   icon,
   title,
   body,
+  footnote,
   actionLabel = 'Try again',
   onBack,
   onAction,
@@ -15,6 +16,7 @@ export function StatusScreen({
   icon: string;
   title: string;
   body: string;
+  footnote?: string;
   actionLabel?: string;
   onBack?: () => void;
   onAction?: () => void;
@@ -40,6 +42,7 @@ export function StatusScreen({
         <Pressable style={styles.primaryButton} onPress={onAction ?? (() => router.back())}>
           <Text style={styles.primaryButtonText}>{actionLabel}</Text>
         </Pressable>
+        {footnote && <Text style={styles.footnote}>{footnote}</Text>}
       </View>
     </View>
   );
@@ -79,4 +82,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  footnote: { fontSize: 12, color: '#999', textAlign: 'center', marginTop: 10 },
 });
