@@ -1,14 +1,34 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { MEALS } from '../lib/mealData';
+import type { Meal } from '../lib/mealData';
+import { fetchRecipeById } from '../lib/recipes';
 
 // Recipe detail — presented as a modal over the Meals tab, opened via each
 // meal card's "View recipe" button. Not covered by a wireframe yet, so this
 // stays plain/functional like the rest of the guest-mode flow.
 export default function RecipeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const meal = MEALS.find((m) => m.id === id);
+  const [meal, setMeal] = useState<Meal | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!id) {
+      setMeal(null);
+      return;
+    }
+    fetchRecipeById(id)
+      .then(setMeal)
+      .catch(() => setMeal(null));
+  }, [id]);
+
+  if (meal === undefined) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#111" />
+      </View>
+    );
+  }
 
   if (!meal) {
     return (
@@ -64,6 +84,7 @@ export default function RecipeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   handle: {
     width: 40,
     height: 4,

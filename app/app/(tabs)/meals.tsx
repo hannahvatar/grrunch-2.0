@@ -1,8 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { MEALS } from '../../lib/mealData';
+import type { Meal } from '../../lib/mealData';
+import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
@@ -10,18 +11,18 @@ import { useSavedRecipes } from '../../lib/savedRecipes';
 // section) via router params -- they're just the starting point here, since
 // swap/delete/portions edits below make this screen's own state the source
 // of truth afterward. Falls back to sane defaults if reached without them
-// (e.g. hot reload, or a direct link). Clamped to MEALS.length since the
-// sample pool only has 8 entries -- real generation isn't wired up yet.
-function randomAvailableMealId(currentIds: string[]): string | undefined {
-  const available = MEALS.filter((m) => !currentIds.includes(m.id));
+// (e.g. hot reload, or a direct link). Clamped to allMeals.length since the
+// recipe library is a finite, growing pool, not generated on demand.
+function randomAvailableMealId(allMeals: Meal[], currentIds: string[]): string | undefined {
+  const available = allMeals.filter((m) => !currentIds.includes(m.id));
   if (available.length === 0) return undefined;
   return available[Math.floor(Math.random() * available.length)].id;
 }
 
-function planIdsFromParams(recipeCountParam?: string): string[] {
+function planIdsFromParams(allMeals: Meal[], recipeCountParam?: string): string[] {
   const parsed = Number(recipeCountParam);
-  const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MEALS.length) : 4;
-  return MEALS.slice(0, recipeCount).map((m) => m.id);
+  const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, allMeals.length) : 4;
+  return allMeals.slice(0, recipeCount).map((m) => m.id);
 }
 
 function defaultPortionsFromParams(portionsPerRecipeParam?: string): number {
@@ -33,11 +34,31 @@ export default function MealsScreen() {
   const params = useLocalSearchParams<{ recipeCount?: string; portionsPerRecipe?: string }>();
   const { savedIds, toggleSaved } = useSavedRecipes();
 
-  const [planMealIds, setPlanMealIds] = useState<string[]>(() => planIdsFromParams(params.recipeCount));
-  const [portionsById, setPortionsById] = useState<Record<string, number>>(() => {
-    const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
-    return Object.fromEntries(planIdsFromParams(params.recipeCount).map((id) => [id, defaultPortions]));
-  });
+  const [allMeals, setAllMeals] = useState<Meal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [planMealIds, setPlanMealIds] = useState<string[]>([]);
+  const [portionsById, setPortionsById] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetchAllRecipes()
+      .then((meals) => {
+        setAllMeals(meals);
+        const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
+        const initialPlanIds = planIdsFromParams(meals, params.recipeCount);
+        setPlanMealIds(initialPlanIds);
+        setPortionsById(Object.fromEntries(initialPlanIds.map((id) => [id, defaultPortions])));
+      })
+      .catch(() => {
+        router.replace({
+          pathname: '/error',
+          params: { body: "We couldn't load your meals. Please try again." },
+        });
+      })
+      .finally(() => setLoading(false));
+    // Only ever runs once on mount -- the plan-reapply effect below handles
+    // subsequent param changes without re-fetching.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Tab screens stay mounted when you switch tabs (they don't remount), so
   // if this screen was ever visited before "Get my meals" was pressed, the
@@ -46,17 +67,18 @@ export default function MealsScreen() {
   // whenever recipeCount/portionsPerRecipe actually change, so pressing the
   // button always takes effect even if the tab was mounted earlier.
   useEffect(() => {
+    if (allMeals.length === 0) return;
     if (!params.recipeCount && !params.portionsPerRecipe) return;
     const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
-    const nextPlanIds = planIdsFromParams(params.recipeCount);
+    const nextPlanIds = planIdsFromParams(allMeals, params.recipeCount);
     setPlanMealIds(nextPlanIds);
     setPortionsById(Object.fromEntries(nextPlanIds.map((id) => [id, defaultPortions])));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.recipeCount, params.portionsPerRecipe]);
+  }, [allMeals, params.recipeCount, params.portionsPerRecipe]);
 
   const planMeals = planMealIds
-    .map((id) => MEALS.find((m) => m.id === id))
-    .filter((m): m is (typeof MEALS)[number] => m !== undefined);
+    .map((id) => allMeals.find((m) => m.id === id))
+    .filter((m): m is Meal => m !== undefined);
 
   const totalPortions = planMeals.reduce((sum, meal) => sum + (portionsById[meal.id] ?? 1), 0);
   const totalPrice = planMeals.reduce(
@@ -73,7 +95,7 @@ export default function MealsScreen() {
   }
 
   function swapMeal(id: string) {
-    const replacementId = randomAvailableMealId(planMealIds);
+    const replacementId = randomAvailableMealId(allMeals, planMealIds);
     if (!replacementId) return;
     setPlanMealIds((prev) => prev.map((mealId) => (mealId === id ? replacementId : mealId)));
     setPortionsById((prev) => {
@@ -88,6 +110,14 @@ export default function MealsScreen() {
       const { [id]: _removed, ...rest } = prev;
       return rest;
     });
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#111" />
+      </View>
+    );
   }
 
   return (
@@ -198,6 +228,7 @@ export default function MealsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { padding: 20, paddingTop: 60, gap: 16 },
   guestBanner: {
     flexDirection: 'row',

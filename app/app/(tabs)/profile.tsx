@@ -1,14 +1,24 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { MEALS } from '../../lib/mealData';
+import type { Meal } from '../../lib/mealData';
+import { fetchRecipesByIds } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 
 // Not yet detailed in the wireframes beyond Saved recipes — placeholder tab.
 // Grocery list access lives in its own tab (app/(tabs)/grocery.tsx).
 export default function ProfileScreen() {
   const { savedIds, toggleSaved } = useSavedRecipes();
-  const savedMeals = MEALS.filter((meal) => savedIds.has(meal.id));
+  const [savedMeals, setSavedMeals] = useState<Meal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRecipesByIds(Array.from(savedIds))
+      .then(setSavedMeals)
+      .catch(() => setSavedMeals([]))
+      .finally(() => setLoading(false));
+  }, [savedIds]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -21,7 +31,9 @@ export default function ProfileScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>Saved recipes</Text>
-      {savedMeals.length === 0 ? (
+      {loading ? (
+        <ActivityIndicator size="small" color="#111" style={styles.loadingIndicator} />
+      ) : savedMeals.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
             No saved recipes yet — tap the ♡ on a meal in your plan to save it here.
@@ -57,6 +69,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800' },
   gearIcon: { fontSize: 22 },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 8 },
+  loadingIndicator: { marginTop: 8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 16 },
   emptyStateText: { color: '#666', fontSize: 14 },
   savedCard: {
