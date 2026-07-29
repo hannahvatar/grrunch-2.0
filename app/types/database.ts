@@ -128,7 +128,7 @@ export interface Database {
           name: string;
           ingredients: unknown;
           instructions: unknown;
-          tag: string | null;
+          deal_tags: unknown;
           calories: number | null;
           protein: number | null;
           minutes: number | null;

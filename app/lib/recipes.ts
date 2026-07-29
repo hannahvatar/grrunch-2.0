@@ -1,10 +1,15 @@
 import { supabase } from './supabase';
-import type { Meal } from './mealData';
+import type { DealTag, Meal } from './mealData';
 
 interface RecipeIngredient {
   name: string;
   quantity: string;
   unit: string;
+}
+
+interface RecipeDealTagRow {
+  name: string;
+  discount_pct: number;
 }
 
 // Ingredients are stored structured ({name, quantity, unit}) so a future
@@ -15,12 +20,16 @@ function ingredientLine(ingredient: RecipeIngredient): string {
   return [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ').trim();
 }
 
+function mapDealTag(tag: RecipeDealTagRow): DealTag {
+  return { name: tag.name, discountPct: tag.discount_pct };
+}
+
 function mapRowToMeal(row: {
   id: string;
   name: string;
   ingredients: unknown;
   instructions: unknown;
-  tag: string | null;
+  deal_tags: unknown;
   calories: number | null;
   protein: number | null;
   minutes: number | null;
@@ -31,7 +40,7 @@ function mapRowToMeal(row: {
     name: row.name,
     price: row.price ?? 0,
     minutes: row.minutes ?? 0,
-    tag: row.tag ?? '',
+    dealTags: ((row.deal_tags as RecipeDealTagRow[]) ?? []).map(mapDealTag),
     calories: row.calories ?? 0,
     protein: row.protein ?? 0,
     ingredients: (row.ingredients as RecipeIngredient[]).map(ingredientLine),
