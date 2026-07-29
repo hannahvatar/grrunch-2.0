@@ -133,6 +133,7 @@ export interface Database {
           protein: number | null;
           minutes: number | null;
           price: number | null;
+          servings: number;
           source: RecipeSource;
           source_deal_ids: string[] | null;
           created_at: string;

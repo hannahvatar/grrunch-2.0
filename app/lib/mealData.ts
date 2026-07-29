@@ -10,6 +10,7 @@ export interface Meal {
   name: string;
   price: number;
   minutes: number;
+  servings: number;
   dealTags: DealTag[];
   calories: number;
   protein: number;
