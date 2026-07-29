@@ -167,6 +167,9 @@ export default function PlanMealsScreen() {
               params: {
                 recipeCount: String(recipeCount),
                 portionsPerRecipe: String(portionsPerRecipe),
+                maxCalories: String(calories),
+                minProtein: String(protein),
+                maxPrice: String(pricePerPortion),
               },
             })
           }

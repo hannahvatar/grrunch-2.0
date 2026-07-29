@@ -13,16 +13,45 @@ import { useSavedRecipes } from '../../lib/savedRecipes';
 // of truth afterward. Falls back to sane defaults if reached without them
 // (e.g. hot reload, or a direct link). Clamped to allMeals.length since the
 // recipe library is a finite, growing pool, not generated on demand.
-function randomAvailableMealId(allMeals: Meal[], currentIds: string[]): string | undefined {
-  const available = allMeals.filter((m) => !currentIds.includes(m.id));
+function randomAvailableMealId(pool: Meal[], currentIds: string[]): string | undefined {
+  const available = pool.filter((m) => !currentIds.includes(m.id));
   if (available.length === 0) return undefined;
   return available[Math.floor(Math.random() * available.length)].id;
 }
 
-function planIdsFromParams(allMeals: Meal[], recipeCountParam?: string): string[] {
+interface PlanTargets {
+  maxCalories?: string;
+  minProtein?: string;
+  maxPrice?: string;
+}
+
+// Meal Plan Engine is a pure query against the recipe library -- never a
+// live AI call -- so filtering to targets can legitimately come back with
+// fewer matches than requested. That's an intentional tradeoff (see
+// architecture.md), not a bug: a thinner plan beats silently ignoring the
+// user's calorie/protein/price targets.
+function eligibleMeals(allMeals: Meal[], targets: PlanTargets): Meal[] {
+  const maxCalories = Number(targets.maxCalories);
+  const minProtein = Number(targets.minProtein);
+  const maxPrice = Number(targets.maxPrice);
+
+  return allMeals.filter((m) => {
+    if (Number.isFinite(maxCalories) && m.calories > maxCalories) return false;
+    if (Number.isFinite(minProtein) && m.protein < minProtein) return false;
+    if (Number.isFinite(maxPrice) && m.price > maxPrice) return false;
+    return true;
+  });
+}
+
+function planIdsFromParams(
+  allMeals: Meal[],
+  recipeCountParam: string | undefined,
+  targets: PlanTargets
+): string[] {
+  const pool = eligibleMeals(allMeals, targets);
   const parsed = Number(recipeCountParam);
-  const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, allMeals.length) : 4;
-  return allMeals.slice(0, recipeCount).map((m) => m.id);
+  const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, pool.length) : Math.min(4, pool.length);
+  return pool.slice(0, recipeCount).map((m) => m.id);
 }
 
 function defaultPortionsFromParams(portionsPerRecipeParam?: string): number {
@@ -31,7 +60,13 @@ function defaultPortionsFromParams(portionsPerRecipeParam?: string): number {
 }
 
 export default function MealsScreen() {
-  const params = useLocalSearchParams<{ recipeCount?: string; portionsPerRecipe?: string }>();
+  const params = useLocalSearchParams<{
+    recipeCount?: string;
+    portionsPerRecipe?: string;
+    maxCalories?: string;
+    minProtein?: string;
+    maxPrice?: string;
+  }>();
   const { savedIds, toggleSaved } = useSavedRecipes();
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
@@ -44,7 +79,11 @@ export default function MealsScreen() {
       .then((meals) => {
         setAllMeals(meals);
         const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
-        const initialPlanIds = planIdsFromParams(meals, params.recipeCount);
+        const initialPlanIds = planIdsFromParams(meals, params.recipeCount, {
+          maxCalories: params.maxCalories,
+          minProtein: params.minProtein,
+          maxPrice: params.maxPrice,
+        });
         setPlanMealIds(initialPlanIds);
         setPortionsById(Object.fromEntries(initialPlanIds.map((id) => [id, defaultPortions])));
       })
@@ -70,11 +109,22 @@ export default function MealsScreen() {
     if (allMeals.length === 0) return;
     if (!params.recipeCount && !params.portionsPerRecipe) return;
     const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
-    const nextPlanIds = planIdsFromParams(allMeals, params.recipeCount);
+    const nextPlanIds = planIdsFromParams(allMeals, params.recipeCount, {
+      maxCalories: params.maxCalories,
+      minProtein: params.minProtein,
+      maxPrice: params.maxPrice,
+    });
     setPlanMealIds(nextPlanIds);
     setPortionsById(Object.fromEntries(nextPlanIds.map((id) => [id, defaultPortions])));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allMeals, params.recipeCount, params.portionsPerRecipe]);
+  }, [
+    allMeals,
+    params.recipeCount,
+    params.portionsPerRecipe,
+    params.maxCalories,
+    params.minProtein,
+    params.maxPrice,
+  ]);
 
   const planMeals = planMealIds
     .map((id) => allMeals.find((m) => m.id === id))
@@ -95,7 +145,12 @@ export default function MealsScreen() {
   }
 
   function swapMeal(id: string) {
-    const replacementId = randomAvailableMealId(allMeals, planMealIds);
+    const pool = eligibleMeals(allMeals, {
+      maxCalories: params.maxCalories,
+      minProtein: params.minProtein,
+      maxPrice: params.maxPrice,
+    });
+    const replacementId = randomAvailableMealId(pool, planMealIds);
     if (!replacementId) return;
     setPlanMealIds((prev) => prev.map((mealId) => (mealId === id ? replacementId : mealId)));
     setPortionsById((prev) => {
@@ -137,7 +192,8 @@ export default function MealsScreen() {
         {planMeals.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
-              No meals left in your plan. Delete was a bit too enthusiastic — swap or start over.
+              No meals left in your plan. Try loosening your calorie, protein, or price targets, or
+              start over.
             </Text>
           </View>
         )}
