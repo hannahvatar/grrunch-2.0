@@ -4,6 +4,7 @@
 
 export type DealStatus = 'pending' | 'approved' | 'rejected';
 export type StapleCategory = 'base_staple' | 'rounding_out_extra';
+export type RecipeSource = 'ai_generated' | 'manual';
 
 export interface Database {
   public: {
@@ -120,6 +121,26 @@ export interface Database {
           id?: string;
         };
         Update: Partial<Database['public']['Tables']['household_members']['Insert']>;
+      };
+      recipes: {
+        Row: {
+          id: string;
+          name: string;
+          ingredients: unknown;
+          instructions: unknown;
+          tag: string | null;
+          calories: number | null;
+          protein: number | null;
+          minutes: number | null;
+          price: number | null;
+          source: RecipeSource;
+          source_deal_ids: string[] | null;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['recipes']['Row'], 'id' | 'created_at'> & {
+          id?: string;
+        };
+        Update: Partial<Database['public']['Tables']['recipes']['Insert']>;
       };
       saved_recipes: {
         Row: {
