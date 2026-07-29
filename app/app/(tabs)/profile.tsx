@@ -51,7 +51,7 @@ export default function ProfileScreen() {
             >
               <Text style={styles.savedName}>{meal.name}</Text>
               <Text style={styles.savedMeta}>
-                ${meal.price.toFixed(2)} / portion · {meal.minutes} min
+                ${meal.price.toFixed(2)} / serving · {meal.minutes} min
               </Text>
             </Pressable>
           </View>

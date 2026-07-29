@@ -5,19 +5,15 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import type { Meal } from '../../lib/mealData';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
+import { useSelectedMeals } from '../../lib/selectedMeals';
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
-// A recipe's servings are a real, fixed property (however many portions its
+// A recipe's servings are a real, fixed property (however many servings its
 // ingredients actually yield as sold -- not a number the user picks), so
-// there's no "portions per recipe" to derive or edit here anymore. This
-// screen just shows every real recipe matching the calorie/protein/price
-// targets from Plan your meals; the user curates from there via swap/delete.
-function randomAvailableMealId(pool: Meal[], currentIds: string[]): string | undefined {
-  const available = pool.filter((m) => !currentIds.includes(m.id));
-  if (available.length === 0) return undefined;
-  return available[Math.floor(Math.random() * available.length)].id;
-}
-
+// there's no "servings per recipe" to derive or edit here anymore. This
+// screen shows every real recipe matching the calorie/protein/price targets
+// from Plan your meals; the user checks off which ones they actually want
+// and adds them to their grocery list.
 interface PlanTargets {
   maxCalories?: string;
   minProtein?: string;
@@ -53,6 +49,7 @@ export default function MealsScreen() {
     maxPrice?: string;
   }>();
   const { savedIds, toggleSaved } = useSavedRecipes();
+  const { selectedIds, toggleSelected } = useSelectedMeals();
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,22 +104,7 @@ export default function MealsScreen() {
 
   const totalServings = planMeals.reduce((sum, meal) => sum + meal.servings, 0);
   const totalPrice = planMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);
-  const avgPerPortion = totalServings > 0 ? totalPrice / totalServings : 0;
-
-  function swapMeal(id: string) {
-    const pool = eligibleMeals(allMeals, {
-      maxCalories: params.maxCalories,
-      minProtein: params.minProtein,
-      maxPrice: params.maxPrice,
-    });
-    const replacementId = randomAvailableMealId(pool, planMealIds);
-    if (!replacementId) return;
-    setPlanMealIds((prev) => prev.map((mealId) => (mealId === id ? replacementId : mealId)));
-  }
-
-  function deleteMeal(id: string) {
-    setPlanMealIds((prev) => prev.filter((mealId) => mealId !== id));
-  }
+  const avgPerServing = totalServings > 0 ? totalPrice / totalServings : 0;
 
   if (loading) {
     return (
@@ -142,7 +124,7 @@ export default function MealsScreen() {
 
         <Text style={styles.title}>Your meal plan</Text>
         <Text style={styles.subtitle}>
-          {planMeals.length} recipe{planMeals.length === 1 ? '' : 's'} · {totalServings} portion
+          {planMeals.length} recipe{planMeals.length === 1 ? '' : 's'} · {totalServings} serving
           {totalServings === 1 ? '' : 's'} total
         </Text>
 
@@ -168,11 +150,11 @@ export default function MealsScreen() {
                 <Text style={styles.mealName}>{meal.name}</Text>
                 <View style={styles.priceBlock}>
                   <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
-                  <Text style={styles.perPortion}>/ portion</Text>
+                  <Text style={styles.perServing}>/ serving</Text>
                 </View>
               </View>
               <Text style={styles.mealTime}>
-                🕐 {meal.minutes} min · makes {meal.servings} portion{meal.servings === 1 ? '' : 's'}
+                🕐 {meal.minutes} min · makes {meal.servings} serving{meal.servings === 1 ? '' : 's'}
               </Text>
               {meal.dealTags.length > 0 && (
                 <View style={styles.dealTagsRow}>
@@ -189,14 +171,14 @@ export default function MealsScreen() {
                 </View>
               )}
 
-              <View style={styles.actionsRow}>
-                <Pressable style={styles.actionButton} onPress={() => swapMeal(meal.id)}>
-                  <Text style={styles.actionButtonText}>🔄 Swap</Text>
-                </Pressable>
-                <Pressable style={styles.actionButton} onPress={() => deleteMeal(meal.id)}>
-                  <Text style={styles.actionButtonText}>🗑 Delete</Text>
-                </Pressable>
-              </View>
+              <Pressable style={styles.selectRow} onPress={() => toggleSelected(meal.id)}>
+                <View style={[styles.checkbox, selectedIds.has(meal.id) && styles.checkboxChecked]}>
+                  {selectedIds.has(meal.id) && <Text style={styles.checkboxMark}>✓</Text>}
+                </View>
+                <Text style={styles.selectRowText}>
+                  {selectedIds.has(meal.id) ? 'Added to grocery list' : 'Add to grocery list'}
+                </Text>
+              </Pressable>
 
               <Pressable
                 style={styles.recipeButton}
@@ -212,17 +194,21 @@ export default function MealsScreen() {
           <View style={styles.totalCard}>
             <View>
               <Text style={styles.totalLabel}>
-                Total · {totalServings} portion{totalServings === 1 ? '' : 's'}
+                Total · {totalServings} serving{totalServings === 1 ? '' : 's'}
               </Text>
-              <Text style={styles.totalSublabel}>avg. ${avgPerPortion.toFixed(2)} / portion</Text>
+              <Text style={styles.totalSublabel}>avg. ${avgPerServing.toFixed(2)} / serving</Text>
             </View>
             <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
           </View>
         )}
       </ScrollView>
       <View style={styles.footer}>
-        <Pressable style={styles.groceryButton} onPress={() => router.push('/grocery-list')}>
-          <Text style={styles.groceryButtonText}>🧺  View grocery list</Text>
+        <Pressable
+          style={[styles.groceryButton, selectedIds.size === 0 && styles.groceryButtonDisabled]}
+          disabled={selectedIds.size === 0}
+          onPress={() => router.push('/(tabs)/grocery')}
+        >
+          <Text style={styles.groceryButtonText}>🧺  Add to my grocery list</Text>
         </Pressable>
       </View>
     </View>
@@ -272,7 +258,7 @@ const styles = StyleSheet.create({
   mealName: { fontSize: 16, fontWeight: '700', flex: 1, marginRight: 8 },
   priceBlock: { alignItems: 'flex-end' },
   mealPrice: { fontSize: 17, fontWeight: '800' },
-  perPortion: { fontSize: 11, color: '#999' },
+  perServing: { fontSize: 11, color: '#999' },
   mealTime: { fontSize: 13, color: '#888' },
   dealTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   dealTagPill: {
@@ -288,16 +274,19 @@ const styles = StyleSheet.create({
   dealTagName: { color: '#2C5FD6', fontSize: 12, fontWeight: '600', flexShrink: 1 },
   dealTagBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   dealTagBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  actionsRow: { flexDirection: 'row', gap: 8 },
-  actionButton: {
-    flex: 1,
+  selectRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    paddingVertical: 10,
+    borderColor: '#ccc',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionButtonText: { fontSize: 14, fontWeight: '700' },
+  checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
+  checkboxMark: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  selectRowText: { fontSize: 14, fontWeight: '600' },
   recipeButton: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -325,5 +314,6 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
+  groceryButtonDisabled: { backgroundColor: '#ccc' },
   groceryButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { DealTag, Meal } from './mealData';
+import type { DealTag, IngredientLine, Meal } from './mealData';
 
 interface RecipeIngredient {
   name: string;
@@ -10,18 +10,23 @@ interface RecipeIngredient {
 interface RecipeDealTagRow {
   name: string;
   discount_pct: number;
-}
-
-// Ingredients are stored structured ({name, quantity, unit}) so a future
-// Grocery List Generator can consolidate across meals -- flattened to
-// display strings here since the UI (recipe.tsx, meals.tsx) only renders
-// plain ingredient lines, matching the Meal shape mealData.ts already uses.
-function ingredientLine(ingredient: RecipeIngredient): string {
-  return [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ').trim();
+  store?: string;
+  image_url?: string;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
-  return { name: tag.name, discountPct: tag.discount_pct };
+  return { name: tag.name, discountPct: tag.discount_pct, store: tag.store, imageUrl: tag.image_url };
+}
+
+// Ingredients are stored structured ({name, quantity, unit}) so a future
+// Grocery List Generator can consolidate across meals -- flattened to a
+// display string here, with the matching deal tag (by ingredient name)
+// attached when that ingredient was sourced from a real flyer deal, so the
+// grocery list can show its image/store next to the item.
+function mapIngredient(ingredient: RecipeIngredient, dealTags: DealTag[]): IngredientLine {
+  const text = [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ').trim();
+  const dealTag = dealTags.find((tag) => tag.name === ingredient.name);
+  return { text, dealTag };
 }
 
 function mapRowToMeal(row: {
@@ -36,16 +41,19 @@ function mapRowToMeal(row: {
   price: number | null;
   servings: number;
 }): Meal {
+  const dealTags = ((row.deal_tags as RecipeDealTagRow[]) ?? []).map(mapDealTag);
   return {
     id: row.id,
     name: row.name,
     price: row.price ?? 0,
     minutes: row.minutes ?? 0,
     servings: row.servings ?? 1,
-    dealTags: ((row.deal_tags as RecipeDealTagRow[]) ?? []).map(mapDealTag),
+    dealTags,
     calories: row.calories ?? 0,
     protein: row.protein ?? 0,
-    ingredients: (row.ingredients as RecipeIngredient[]).map(ingredientLine),
+    ingredients: (row.ingredients as RecipeIngredient[]).map((ingredient) =>
+      mapIngredient(ingredient, dealTags)
+    ),
     instructions: row.instructions as string[],
   };
 }

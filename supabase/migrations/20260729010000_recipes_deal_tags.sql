@@ -6,4 +6,4 @@ alter table public.recipes add column deal_tags jsonb;
 alter table public.recipes drop column tag;
 
 comment on column public.recipes.deal_tags is
-  'Array of {name, discount_pct} for each ingredient sourced from a real curated_deals item -- discount_pct computed from that deal''s price/original_price, never modeled.';
+  'Array of {name, discount_pct, store, image_url} for each ingredient sourced from a real curated_deals item -- discount_pct computed from that deal''s price/original_price, store/image_url snapshotted from the same deal, never modeled.';

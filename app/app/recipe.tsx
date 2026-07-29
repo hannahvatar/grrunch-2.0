@@ -45,7 +45,7 @@ export default function RecipeScreen() {
         <View style={styles.headerText}>
           <Text style={styles.title}>{meal.name}</Text>
           <Text style={styles.subtitle}>
-            🕐 {meal.minutes} min · ${meal.price.toFixed(2)} / portion
+            🕐 {meal.minutes} min · ${meal.price.toFixed(2)} / serving
           </Text>
         </View>
         <Pressable onPress={() => router.back()}>
@@ -65,9 +65,9 @@ export default function RecipeScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Ingredients</Text>
-        {meal.ingredients.map((ingredient) => (
-          <Text key={ingredient} style={styles.listItem}>
-            •  {ingredient}
+        {meal.ingredients.map((ingredient, index) => (
+          <Text key={index} style={styles.listItem}>
+            •  {ingredient.text}
           </Text>
         ))}
 

@@ -1,6 +1,16 @@
 export interface DealTag {
   name: string;
   discountPct: number;
+  store?: string;
+  imageUrl?: string;
+}
+
+// An ingredient line, with the matching deal tag attached when that
+// ingredient was sourced from a real flyer deal -- lets the grocery list
+// show the deal's image/store next to the item it actually came from.
+export interface IngredientLine {
+  text: string;
+  dealTag?: DealTag;
 }
 
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the
@@ -14,6 +24,6 @@ export interface Meal {
   dealTags: DealTag[];
   calories: number;
   protein: number;
-  ingredients: string[];
+  ingredients: IngredientLine[];
   instructions: string[];
 }
