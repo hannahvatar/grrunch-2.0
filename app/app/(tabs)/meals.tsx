@@ -30,7 +30,7 @@ interface PlanTargets {
 // fewer matches than requested. That's an intentional tradeoff (see
 // architecture.md), not a bug: a thinner plan beats silently ignoring the
 // user's calorie/protein/price targets.
-function eligibleMeals(allMeals: Meal[], targets: PlanTargets): Meal[] {
+function eligibleMeals(allMeals: Meal[], targets: PlanTargets = {}): Meal[] {
   const maxCalories = Number(targets.maxCalories);
   const minProtein = Number(targets.minProtein);
   const maxPrice = Number(targets.maxPrice);
@@ -46,7 +46,7 @@ function eligibleMeals(allMeals: Meal[], targets: PlanTargets): Meal[] {
 function planIdsFromParams(
   allMeals: Meal[],
   recipeCountParam: string | undefined,
-  targets: PlanTargets
+  targets: PlanTargets = {}
 ): string[] {
   const pool = eligibleMeals(allMeals, targets);
   const parsed = Number(recipeCountParam);
@@ -221,9 +221,20 @@ export default function MealsScreen() {
                   </View>
                 </View>
                 <Text style={styles.mealTime}>🕐 {meal.minutes} min</Text>
-                <View style={styles.tagPill}>
-                  <Text style={styles.tagText}>🏷️ {meal.tag}</Text>
-                </View>
+                {meal.dealTags.length > 0 && (
+                  <View style={styles.dealTagsRow}>
+                    {meal.dealTags.map((dealTag) => (
+                      <View key={dealTag.name} style={styles.dealTagPill}>
+                        <Text style={styles.dealTagName} numberOfLines={1}>
+                          🏷️ {dealTag.name}
+                        </Text>
+                        <View style={styles.dealTagBadge}>
+                          <Text style={styles.dealTagBadgeText}>-{dealTag.discountPct}%</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
 
                 <View style={styles.portionsRow}>
                   <Text style={styles.portionsLabel}>Portions</Text>
@@ -327,8 +338,20 @@ const styles = StyleSheet.create({
   mealPrice: { fontSize: 17, fontWeight: '800' },
   perPortion: { fontSize: 11, color: '#999' },
   mealTime: { fontSize: 13, color: '#888' },
-  tagPill: { backgroundColor: '#EEF4FF', borderRadius: 10, padding: 10 },
-  tagText: { color: '#2C5FD6', fontSize: 13, fontWeight: '600' },
+  dealTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  dealTagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF4FF',
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 6,
+    maxWidth: '100%',
+  },
+  dealTagName: { color: '#2C5FD6', fontSize: 12, fontWeight: '600', flexShrink: 1 },
+  dealTagBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  dealTagBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   portionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
