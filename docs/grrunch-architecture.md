@@ -169,7 +169,7 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 ### 2.6 Non-Goals for MVP
 - No in-app checkout, cart, or payment (deep-link only)
 - No live/real-time pricing — deal prices are as fresh as the weekly review cycle; exact price always confirmed on the retailer's page
-- No persistent recipe library in v1 — meals are AI-generated per session from that week's deals (may revisit if quality/variety needs it later)
+- ~~No persistent recipe library in v1~~ — **SUPERSEDED**: a persistent `recipes` table now exists (see section 3.2), populated by AI generation from Airtable-tagged deal ingredients plus manual entry. Meal plan generation draws from this library instead of generating every meal from scratch per session.
 - No snack/breakfast planning in MVP
 - No multi-week planning in MVP (one week at a time)
 - No per-person separate meals — households get shared meals with combined exclusions and scaled portions, not individually customized dishes per family member (real feature, but a much bigger one — flagged for post-MVP consideration)
@@ -233,8 +233,9 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 |---|---|---|
 | Ingestion Service | Scheduled job per chain, staggered to match each chain's actual flyer refresh day; downloads public flyer/deals pages | No login bypass, no hidden API calls — public URLs only |
 | AI Extraction Layer | Reads downloaded flyer, proposes structured candidate deals | Claude API (vision or text depending on flyer format) |
-| Admin Review Tool | Approve/edit/reject deals; attach product URLs; maintain the small staple reference-price list | Airtable (free tier) — no-code, avoids build time and cost for v1. Must capture both sale price and regular/original price per deal — this pair is what powers the savings-evidence feature |
-| Meal Plan Engine | Given user's macro/exclusion/budget/store inputs, generates 10 meals on the fly by combining this week's approved deals with the maintained cheap-staples list | Runs server-side; Claude API call per generation/swap — no persistent recipe library needed. Optimizes along the cost-vs-diversity slider (1–10) — low end leans into cheap staples (pasta/rice/beans) as meal bases plus whichever protein/deal is cheapest, even if repetitive; high end rotates ingredients for variety at higher cost |
+| Admin Review Tool | Classify each candidate deal's usage; attach product URLs; maintain the small staple reference-price list | Airtable (free tier) — no-code, avoids build time and cost for v1. Must capture both sale price and regular/original price per deal — this pair is what powers the savings-evidence feature. `status` field superseded from a pending/approved/rejected review workflow to a usage classification: `recipes` (fetched into the recipe library), `deals` (surfaced in the app's Deals section), `both`, or `remove` |
+| Recipe Generation | Generates real recipes into the persistent `recipes` table using `recipes`/`both`-tagged deal ingredients as the basis, plus manual entry for curator-authored recipes | Claude API call per generation batch, not per user session — recipes are a standing library, not regenerated per plan |
+| Meal Plan Engine | Given user's macro/exclusion/budget/store inputs, selects and assembles a meal plan from the `recipes` library (falling back to on-the-fly generation only if the library can't fill a slot) | Runs server-side. Optimizes along the cost-vs-diversity slider (1–10) — low end leans into cheap staples (pasta/rice/beans) as meal bases plus whichever protein/deal is cheapest, even if repetitive; high end rotates ingredients for variety at higher cost |
 | Grocery List Generator | Consolidates ingredients across chosen meals, dedupes, excludes pantry basics, sums deal prices + light staple reference prices | Core budget-projection logic |
 | Grrunch Database | Stores curated deals, staple reference prices, store locations, generated meal plans | Never a scraped/live full price catalog |
 | Backend API | Serves app queries: meal plan generation, grocery list, deal browse | Supabase; store location lookups via Google Places API |
@@ -247,7 +248,11 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 
 **curated_deals**
 `id, chain_name, item_name, category, price, original_price, discount_pct, product_url, flyer_valid_from, flyer_valid_to, image_url (optional), status, reviewed_by, reviewed_at`
-— this is now also the primary ingredient/pricing pool for meal generation
+— this is now also the primary ingredient/pricing pool for meal generation. `status` in Airtable is now `recipes`/`deals`/`both`/`remove` (see 3.1) — the Supabase `deal_status` enum still reflects the older pending/approved/rejected review workflow and needs a follow-up migration once the Airtable → Supabase sync is built (deferred for now, recipe-database work took priority)
+
+**recipes** *(persistent library — supersedes the "no persistent recipe library, generate per session" MVP decision; see 2.6)*
+`id, name, ingredients (json: name, quantity, unit), instructions (json: ordered steps), category/tag, calories, protein, minutes, price (estimated per serving), source (ai_generated / manual), source_deal_ids[] (nullable — curated_deals rows the recipe was inspired by, for traceability only, not a live price link), created_at`
+— ingredients are stored as plain text, decoupled from any specific week's deal (deals rotate weekly, recipes are meant to be reusable across weeks) — same "static snapshot" philosophy as saved_recipes below, just curator/AI-populated instead of user-populated
 
 **staple_reference_prices** *(a maintained list of structurally cheap staples — pasta, rice, beans, lentils, oats, canned goods, plus small rounding-out extras like onions/garlic. Used deliberately as meal *bases* for cost-leaning plans, not just accessories)*
 `id, ingredient_name, category (base_staple / rounding_out_extra), avg_price, unit, last_checked_at, checked_by`
