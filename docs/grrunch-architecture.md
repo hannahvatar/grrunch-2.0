@@ -4,7 +4,7 @@
 
 Grrunch is a React Native (iOS + Android) app for BC grocery shoppers, built
 around **budget-driven meal planning**. A user sets their stores, meal count,
-portion/macro targets, and dietary exclusions; Grrunch's AI generates 10
+serving/macro targets, and dietary exclusions; Grrunch's AI generates 10
 meals **built primarily from that week's curated flyer deals** at the
 selected stores, consolidates them into a single grocery list, and shows a
 projected total price. Every grocery list item deep-links to the retailer's
@@ -19,10 +19,10 @@ shop at."
 
 **Mission framing (locked):** Grrunch aims to be a genuinely **fair** offer,
 not a polished-but-misleading one. It is not a nutrition/dietitian service
-and doesn't claim to be — recipes and portions aim to get as close as
+and doesn't claim to be — recipes and servings aim to get as close as
 possible to a person's stated calorie/macro needs within their budget, but
 at the cost-optimized end of the spectrum this will often mean thinner
-protein and vegetable portions than an ideal diet would call for. The app
+protein and vegetable servings than an ideal diet would call for. The app
 should be transparent about this tradeoff rather than hiding it — e.g.
 surfacing when a plan is heavily staple-based, and being honest that it's a
 budget tool first, not a substitute for professional nutrition guidance.
@@ -87,13 +87,13 @@ nothing qualifies, show an empty state rather than padding.
   - Either way, the result is the same shape (up to 5 stores, one per chain) — location just determines how accurately the initial suggestion is targeted.
   - **Editing that selection (adding/removing a chain, swapping a location, searching manually) is a paid-tier feature** — free tier locks the 5 auto-selected stores as-is (see section 2.5).
 - User selects number of meals (default 10; excludes snacks/breakfast for MVP)
-- **User builds a household**: adds one or more people, each with their own portion targets (calories + macros) and their own exclusions (allergies, dietary restrictions)
+- **User builds a household**: adds one or more people, each with their own serving targets (calories + macros) and their own exclusions (allergies, dietary restrictions)
   - e.g. a household of 4 (man, woman, 2 children) — each person gets their own profile, not one shared setting
-  - Household size affects **ingredient quantities** in the final grocery list (scaled to feed everyone, not just one portion)
+  - Household size affects **ingredient quantities** in the final grocery list (scaled to feed everyone, not just one serving)
   - **Exclusions are combined across the household** — if any one person has a peanut allergy, peanuts are excluded from all household meals (MVP assumes shared family meals, not separately-cooked meals per person)
-  - Individual calorie/macro targets are summed/averaged to size portions appropriately, but the *meal itself* stays a single shared dish per meal slot (no per-person separate meals in MVP — that's a much larger feature, flagged as post-MVP below)
+  - Individual calorie/macro targets are summed/averaged to size servings appropriately, but the *meal itself* stays a single shared dish per meal slot (no per-person separate meals in MVP — that's a much larger feature, flagged as post-MVP below)
 - **Cost vs. diversity slider (1–10)**: user chooses where their plan sits between "cheapest possible" (1 — leans hard into whichever single protein/staple is cheapest this week, high repetition) and "most variety" (10 — rotates proteins/ingredients for interest, at a higher price-per-meal). App shows the resulting price-per-meal difference live so the tradeoff is transparent, not hidden. Meal generation must optimize primarily along this axis, not default to variety — cost-consciousness is the core value prop, so the default slider position should sit low/cost-leaning, not centered
-- **Honesty disclosure (per mission framing above)**: when a plan leans heavily on cost optimization (low slider values), the app should visibly flag that protein/vegetable portions are thinner than an ideal diet, rather than presenting the plan as nutritionally complete. Grrunch is a budget tool, not a dietitian — this should be stated plainly, not buried in fine print
+- **Honesty disclosure (per mission framing above)**: when a plan leans heavily on cost optimization (low slider values), the app should visibly flag that protein/vegetable servings are thinner than an ideal diet, rather than presenting the plan as nutritionally complete. Grrunch is a budget tool, not a dietitian — this should be stated plainly, not buried in fine print
 
 **Step 2 — Meal generation**
 - AI proposes a set of meals built from **two combined ingredient pools**:
@@ -116,7 +116,7 @@ nothing qualifies, show an empty state rather than padding.
 - (Post-MVP) list can be checked off while shopping, or exported/shared
 
 ### 2.3 Save Recipe (supporting feature)
-- From a generated meal, user can tap "Save" to keep the recipe (name, ingredients list, portion/macro info) for later reference
+- From a generated meal, user can tap "Save" to keep the recipe (name, ingredients list, serving/macro info) for later reference
 - If the user doesn't have an account yet, saving is the prompt to create one (see Step 0) — this is the natural, motivated moment to ask, not a signup wall on first launch
 - **Saved recipes are a static snapshot** — ingredients are stored as plain text/quantities, not linked to `curated_deals` or `product_url`. Once saved, the recipe's price is frozen at whatever it was when saved (or simply not shown/recalculated) since the underlying deal may expire, change, or no longer exist
 - Re-adding a saved recipe to a future grocery list means its ingredients get re-priced fresh against *that* week's current deals/staples — the saved recipe itself never auto-updates
@@ -172,7 +172,7 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 - ~~No persistent recipe library in v1~~ — **SUPERSEDED**: a persistent `recipes` table now exists (see section 3.2), populated by AI generation from Airtable-tagged deal ingredients plus manual entry. Meal plan generation draws from this library instead of generating every meal from scratch per session.
 - No snack/breakfast planning in MVP
 - No multi-week planning in MVP (one week at a time)
-- No per-person separate meals — households get shared meals with combined exclusions and scaled portions, not individually customized dishes per family member (real feature, but a much bigger one — flagged for post-MVP consideration)
+- No per-person separate meals — households get shared meals with combined exclusions and scaled servings, not individually customized dishes per family member (real feature, but a much bigger one — flagged for post-MVP consideration)
 
 ---
 
@@ -293,7 +293,7 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 3. **Deep link resolution** — how do we keep product URLs from breaking if retailers change their URL structure? **Deferred — to be decided once building**, not blocking for MVP start.
 4. ~~**Multi-store pricing**~~ — **RESOLVED:** grocery list displays as one final consolidated list (not split by store), but sub-grouped by store within that list, so users can see both the full picture and which items come from where.
 5. ~~**Sparse deal weeks**~~ — **RESOLVED:** if the criteria can't be met (e.g. a $2/meal target isn't achievable this week), show an honest empty state rather than silently degrading quality — e.g. "we couldn't hit $2/meal with this week's deals — try adjusting your budget or diversity slider." Same honesty principle as the landing page's empty states (section 2.1).
-6. ~~**Portion scaling math**~~ — **RESOLVED:** sum household calorie/macro targets, scale the shared recipe to that combined total (not per-person granular splitting within one dish).
+6. ~~**Serving scaling math**~~ — **RESOLVED:** sum household calorie/macro targets, scale the shared recipe to that combined total (not per-person granular splitting within one dish).
 7. ~~**"Best Deals" vs. "Worth It" thresholds**~~ — **RESOLVED (starting point):** rough guess to launch with — 40%+ discount = "Best Deals", 15–39% = "Worth It", below 15% not featured on landing page (still available in full Deal Browse). Revisit once real weekly flyer data shows what's actually typical/achievable.
 
 ---

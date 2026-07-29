@@ -9,11 +9,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 // yield of their ingredients as sold, not an arbitrary number), so there's
 // nothing to derive a "meals from recipes" ratio from anymore. Meals just
 // shows every recipe matching these nutrition/price targets; the user
-// keeps or drops individual recipes there via swap/delete.
+// checks off which ones they want and adds them to their grocery list.
 export default function PlanMealsScreen() {
   const [calories, setCalories] = useState(600);
   const [protein, setProtein] = useState(30);
-  const [pricePerPortion, setPricePerPortion] = useState(5);
+  const [pricePerServing, setPricePerServing] = useState(5);
 
   return (
     <View style={styles.container}>
@@ -68,15 +68,15 @@ export default function PlanMealsScreen() {
 
         <View style={styles.sliderBlock}>
           <View style={styles.sliderHeaderRow}>
-            <Text style={styles.label}>TARGET PRICE PER PORTION</Text>
-            <Text style={styles.sliderValue}>${pricePerPortion.toFixed(2)}</Text>
+            <Text style={styles.label}>TARGET PRICE PER SERVING</Text>
+            <Text style={styles.sliderValue}>${pricePerServing.toFixed(2)}</Text>
           </View>
           <Slider
             minimumValue={1}
             maximumValue={10}
             step={0.25}
-            value={pricePerPortion}
-            onValueChange={setPricePerPortion}
+            value={pricePerServing}
+            onValueChange={setPricePerServing}
             minimumTrackTintColor="#111"
             maximumTrackTintColor="#ddd"
           />
@@ -98,7 +98,7 @@ export default function PlanMealsScreen() {
               params: {
                 maxCalories: String(calories),
                 minProtein: String(protein),
-                maxPrice: String(pricePerPortion),
+                maxPrice: String(pricePerServing),
               },
             })
           }

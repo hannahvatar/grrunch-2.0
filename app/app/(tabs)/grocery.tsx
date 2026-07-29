@@ -1,8 +1,7 @@
 import { GroceryListView } from '../../components/GroceryListView';
 
-// Grocery list as its own tab — full page, no modal chrome, always visible
-// without an extra tap. The Meals tab's "View grocery list" button still
-// opens the same content as a modal separately (app/grocery-list.tsx).
+// Grocery list as its own tab. Meals' "Add to my grocery list" button
+// navigates here directly instead of opening a modal.
 export default function GroceryTabScreen() {
   return <GroceryListView />;
 }
