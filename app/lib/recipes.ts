@@ -34,12 +34,14 @@ function mapRowToMeal(row: {
   protein: number | null;
   minutes: number | null;
   price: number | null;
+  servings: number;
 }): Meal {
   return {
     id: row.id,
     name: row.name,
     price: row.price ?? 0,
     minutes: row.minutes ?? 0,
+    servings: row.servings ?? 1,
     dealTags: ((row.deal_tags as RecipeDealTagRow[]) ?? []).map(mapDealTag),
     calories: row.calories ?? 0,
     protein: row.protein ?? 0,

@@ -7,12 +7,11 @@ import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
-// recipeCount/portionsPerRecipe come from Plan your meals (the Quantity
-// section) via router params -- they're just the starting point here, since
-// swap/delete/portions edits below make this screen's own state the source
-// of truth afterward. Falls back to sane defaults if reached without them
-// (e.g. hot reload, or a direct link). Clamped to allMeals.length since the
-// recipe library is a finite, growing pool, not generated on demand.
+// A recipe's servings are a real, fixed property (however many portions its
+// ingredients actually yield as sold -- not a number the user picks), so
+// there's no "portions per recipe" to derive or edit here anymore. This
+// screen just shows every real recipe matching the calorie/protein/price
+// targets from Plan your meals; the user curates from there via swap/delete.
 function randomAvailableMealId(pool: Meal[], currentIds: string[]): string | undefined {
   const available = pool.filter((m) => !currentIds.includes(m.id));
   if (available.length === 0) return undefined;
@@ -43,26 +42,12 @@ function eligibleMeals(allMeals: Meal[], targets: PlanTargets = {}): Meal[] {
   });
 }
 
-function planIdsFromParams(
-  allMeals: Meal[],
-  recipeCountParam: string | undefined,
-  targets: PlanTargets = {}
-): string[] {
-  const pool = eligibleMeals(allMeals, targets);
-  const parsed = Number(recipeCountParam);
-  const recipeCount = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, pool.length) : Math.min(4, pool.length);
-  return pool.slice(0, recipeCount).map((m) => m.id);
-}
-
-function defaultPortionsFromParams(portionsPerRecipeParam?: string): number {
-  const parsed = Number(portionsPerRecipeParam);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+function planIdsFromParams(allMeals: Meal[], targets: PlanTargets = {}): string[] {
+  return eligibleMeals(allMeals, targets).map((m) => m.id);
 }
 
 export default function MealsScreen() {
   const params = useLocalSearchParams<{
-    recipeCount?: string;
-    portionsPerRecipe?: string;
     maxCalories?: string;
     minProtein?: string;
     maxPrice?: string;
@@ -72,20 +57,18 @@ export default function MealsScreen() {
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [planMealIds, setPlanMealIds] = useState<string[]>([]);
-  const [portionsById, setPortionsById] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchAllRecipes()
       .then((meals) => {
         setAllMeals(meals);
-        const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
-        const initialPlanIds = planIdsFromParams(meals, params.recipeCount, {
-          maxCalories: params.maxCalories,
-          minProtein: params.minProtein,
-          maxPrice: params.maxPrice,
-        });
-        setPlanMealIds(initialPlanIds);
-        setPortionsById(Object.fromEntries(initialPlanIds.map((id) => [id, defaultPortions])));
+        setPlanMealIds(
+          planIdsFromParams(meals, {
+            maxCalories: params.maxCalories,
+            minProtein: params.minProtein,
+            maxPrice: params.maxPrice,
+          })
+        );
       })
       .catch(() => {
         router.replace({
@@ -101,48 +84,30 @@ export default function MealsScreen() {
 
   // Tab screens stay mounted when you switch tabs (they don't remount), so
   // if this screen was ever visited before "Get my meals" was pressed, the
-  // useState initializers above already ran against stale
-  // params and won't re-run on their own. This effect re-applies the plan
-  // whenever recipeCount/portionsPerRecipe actually change, so pressing the
-  // button always takes effect even if the tab was mounted earlier.
+  // useState initializer above already ran against stale params and won't
+  // re-run on its own. This effect re-applies the plan whenever the targets
+  // actually change, so pressing the button always takes effect even if the
+  // tab was mounted earlier.
   useEffect(() => {
     if (allMeals.length === 0) return;
-    if (!params.recipeCount && !params.portionsPerRecipe) return;
-    const defaultPortions = defaultPortionsFromParams(params.portionsPerRecipe);
-    const nextPlanIds = planIdsFromParams(allMeals, params.recipeCount, {
-      maxCalories: params.maxCalories,
-      minProtein: params.minProtein,
-      maxPrice: params.maxPrice,
-    });
-    setPlanMealIds(nextPlanIds);
-    setPortionsById(Object.fromEntries(nextPlanIds.map((id) => [id, defaultPortions])));
+    if (!params.maxCalories && !params.minProtein && !params.maxPrice) return;
+    setPlanMealIds(
+      planIdsFromParams(allMeals, {
+        maxCalories: params.maxCalories,
+        minProtein: params.minProtein,
+        maxPrice: params.maxPrice,
+      })
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    allMeals,
-    params.recipeCount,
-    params.portionsPerRecipe,
-    params.maxCalories,
-    params.minProtein,
-    params.maxPrice,
-  ]);
+  }, [allMeals, params.maxCalories, params.minProtein, params.maxPrice]);
 
   const planMeals = planMealIds
     .map((id) => allMeals.find((m) => m.id === id))
     .filter((m): m is Meal => m !== undefined);
 
-  const totalPortions = planMeals.reduce((sum, meal) => sum + (portionsById[meal.id] ?? 1), 0);
-  const totalPrice = planMeals.reduce(
-    (sum, meal) => sum + meal.price * (portionsById[meal.id] ?? 1),
-    0
-  );
-  const avgPerPortion = totalPortions > 0 ? totalPrice / totalPortions : 0;
-
-  function setPortions(id: string, delta: number) {
-    setPortionsById((prev) => ({
-      ...prev,
-      [id]: Math.max(1, (prev[id] ?? 1) + delta),
-    }));
-  }
+  const totalServings = planMeals.reduce((sum, meal) => sum + meal.servings, 0);
+  const totalPrice = planMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);
+  const avgPerPortion = totalServings > 0 ? totalPrice / totalServings : 0;
 
   function swapMeal(id: string) {
     const pool = eligibleMeals(allMeals, {
@@ -153,18 +118,10 @@ export default function MealsScreen() {
     const replacementId = randomAvailableMealId(pool, planMealIds);
     if (!replacementId) return;
     setPlanMealIds((prev) => prev.map((mealId) => (mealId === id ? replacementId : mealId)));
-    setPortionsById((prev) => {
-      const { [id]: _removed, ...rest } = prev;
-      return { ...rest, [replacementId]: 1 };
-    });
   }
 
   function deleteMeal(id: string) {
     setPlanMealIds((prev) => prev.filter((mealId) => mealId !== id));
-    setPortionsById((prev) => {
-      const { [id]: _removed, ...rest } = prev;
-      return rest;
-    });
   }
 
   if (loading) {
@@ -185,8 +142,8 @@ export default function MealsScreen() {
 
         <Text style={styles.title}>Your meal plan</Text>
         <Text style={styles.subtitle}>
-          {planMeals.length} recipe{planMeals.length === 1 ? '' : 's'} · {totalPortions} meal
-          {totalPortions === 1 ? '' : 's'} total
+          {planMeals.length} recipe{planMeals.length === 1 ? '' : 's'} · {totalServings} portion
+          {totalServings === 1 ? '' : 's'} total
         </Text>
 
         {planMeals.length === 0 && (
@@ -198,85 +155,64 @@ export default function MealsScreen() {
           </View>
         )}
 
-        {planMeals.map((meal) => {
-          const portions = portionsById[meal.id] ?? 1;
-          return (
-            <View key={meal.id} style={styles.mealCard}>
-              <View style={styles.mealImagePlaceholder}>
-                <Text style={styles.mealImageIcon}>🍴</Text>
-                <Pressable
-                  style={styles.saveButton}
-                  onPress={() => toggleSaved(meal.id)}
-                  hitSlop={8}
-                >
-                  <Text style={styles.saveButtonIcon}>{savedIds.has(meal.id) ? '❤️' : '🤍'}</Text>
-                </Pressable>
-              </View>
-              <View style={styles.mealCardBody}>
-                <View style={styles.mealHeaderRow}>
-                  <Text style={styles.mealName}>{meal.name}</Text>
-                  <View style={styles.priceBlock}>
-                    <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
-                    <Text style={styles.perPortion}>/ portion</Text>
-                  </View>
-                </View>
-                <Text style={styles.mealTime}>🕐 {meal.minutes} min</Text>
-                {meal.dealTags.length > 0 && (
-                  <View style={styles.dealTagsRow}>
-                    {meal.dealTags.map((dealTag) => (
-                      <View key={dealTag.name} style={styles.dealTagPill}>
-                        <Text style={styles.dealTagName} numberOfLines={1}>
-                          🏷️ {dealTag.name}
-                        </Text>
-                        <View style={styles.dealTagBadge}>
-                          <Text style={styles.dealTagBadgeText}>-{dealTag.discountPct}%</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                <View style={styles.portionsRow}>
-                  <Text style={styles.portionsLabel}>Portions</Text>
-                  <View style={styles.stepper}>
-                    <Pressable
-                      style={styles.stepperButton}
-                      onPress={() => setPortions(meal.id, -1)}
-                    >
-                      <Text style={styles.stepperButtonText}>−</Text>
-                    </Pressable>
-                    <Text style={styles.stepperValue}>{portions}</Text>
-                    <Pressable style={styles.stepperButton} onPress={() => setPortions(meal.id, 1)}>
-                      <Text style={styles.stepperButtonText}>+</Text>
-                    </Pressable>
-                  </View>
-                </View>
-
-                <View style={styles.actionsRow}>
-                  <Pressable style={styles.actionButton} onPress={() => swapMeal(meal.id)}>
-                    <Text style={styles.actionButtonText}>🔄 Swap</Text>
-                  </Pressable>
-                  <Pressable style={styles.actionButton} onPress={() => deleteMeal(meal.id)}>
-                    <Text style={styles.actionButtonText}>🗑 Delete</Text>
-                  </Pressable>
-                </View>
-
-                <Pressable
-                  style={styles.recipeButton}
-                  onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
-                >
-                  <Text style={styles.recipeButtonText}>View recipe</Text>
-                </Pressable>
-              </View>
+        {planMeals.map((meal) => (
+          <View key={meal.id} style={styles.mealCard}>
+            <View style={styles.mealImagePlaceholder}>
+              <Text style={styles.mealImageIcon}>🍴</Text>
+              <Pressable style={styles.saveButton} onPress={() => toggleSaved(meal.id)} hitSlop={8}>
+                <Text style={styles.saveButtonIcon}>{savedIds.has(meal.id) ? '❤️' : '🤍'}</Text>
+              </Pressable>
             </View>
-          );
-        })}
+            <View style={styles.mealCardBody}>
+              <View style={styles.mealHeaderRow}>
+                <Text style={styles.mealName}>{meal.name}</Text>
+                <View style={styles.priceBlock}>
+                  <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
+                  <Text style={styles.perPortion}>/ portion</Text>
+                </View>
+              </View>
+              <Text style={styles.mealTime}>
+                🕐 {meal.minutes} min · makes {meal.servings} portion{meal.servings === 1 ? '' : 's'}
+              </Text>
+              {meal.dealTags.length > 0 && (
+                <View style={styles.dealTagsRow}>
+                  {meal.dealTags.map((dealTag) => (
+                    <View key={dealTag.name} style={styles.dealTagPill}>
+                      <Text style={styles.dealTagName} numberOfLines={1}>
+                        🏷️ {dealTag.name}
+                      </Text>
+                      <View style={styles.dealTagBadge}>
+                        <Text style={styles.dealTagBadgeText}>-{dealTag.discountPct}%</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={styles.actionsRow}>
+                <Pressable style={styles.actionButton} onPress={() => swapMeal(meal.id)}>
+                  <Text style={styles.actionButtonText}>🔄 Swap</Text>
+                </Pressable>
+                <Pressable style={styles.actionButton} onPress={() => deleteMeal(meal.id)}>
+                  <Text style={styles.actionButtonText}>🗑 Delete</Text>
+                </Pressable>
+              </View>
+
+              <Pressable
+                style={styles.recipeButton}
+                onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
+              >
+                <Text style={styles.recipeButtonText}>View recipe</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
 
         {planMeals.length > 0 && (
           <View style={styles.totalCard}>
             <View>
               <Text style={styles.totalLabel}>
-                Total · {totalPortions} meal{totalPortions === 1 ? '' : 's'}
+                Total · {totalServings} portion{totalServings === 1 ? '' : 's'}
               </Text>
               <Text style={styles.totalSublabel}>avg. ${avgPerPortion.toFixed(2)} / portion</Text>
             </View>
@@ -352,27 +288,6 @@ const styles = StyleSheet.create({
   dealTagName: { color: '#2C5FD6', fontSize: 12, fontWeight: '600', flexShrink: 1 },
   dealTagBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   dealTagBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  portionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 8,
-  },
-  portionsLabel: { fontSize: 14, color: '#666', fontWeight: '600' },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  stepperButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperButtonText: { fontSize: 16, fontWeight: '700' },
-  stepperValue: { fontSize: 15, fontWeight: '700', minWidth: 16, textAlign: 'center' },
   actionsRow: { flexDirection: 'row', gap: 8 },
   actionButton: {
     flex: 1,
