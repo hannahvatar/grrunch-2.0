@@ -40,6 +40,7 @@ export interface Database {
           status: DealStatus;
           reviewed_by: string | null;
           reviewed_at: string | null;
+          airtable_record_id: string | null;
           created_at: string;
         };
         Insert: Omit<

@@ -141,6 +141,11 @@ export default function MealsScreen() {
           <View key={meal.id} style={styles.mealCard}>
             <View style={styles.mealImagePlaceholder}>
               <Text style={styles.mealImageIcon}>🍴</Text>
+              {selectedIds.has(meal.id) && (
+                <View style={styles.groceryConfirmBadge}>
+                  <Text style={styles.groceryConfirmBadgeText}>✓ Added</Text>
+                </View>
+              )}
               <Pressable style={styles.saveButton} onPress={() => toggleSaved(meal.id)} hitSlop={8}>
                 <Text style={styles.saveButtonIcon}>{savedIds.has(meal.id) ? '❤️' : '🤍'}</Text>
               </Pressable>
@@ -171,12 +176,20 @@ export default function MealsScreen() {
                 </View>
               )}
 
-              <Pressable style={styles.selectRow} onPress={() => toggleSelected(meal.id)}>
-                <View style={[styles.checkbox, selectedIds.has(meal.id) && styles.checkboxChecked]}>
-                  {selectedIds.has(meal.id) && <Text style={styles.checkboxMark}>✓</Text>}
-                </View>
-                <Text style={styles.selectRowText}>
-                  {selectedIds.has(meal.id) ? 'Added to grocery list' : 'Add to grocery list'}
+              <Pressable
+                style={[
+                  styles.groceryToggleButton,
+                  selectedIds.has(meal.id) && styles.groceryToggleButtonActive,
+                ]}
+                onPress={() => toggleSelected(meal.id)}
+              >
+                <Text
+                  style={[
+                    styles.groceryToggleButtonText,
+                    selectedIds.has(meal.id) && styles.groceryToggleButtonTextActive,
+                  ]}
+                >
+                  {selectedIds.has(meal.id) ? 'Remove from my grocery list' : 'Add to my grocery list'}
                 </Text>
               </Pressable>
 
@@ -202,15 +215,6 @@ export default function MealsScreen() {
           </View>
         )}
       </ScrollView>
-      <View style={styles.footer}>
-        <Pressable
-          style={[styles.groceryButton, selectedIds.size === 0 && styles.groceryButtonDisabled]}
-          disabled={selectedIds.size === 0}
-          onPress={() => router.push('/(tabs)/grocery')}
-        >
-          <Text style={styles.groceryButtonText}>🧺  Add to my grocery list</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -253,6 +257,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveButtonIcon: { fontSize: 16 },
+  groceryConfirmBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 48,
+    backgroundColor: '#1E9E5A',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  groceryConfirmBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   mealCardBody: { padding: 14, gap: 8 },
   mealHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   mealName: { fontSize: 16, fontWeight: '700', flex: 1, marginRight: 8 },
@@ -274,19 +288,16 @@ const styles = StyleSheet.create({
   dealTagName: { color: '#2C5FD6', fontSize: 12, fontWeight: '600', flexShrink: 1 },
   dealTagBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   dealTagBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  selectRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
+  groceryToggleButton: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#111',
+    borderRadius: 10,
+    paddingVertical: 10,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
-  checkboxMark: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  selectRowText: { fontSize: 14, fontWeight: '600' },
+  groceryToggleButtonActive: { backgroundColor: '#111' },
+  groceryToggleButtonText: { fontSize: 13, fontWeight: '700', color: '#111' },
+  groceryToggleButtonTextActive: { color: '#fff' },
   recipeButton: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -307,13 +318,4 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 16, fontWeight: '700' },
   totalSublabel: { fontSize: 13, color: '#888' },
   totalValue: { fontSize: 24, fontWeight: '800' },
-  footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#eee' },
-  groceryButton: {
-    backgroundColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  groceryButtonDisabled: { backgroundColor: '#ccc' },
-  groceryButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

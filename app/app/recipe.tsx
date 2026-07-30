@@ -68,6 +68,9 @@ export default function RecipeScreen() {
         {meal.ingredients.map((ingredient, index) => (
           <Text key={index} style={styles.listItem}>
             •  {ingredient.text}
+            {ingredient.dealTag?.quantityEstimated && (
+              <Text style={styles.estimatedDisclaimer}>  *estimated. See store</Text>
+            )}
           </Text>
         ))}
 
@@ -116,5 +119,6 @@ const styles = StyleSheet.create({
   macroLabel: { fontSize: 11, color: '#888' },
   sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 16, marginBottom: 8 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
+  estimatedDisclaimer: { fontSize: 12, color: '#B8860B', fontStyle: 'italic' },
   notFound: { padding: 24, fontSize: 15, color: '#888' },
 });

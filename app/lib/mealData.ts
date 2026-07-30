@@ -3,6 +3,10 @@ export interface DealTag {
   discountPct: number;
   store?: string;
   imageUrl?: string;
+  // True when the deal's package size was our best assumption (Airtable
+  // "Estimated quantity") rather than stated on the flyer itself -- lets
+  // the grocery list flag that the quantity shown is a guess, not a fact.
+  quantityEstimated?: boolean;
 }
 
 // An ingredient line, with the matching deal tag attached when that

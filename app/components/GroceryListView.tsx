@@ -2,8 +2,10 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { type Deal, fetchDealsByIds } from '../lib/curatedDeals';
 import type { DealTag, Meal } from '../lib/mealData';
 import { fetchRecipesByIds } from '../lib/recipes';
+import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
 
 const OTHER_ITEMS = 'Other items';
@@ -11,9 +13,23 @@ const OTHER_ITEMS = 'Other items';
 interface GroceryItem {
   key: string;
   text: string;
-  recipeName: string;
+  source: string;
   dealTag?: DealTag;
-  multiplier: number;
+  multiplier?: number;
+}
+
+function mapDealToGroceryItem(deal: Deal): GroceryItem {
+  return {
+    key: `deal-${deal.id}`,
+    text: deal.itemName,
+    source: 'Best Deal',
+    dealTag: {
+      name: deal.itemName,
+      discountPct: Math.round(deal.discountPct),
+      store: deal.chainName,
+      imageUrl: deal.imageUrl ?? undefined,
+    },
+  };
 }
 
 function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
@@ -36,7 +52,9 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 // staples) fall into "Other items".
 export function GroceryListView() {
   const { selectedIds, toggleSelected } = useSelectedMeals();
+  const { selectedDealIds } = useSelectedDeals();
   const [selectedMeals, setSelectedMeals] = useState<Meal[]>([]);
+  const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   // How many times to make each recipe (1 = the recipe's real serving
   // count as-is, 2 = double the ingredients, etc.) -- multiples of the
@@ -52,6 +70,16 @@ export function GroceryListView() {
       .then(setSelectedMeals)
       .catch(() => setSelectedMeals([]));
   }, [selectedIds]);
+
+  useEffect(() => {
+    if (selectedDealIds.size === 0) {
+      setSelectedDeals([]);
+      return;
+    }
+    fetchDealsByIds(Array.from(selectedDealIds))
+      .then(setSelectedDeals)
+      .catch(() => setSelectedDeals([]));
+  }, [selectedDealIds]);
 
   function toggleChecked(itemKey: string) {
     setChecked((prev) => {
@@ -74,16 +102,18 @@ export function GroceryListView() {
     });
   }
 
-  const items: GroceryItem[] = selectedMeals.flatMap((meal) => {
+  const recipeItems: GroceryItem[] = selectedMeals.flatMap((meal) => {
     const multiplier = multipliers.get(meal.id) ?? 1;
     return meal.ingredients.map((ingredient, index) => ({
       key: `${meal.id}-${index}`,
       text: ingredient.text,
-      recipeName: meal.name,
+      source: meal.name,
       dealTag: ingredient.dealTag,
       multiplier,
     }));
   });
+  const dealItems: GroceryItem[] = selectedDeals.map(mapDealToGroceryItem);
+  const items: GroceryItem[] = [...recipeItems, ...dealItems];
   const storeGroups = groupByStore(items);
   const storeNames = Array.from(storeGroups.keys())
     .filter((store) => store !== OTHER_ITEMS)
@@ -104,10 +134,10 @@ export function GroceryListView() {
         </Text>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {selectedMeals.length === 0 && (
+        {selectedMeals.length === 0 && selectedDeals.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
-              No recipes added yet. Check off recipes in Meals, then tap "Add to my grocery list".
+              Nothing here yet. Add recipes from Meals or deals from Best Deals to build your list.
             </Text>
           </View>
         )}
@@ -178,10 +208,13 @@ export function GroceryListView() {
                     <Text style={[styles.itemName, isChecked && styles.itemNameChecked]}>
                       {item.text}
                     </Text>
-                    <Text style={styles.itemMeta}>{item.recipeName}</Text>
+                    <Text style={styles.itemMeta}>{item.source}</Text>
+                    {item.dealTag?.quantityEstimated && (
+                      <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
+                    )}
                   </View>
                   <View style={styles.itemRightColumn}>
-                    {item.multiplier > 1 && (
+                    {!!item.multiplier && item.multiplier > 1 && (
                       <View style={styles.multiplierBadge}>
                         <Text style={styles.multiplierBadgeText}>×{item.multiplier}</Text>
                       </View>
@@ -255,6 +288,7 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 15 },
   itemNameChecked: { textDecorationLine: 'line-through', color: '#aaa' },
   itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
+  estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },

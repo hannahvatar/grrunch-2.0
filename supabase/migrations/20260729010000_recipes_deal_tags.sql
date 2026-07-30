@@ -6,4 +6,4 @@ alter table public.recipes add column deal_tags jsonb;
 alter table public.recipes drop column tag;
 
 comment on column public.recipes.deal_tags is
-  'Array of {name, discount_pct, store, image_url} for each ingredient sourced from a real curated_deals item -- discount_pct computed from that deal''s price/original_price, store/image_url snapshotted from the same deal, never modeled.';
+  'Array of {name, discount_pct, store, image_url, quantity_estimated} for each ingredient sourced from a real curated_deals item -- discount_pct computed from that deal''s price/original_price, store/image_url snapshotted from the same deal, never modeled. quantity_estimated is true when the deal''s package size was assumed (Airtable Estimated quantity) rather than stated on the flyer (Displayed quantity).';
