@@ -121,7 +121,36 @@ export function GroceryListView() {
   if (storeGroups.has(OTHER_ITEMS)) {
     storeNames.push(OTHER_ITEMS);
   }
-  const dealItemCount = items.filter((item) => item.dealTag).length;
+  const itemsWithDeal = items.filter((item) => item.dealTag);
+  const dealItemCount = itemsWithDeal.length;
+
+  // Total price: each recipe's own price-per-serving x its servings x how
+  // many times it's being made, plus each standalone deal's real price --
+  // never a fabricated per-ingredient split, since recipes don't have
+  // itemized ingredient prices.
+  const recipesTotalPrice = selectedMeals.reduce((sum, meal) => {
+    const multiplier = multipliers.get(meal.id) ?? 1;
+    return sum + meal.price * meal.servings * multiplier;
+  }, 0);
+  const dealsTotalPrice = selectedDeals.reduce((sum, deal) => sum + deal.price, 0);
+  const totalPrice = recipesTotalPrice + dealsTotalPrice;
+
+  // Regular (pre-discount) total: real original_price for standalone deals
+  // -- recipes don't have a comparable original price on file (their
+  // estimate is a single AI-generated per-serving figure, not itemized
+  // per ingredient), so they contribute the same number to both totals
+  // rather than an invented markup.
+  const dealsTotalOriginalPrice = selectedDeals.reduce((sum, deal) => sum + deal.originalPrice, 0);
+  const totalOriginalPrice = recipesTotalPrice + dealsTotalOriginalPrice;
+
+  // Average saving: the mean discount_pct across items actually tied to a
+  // real flyer deal -- a dollar-savings total isn't knowable since recipes
+  // don't carry a pre-discount "original price" to compare against.
+  const avgSavingsPct =
+    itemsWithDeal.length > 0
+      ? itemsWithDeal.reduce((sum, item) => sum + (item.dealTag?.discountPct ?? 0), 0) /
+        itemsWithDeal.length
+      : 0;
 
   return (
     <View style={styles.container}>
@@ -156,6 +185,7 @@ export function GroceryListView() {
                       onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
                     >
                       <Text style={styles.selectedRowName}>{meal.name}</Text>
+                      <Text style={styles.selectedRowMeta}>${meal.price.toFixed(2)} / serving</Text>
                     </Pressable>
                     <Pressable onPress={() => toggleSelected(meal.id)} hitSlop={8}>
                       <Text style={styles.iconButton}>✕</Text>
@@ -230,6 +260,29 @@ export function GroceryListView() {
             })}
           </View>
         ))}
+
+        {items.length > 0 && (
+          <View style={styles.totalSection}>
+            {totalOriginalPrice > totalPrice && (
+              <Text style={styles.regularPriceLine}>
+                Regular price:{' '}
+                <Text style={styles.regularPriceStrike}>${totalOriginalPrice.toFixed(2)}</Text>
+              </Text>
+            )}
+            <View style={styles.totalCard}>
+              <View style={styles.totalTextBlock}>
+                <Text style={styles.totalLabel}>Total</Text>
+                {dealItemCount > 0 && (
+                  <Text style={styles.totalSublabel}>
+                    Avg. {Math.round(avgSavingsPct)}% off on {dealItemCount} deal item
+                    {dealItemCount === 1 ? '' : 's'}
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -256,6 +309,7 @@ const styles = StyleSheet.create({
   selectedRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectedRowInfo: { flex: 1 },
   selectedRowName: { fontSize: 14, fontWeight: '600' },
+  selectedRowMeta: { fontSize: 12, color: '#999', marginTop: 2 },
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stepperButton: {
     width: 28,
@@ -295,4 +349,20 @@ const styles = StyleSheet.create({
   multiplierBadge: { backgroundColor: '#F2F2F2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   multiplierBadgeText: { color: '#666', fontSize: 11, fontWeight: '800' },
   iconButton: { fontSize: 14, color: '#999', paddingHorizontal: 4 },
+  totalSection: { gap: 6 },
+  regularPriceLine: { fontSize: 13, color: '#999', textAlign: 'right' },
+  regularPriceStrike: { textDecorationLine: 'line-through' },
+  totalCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 14,
+    padding: 16,
+  },
+  totalTextBlock: { flex: 1, marginRight: 12 },
+  totalLabel: { fontSize: 16, fontWeight: '700' },
+  totalSublabel: { fontSize: 13, color: '#888', marginTop: 2 },
+  totalValue: { fontSize: 24, fontWeight: '800' },
 });
