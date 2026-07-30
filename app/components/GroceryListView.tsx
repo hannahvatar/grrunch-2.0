@@ -251,7 +251,7 @@ export function GroceryListView() {
                     )}
                     {item.dealTag && (
                       <View style={styles.discountBadge}>
-                        <Text style={styles.discountBadgeText}>-{item.dealTag.discountPct}%</Text>
+                        <Text style={styles.discountBadgeText}>Up to {item.dealTag.discountPct}% off</Text>
                       </View>
                     )}
                   </View>
