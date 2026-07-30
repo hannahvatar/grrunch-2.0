@@ -12,10 +12,17 @@ interface RecipeDealTagRow {
   discount_pct: number;
   store?: string;
   image_url?: string;
+  quantity_estimated?: boolean;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
-  return { name: tag.name, discountPct: tag.discount_pct, store: tag.store, imageUrl: tag.image_url };
+  return {
+    name: tag.name,
+    discountPct: tag.discount_pct,
+    store: tag.store,
+    imageUrl: tag.image_url,
+    quantityEstimated: tag.quantity_estimated,
+  };
 }
 
 // Ingredients are stored structured ({name, quantity, unit}) so a future
