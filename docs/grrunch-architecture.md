@@ -179,33 +179,49 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 ## 3. System Architecture
 
 ```
-┌─────────────────────────┐
-│  Weekly Flyer Sources     │  (public URLs, 5 chains — staggered per
-│                            │   each chain's actual flyer refresh day)
-└────────────┬─────────────┘
-             │ (1) download (per-chain schedule)
+┌───────────────────────────────────────────────┐
+│  Regional Flyer Feed Exports                       │  per chain, per zone —
+│  (structured JSON + cutout images, one          │  ~10 core zones + ~5
+│  zip per chain/zone, e.g. Flipp/Wishabi)        │  optional across 6 chains
+└────────────┬──────────────────────────────────┘
+             │ (1) parse flyer.json; keep only items
+             │     with both a price AND a discount
+             │     signal (candidates, not trusted facts)
              ▼
 ┌─────────────────────────┐
-│  Ingestion Service         │
+│  Candidate Filter            │  discount is Wishabi's own
+│                               │  rounded %, not always a real
+│                               │  price comparison — never
+│                               │  trusted on its own
 └────────────┬─────────────┘
-             │ (2) AI parse
+             │ (2) re-host each candidate's cutout image to
+             │     Supabase Storage (never hotlink the feed's
+             │     own CDN — not a stable URL for us to depend
+             │     on) + read the image to confirm the *real*
+             │     printed original_price
              ▼
 ┌─────────────────────────┐
-│  AI Extraction Layer       │  candidate deals
-│  (Claude API)               │  {item, price, chain}
+│  Price Verification          │  reject (status: remove) rather
+│  (vision read of cutout)     │  than fabricate when no genuine
+│                               │  two-price comparison exists —
+│                               │  e.g. two different product
+│                               │  variants mistaken for a markdown
 └────────────┬─────────────┘
              │ (3) human review queue
              ▼
 ┌─────────────────────────┐
-│  Admin Review Tool          │  approve/edit deal,
-│  (Airtable, free tier)      │  attach product URL
+│  Admin Review Tool           │  classify usage (recipes/deals/
+│  (Airtable, free tier)       │  both/remove), tag the flyer zone,
+│                               │  final approve/reject on price
 └────────────┬─────────────┘
-             │ (4) publish
+             │ (4) publish — wipes and replaces the
+             │     previous week's rows (both here and in
+             │     curated_deals; deals are this-week-only)
              ▼
 ┌───────────────────────────────────────────────┐
 │              Grrunch Database (Supabase)          │
 │  curated_deals · staple_reference_prices · stores  │
-│  meal_plans                                          │
+│  recipes (persistent) · meal_plans                   │
 └────────────┬──────────────────────────────────────┘
              │ (5) API reads
              ▼
@@ -231,11 +247,12 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 
 | Component | Responsibility | Notes |
 |---|---|---|
-| Ingestion Service | Scheduled job per chain, staggered to match each chain's actual flyer refresh day; downloads public flyer/deals pages | No login bypass, no hidden API calls — public URLs only |
-| AI Extraction Layer | Reads downloaded flyer, proposes structured candidate deals | Claude API (vision or text depending on flyer format) |
-| Admin Review Tool | Classify each candidate deal's usage; attach product URLs; maintain the small staple reference-price list | Airtable (free tier) — no-code, avoids build time and cost for v1. Must capture both sale price and regular/original price per deal — this pair is what powers the savings-evidence feature. `status` field superseded from a pending/approved/rejected review workflow to a usage classification: `recipes` (fetched into the recipe library), `deals` (surfaced in the app's Deals section), `both`, or `remove` |
-| Recipe Generation | Weekly batch job: for that week's `recipes`/`both`-tagged deal ingredients, checks the existing `recipes` table for a similar-enough match before generating a new one (avoids the table filling up with near-duplicate "chicken breast + rice" recipes every time the same ingredient goes back on deal) — reuses the existing recipe if a good match exists, otherwise generates and inserts a new one. Plus manual entry for curator-authored recipes | Claude API call per weekly generation batch, never per user session — the table only grows, never gets wiped |
-| Meal Plan Engine | Given user's macro/exclusion/budget/store inputs, selects and assembles a meal plan from the `recipes` library | Runs server-side. **Pure database query — never calls AI live**, even if that means a plan is occasionally thinner on options rather than generating on the fly. Optimizes along the cost-vs-diversity slider (1–10) — low end leans into cheap staples (pasta/rice/beans) as meal bases plus whichever protein/deal is cheapest, even if repetitive; high end rotates ingredients for variety at higher cost |
+| ~~Ingestion Service~~ / ~~AI Extraction Layer~~ | ~~Downloads public flyer pages; AI vision-parses them into candidate deals~~ | **SUPERSEDED** — see Flyer Feed Parser + Price Verification below. Manually-uploaded flyer PDFs and from-scratch AI vision parsing were the v1 approach; discovering a structured per-region flyer data feed (JSON + pre-cropped item images, e.g. Flipp/Wishabi) made both unnecessary |
+| Flyer Feed Parser | Downloads/receives each chain+zone's structured export (`flyer.json` + cutout images), keeps only items with both a `price` and a discount signal present as **candidates** | The feed's own `discount` field is a rounded whole-number percent and is not always a genuine price comparison (e.g. two product variants, or a loyalty-points promo, can produce a discount-shaped number with no real markdown behind it) — it gates which items get reviewed, it is never written to the database as fact |
+| Price Verification | Re-hosts each candidate's cutout image to Supabase Storage (`deal-thumbnails` — never hotlinks the feed's own CDN, which isn't a stable URL for us to depend on week to week); reads the image to confirm the literal printed `original_price` | `price` (sale price) comes straight from the feed and has been reliable; `original_price` must be read off the image, never computed backward from `price / (1 - discount%)` — that reverses an already-rounded number and can be off by several cents. Items with no genuine two-price comparison on the tile get flagged for rejection rather than assigned an invented number |
+| Admin Review Tool | Classify each candidate deal's usage; tag its flyer zone; attach product URLs; final human approve/reject on price; maintain the small staple reference-price list | Airtable (free tier) — no-code, avoids build time and cost for v1. `status`: `recipes` (fetched into the recipe library), `deals` (surfaced in the app's Deals section), `both`, or `remove`. `Select`: `Pending`/`Approved` — the human safety net that catches what automated price-verification can't (e.g. a variant-price mix-up that isn't structurally distinguishable from a real discount). **Wiped and replaced every week** — deals are this-week-only, not an accumulating history |
+| Recipe Generation | Weekly batch job: for that week's `recipes`/`both`-tagged deal ingredients, checks the existing `recipes` table for a similar-enough match before generating a new one (avoids the table filling up with near-duplicate "chicken breast + rice" recipes every time the same ingredient goes back on deal) — reuses the existing recipe if a good match exists, otherwise generates and inserts a new one. Plus manual entry for curator-authored recipes. Also re-matches every existing recipe's ingredients against the new week's `curated_deals`, refreshing `deal_tags` (discount/store/image/quantity-estimated flag) so a recipe's "on sale" info always reflects the current week | Claude API call per weekly generation batch, never per user session — the `recipes` table itself only grows and is never wiped, unlike `curated_deals` |
+| Meal Plan Engine | Given user's macro/exclusion/budget/store inputs, selects and assembles a meal plan from the `recipes` library | Runs server-side. **Pure database query — never calls AI live**, even if that means a plan is occasionally thinner on options rather than generating on the fly. Optimizes along the cost-vs-diversity slider (1–10) — low end leans into cheap staples (pasta/rice/beans) as meal bases plus whichever protein/deal is cheapest, even if repetitive; high end rotates ingredients for variety at higher cost. **A recipe with zero currently-active `deal_tags` stops surfacing entirely** (rather than showing at regular price) until one of its ingredients is on sale again — the app's core value prop is deal-driven planning, not a general cookbook |
 | Grocery List Generator | Consolidates ingredients across chosen meals, dedupes, excludes pantry basics, sums deal prices + light staple reference prices | Core budget-projection logic |
 | Grrunch Database | Stores curated deals, staple reference prices, store locations, generated meal plans | Never a scraped/live full price catalog |
 | Backend API | Serves app queries: meal plan generation, grocery list, deal browse | Supabase; store location lookups via Google Places API |
@@ -247,12 +264,15 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 `id, chain_name, banner, address, lat, lng, hours` — populated via Google Places API
 
 **curated_deals**
-`id, chain_name, item_name, category, price, original_price, discount_pct, product_url, flyer_valid_from, flyer_valid_to, image_url (optional), status, reviewed_by, reviewed_at`
-— this is now also the primary ingredient/pricing pool for meal generation. `status` in Airtable is now `recipes`/`deals`/`both`/`remove` (see 3.1) — the Supabase `deal_status` enum still reflects the older pending/approved/rejected review workflow and needs a follow-up migration once the Airtable → Supabase sync is built (deferred for now, recipe-database work took priority)
+`id, chain_name, item_name, category, price, original_price, discount_pct, product_url, flyer_valid_from, flyer_valid_to, image_url, status, reviewed_by, reviewed_at, airtable_record_id, created_at`
+— this is now also the primary ingredient/pricing pool for meal generation and the real, live data behind the Best Deals tab (77 rows synced from Airtable as of this writing). `status` in Airtable is now `recipes`/`deals`/`both`/`remove` (see 3.1); Supabase's `curated_deals.status` stays the simpler `approved`-gated RLS read (every synced row is pre-approved by the time it's synced). **`zone` still needs to be added** to both Airtable and this table — with multiple regional flyer exports per chain now in play (see below), `chain_name` alone is no longer enough to disambiguate rows, and this table (plus the app's queries against it) needs to filter by the user's resolved zone, not just chain. **Wiped and replaced every week**, same as the Airtable staging table — this is explicitly this-week's-deals data, not an accumulating history
 
 **recipes** *(persistent library — supersedes the "no persistent recipe library, generate per session" MVP decision; see 2.6)*
-`id, name, ingredients (json: name, quantity, unit), instructions (json: ordered steps), category/tag, calories, protein, minutes, price (estimated per serving), source (ai_generated / manual), source_deal_ids[] (nullable — curated_deals rows the recipe was inspired by, for traceability only, not a live price link), created_at`
-— ingredients are stored as plain text, decoupled from any specific week's deal (deals rotate weekly, recipes are meant to be reusable across weeks) — same "static snapshot" philosophy as saved_recipes below, just curator/AI-populated instead of user-populated
+`id, name, ingredients (json: name, quantity, unit), instructions (json: ordered steps), deal_tags (json: [{name, discount_pct, store, image_url, quantity_estimated}] — one entry per ingredient sourced from a real curated_deals item, re-matched weekly, see 3.1), calories, protein, minutes, price (estimated per serving), servings (real yield of the recipe's anchor ingredient(s) as sold — not an arbitrary picked number), source (ai_generated / manual), source_deal_ids[] (nullable — curated_deals rows the recipe was inspired by, for traceability only, not a live price link), created_at`
+— ingredients are stored as plain text, decoupled from any specific week's deal (deals rotate weekly, recipes are meant to be reusable across weeks) — same "static snapshot" philosophy as saved_recipes below, just curator/AI-populated instead of user-populated. Unlike `curated_deals`, **this table is never wiped** — only `deal_tags` gets refreshed weekly against whatever's currently in `curated_deals`
+
+**Flyer zones** *(regional flyer variants — not yet its own table; open question, see section 5)*
+— research turned up ~10 "core" zones + ~5 lower-priority "optional" zones needed to cover BC's real regional flyer variation across the 6 chains (e.g. Safeway has one flyer for all of BC except the East Kootenay/Peace region, which gets its own edition; Save-On-Foods has 3 distinct price tiers by region). A user's resolved zone per chain needs to be derivable from location data the app already collects (device GPS / the `nearest-stores` lookup), most likely via a small static lookup table (postal-code-prefix or city → zone) rather than a live geocoding service, since the zone boundaries themselves are manually researched, not API-derivable. **Recipes stay zone-agnostic** — `deal_tags` are matched against one canonical "core" zone per chain to keep the recipe library simple and shared across all users, rather than varying per user. Best Deals and any live grocery pricing, by contrast, should filter `curated_deals` to the user's actual resolved zone
 
 **staple_reference_prices** *(a maintained list of structurally cheap staples — pasta, rice, beans, lentils, oats, canned goods, plus small rounding-out extras like onions/garlic. Used deliberately as meal *bases* for cost-leaning plans, not just accessories)*
 `id, ingredient_name, category (base_staple / rounding_out_extra), avg_price, unit, last_checked_at, checked_by`
@@ -279,7 +299,8 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 
 - **Frontend:** React Native + Expo
 - **Backend:** Supabase (Postgres + auto-generated API — faster setup for solo/small-team build)
-- **AI extraction & meal generation:** Claude API
+- **Flyer data source:** structured per-region flyer feed exports (JSON + pre-cropped item images, e.g. Flipp/Wishabi format) — supersedes AI vision-parsing of downloaded flyer pages; product images are re-hosted to Supabase Storage rather than hotlinked from the feed's own CDN
+- **AI extraction & meal generation:** Claude API — now scoped to reading a candidate's cutout image to confirm its real printed price, and to weekly recipe generation/tagging, rather than parsing whole flyer pages from scratch
 - **Admin tool:** Airtable (free tier)
 - **Store locations:** Google Places API
 - **Hosting:** TBD
@@ -295,6 +316,9 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 5. ~~**Sparse deal weeks**~~ — **RESOLVED:** if the criteria can't be met (e.g. a $2/meal target isn't achievable this week), show an honest empty state rather than silently degrading quality — e.g. "we couldn't hit $2/meal with this week's deals — try adjusting your budget or diversity slider." Same honesty principle as the landing page's empty states (section 2.1).
 6. ~~**Serving scaling math**~~ — **RESOLVED:** sum household calorie/macro targets, scale the shared recipe to that combined total (not per-person granular splitting within one dish).
 7. ~~**"Best Deals" vs. "Worth It" thresholds**~~ — **RESOLVED (starting point):** rough guess to launch with — 40%+ discount = "Best Deals", 15–39% = "Worth It", below 15% not featured on landing page (still available in full Deal Browse). Revisit once real weekly flyer data shows what's actually typical/achievable.
+8. ~~**How is `original_price` captured without live scraping?**~~ — **RESOLVED:** a structured per-region flyer data feed (JSON + pre-cropped item images) replaces manual PDF screenshotting entirely. The feed's own `discount` field is unreliable on its own (a rounded percent that sometimes reflects an unrelated comparison, e.g. two product variants rather than a real markdown), so `original_price` is confirmed by reading the actual printed price off each candidate's cutout image — never inferred backward from `price` and `discount` alone.
+9. ~~**Weekly deals data lifecycle**~~ — **RESOLVED:** the Airtable staging table and `curated_deals` both wipe and replace weekly (deals are this-week-only). `recipes` is the opposite — persistent and reused, with only its `deal_tags` refreshed weekly against the new `curated_deals`. A recipe with no currently-active deal tags stops surfacing in the Meal Plan Engine until an ingredient is on sale again.
+10. **Zone resolver implementation** — still open. Confirmed direction: add a `zone` field to Airtable/`curated_deals` (multiple regional flyer variants per chain now exist), and resolve a user's zone per chain from location data the app already has, most likely via a small static lookup (postal-code-prefix or city → zone) rather than a live service, since zone boundaries are manually researched rather than API-derivable. Exact lookup mechanism (a dedicated reference table vs. a hardcoded mapping in the ingestion script) not yet decided. Recipes stay pinned to one canonical "core" zone per chain regardless (kept zone-agnostic, shared across all users); Best Deals and live grocery pricing should be zone-accurate per user.
 
 ---
 

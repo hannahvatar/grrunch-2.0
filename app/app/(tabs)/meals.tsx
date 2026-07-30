@@ -25,12 +25,19 @@ interface PlanTargets {
 // fewer matches than requested. That's an intentional tradeoff (see
 // architecture.md), not a bug: a thinner plan beats silently ignoring the
 // user's calorie/protein/price targets.
+//
+// Recipes are persistent and reused week to week, but their deal_tags are
+// re-matched against each new week's curated_deals -- a recipe with none
+// of its ingredients currently on sale stops surfacing here entirely
+// (rather than showing at regular price) until one of them is on sale
+// again, since the app's whole value prop is deal-driven meal planning.
 function eligibleMeals(allMeals: Meal[], targets: PlanTargets = {}): Meal[] {
   const maxCalories = Number(targets.maxCalories);
   const minProtein = Number(targets.minProtein);
   const maxPrice = Number(targets.maxPrice);
 
   return allMeals.filter((m) => {
+    if (m.dealTags.length === 0) return false;
     if (Number.isFinite(maxCalories) && m.calories > maxCalories) return false;
     if (Number.isFinite(minProtein) && m.protein < minProtein) return false;
     if (Number.isFinite(maxPrice) && m.price > maxPrice) return false;
