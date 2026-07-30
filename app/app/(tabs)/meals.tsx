@@ -176,7 +176,7 @@ export default function MealsScreen() {
                         🏷️ {dealTag.name}
                       </Text>
                       <View style={styles.dealTagBadge}>
-                        <Text style={styles.dealTagBadgeText}>-{dealTag.discountPct}%</Text>
+                        <Text style={styles.dealTagBadgeText}>Up to {dealTag.discountPct}% off</Text>
                       </View>
                     </View>
                   ))}

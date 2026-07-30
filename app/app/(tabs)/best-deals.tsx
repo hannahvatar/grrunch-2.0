@@ -99,7 +99,7 @@ export default function BestDealsScreen() {
                             )}
                             <View style={styles.discountBadge}>
                               <Text style={styles.discountBadgeText}>
-                                -{Math.round(deal.discountPct)}%
+                                Up to {Math.round(deal.discountPct)}% off
                               </Text>
                             </View>
                           </View>
