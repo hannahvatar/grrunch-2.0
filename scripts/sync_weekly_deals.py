@@ -333,20 +333,31 @@ def resolve_produce_gaps():
 
 def resolve_staple_gaps():
     """Same pattern as resolve_produce_gaps, for the "Staple Reference
-    Gaps" table -- pulls any row a human has filled in (Anabelle + Unit)
-    and approved (Status == "Approved") into staple_reference_prices as
-    checked_by='human_verified', so it's trusted by the matching logic
-    (which excludes checked_by='ai_estimated'). Unlike produce, this
-    table isn't auto-flagged from flyers/recipes -- rows are added
-    manually to a deliberately small, generic staple list."""
+    Gaps" table. Unlike produce, nothing ever gets written to Supabase
+    without first appearing in Airtable for approval -- even a real
+    StatCan number sits in "Reference Price SC" and waits for
+    Status == "Approved" like everything else, rather than syncing
+    straight to Supabase on its own.
+
+    Pulls from "Anabelle" (human-sourced) if filled in, otherwise
+    "Reference Price SC" (StatCan-sourced) -- either way the row is only
+    trusted once approved. checked_by records which source actually won,
+    for traceability. Unlike produce, this table isn't auto-flagged from
+    flyers/recipes -- rows are added manually to a deliberately small,
+    generic staple list."""
     gaps = fetch_airtable_table(STAPLE_GAPS_TABLE)
     resolved = 0
     for g in gaps:
         f = g["fields"]
+        price = f.get("Anabelle")
+        source = "human_verified"
+        if price is None:
+            price = f.get("Reference Price SC")
+            source = "statcan"
         if (
             f.get("Resolved")
             or f.get("Status") != "Approved"
-            or f.get("Anabelle") is None
+            or price is None
             or not f.get("Unit")
             or not f.get("Reference Date")
         ):
@@ -356,9 +367,9 @@ def resolve_staple_gaps():
             "ingredient_name": f["Item Name"],
             "category": f.get("Category") or "rounding_out_extra",
             "unit": f["Unit"],
-            "avg_price": f["Anabelle"],
+            "avg_price": price,
             "last_checked_at": f["Reference Date"],
-            "checked_by": "human_verified",
+            "checked_by": source,
             "airtable_record_id": g["id"],
         }
         req = urllib.request.Request(
