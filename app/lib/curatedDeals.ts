@@ -63,3 +63,41 @@ export function groupDealsByCategory(deals: Deal[]): Map<string, Deal[]> {
   }
   return groups;
 }
+
+const STOPWORDS = new Set(['with', 'from', 'each', 'selected', 'variety', 'varieties', 'fresh', 'frozen']);
+
+function normalizeWords(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word.length > 3 && !STOPWORDS.has(word));
+}
+
+// Finds which store carries an ingredient this week, for grocery-list
+// grouping only -- deliberately separate from deal_tags/price crediting.
+// An ingredient was genericized (e.g. "Watermelon" instead of "Watermelon
+// (Seedless)") specifically to NOT claim a whole-package price it doesn't
+// use (see architecture.md section 5, item 12) -- but it's still true and
+// useful to say "this week that's at T&T," so the match direction here is
+// the reverse of the price-crediting rule: the ingredient's (fewer, more
+// generic) words just need to appear within the deal's name, not the
+// other way around. Picks the closest match (deal with the fewest extra
+// words) to reduce ambiguity when a generic name could fit multiple deals.
+export function matchItemStore(ingredientName: string, deals: Deal[]): string | undefined {
+  const ingredientWords = normalizeWords(ingredientName);
+  if (ingredientWords.length === 0) return undefined;
+  let best: string | undefined;
+  let bestExtraWords = Infinity;
+  for (const deal of deals) {
+    const dealWords = normalizeWords(deal.itemName);
+    if (ingredientWords.every((word) => dealWords.includes(word))) {
+      const extra = dealWords.length - ingredientWords.length;
+      if (extra < bestExtraWords) {
+        best = deal.chainName;
+        bestExtraWords = extra;
+      }
+    }
+  }
+  return best;
+}
