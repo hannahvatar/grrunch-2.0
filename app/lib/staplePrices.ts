@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { scaleReferencePrice } from './unitConversion';
 
 export interface StaplePrice {
   ingredientName: string;
@@ -22,10 +23,15 @@ function normalizeWords(text: string): string[] {
     .filter((word) => word.length > 3 && !STOPWORDS.has(word));
 }
 
+// Excludes checked_by='ai_estimated' rows -- no AI-guessed prices in the
+// trusted chain, only StatCan or an explicitly human-verified entry.
+// ai_estimated rows are left in the table (not deleted) as a visible
+// "still needs a real price" checklist, just never matched against.
 export async function fetchStaplePrices(): Promise<StaplePrice[]> {
   const { data, error } = await supabase
     .from('staple_reference_prices')
-    .select('ingredient_name, avg_price, unit');
+    .select('ingredient_name, avg_price, unit')
+    .neq('checked_by', 'ai_estimated');
   if (error) throw error;
   return (data ?? []).map((row) => ({
     ingredientName: row.ingredient_name,
@@ -103,19 +109,34 @@ export function matchStaplePrice(
 
 // Three-tier lookup, most-trustworthy source wins regardless of
 // word-count specificity: real StatCan data first, then human-sourced
-// produce prices (fills the gap StatCan leaves), then the AI-guessed
-// staple fallback last.
+// produce prices (fills the gap StatCan leaves), then human-verified
+// staple prices last (never AI-guessed -- see fetchStaplePrices).
+//
+// The matched reference price is scaled to the ingredient's actual
+// quantity (see unitConversion.ts) rather than returned in full -- "1
+// tbsp olive oil" should cost a fraction of a "$/100ml" reference, not
+// the whole thing. Returns undefined if scaling fails (incompatible
+// units, no density bridge) -- an unscaled number would be more
+// misleading than no price at all.
 export function matchReferencePrice(
   ingredientName: string,
+  quantity: string | undefined,
+  unit: string | undefined,
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
   staplePrices: StaplePrice[]
-): (StaplePrice & { source: 'statcan' | 'produce' | 'estimated' }) | undefined {
-  const statcanMatch = matchStaplePrice(ingredientName, statcanPrices);
-  if (statcanMatch) return { ...statcanMatch, source: 'statcan' };
-  const produceMatch = matchStaplePrice(ingredientName, producePrices);
-  if (produceMatch) return { ...produceMatch, source: 'produce' };
-  const stapleMatch = matchStaplePrice(ingredientName, staplePrices);
-  if (stapleMatch) return { ...stapleMatch, source: 'estimated' };
+): { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'staple' } | undefined {
+  const tiers: Array<[StaplePrice[], 'statcan' | 'produce' | 'staple']> = [
+    [statcanPrices, 'statcan'],
+    [producePrices, 'produce'],
+    [staplePrices, 'staple'],
+  ];
+  for (const [prices, source] of tiers) {
+    const match = matchStaplePrice(ingredientName, prices);
+    if (!match) continue;
+    const scaled = scaleReferencePrice(quantity, unit, ingredientName, match.avgPrice, match.unit);
+    if (scaled === undefined) continue;
+    return { avgPrice: scaled, unit: match.unit, source };
+  }
   return undefined;
 }
