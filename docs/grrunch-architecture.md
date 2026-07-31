@@ -277,6 +277,14 @@ Revenue strategy overall (per business discussion): subscriptions + Instacart/af
 **staple_reference_prices** *(a maintained list of structurally cheap staples — pasta, rice, beans, lentils, oats, canned goods, plus small rounding-out extras like onions/garlic. Used deliberately as meal *bases* for cost-leaning plans, not just accessories)*
 `id, ingredient_name, category (base_staple / rounding_out_extra), avg_price, unit, last_checked_at, checked_by`
 
+**statcan_reference_prices** *(real, government-sourced BC retail prices for ~110 common grocery staples, synced monthly from StatCan's open Web Data Service — table 18-10-0245-01 — via `scripts/sync_statcan_prices.py`)*
+`id, product_name, ingredient_name, unit, avg_price, geography, reference_month, source, last_synced_at`
+— checked before `staple_reference_prices` when pricing a non-deal ingredient, since it's sourced/traceable rather than guessed. Doesn't cover produce — StatCan's list is mostly pantry staples
+
+**produce_reference_prices** *(human-sourced BC produce reference prices — fills the gap StatCan's table leaves, since it tracks almost no fresh produce)*
+`id, ingredient_name, unit, avg_price, geography, reference_date, source, airtable_record_id, last_synced_at`
+— filled in one item at a time via a second Airtable table, "Produce Reference Gaps": `scripts/sync_weekly_deals.py` flags any produce-category deal (category containing "produce") that has no match in either `statcan_reference_prices` or this table, adding a row for a human to look up the regular price for (e.g. via grocerytracker.ca) and fill in. The same script pulls filled-in rows back into this table on its next run and marks them resolved. Checked after `statcan_reference_prices`, before `staple_reference_prices` — the reference-price priority is real (StatCan) → human-verified (produce) → AI-guessed (staple), most-trustworthy source always wins
+
 **household_members** *(one or more per meal plan — supports mixed households)*
 `id, meal_plan_id, label (e.g. "adult 1", "child 1" — user-editable), target_calories, target_macros (protein/carb/fat), exclusions[] (allergies/diet)`
 
