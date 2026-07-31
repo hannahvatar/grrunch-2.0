@@ -146,7 +146,7 @@ def sync_curated_deals(records):
     with urllib.request.urlopen(req) as resp:
         print("synced curated_deals:", resp.status)
     print(f"Synced {len(rows)} deals")
-    return rows
+    return usable
 
 
 def supabase_get_column(table, column):
@@ -160,59 +160,92 @@ def supabase_get_column(table, column):
     return [row[column] for row in data]
 
 
-def flag_produce_gaps(deal_rows):
-    """Produce deals with no reference price anywhere yet get a row in the
-    "Produce Reference Gaps" Airtable table, for a human to fill in the
-    regular price by hand. Scoped to category containing "produce" so this
-    stays small and doesn't try to cover every ingredient."""
-    produce_deals = [r for r in deal_rows if "produce" in (r["category"] or "").lower()]
+def fetch_statcan_prices():
+    url = f"{SUPABASE_URL}/rest/v1/statcan_reference_prices?select=ingredient_name,avg_price,unit,reference_month"
+    req = urllib.request.Request(url, headers={
+        "apikey": SERVICE_ROLE,
+        "Authorization": f"Bearer {SERVICE_ROLE}",
+    })
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
+
+
+def match_statcan_price(ingredient_name, statcan_rows):
+    """Same word-subset rule used everywhere else -- most-specific (most
+    words) match wins, and a StatCan name that collapses to a single
+    generic word once "fresh"/"frozen" is stripped (e.g. "Frozen corn" ->
+    "corn") is rejected, since it'd otherwise match any ingredient
+    containing that word, fresh or not."""
+    ing_words = normalize_words(ingredient_name)
+    best = None
+    best_word_count = 0
+    for row in statcan_rows:
+        words = normalize_words(row["ingredient_name"])
+        if not words:
+            continue
+        if len(words) == 1 and re.search(r"\b(fresh|frozen)\b", row["ingredient_name"], re.IGNORECASE):
+            continue
+        if all(w in ing_words for w in words) and len(words) > best_word_count:
+            best = row
+            best_word_count = len(words)
+    return best
+
+
+def flag_produce_gaps(usable_records):
+    """The real gap this table exists for: a produce deal that's classified
+    "recipes"/"both" and the flyer only gives a sale price for, with NO
+    stated regular price -- so there's no way to tell if it's actually a
+    good deal (e.g. blueberries advertised at $1.97/pint with no regular
+    price shown). For each one, StatCan is checked first and used to
+    auto-fill+resolve the row immediately if it has a match (no human
+    needed, the question's already answered); otherwise the row is left
+    blank for a human to fill in by hand (e.g. via grocerytracker.ca).
+    A produce deal that already has BOTH price and original_price doesn't
+    need this at all -- the flyer's own numbers already answer it."""
+    produce_deals = [
+        r["fields"] for r in usable_records
+        if "produce" in (r["fields"].get("category") or "").lower()
+        and r["fields"].get("status") in ("recipes", "both")
+        and r["fields"].get("original_price") is None
+    ]
     if not produce_deals:
-        print("no produce deals this week")
+        print("no price-only produce deals this week")
         return
 
-    reference_names = (
-        supabase_get_column("statcan_reference_prices", "ingredient_name")
-        + supabase_get_column("produce_reference_prices", "ingredient_name")
-    )
-    # A reference name that collapses to a single generic word once
-    # "fresh"/"frozen" is stripped (e.g. "Frozen corn" -> "corn") is too
-    # weak a signal to trust -- it would match ANY ingredient containing
-    # that word, fresh or not, and hide a produce gap that's still real
-    # (StatCan's "Frozen corn" price isn't a stand-in for fresh sweet corn).
-    reference_word_sets = [
-        words for name in reference_names
-        if (words := normalize_words(name))
-        and not (len(words) == 1 and re.search(r"\b(fresh|frozen)\b", name, re.IGNORECASE))
-    ]
+    statcan_rows = fetch_statcan_prices()
+    already_covered = set(supabase_get_column("produce_reference_prices", "ingredient_name"))
 
     existing_gaps = fetch_airtable_table(GAPS_TABLE)
-    flagged_names = {
-        g["fields"].get("Item Name")
-        for g in existing_gaps
-        if not g["fields"].get("Resolved")
-    }
+    # Once an item's been flagged before, resolved or not, don't ask again --
+    # re-adding it every week it happens to reappear price-only would just
+    # be noise.
+    flagged_names = {g["fields"].get("Item Name") for g in existing_gaps}
 
     new_gaps = 0
+    auto_resolved = 0
     for deal in produce_deals:
-        if deal["item_name"] in flagged_names:
-            continue
-        ing_words = normalize_words(deal["item_name"])
-        has_reference = any(
-            ref_words and all(w in ing_words for w in ref_words)
-            for ref_words in reference_word_sets
-        )
-        if has_reference:
+        if deal["item_name"] in flagged_names or deal["item_name"] in already_covered:
             continue
 
-        body = json.dumps({"fields": {
+        fields = {
             "Item Name": deal["item_name"],
             "Chain": deal["chain_name"],
             "Sale Price": deal["price"],
-            "Original Price": deal.get("original_price"),
             "Week Flagged": deal.get("flyer_valid_from"),
             "Ingredient Name": deal["item_name"],
-            "Resolved": False,
-        }}).encode("utf-8")
+        }
+
+        statcan_match = match_statcan_price(deal["item_name"], statcan_rows)
+        if statcan_match:
+            fields["Reference Price"] = statcan_match["avg_price"]
+            fields["Unit"] = statcan_match["unit"]
+            fields["Reference Date"] = statcan_match["reference_month"]
+            fields["Resolved"] = True  # StatCan already answered it -- nothing for a human to do
+            auto_resolved += 1
+        else:
+            fields["Resolved"] = False
+
+        body = json.dumps({"fields": fields}).encode("utf-8")
         req = urllib.request.Request(
             f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(GAPS_TABLE)}",
             data=body, method="POST",
@@ -226,7 +259,7 @@ def flag_produce_gaps(deal_rows):
         flagged_names.add(deal["item_name"])
         new_gaps += 1
 
-    print(f"flagged {new_gaps} new produce reference gaps out of {len(produce_deals)} produce deals")
+    print(f"flagged {new_gaps} new price-only produce gaps ({auto_resolved} auto-resolved via StatCan) out of {len(produce_deals)} candidates")
 
 
 def resolve_produce_gaps():
@@ -292,8 +325,8 @@ def refresh_deal_tags():
 
 if __name__ == "__main__":
     records = fetch_airtable_records()
-    rows = sync_curated_deals(records)
+    usable = sync_curated_deals(records)
     resolve_produce_gaps()  # pull in any prices filled in since last run first,
-    flag_produce_gaps(rows)  # so this week's gap check sees them and skips re-flagging
+    flag_produce_gaps(usable)  # so this week's gap check sees them and skips re-flagging
     refresh_deal_tags()
     print("Done -- curated_deals and every recipe's deal_tags now reflect this week's approved deals.")
