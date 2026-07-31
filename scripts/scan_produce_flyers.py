@@ -151,6 +151,34 @@ def is_price_only_produce(name):
     return True
 
 
+def split_combo_items(name):
+    """Some flyer tiles advertise two unrelated produce items under one
+    price ("Blackberries, 6 oz clamshell, Cantaloupe", "Chayote Squash,
+    each or Jumbo Carrots") -- one price doesn't describe a single
+    product there, so it can't be usefully compared against anything.
+    Splits into one name per distinct item when segments (split on " or "
+    and commas) carry different, non-overlapping produce keywords. A
+    single item's own variety/color options ("Red or Black Plums",
+    "Bartlett or Bosc Pears") share the same keyword on both sides and
+    are correctly left as one name, not split."""
+    segments = [seg.strip() for seg in re.split(r"\s+or\s+|,", name, flags=re.IGNORECASE) if seg.strip()]
+    keyworded = [(seg, set(tokenize(seg)) & PRODUCE_KEYWORDS) for seg in segments]
+    keyworded = [(seg, kws) for seg, kws in keyworded if kws]
+
+    if len(keyworded) < 2:
+        return [name]
+
+    all_disjoint = all(
+        not (kws_a & kws_b)
+        for i, (_, kws_a) in enumerate(keyworded)
+        for _, kws_b in keyworded[i + 1:]
+    )
+    if not all_disjoint:
+        return [name]
+
+    return [seg for seg, _ in keyworded]
+
+
 def latest_week_dir():
     weeks = sorted((d for d in FLYERS_DIR.iterdir() if d.is_dir()), reverse=True)
     if not weeks:
@@ -216,13 +244,17 @@ def find_price_only_produce(week_dir, chain_by_slug):
                     continue  # stale/expired flyer data lingering from last fetch
                 if not is_price_only_produce(name):
                     continue
-                candidates.append({
-                    "item_name": name,
-                    "chain_name": chain,
-                    "price": float(row["price"]),
-                    "flyer_valid_from": row.get("valid_from") or None,
-                    "image_url": images.get(name),
-                })
+                # A combo tile's one price doesn't describe a single item --
+                # split it into one candidate per distinct produce item,
+                # each still carrying that same price and cutout image.
+                for split_name in split_combo_items(name):
+                    candidates.append({
+                        "item_name": split_name,
+                        "chain_name": chain,
+                        "price": float(row["price"]),
+                        "flyer_valid_from": row.get("valid_from") or None,
+                        "image_url": images.get(name),
+                    })
     return candidates
 
 
