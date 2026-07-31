@@ -85,6 +85,12 @@ export function matchStaplePrice(
   for (const staple of staples) {
     const stapleWords = normalizeWords(staple.ingredientName);
     if (stapleWords.length === 0) continue;
+    // A reference name that collapses to a single generic word once
+    // "fresh"/"frozen" is stripped (e.g. "Frozen corn" -> "corn") is too
+    // weak a signal to trust here -- it would match ANY ingredient
+    // containing that word, fresh or not, at the wrong product's price.
+    // Only applies to this reference-price fallback, not deal matching.
+    if (stapleWords.length === 1 && /\b(fresh|frozen)\b/i.test(staple.ingredientName)) continue;
     if (stapleWords.every((word) => ingredientWords.has(word))) {
       if (stapleWords.length > bestWordCount) {
         best = staple;
