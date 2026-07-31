@@ -25,7 +25,7 @@ export interface IngredientLine {
   // (see lib/curatedDeals.ts matchItemStore).
   name: string;
   dealTag?: DealTag;
-  estimatedPrice?: { avgPrice: number; unit: string };
+  estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'estimated' };
 }
 
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the

@@ -34,6 +34,24 @@ export async function fetchStaplePrices(): Promise<StaplePrice[]> {
   }));
 }
 
+// Real, government-sourced BC prices (StatCan table 18-10-0245-01, see
+// scripts/sync_statcan_prices.py) -- checked before the AI-guessed
+// staple_reference_prices fallback, since these numbers are sourced and
+// traceable rather than estimated. Only covers ~100 generic staples, so
+// most of Grrunch's specialty/ethnic ingredients still fall through to
+// the guessed table.
+export async function fetchStatcanPrices(): Promise<StaplePrice[]> {
+  const { data, error } = await supabase
+    .from('statcan_reference_prices')
+    .select('ingredient_name, avg_price, unit');
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    ingredientName: row.ingredient_name,
+    avgPrice: row.avg_price,
+    unit: row.unit,
+  }));
+}
+
 // Picks the most specific matching staple (most words) whose normalized
 // name is fully contained in the ingredient's normalized name -- e.g.
 // "Rice noodles" prefers the "Rice noodles" staple over the more generic
@@ -58,4 +76,19 @@ export function matchStaplePrice(
     }
   }
   return best;
+}
+
+// Two-tier lookup: a real StatCan match always wins over a guessed one,
+// regardless of word-count specificity -- sourced data outranks a guess
+// even when the guess happens to be a more specific-sounding name.
+export function matchReferencePrice(
+  ingredientName: string,
+  statcanPrices: StaplePrice[],
+  staplePrices: StaplePrice[]
+): (StaplePrice & { source: 'statcan' | 'estimated' }) | undefined {
+  const statcanMatch = matchStaplePrice(ingredientName, statcanPrices);
+  if (statcanMatch) return { ...statcanMatch, source: 'statcan' };
+  const stapleMatch = matchStaplePrice(ingredientName, staplePrices);
+  if (stapleMatch) return { ...stapleMatch, source: 'estimated' };
+  return undefined;
 }
