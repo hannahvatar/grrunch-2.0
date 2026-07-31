@@ -52,6 +52,23 @@ export async function fetchStatcanPrices(): Promise<StaplePrice[]> {
   }));
 }
 
+// Human-sourced BC produce prices -- fills the gap StatCan's table
+// leaves (it doesn't track most fresh produce). Filled in one item at a
+// time via the "Produce Reference Gaps" Airtable table and synced by
+// scripts/sync_weekly_deals.py. Checked after StatCan, before the
+// AI-guessed staple fallback, since a human actually looked these up.
+export async function fetchProducePrices(): Promise<StaplePrice[]> {
+  const { data, error } = await supabase
+    .from('produce_reference_prices')
+    .select('ingredient_name, avg_price, unit');
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    ingredientName: row.ingredient_name,
+    avgPrice: row.avg_price,
+    unit: row.unit,
+  }));
+}
+
 // Picks the most specific matching staple (most words) whose normalized
 // name is fully contained in the ingredient's normalized name -- e.g.
 // "Rice noodles" prefers the "Rice noodles" staple over the more generic
@@ -78,16 +95,20 @@ export function matchStaplePrice(
   return best;
 }
 
-// Two-tier lookup: a real StatCan match always wins over a guessed one,
-// regardless of word-count specificity -- sourced data outranks a guess
-// even when the guess happens to be a more specific-sounding name.
+// Three-tier lookup, most-trustworthy source wins regardless of
+// word-count specificity: real StatCan data first, then human-sourced
+// produce prices (fills the gap StatCan leaves), then the AI-guessed
+// staple fallback last.
 export function matchReferencePrice(
   ingredientName: string,
   statcanPrices: StaplePrice[],
+  producePrices: StaplePrice[],
   staplePrices: StaplePrice[]
-): (StaplePrice & { source: 'statcan' | 'estimated' }) | undefined {
+): (StaplePrice & { source: 'statcan' | 'produce' | 'estimated' }) | undefined {
   const statcanMatch = matchStaplePrice(ingredientName, statcanPrices);
   if (statcanMatch) return { ...statcanMatch, source: 'statcan' };
+  const produceMatch = matchStaplePrice(ingredientName, producePrices);
+  if (produceMatch) return { ...produceMatch, source: 'produce' };
   const stapleMatch = matchStaplePrice(ingredientName, staplePrices);
   if (stapleMatch) return { ...stapleMatch, source: 'estimated' };
   return undefined;

@@ -15,7 +15,7 @@ interface GroceryItem {
   text: string;
   source: string;
   dealTag?: DealTag;
-  estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'estimated' };
+  estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'estimated' };
   multiplier?: number;
   // The store this item is grouped under -- only ever set from a real
   // match (either the ingredient's own deal, or, for non-deal
@@ -293,9 +293,9 @@ export function GroceryListView() {
                     )}
                     {!item.dealTag && item.estimatedPrice && (
                       <Text style={styles.itemPriceEstimated}>
-                        {item.estimatedPrice.source === 'statcan'
-                          ? `$${item.estimatedPrice.avgPrice.toFixed(2)} avg.`
-                          : `~$${item.estimatedPrice.avgPrice.toFixed(2)} est.`}
+                        {item.estimatedPrice.source === 'estimated'
+                          ? `~$${item.estimatedPrice.avgPrice.toFixed(2)} est.`
+                          : `$${item.estimatedPrice.avgPrice.toFixed(2)} avg.`}
                       </Text>
                     )}
                     {item.dealTag && (

@@ -2,6 +2,13 @@
 curated_deals, then recompute every recipe's deal_tags against the fresh
 data. Run this after finishing the week's Airtable review.
 
+Also flags produce deals with no reference price anywhere (StatCan
+doesn't track most produce, and we don't want AI-guessed prices mixed
+with human-verified ones) into a second Airtable table, "Produce
+Reference Gaps" -- and pulls back any gap rows a human has since filled
+in, upserting them into Supabase produce_reference_prices. See
+supabase/migrations/20260801000000_produce_reference_prices.sql.
+
 Usage:
     cd scripts && cp .env.example .env  # fill in AIRTABLE_TOKEN and
                                           # SUPABASE_SERVICE_ROLE_KEY once
@@ -17,6 +24,7 @@ import json
 import os
 import urllib.parse
 import urllib.request
+import re
 
 def env(name, default=None):
     value = os.environ.get(name, default)
@@ -29,12 +37,24 @@ AIRTABLE_BASE_ID = env("AIRTABLE_BASE_ID")
 SUPABASE_URL = env("SUPABASE_URL")
 SERVICE_ROLE = env("SUPABASE_SERVICE_ROLE_KEY")
 
+GAPS_TABLE = "Produce Reference Gaps"
 
-def fetch_airtable_records():
+# Mirrors normalize_words() in the Postgres function and lib/staplePrices.ts
+# -- same rule everywhere: lowercase, strip punctuation, drop short/generic
+# words, then a subset match rather than exact-string equality.
+STOPWORDS = {"with", "from", "each", "selected", "variety", "varieties", "fresh", "frozen"}
+
+
+def normalize_words(text):
+    words = re.split(r"[^a-z0-9]+", (text or "").lower())
+    return [w for w in words if len(w) > 3 and w not in STOPWORDS]
+
+
+def fetch_airtable_table(table_name):
     records = []
     offset = None
     while True:
-        url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/Deals?pageSize=100"
+        url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(table_name)}?pageSize=100"
         if offset:
             url += f"&offset={offset}"
         req = urllib.request.Request(url, headers={"Authorization": f"Bearer {AIRTABLE_TOKEN}"})
@@ -45,6 +65,10 @@ def fetch_airtable_records():
         if not offset:
             break
     return records
+
+
+def fetch_airtable_records():
+    return fetch_airtable_table("Deals")
 
 
 def sync_curated_deals(records):
@@ -101,6 +125,125 @@ def sync_curated_deals(records):
     with urllib.request.urlopen(req) as resp:
         print("synced curated_deals:", resp.status)
     print(f"Synced {len(rows)} deals")
+    return rows
+
+
+def supabase_get_column(table, column):
+    url = f"{SUPABASE_URL}/rest/v1/{table}?select={column}"
+    req = urllib.request.Request(url, headers={
+        "apikey": SERVICE_ROLE,
+        "Authorization": f"Bearer {SERVICE_ROLE}",
+    })
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read())
+    return [row[column] for row in data]
+
+
+def flag_produce_gaps(deal_rows):
+    """Produce deals with no reference price anywhere yet get a row in the
+    "Produce Reference Gaps" Airtable table, for a human to fill in the
+    regular price by hand. Scoped to category containing "produce" so this
+    stays small and doesn't try to cover every ingredient."""
+    produce_deals = [r for r in deal_rows if "produce" in (r["category"] or "").lower()]
+    if not produce_deals:
+        print("no produce deals this week")
+        return
+
+    reference_names = (
+        supabase_get_column("statcan_reference_prices", "ingredient_name")
+        + supabase_get_column("produce_reference_prices", "ingredient_name")
+    )
+    reference_word_sets = [normalize_words(name) for name in reference_names]
+
+    existing_gaps = fetch_airtable_table(GAPS_TABLE)
+    flagged_names = {
+        g["fields"].get("Item Name")
+        for g in existing_gaps
+        if not g["fields"].get("Resolved")
+    }
+
+    new_gaps = 0
+    for deal in produce_deals:
+        if deal["item_name"] in flagged_names:
+            continue
+        ing_words = normalize_words(deal["item_name"])
+        has_reference = any(
+            ref_words and all(w in ing_words for w in ref_words)
+            for ref_words in reference_word_sets
+        )
+        if has_reference:
+            continue
+
+        body = json.dumps({"fields": {
+            "Item Name": deal["item_name"],
+            "Chain": deal["chain_name"],
+            "Sale Price": deal["price"],
+            "Original Price": deal.get("original_price"),
+            "Week Flagged": deal.get("flyer_valid_from"),
+            "Ingredient Name": deal["item_name"],
+            "Resolved": False,
+        }}).encode("utf-8")
+        req = urllib.request.Request(
+            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(GAPS_TABLE)}",
+            data=body, method="POST",
+            headers={
+                "Authorization": f"Bearer {AIRTABLE_TOKEN}",
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req):
+            pass
+        flagged_names.add(deal["item_name"])
+        new_gaps += 1
+
+    print(f"flagged {new_gaps} new produce reference gaps out of {len(produce_deals)} produce deals")
+
+
+def resolve_produce_gaps():
+    """Pulls any "Produce Reference Gaps" rows a human has since filled in
+    (Reference Price + Unit both present) into produce_reference_prices,
+    then marks them Resolved so they stop showing up in Airtable."""
+    gaps = fetch_airtable_table(GAPS_TABLE)
+    resolved = 0
+    for g in gaps:
+        f = g["fields"]
+        if f.get("Resolved") or f.get("Reference Price") is None or not f.get("Unit") or not f.get("Reference Date"):
+            continue
+
+        row = {
+            "ingredient_name": f.get("Ingredient Name") or f["Item Name"],
+            "unit": f["Unit"],
+            "avg_price": f["Reference Price"],
+            "reference_date": f["Reference Date"],
+            "airtable_record_id": g["id"],
+        }
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/produce_reference_prices?on_conflict=airtable_record_id",
+            data=json.dumps(row).encode("utf-8"), method="POST",
+            headers={
+                "apikey": SERVICE_ROLE,
+                "Authorization": f"Bearer {SERVICE_ROLE}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+        )
+        with urllib.request.urlopen(req):
+            pass
+
+        patch_body = json.dumps({"fields": {"Resolved": True}}).encode("utf-8")
+        patch_req = urllib.request.Request(
+            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(GAPS_TABLE)}/{g['id']}",
+            data=patch_body, method="PATCH",
+            headers={
+                "Authorization": f"Bearer {AIRTABLE_TOKEN}",
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(patch_req):
+            pass
+        resolved += 1
+
+    print(f"resolved {resolved} produce reference gaps into produce_reference_prices")
 
 
 def refresh_deal_tags():
@@ -119,6 +262,8 @@ def refresh_deal_tags():
 
 if __name__ == "__main__":
     records = fetch_airtable_records()
-    sync_curated_deals(records)
+    rows = sync_curated_deals(records)
+    resolve_produce_gaps()  # pull in any prices filled in since last run first,
+    flag_produce_gaps(rows)  # so this week's gap check sees them and skips re-flagging
     refresh_deal_tags()
     print("Done -- curated_deals and every recipe's deal_tags now reflect this week's approved deals.")
