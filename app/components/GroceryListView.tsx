@@ -15,6 +15,7 @@ interface GroceryItem {
   text: string;
   source: string;
   dealTag?: DealTag;
+  estimatedPrice?: { avgPrice: number; unit: string };
   multiplier?: number;
 }
 
@@ -26,6 +27,8 @@ function mapDealToGroceryItem(deal: Deal): GroceryItem {
     dealTag: {
       name: deal.itemName,
       discountPct: Math.round(deal.discountPct),
+      price: deal.price,
+      originalPrice: deal.originalPrice,
       store: deal.chainName,
       imageUrl: deal.imageUrl ?? undefined,
     },
@@ -109,6 +112,7 @@ export function GroceryListView() {
       text: ingredient.text,
       source: meal.name,
       dealTag: ingredient.dealTag,
+      estimatedPrice: ingredient.estimatedPrice,
       multiplier,
     }));
   });
@@ -249,6 +253,22 @@ export function GroceryListView() {
                         <Text style={styles.multiplierBadgeText}>×{item.multiplier}</Text>
                       </View>
                     )}
+                    {item.dealTag?.price != null && (
+                      <View style={styles.itemPriceRow}>
+                        <Text style={styles.itemPriceValue}>${item.dealTag.price.toFixed(2)}</Text>
+                        {item.dealTag.originalPrice != null &&
+                          item.dealTag.originalPrice > item.dealTag.price && (
+                            <Text style={styles.itemPriceOriginal}>
+                              ${item.dealTag.originalPrice.toFixed(2)}
+                            </Text>
+                          )}
+                      </View>
+                    )}
+                    {!item.dealTag && item.estimatedPrice && (
+                      <Text style={styles.itemPriceEstimated}>
+                        ~${item.estimatedPrice.avgPrice.toFixed(2)} est.
+                      </Text>
+                    )}
                     {item.dealTag && (
                       <View style={styles.discountBadge}>
                         <Text style={styles.discountBadgeText}>Up to {item.dealTag.discountPct}% off</Text>
@@ -344,6 +364,10 @@ const styles = StyleSheet.create({
   itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
   estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
+  itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
+  itemPriceValue: { fontSize: 14, fontWeight: '800' },
+  itemPriceOriginal: { fontSize: 11, color: '#aaa', textDecorationLine: 'line-through' },
+  itemPriceEstimated: { fontSize: 12, color: '#888' },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   multiplierBadge: { backgroundColor: '#F2F2F2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
