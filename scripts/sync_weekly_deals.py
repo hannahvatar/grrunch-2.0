@@ -236,7 +236,7 @@ def flag_produce_gaps(usable_records):
 
         statcan_match = match_statcan_price(deal["item_name"], statcan_rows)
         if statcan_match:
-            fields["Reference Price"] = statcan_match["avg_price"]
+            fields["Reference Price SC"] = statcan_match["avg_price"]
             fields["Unit"] = statcan_match["unit"]
             fields["Reference Date"] = statcan_match["reference_month"]
             fields["Resolved"] = True  # StatCan already answered it -- nothing for a human to do
@@ -265,19 +265,23 @@ def flag_produce_gaps(usable_records):
 
 def resolve_produce_gaps():
     """Pulls any "Produce Reference Gaps" rows a human has since filled in
-    (Reference Price + Unit both present) into produce_reference_prices,
-    then marks them Resolved so they stop showing up in Airtable."""
+    (the "Anabelle" column -- kept separate from "Reference Price SC" so
+    the source of each number stays traceable: StatCan vs. human-verified)
+    into produce_reference_prices, then marks them Resolved so they stop
+    showing up in Airtable. StatCan-sourced rows never need to flow through
+    here -- they're already resolved at creation time (see flag_produce_gaps)
+    since statcan_reference_prices already has that number."""
     gaps = fetch_airtable_table(GAPS_TABLE)
     resolved = 0
     for g in gaps:
         f = g["fields"]
-        if f.get("Resolved") or f.get("Reference Price") is None or not f.get("Unit") or not f.get("Reference Date"):
+        if f.get("Resolved") or f.get("Anabelle") is None or not f.get("Unit") or not f.get("Reference Date"):
             continue
 
         row = {
             "ingredient_name": f["Item Name"],
             "unit": f["Unit"],
-            "avg_price": f["Reference Price"],
+            "avg_price": f["Anabelle"],
             "reference_date": f["Reference Date"],
             "airtable_record_id": g["id"],
         }

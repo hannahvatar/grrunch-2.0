@@ -348,7 +348,7 @@ def main():
 
         statcan_match = match_statcan_price(deal["item_name"], statcan_rows)
         if statcan_match:
-            fields["Reference Price"] = statcan_match["avg_price"]
+            fields["Reference Price SC"] = statcan_match["avg_price"]
             fields["Unit"] = statcan_match["unit"]
             fields["Reference Date"] = statcan_match["reference_month"]
             fields["Resolved"] = True
