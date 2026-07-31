@@ -26,6 +26,27 @@ import urllib.parse
 import urllib.request
 import re
 
+
+def _load_env_file():
+    """.env isn't picked up automatically by the shell or by os.environ --
+    this reads scripts/.env (if present) and fills in anything not already
+    set in the real environment, so `cp .env.example .env` + fill-in
+    actually works as documented below."""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_env_file()
+
+
 def env(name, default=None):
     value = os.environ.get(name, default)
     if value is None:
