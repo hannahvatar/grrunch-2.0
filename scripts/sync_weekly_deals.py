@@ -174,7 +174,16 @@ def flag_produce_gaps(deal_rows):
         supabase_get_column("statcan_reference_prices", "ingredient_name")
         + supabase_get_column("produce_reference_prices", "ingredient_name")
     )
-    reference_word_sets = [normalize_words(name) for name in reference_names]
+    # A reference name that collapses to a single generic word once
+    # "fresh"/"frozen" is stripped (e.g. "Frozen corn" -> "corn") is too
+    # weak a signal to trust -- it would match ANY ingredient containing
+    # that word, fresh or not, and hide a produce gap that's still real
+    # (StatCan's "Frozen corn" price isn't a stand-in for fresh sweet corn).
+    reference_word_sets = [
+        words for name in reference_names
+        if (words := normalize_words(name))
+        and not (len(words) == 1 and re.search(r"\b(fresh|frozen)\b", name, re.IGNORECASE))
+    ]
 
     existing_gaps = fetch_airtable_table(GAPS_TABLE)
     flagged_names = {
