@@ -270,12 +270,22 @@ def resolve_produce_gaps():
     into produce_reference_prices, then marks them Resolved so they stop
     showing up in Airtable. StatCan-sourced rows never need to flow through
     here -- they're already resolved at creation time (see flag_produce_gaps)
-    since statcan_reference_prices already has that number."""
+    since statcan_reference_prices already has that number.
+
+    Also requires Status == "Approved" -- the same human-approval gate as
+    curated_deals' own "Select" == "Approved" check, so a filled-in price
+    doesn't get used for this week's recipes until explicitly signed off."""
     gaps = fetch_airtable_table(GAPS_TABLE)
     resolved = 0
     for g in gaps:
         f = g["fields"]
-        if f.get("Resolved") or f.get("Anabelle") is None or not f.get("Unit") or not f.get("Reference Date"):
+        if (
+            f.get("Resolved")
+            or f.get("Status") != "Approved"
+            or f.get("Anabelle") is None
+            or not f.get("Unit")
+            or not f.get("Reference Date")
+        ):
             continue
 
         row = {
