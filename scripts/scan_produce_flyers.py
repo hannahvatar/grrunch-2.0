@@ -179,6 +179,23 @@ def load_manifest_chains(week_dir):
     return chain_by_slug
 
 
+def load_cutout_images(zone_dir):
+    """items.csv doesn't carry the flyer's cutout image URL -- only
+    flyer.json does. First match wins per name (a zone's flyer.json can
+    repeat an item across multiple pages/sizes; any one cutout is fine)."""
+    flyer_path = zone_dir / "flyer.json"
+    if not flyer_path.exists():
+        return {}
+    data = json.loads(flyer_path.read_text())
+    images = {}
+    for item in data.get("items", []):
+        name = (item.get("name") or "").strip()
+        url = item.get("cutout_image_url")
+        if name and url and name not in images:
+            images[name] = url
+    return images
+
+
 def find_price_only_produce(week_dir, chain_by_slug):
     today = date.today().isoformat()
     candidates = []
@@ -187,6 +204,7 @@ def find_price_only_produce(week_dir, chain_by_slug):
         if not items_csv.exists():
             continue
         chain = chain_by_slug.get(zone_dir.name, zone_dir.name)
+        images = load_cutout_images(zone_dir)
         with open(items_csv, newline="") as fh:
             for row in csv.DictReader(fh):
                 name = (row.get("name") or "").strip()
@@ -203,6 +221,7 @@ def find_price_only_produce(week_dir, chain_by_slug):
                     "chain_name": chain,
                     "price": float(row["price"]),
                     "flyer_valid_from": row.get("valid_from") or None,
+                    "image_url": images.get(name),
                 })
     return candidates
 
@@ -292,6 +311,7 @@ def main():
             "Chain": deal["chain_name"],
             "Price": deal["price"],
             "Week Flagged": deal["flyer_valid_from"],
+            **({"Image": [{"url": deal["image_url"]}]} if deal.get("image_url") else {}),
         }
 
         statcan_match = match_statcan_price(deal["item_name"], statcan_rows)
