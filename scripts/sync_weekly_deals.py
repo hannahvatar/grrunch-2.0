@@ -230,9 +230,8 @@ def flag_produce_gaps(usable_records):
         fields = {
             "Item Name": deal["item_name"],
             "Chain": deal["chain_name"],
-            "Sale Price": deal["price"],
+            "Price": deal["price"],
             "Week Flagged": deal.get("flyer_valid_from"),
-            "Ingredient Name": deal["item_name"],
         }
 
         statcan_match = match_statcan_price(deal["item_name"], statcan_rows)
@@ -245,7 +244,9 @@ def flag_produce_gaps(usable_records):
         else:
             fields["Resolved"] = False
 
-        body = json.dumps({"fields": fields}).encode("utf-8")
+        # typecast lets Airtable add a new option to the "Chain" single-select
+        # field automatically, instead of rejecting any chain not already listed.
+        body = json.dumps({"fields": fields, "typecast": True}).encode("utf-8")
         req = urllib.request.Request(
             f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(GAPS_TABLE)}",
             data=body, method="POST",
@@ -274,7 +275,7 @@ def resolve_produce_gaps():
             continue
 
         row = {
-            "ingredient_name": f.get("Ingredient Name") or f["Item Name"],
+            "ingredient_name": f["Item Name"],
             "unit": f["Unit"],
             "avg_price": f["Reference Price"],
             "reference_date": f["Reference Date"],
