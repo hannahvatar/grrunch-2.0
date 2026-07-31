@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { type Deal, fetchDealsByIds } from '../lib/curatedDeals';
+import { type Deal, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
 import type { DealTag, Meal } from '../lib/mealData';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
@@ -17,6 +17,14 @@ interface GroceryItem {
   dealTag?: DealTag;
   estimatedPrice?: { avgPrice: number; unit: string };
   multiplier?: number;
+  // The store this item is grouped under -- only ever set from a real
+  // match (either the ingredient's own deal, or, for non-deal
+  // ingredients, a genuine match against this week's flyers -- see
+  // lib/curatedDeals.ts matchItemStore). Never guessed from "well this
+  // recipe's other ingredients are at Store X" -- a true pantry staple
+  // with no flyer presence stays in "Other items" rather than implying a
+  // store we have no data for.
+  store?: string;
 }
 
 function mapDealToGroceryItem(deal: Deal): GroceryItem {
@@ -24,6 +32,7 @@ function mapDealToGroceryItem(deal: Deal): GroceryItem {
     key: `deal-${deal.id}`,
     text: deal.itemName,
     source: 'Best Deal',
+    store: deal.chainName,
     dealTag: {
       name: deal.itemName,
       discountPct: Math.round(deal.discountPct),
@@ -38,7 +47,7 @@ function mapDealToGroceryItem(deal: Deal): GroceryItem {
 function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
   const groups = new Map<string, GroceryItem[]>();
   for (const item of items) {
-    const store = item.dealTag?.store ?? OTHER_ITEMS;
+    const store = item.store ?? OTHER_ITEMS;
     const existing = groups.get(store);
     if (existing) {
       existing.push(item);
@@ -50,14 +59,20 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 }
 
 // Grocery tab — every ingredient from the recipes checked off in Meals,
-// grouped by the store its deal came from (so a shopping trip maps to one
-// section per stop). Ingredients with no flyer deal behind them (pantry
-// staples) fall into "Other items".
+// grouped by the store it's actually available at this week (its own deal,
+// or a real match against the current flyers for non-deal ingredients).
+// A true pantry staple with no flyer presence falls into "Other items"
+// rather than being guessed into whichever store the rest of its recipe
+// happens to be at.
 export function GroceryListView() {
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { selectedDealIds } = useSelectedDeals();
   const [selectedMeals, setSelectedMeals] = useState<Meal[]>([]);
   const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
+  // This week's full deal list, used only to look up which store carries a
+  // non-deal ingredient (e.g. "Watermelon" -> T&T) -- separate from
+  // dealTags/price crediting, see lib/curatedDeals.ts matchItemStore.
+  const [allDeals, setAllDeals] = useState<Deal[]>([]);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   // How many times to make each recipe (1 = the recipe's real serving
   // count as-is, 2 = double the ingredients, etc.) -- multiples of the
@@ -83,6 +98,12 @@ export function GroceryListView() {
       .then(setSelectedDeals)
       .catch(() => setSelectedDeals([]));
   }, [selectedDealIds]);
+
+  useEffect(() => {
+    fetchAllDeals()
+      .then(setAllDeals)
+      .catch(() => setAllDeals([]));
+  }, []);
 
   function toggleChecked(itemKey: string) {
     setChecked((prev) => {
@@ -113,6 +134,12 @@ export function GroceryListView() {
       source: meal.name,
       dealTag: ingredient.dealTag,
       estimatedPrice: ingredient.estimatedPrice,
+      // Only a real match against this week's flyers earns a store --
+      // never guessed from "well you're already buying other stuff at
+      // Store X for this recipe." A true pantry staple with no flyer
+      // presence belongs in "Other items", not implied to be at a store
+      // we have no actual data for.
+      store: ingredient.dealTag?.store ?? matchItemStore(ingredient.name, allDeals),
       multiplier,
     }));
   });

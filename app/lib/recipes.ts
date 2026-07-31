@@ -44,9 +44,13 @@ function mapIngredient(
 ): IngredientLine {
   const text = [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ').trim();
   const dealTag = dealTags.find((tag) => tag.name === ingredient.name);
-  if (dealTag) return { text, dealTag };
+  if (dealTag) return { text, name: ingredient.name, dealTag };
   const staple = matchStaplePrice(ingredient.name, staples);
-  return { text, estimatedPrice: staple ? { avgPrice: staple.avgPrice, unit: staple.unit } : undefined };
+  return {
+    text,
+    name: ingredient.name,
+    estimatedPrice: staple ? { avgPrice: staple.avgPrice, unit: staple.unit } : undefined,
+  };
 }
 
 function mapRowToMeal(
