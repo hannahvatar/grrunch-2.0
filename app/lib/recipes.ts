@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import type { DealTag, IngredientLine, Meal } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
+import { describeDryEquivalent, describeUnitCount } from './unitConversion';
 
 interface RecipeIngredient {
   name: string;
@@ -44,9 +45,22 @@ function mapIngredient(
   producePrices: StaplePrice[],
   staplePrices: StaplePrice[]
 ): IngredientLine {
-  const text = [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ').trim();
+  const dryEquivalent = describeDryEquivalent(ingredient.name, ingredient.quantity, ingredient.unit);
+  const unitCount = describeUnitCount(ingredient.name, ingredient.quantity, ingredient.unit);
+  const rawText = [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ').trim();
+  // "(cooked)" only on the recipe-page text -- a bare "2 cups Rice"
+  // reads as if 2 cups is what to buy, when it's actually the dish's
+  // cooked amount (see describeDryEquivalent). The name itself (used for
+  // deal/price matching) is untouched, so this is display-only.
+  //
+  // unitCount (e.g. "1 Onion" for "150 g Onions"), by contrast, isn't a
+  // different amount the way dry-vs-cooked is -- it's the exact same
+  // quantity in friendlier units, so it replaces `text` everywhere
+  // (recipe page included), not just the grocery list.
+  const text = dryEquivalent ? `${rawText} (cooked)` : unitCount ?? rawText;
+  const groceryText = dryEquivalent ? `${dryEquivalent} ${ingredient.name}` : unitCount;
   const dealTag = dealTags.find((tag) => tag.name === ingredient.name);
-  if (dealTag) return { text, name: ingredient.name, dealTag };
+  if (dealTag) return { text, name: ingredient.name, dealTag, groceryText };
   const match = matchReferencePrice(
     ingredient.name, ingredient.quantity, ingredient.unit,
     statcanPrices, producePrices, staplePrices
@@ -55,6 +69,7 @@ function mapIngredient(
     text,
     name: ingredient.name,
     estimatedPrice: match ? { avgPrice: match.avgPrice, unit: match.unit, source: match.source } : undefined,
+    groceryText,
   };
 }
 

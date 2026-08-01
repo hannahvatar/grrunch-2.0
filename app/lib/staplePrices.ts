@@ -86,6 +86,25 @@ const VARIETY_DESCRIPTORS = new Set([
   'white', 'brown', 'long', 'grain', 'basmati', 'jasmine', 'parboiled', 'instant', 'wild', 'short',
 ]);
 
+// Specific dry pasta shapes all price the same as StatCan's generic "Dry
+// or fresh pasta" reference -- unlike "White rice" (shares the word
+// "rice" with "Rice"), "Spaghetti"/"Macaroni"/"Rigatoni" share NO word
+// at all with "pasta", so this needs a real synonym map rather than a
+// descriptor fallback. Scoped to staple-reference-price matching only --
+// never deal-credit matching (matchItemStore/refresh_recipe_deal_tags'
+// deal loop), which correctly stays literal per architecture item 12:
+// a recipe naming a specific branded pasta on deal should still only
+// match that exact deal, not any pasta-shaped ingredient.
+const STAPLE_ALIASES: Record<string, string> = {
+  spaghetti: 'pasta', spaghettini: 'pasta', macaroni: 'pasta', rigatoni: 'pasta',
+  penne: 'pasta', fusilli: 'pasta', rotini: 'pasta', linguine: 'pasta',
+  fettuccine: 'pasta', farfalle: 'pasta', orzo: 'pasta', ziti: 'pasta', vermicelli: 'pasta',
+};
+
+function aliasWords(words: string[]): string[] {
+  return words.map((word) => STAPLE_ALIASES[word] ?? word);
+}
+
 // Picks the most specific matching staple whose normalized name is fully
 // contained in the ingredient's normalized name -- e.g. "Rice noodles"
 // prefers the "Rice noodles" staple over the more generic "Rice" staple,
@@ -99,19 +118,25 @@ export function matchStaplePrice(
   ingredientName: string,
   staples: StaplePrice[]
 ): StaplePrice | undefined {
-  const ingredientWordsArr = normalizeWords(ingredientName);
+  const ingredientWordsArr = aliasWords(normalizeWords(ingredientName));
   const ingredientWords = new Set(ingredientWordsArr);
   let best: StaplePrice | undefined;
   let bestWordCount = 0;
   for (const staple of staples) {
-    const stapleWords = normalizeWords(staple.ingredientName);
+    const stapleWords = aliasWords(normalizeWords(staple.ingredientName));
     if (stapleWords.length === 0) continue;
     // A reference name that collapses to a single generic word once
-    // "fresh"/"frozen" is stripped (e.g. "Frozen corn" -> "corn") is too
-    // weak a signal to trust here -- it would match ANY ingredient
-    // containing that word, fresh or not, at the wrong product's price.
-    // Only applies to this reference-price fallback, not deal matching.
-    if (stapleWords.length === 1 && /\b(fresh|frozen)\b/i.test(staple.ingredientName)) continue;
+    // "frozen" is stripped (e.g. "Frozen corn" -> "corn") is too weak a
+    // signal to trust here -- it would match ANY ingredient containing
+    // that word, fresh or not, at the wrong product's price. "fresh" is
+    // deliberately NOT included here (unlike the original version of
+    // this guard) -- StatCan's only "fresh"-containing entry is "Dry or
+    // fresh pasta", which is a genuinely generic, trustworthy reference
+    // ("works for either state"), not a narrow variant the way every
+    // "Frozen X" entry is -- excluding it blocked all pasta matching for
+    // no real protective benefit (no "Fresh X"-only entries exist in the
+    // data). Only applies to this reference-price fallback, not deal matching.
+    if (stapleWords.length === 1 && /\bfrozen\b/i.test(staple.ingredientName)) continue;
     if (stapleWords.every((word) => ingredientWords.has(word))) {
       if (stapleWords.length > bestWordCount) {
         best = staple;
@@ -129,7 +154,7 @@ export function matchStaplePrice(
   const descriptorCost = (word: string) => (word === 'white' ? 1 : 2);
   let bestCost = Infinity;
   for (const staple of staples) {
-    const stapleWords = normalizeWords(staple.ingredientName);
+    const stapleWords = aliasWords(normalizeWords(staple.ingredientName));
     if (stapleWords.length === 0) continue;
     const stapleWordSet = new Set(stapleWords);
     if (!ingredientWordsArr.every((word) => stapleWordSet.has(word))) continue;

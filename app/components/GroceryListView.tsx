@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { type Deal, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
+import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
 import type { DealTag, Meal } from '../lib/mealData';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
@@ -130,7 +130,12 @@ export function GroceryListView() {
     const multiplier = multipliers.get(meal.id) ?? 1;
     return meal.ingredients.map((ingredient, index) => ({
       key: `${meal.id}-${index}`,
-      text: ingredient.text,
+      // The grocery list shows what to actually buy, not what the dish
+      // uses once prepared -- for a cooked-yield staple like rice, that's
+      // the dry-equivalent amount (see lib/unitConversion.ts
+      // describeDryEquivalent), not the recipe's cooked-quantity text.
+      // The recipe page keeps showing the cooked text unchanged.
+      text: ingredient.groceryText ?? ingredient.text,
       source: meal.name,
       dealTag: ingredient.dealTag,
       estimatedPrice: ingredient.estimatedPrice,
@@ -284,7 +289,8 @@ export function GroceryListView() {
                       <View style={styles.itemPriceRow}>
                         <Text style={styles.itemPriceValue}>${item.dealTag.price.toFixed(2)}</Text>
                         {item.dealTag.originalPrice != null &&
-                          item.dealTag.originalPrice > item.dealTag.price && (
+                          item.dealTag.originalPrice > item.dealTag.price &&
+                          item.dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
                             <Text style={styles.itemPriceOriginal}>
                               ${item.dealTag.originalPrice.toFixed(2)}
                             </Text>
@@ -296,7 +302,7 @@ export function GroceryListView() {
                         {`$${item.estimatedPrice.avgPrice.toFixed(2)} avg.`}
                       </Text>
                     )}
-                    {item.dealTag && (
+                    {item.dealTag && item.dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
                       <View style={styles.discountBadge}>
                         <Text style={styles.discountBadgeText}>Up to {item.dealTag.discountPct}% off</Text>
                       </View>
