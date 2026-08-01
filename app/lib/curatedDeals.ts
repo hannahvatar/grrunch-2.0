@@ -84,6 +84,17 @@ function normalizeWords(text: string): string[] {
 // generic) words just need to appear within the deal's name, not the
 // other way around. Picks the closest match (deal with the fewest extra
 // words) to reduce ambiguity when a generic name could fit multiple deals.
+//
+// Caps how many extra words the deal can have: a single generic staple
+// word (e.g. "Rice", "Lemon") would otherwise match ANY deal that happens
+// to contain it, however unrelated -- "Rice" matched "Tilda parboiled
+// rice" (a specific branded product, not the staple) and "Lemon" matched
+// "Fuze iced tea Lemon 12-pack" (a beverage, not actual lemons). A real
+// produce match like "Watermelon" -> "Watermelon (Seedless)" only ever
+// has one extra word, so requiring <=1 keeps that case while rejecting
+// the false-positive brand/product matches.
+const MAX_EXTRA_WORDS = 1;
+
 export function matchItemStore(ingredientName: string, deals: Deal[]): string | undefined {
   const ingredientWords = normalizeWords(ingredientName);
   if (ingredientWords.length === 0) return undefined;
@@ -93,7 +104,7 @@ export function matchItemStore(ingredientName: string, deals: Deal[]): string | 
     const dealWords = normalizeWords(deal.itemName);
     if (ingredientWords.every((word) => dealWords.includes(word))) {
       const extra = dealWords.length - ingredientWords.length;
-      if (extra < bestExtraWords) {
+      if (extra <= MAX_EXTRA_WORDS && extra < bestExtraWords) {
         best = deal.chainName;
         bestExtraWords = extra;
       }
