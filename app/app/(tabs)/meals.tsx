@@ -12,20 +12,19 @@ import { useSelectedMeals } from '../../lib/selectedMeals';
 // A recipe's servings are a real, fixed property (however many servings its
 // ingredients actually yield as sold -- not a number the user picks), so
 // there's no "servings per recipe" to derive or edit here anymore. This
-// screen shows every real recipe matching the calorie/protein/price targets
+// screen shows every real recipe matching the calorie/protein targets
 // from Plan your meals; the user checks off which ones they actually want
 // and adds them to their grocery list.
 interface PlanTargets {
   maxCalories?: string;
   minProtein?: string;
-  maxPrice?: string;
 }
 
 // Meal Plan Engine is a pure query against the recipe library -- never a
 // live AI call -- so filtering to targets can legitimately come back with
 // fewer matches than requested. That's an intentional tradeoff (see
 // architecture.md), not a bug: a thinner plan beats silently ignoring the
-// user's calorie/protein/price targets.
+// user's calorie/protein targets.
 //
 // Recipes are persistent and reused week to week, but their deal_tags are
 // re-matched against each new week's curated_deals -- a recipe with none
@@ -35,13 +34,11 @@ interface PlanTargets {
 function eligibleMeals(allMeals: Meal[], targets: PlanTargets = {}): Meal[] {
   const maxCalories = Number(targets.maxCalories);
   const minProtein = Number(targets.minProtein);
-  const maxPrice = Number(targets.maxPrice);
 
   return allMeals.filter((m) => {
     if (m.dealTags.length === 0) return false;
     if (Number.isFinite(maxCalories) && m.calories > maxCalories) return false;
     if (Number.isFinite(minProtein) && m.protein < minProtein) return false;
-    if (Number.isFinite(maxPrice) && m.price > maxPrice) return false;
     return true;
   });
 }
@@ -54,7 +51,6 @@ export default function MealsScreen() {
   const params = useLocalSearchParams<{
     maxCalories?: string;
     minProtein?: string;
-    maxPrice?: string;
   }>();
   const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
@@ -71,7 +67,6 @@ export default function MealsScreen() {
           planIdsFromParams(meals, {
             maxCalories: params.maxCalories,
             minProtein: params.minProtein,
-            maxPrice: params.maxPrice,
           })
         );
       })
@@ -95,16 +90,15 @@ export default function MealsScreen() {
   // tab was mounted earlier.
   useEffect(() => {
     if (allMeals.length === 0) return;
-    if (!params.maxCalories && !params.minProtein && !params.maxPrice) return;
+    if (!params.maxCalories && !params.minProtein) return;
     setPlanMealIds(
       planIdsFromParams(allMeals, {
         maxCalories: params.maxCalories,
         minProtein: params.minProtein,
-        maxPrice: params.maxPrice,
       })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allMeals, params.maxCalories, params.minProtein, params.maxPrice]);
+  }, [allMeals, params.maxCalories, params.minProtein]);
 
   const planMeals = planMealIds
     .map((id) => allMeals.find((m) => m.id === id))
@@ -139,7 +133,7 @@ export default function MealsScreen() {
         {planMeals.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
-              No meals left in your plan. Try loosening your calorie, protein, or price targets, or
+              No meals left in your plan. Try loosening your calorie or protein targets, or
               start over.
             </Text>
           </View>
