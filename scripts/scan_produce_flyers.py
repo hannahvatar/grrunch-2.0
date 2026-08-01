@@ -8,10 +8,14 @@ filter requires a real discount value to consider something a deal
 candidate at all, so price-only items -- common for produce -- never
 even reach Airtable's Deals table today.
 
-For each one found: StatCan is checked first and used to auto-fill +
-resolve the row immediately when it has a match; otherwise the row is
-left blank in "Produce Reference Gaps" for a human to fill in by hand
-(e.g. via grocerytracker.ca).
+For each one found: StatCan is checked first and used to pre-fill the
+Reference Price (scaled to the flyer's own stated quantity when one is
+given, e.g. "2.5 LB") when it has a match; otherwise the row is left
+blank in "Produce Reference Gaps" for a human to fill in by hand (e.g.
+via grocerytracker.ca). Either way, nothing is auto-approved -- a
+StatCan match still waits for Status == "Approved" before
+resolve_produce_gaps() (in sync_weekly_deals.py) treats it as real,
+same as every other reference-price source in this app.
 
 Usage:
     cd scripts && cp .env.example .env   # fill in AIRTABLE_TOKEN,
@@ -286,6 +290,46 @@ def supabase_get_column(table, column):
     return [row[column] for row in data]
 
 
+def extract_flyer_quantity(item_name):
+    """Pulls a trailing "2.5 LB" / "680 G" / "1.36 KG" style quantity out
+    of a flyer item name, if present -- StatCan's own reference price is
+    almost never for the same package size the flyer is actually selling,
+    so this is needed to scale the two onto a comparable basis (see
+    scale_reference_price). Returns (quantity, unit) as strings suitable
+    for that RPC, or (None, None) if no quantity is stated in the name."""
+    match = re.search(r"([\d.]+)\s*(LB|LBS|KG|G|GRAM|GRAMS)\b", item_name, re.IGNORECASE)
+    if not match:
+        return None, None
+    return match.group(1), match.group(2)
+
+
+def scale_reference_price(recipe_quantity, recipe_unit, ingredient_name, ref_price, ref_unit):
+    """Calls the same Postgres scale_reference_price() used for recipe
+    pricing (see supabase/migrations/20260801030000_quantity_aware_staple_pricing.sql)
+    so a StatCan match gets scaled to the flyer's own stated quantity
+    instead of being stored as a raw, incomparable rate. Returns None if
+    the RPC itself returns null (incompatible units, no density bridge)."""
+    body = json.dumps({
+        "recipe_quantity": recipe_quantity,
+        "recipe_unit": recipe_unit,
+        "ingredient_name": ingredient_name,
+        "ref_price": ref_price,
+        "ref_unit": ref_unit,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/rpc/scale_reference_price",
+        data=body, method="POST",
+        headers={
+            "apikey": SERVICE_ROLE,
+            "Authorization": f"Bearer {SERVICE_ROLE}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req) as resp:
+        result = resp.read().decode().strip()
+    return float(result) if result and result != "null" else None
+
+
 def fetch_statcan_prices():
     url = f"{SUPABASE_URL}/rest/v1/statcan_reference_prices?select=ingredient_name,avg_price,unit,reference_month"
     req = urllib.request.Request(url, headers={
@@ -348,13 +392,29 @@ def main():
 
         statcan_match = match_statcan_price(deal["item_name"], statcan_rows)
         if statcan_match:
-            fields["Reference Price SC"] = statcan_match["avg_price"]
-            fields["Unit"] = statcan_match["unit"]
+            flyer_qty, flyer_unit = extract_flyer_quantity(deal["item_name"])
+            if flyer_qty:
+                scaled = scale_reference_price(
+                    flyer_qty, flyer_unit, deal["item_name"],
+                    statcan_match["avg_price"], statcan_match["unit"],
+                )
+            else:
+                scaled = None
+            if scaled is not None:
+                fields["Reference Price SC"] = scaled
+                fields["Unit"] = f"{flyer_qty} {flyer_unit.lower()}"
+            else:
+                # No stated flyer quantity to scale to (or incompatible
+                # units) -- store StatCan's own raw rate/unit as-is rather
+                # than silently dropping a real match; still needs a human
+                # glance before approval either way.
+                fields["Reference Price SC"] = statcan_match["avg_price"]
+                fields["Unit"] = statcan_match["unit"]
             fields["Reference Date"] = statcan_match["reference_month"]
-            fields["Resolved"] = True
             auto_resolved += 1
-        else:
-            fields["Resolved"] = False
+        # Never auto-resolved -- even a StatCan-backed number waits for
+        # Status == "Approved" before it's trusted (same as staples).
+        fields["Resolved"] = False
 
         # typecast lets Airtable add a new option to the "Chain" single-select
         # field automatically, instead of rejecting any chain not already listed.
@@ -372,7 +432,7 @@ def main():
         flagged_names.add(deal["item_name"])
         new_gaps += 1
 
-    print(f"flagged {new_gaps} new price-only produce gaps ({auto_resolved} auto-resolved via StatCan)")
+    print(f"flagged {new_gaps} new price-only produce gaps ({auto_resolved} pre-filled from StatCan, still awaiting approval)")
 
 
 if __name__ == "__main__":

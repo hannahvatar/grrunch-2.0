@@ -25,6 +25,7 @@ import os
 import urllib.parse
 import urllib.request
 import re
+from datetime import date, timedelta
 
 
 def _load_env_file():
@@ -264,25 +265,32 @@ def flag_produce_gaps(usable_records):
 
 
 def resolve_produce_gaps():
-    """Pulls any "Produce Reference Gaps" rows a human has since filled in
-    (the "Anabelle" column -- kept separate from "Reference Price SC" so
-    the source of each number stays traceable: StatCan vs. human-verified)
-    into produce_reference_prices, then marks them Resolved so they stop
-    showing up in Airtable. StatCan-sourced rows never need to flow through
-    here -- they're already resolved at creation time (see flag_produce_gaps)
-    since statcan_reference_prices already has that number.
+    """Pulls any "Produce Reference Gaps" row that's been approved (Status
+    == "Approved" -- same human-approval gate as curated_deals' own
+    "Select" == "Approved" check) into produce_reference_prices, using
+    "Anabelle" (human-sourced) if filled in, otherwise "Reference Price
+    SC" (StatCan-sourced, pre-filled at flagging time but never trusted
+    without approval -- see scan_produce_flyers.py).
 
-    Also requires Status == "Approved" -- the same human-approval gate as
-    curated_deals' own "Select" == "Approved" check, so a filled-in price
-    doesn't get used for this week's recipes until explicitly signed off."""
+    Also pushes a matching curated_deals row: the flyer's own sale price
+    (Price) as price, the now-approved reference price as original_price
+    -- so the item gets a real discount_pct, shows up in Best Deals, and
+    earns proper recipe deal-tag credit / store attribution, instead of
+    sitting as a reference number nobody but this script ever sees.
+    Without this, an item like "NO NAME NATURALLY IMPERFECT SWEET
+    PEPPERS, 2.5 LB" -- a genuine $6 deal with a real StatCan-backed
+    regular price -- never appeared as an actual deal anywhere in the app."""
     gaps = fetch_airtable_table(GAPS_TABLE)
     resolved = 0
     for g in gaps:
         f = g["fields"]
+        price = f.get("Anabelle")
+        if price is None:
+            price = f.get("Reference Price SC")
         if (
             f.get("Resolved")
             or f.get("Status") != "Approved"
-            or f.get("Anabelle") is None
+            or price is None
             or not f.get("Unit")
             or not f.get("Reference Date")
         ):
@@ -291,7 +299,7 @@ def resolve_produce_gaps():
         row = {
             "ingredient_name": f["Item Name"],
             "unit": f["Unit"],
-            "avg_price": f["Anabelle"],
+            "avg_price": price,
             "reference_date": f["Reference Date"],
             "airtable_record_id": g["id"],
         }
@@ -307,6 +315,37 @@ def resolve_produce_gaps():
         )
         with urllib.request.urlopen(req):
             pass
+
+        if f.get("Chain") and f.get("Price") is not None and price > f["Price"]:
+            valid_from = f.get("Week Flagged") or date.today().isoformat()
+            valid_to = (date.fromisoformat(valid_from) + timedelta(days=6)).isoformat()
+            deal_row = {
+                "chain_name": f["Chain"],
+                "item_name": f["Item Name"],
+                "category": "Produce",
+                "price": f["Price"],
+                "original_price": round(price, 2),
+                "product_url": "",
+                "flyer_valid_from": valid_from,
+                "flyer_valid_to": valid_to,
+                "status": "approved",
+                "airtable_record_id": g["id"],
+            }
+            deal_req = urllib.request.Request(
+                f"{SUPABASE_URL}/rest/v1/curated_deals?on_conflict=airtable_record_id",
+                data=json.dumps(deal_row).encode("utf-8"), method="POST",
+                headers={
+                    "apikey": SERVICE_ROLE,
+                    "Authorization": f"Bearer {SERVICE_ROLE}",
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates,return=minimal",
+                },
+            )
+            with urllib.request.urlopen(deal_req):
+                pass
+        # else: the approved reference price isn't actually higher than the
+        # flyer's sale price -- not a real discount, so no deal to push
+        # (still saved to produce_reference_prices above either way).
 
         patch_body = json.dumps({"fields": {"Resolved": True}}).encode("utf-8")
         patch_req = urllib.request.Request(
