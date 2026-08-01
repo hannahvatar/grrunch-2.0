@@ -8,12 +8,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 // No quantity picker: recipes have a real, fixed serving count (the actual
 // yield of their ingredients as sold, not an arbitrary number), so there's
 // nothing to derive a "meals from recipes" ratio from anymore. Meals just
-// shows every recipe matching these nutrition/price targets; the user
+// shows every recipe matching these nutrition targets; the user
 // checks off which ones they want and adds them to their grocery list.
 export default function PlanMealsScreen() {
   const [calories, setCalories] = useState(600);
   const [protein, setProtein] = useState(30);
-  const [pricePerServing, setPricePerServing] = useState(5);
 
   return (
     <View style={styles.container}>
@@ -64,29 +63,6 @@ export default function PlanMealsScreen() {
           <Text style={styles.hint}>Daily rec.: man 56 g · woman 46 g · child 19–34 g</Text>
         </View>
 
-        <Text style={[styles.categoryLabel, styles.categorySpacer]}>Price</Text>
-
-        <View style={styles.sliderBlock}>
-          <View style={styles.sliderHeaderRow}>
-            <Text style={styles.label}>TARGET PRICE PER SERVING</Text>
-            <Text style={styles.sliderValue}>${pricePerServing.toFixed(2)}</Text>
-          </View>
-          <Slider
-            minimumValue={1}
-            maximumValue={10}
-            step={0.25}
-            value={pricePerServing}
-            onValueChange={setPricePerServing}
-            minimumTrackTintColor="#111"
-            maximumTrackTintColor="#ddd"
-          />
-          <View style={styles.sliderBoundsRow}>
-            <Text style={styles.sliderBoundText}>$1.00</Text>
-            <Text style={styles.sliderBoundText}>$10.00</Text>
-          </View>
-          <Text style={styles.hint}>Per person, per meal</Text>
-        </View>
-
         <Text style={styles.footnote}>You can refine these targets anytime in your profile.</Text>
       </ScrollView>
       <View style={styles.footer}>
@@ -98,7 +74,6 @@ export default function PlanMealsScreen() {
               params: {
                 maxCalories: String(calories),
                 minProtein: String(protein),
-                maxPrice: String(pricePerServing),
               },
             })
           }
