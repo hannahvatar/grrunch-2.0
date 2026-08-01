@@ -47,7 +47,10 @@ function mapIngredient(
   const text = [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ').trim();
   const dealTag = dealTags.find((tag) => tag.name === ingredient.name);
   if (dealTag) return { text, name: ingredient.name, dealTag };
-  const match = matchReferencePrice(ingredient.name, statcanPrices, producePrices, staplePrices);
+  const match = matchReferencePrice(
+    ingredient.name, ingredient.quantity, ingredient.unit,
+    statcanPrices, producePrices, staplePrices
+  );
   return {
     text,
     name: ingredient.name,

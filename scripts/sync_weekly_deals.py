@@ -9,6 +9,12 @@ Reference Gaps" -- and pulls back any gap rows a human has since filled
 in, upserting them into Supabase produce_reference_prices. See
 supabase/migrations/20260801000000_produce_reference_prices.sql.
 
+Also pulls approved rows from a third Airtable table, "Staple Reference
+Gaps" (a small, manually-maintained generic staple list -- not
+auto-flagged from anything), into staple_reference_prices as
+checked_by='human_verified'. No AI-guessed prices are trusted in the
+matching chain -- only StatCan or an explicitly human-verified entry.
+
 Usage:
     cd scripts && cp .env.example .env  # fill in AIRTABLE_TOKEN and
                                           # SUPABASE_SERVICE_ROLE_KEY once
@@ -59,6 +65,7 @@ SUPABASE_URL = env("SUPABASE_URL")
 SERVICE_ROLE = env("SUPABASE_SERVICE_ROLE_KEY")
 
 GAPS_TABLE = "Produce Reference Gaps"
+STAPLE_GAPS_TABLE = "Staple Reference Gaps"
 
 # Mirrors normalize_words() in the Postgres function and lib/staplePrices.ts
 # -- same rule everywhere: lowercase, strip punctuation, drop short/generic
@@ -324,6 +331,76 @@ def resolve_produce_gaps():
     print(f"resolved {resolved} produce reference gaps into produce_reference_prices")
 
 
+def resolve_staple_gaps():
+    """Same pattern as resolve_produce_gaps, for the "Staple Reference
+    Gaps" table. Unlike produce, nothing ever gets written to Supabase
+    without first appearing in Airtable for approval -- even a real
+    StatCan number sits in "Reference Price SC" and waits for
+    Status == "Approved" like everything else, rather than syncing
+    straight to Supabase on its own.
+
+    Pulls from "Anabelle" (human-sourced) if filled in, otherwise
+    "Reference Price SC" (StatCan-sourced) -- either way the row is only
+    trusted once approved. checked_by records which source actually won,
+    for traceability. Unlike produce, this table isn't auto-flagged from
+    flyers/recipes -- rows are added manually to a deliberately small,
+    generic staple list."""
+    gaps = fetch_airtable_table(STAPLE_GAPS_TABLE)
+    resolved = 0
+    for g in gaps:
+        f = g["fields"]
+        price = f.get("Anabelle")
+        source = "human_verified"
+        if price is None:
+            price = f.get("Reference Price SC")
+            source = "statcan"
+        if (
+            f.get("Resolved")
+            or f.get("Status") != "Approved"
+            or price is None
+            or not f.get("Unit")
+            or not f.get("Reference Date")
+        ):
+            continue
+
+        row = {
+            "ingredient_name": f["Item Name"],
+            "category": f.get("Category") or "rounding_out_extra",
+            "unit": f["Unit"],
+            "avg_price": price,
+            "last_checked_at": f["Reference Date"],
+            "checked_by": source,
+            "airtable_record_id": g["id"],
+        }
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/staple_reference_prices?on_conflict=airtable_record_id",
+            data=json.dumps(row).encode("utf-8"), method="POST",
+            headers={
+                "apikey": SERVICE_ROLE,
+                "Authorization": f"Bearer {SERVICE_ROLE}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+        )
+        with urllib.request.urlopen(req):
+            pass
+
+        patch_body = json.dumps({"fields": {"Resolved": True}}).encode("utf-8")
+        patch_req = urllib.request.Request(
+            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(STAPLE_GAPS_TABLE)}/{g['id']}",
+            data=patch_body, method="PATCH",
+            headers={
+                "Authorization": f"Bearer {AIRTABLE_TOKEN}",
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(patch_req):
+            pass
+        resolved += 1
+
+    print(f"resolved {resolved} staple reference gaps into staple_reference_prices")
+
+
 def refresh_deal_tags():
     req = urllib.request.Request(
         f"{SUPABASE_URL}/rest/v1/rpc/refresh_recipe_deal_tags",
@@ -343,5 +420,6 @@ if __name__ == "__main__":
     usable = sync_curated_deals(records)
     resolve_produce_gaps()  # pull in any prices filled in since last run first,
     flag_produce_gaps(usable)  # so this week's gap check sees them and skips re-flagging
+    resolve_staple_gaps()
     refresh_deal_tags()
     print("Done -- curated_deals and every recipe's deal_tags now reflect this week's approved deals.")
