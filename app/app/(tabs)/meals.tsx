@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
 import type { Meal } from '../../lib/mealData';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
@@ -169,9 +170,11 @@ export default function MealsScreen() {
                       <Text style={styles.dealTagName} numberOfLines={1}>
                         🏷️ {dealTag.name}
                       </Text>
-                      <View style={styles.dealTagBadge}>
-                        <Text style={styles.dealTagBadgeText}>Up to {dealTag.discountPct}% off</Text>
-                      </View>
+                      {dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+                        <View style={styles.dealTagBadge}>
+                          <Text style={styles.dealTagBadgeText}>Up to {dealTag.discountPct}% off</Text>
+                        </View>
+                      )}
                     </View>
                   ))}
                 </View>

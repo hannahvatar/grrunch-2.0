@@ -271,6 +271,46 @@ def flag_produce_gaps(usable_records):
     print(f"flagged {new_gaps} new price-only produce gaps ({auto_resolved} auto-resolved via StatCan) out of {len(produce_deals)} candidates")
 
 
+def rehost_produce_image(image_field, record_id):
+    """Downloads a Produce Reference Gaps row's flyer cutout (an Airtable
+    attachment -- short-lived signed URL, expires on Airtable's own
+    schedule, not ours) and re-uploads it to the same Supabase Storage
+    bucket the main Deals pipeline's images already live in
+    (deal-thumbnails), so produce-gap deals get a stable, permanent URL
+    exactly like every other curated_deals image instead of one that goes
+    stale between weekly syncs. Best-effort: returns None (not a crash) if
+    there's no image or the fetch/upload fails, since a missing image is a
+    cosmetic gap, not a reason to fail the whole sync."""
+    if not image_field:
+        return None
+    try:
+        src_url = image_field[0]["url"]
+        content_type = image_field[0].get("type", "image/jpeg")
+        ext = ".jpg" if "jpeg" in content_type or "jpg" in content_type else ".png"
+        filename = re.sub(r"[^A-Za-z0-9]+", "_", "produce_" + str(record_id)).strip("_") + ext
+
+        with urllib.request.urlopen(src_url) as resp:
+            image_bytes = resp.read()
+
+        upload_req = urllib.request.Request(
+            f"{SUPABASE_URL}/storage/v1/object/deal-thumbnails/{filename}",
+            data=image_bytes, method="POST",
+            headers={
+                "apikey": SERVICE_ROLE,
+                "Authorization": f"Bearer {SERVICE_ROLE}",
+                "Content-Type": content_type,
+                "x-upsert": "true",
+            },
+        )
+        with urllib.request.urlopen(upload_req):
+            pass
+
+        return f"{SUPABASE_URL}/storage/v1/object/public/deal-thumbnails/{filename}"
+    except Exception as e:
+        print(f"  warning: couldn't re-host image for {record_id}: {e}")
+        return None
+
+
 def resolve_produce_gaps():
     """Pulls any "Produce Reference Gaps" row that's been approved (Status
     == "Approved" -- same human-approval gate as curated_deals' own
@@ -286,46 +326,80 @@ def resolve_produce_gaps():
     sitting as a reference number nobody but this script ever sees.
     Without this, an item like "NO NAME NATURALLY IMPERFECT SWEET
     PEPPERS, 2.5 LB" -- a genuine $6 deal with a real StatCan-backed
-    regular price -- never appeared as an actual deal anywhere in the app."""
+    regular price -- never appeared as an actual deal anywhere in the app.
+
+    A produce gap row is a real deal, not a lesser/reference-only entry --
+    so it must render identically to any other curated_deals item in the
+    grocery list (image, price, discount tag), not fall back to a plain
+    generic-staple line. The "Image" field (flyer cutout, added by
+    scan_produce_flyers.py) is re-hosted to the same Supabase Storage
+    bucket (deal-thumbnails) the main Deals pipeline's images already live
+    in -- see rehost_produce_image() -- rather than storing Airtable's own
+    attachment URL directly, since that URL is a short-lived signed link
+    that expires on Airtable's schedule, not ours.
+
+    The produce_reference_prices sync and the curated_deals push are
+    deliberately NOT gated by the same condition, even though they used
+    to be: "Resolved" means "the reference price has been recorded" --
+    a one-time thing, correctly skipped on repeat runs. But curated_deals
+    is wiped and rebuilt every week by sync_curated_deals() (deals are
+    this-week-only) -- so a produce item resolved in an earlier week (or
+    before this curated_deals-push feature even existed) would otherwise
+    never get its deal row rebuilt, since the row that used to add it was
+    skipped entirely once Resolved. The push now runs for every approved,
+    priced row on every sync, regardless of Resolved."""
     gaps = fetch_airtable_table(GAPS_TABLE)
     resolved = 0
+    deals_pushed = 0
     for g in gaps:
         f = g["fields"]
+        if f.get("Status") != "Approved":
+            continue
         price = f.get("Anabelle")
         if price is None:
             price = f.get("Reference Price SC")
-        if (
-            f.get("Resolved")
-            or f.get("Status") != "Approved"
-            or price is None
-            or not f.get("Unit")
-            or not f.get("Reference Date")
-        ):
+        if price is None or not f.get("Unit") or not f.get("Reference Date"):
             continue
 
-        row = {
-            "ingredient_name": f["Item Name"],
-            "unit": f["Unit"],
-            "avg_price": price,
-            "reference_date": f["Reference Date"],
-            "airtable_record_id": g["id"],
-        }
-        req = urllib.request.Request(
-            f"{SUPABASE_URL}/rest/v1/produce_reference_prices?on_conflict=airtable_record_id",
-            data=json.dumps(row).encode("utf-8"), method="POST",
-            headers={
-                "apikey": SERVICE_ROLE,
-                "Authorization": f"Bearer {SERVICE_ROLE}",
-                "Content-Type": "application/json",
-                "Prefer": "resolution=merge-duplicates,return=minimal",
-            },
-        )
-        with urllib.request.urlopen(req):
-            pass
+        if not f.get("Resolved"):
+            row = {
+                "ingredient_name": f["Item Name"],
+                "unit": f["Unit"],
+                "avg_price": price,
+                "reference_date": f["Reference Date"],
+                "airtable_record_id": g["id"],
+            }
+            req = urllib.request.Request(
+                f"{SUPABASE_URL}/rest/v1/produce_reference_prices?on_conflict=airtable_record_id",
+                data=json.dumps(row).encode("utf-8"), method="POST",
+                headers={
+                    "apikey": SERVICE_ROLE,
+                    "Authorization": f"Bearer {SERVICE_ROLE}",
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates,return=minimal",
+                },
+            )
+            with urllib.request.urlopen(req):
+                pass
 
+            patch_body = json.dumps({"fields": {"Resolved": True}}).encode("utf-8")
+            patch_req = urllib.request.Request(
+                f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(GAPS_TABLE)}/{g['id']}",
+                data=patch_body, method="PATCH",
+                headers={
+                    "Authorization": f"Bearer {AIRTABLE_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+            )
+            with urllib.request.urlopen(patch_req):
+                pass
+            resolved += 1
+
+        # Runs every sync, Resolved or not -- see docstring.
         if f.get("Chain") and f.get("Price") is not None and price > f["Price"]:
             valid_from = f.get("Week Flagged") or date.today().isoformat()
             valid_to = (date.fromisoformat(valid_from) + timedelta(days=6)).isoformat()
+            image_url = rehost_produce_image(f.get("Image"), g["id"])
             deal_row = {
                 "chain_name": f["Chain"],
                 "item_name": f["Item Name"],
@@ -335,6 +409,7 @@ def resolve_produce_gaps():
                 "product_url": "",
                 "flyer_valid_from": valid_from,
                 "flyer_valid_to": valid_to,
+                "image_url": image_url,
                 "status": "approved",
                 "airtable_record_id": g["id"],
             }
@@ -350,13 +425,71 @@ def resolve_produce_gaps():
             )
             with urllib.request.urlopen(deal_req):
                 pass
+            deals_pushed += 1
         # else: the approved reference price isn't actually higher than the
         # flyer's sale price -- not a real discount, so no deal to push
         # (still saved to produce_reference_prices above either way).
 
+    print(f"resolved {resolved} produce reference gaps into produce_reference_prices, pushed {deals_pushed} curated deals")
+
+
+def resolve_staple_gaps():
+    """Same pattern as resolve_produce_gaps, for the "Staple Reference
+    Gaps" table. Unlike produce, nothing ever gets written to Supabase
+    without first appearing in Airtable for approval -- even a real
+    StatCan number sits in "Reference Price SC" and waits for
+    Status == "Approved" like everything else, rather than syncing
+    straight to Supabase on its own.
+
+    Pulls from "Anabelle" (human-sourced) if filled in, otherwise
+    "Reference Price SC" (StatCan-sourced) -- either way the row is only
+    trusted once approved. checked_by records which source actually won,
+    for traceability. Unlike produce, this table isn't auto-flagged from
+    flyers/recipes -- rows are added manually to a deliberately small,
+    generic staple list."""
+    gaps = fetch_airtable_table(STAPLE_GAPS_TABLE)
+    resolved = 0
+    for g in gaps:
+        f = g["fields"]
+        price = f.get("Anabelle")
+        source = "human_verified"
+        if price is None:
+            price = f.get("Reference Price SC")
+            source = "statcan"
+        if (
+            f.get("Resolved")
+            or f.get("Status") != "Approved"
+            or price is None
+            or not f.get("Unit")
+            or not f.get("Reference Date")
+        ):
+            continue
+
+        row = {
+            "ingredient_name": f["Item Name"],
+            "category": f.get("Category") or "rounding_out_extra",
+            "unit": f["Unit"],
+            "avg_price": price,
+            "last_checked_at": f["Reference Date"],
+            "checked_by": source,
+            "airtable_record_id": g["id"],
+        }
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/staple_reference_prices?on_conflict=airtable_record_id",
+            data=json.dumps(row).encode("utf-8"), method="POST",
+            headers={
+                "apikey": SERVICE_ROLE,
+                "Authorization": f"Bearer {SERVICE_ROLE}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+        )
+        with urllib.request.urlopen(req):
+            pass
+
         patch_body = json.dumps({"fields": {"Resolved": True}}).encode("utf-8")
         patch_req = urllib.request.Request(
-            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(GAPS_TABLE)}/{g['id']}",
+            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(STAPLE_GAPS_TABLE)}/{g['id']}",
             data=patch_body, method="PATCH",
             headers={
                 "Authorization": f"Bearer {AIRTABLE_TOKEN}",
@@ -367,7 +500,7 @@ def resolve_produce_gaps():
             pass
         resolved += 1
 
-    print(f"resolved {resolved} produce reference gaps into produce_reference_prices")
+    print(f"resolved {resolved} staple reference gaps into staple_reference_prices")
 
 
 def resolve_staple_gaps():

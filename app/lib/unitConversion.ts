@@ -32,6 +32,16 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   salt: 273,
   'baking soda': 220,
   'baking powder': 192,
+  'chili flakes': 80,
+};
+
+// A recipe stating "cups of rice" as a dish component means cooked rice,
+// not dry rice measured in a cup -- rice roughly triples in volume when
+// cooked, so pricing "2 cups rice" against a dry-rice reference without
+// this correction overcharges ~3x. Deliberately small; only add an entry
+// once actually confirmed, same policy as STAPLE_DENSITIES_G_PER_CUP.
+export const STAPLE_COOKED_YIELD_RATIO: Record<string, number> = {
+  rice: 3,
 };
 
 const STOPWORDS = new Set(['with', 'from', 'each', 'selected', 'variety', 'varieties', 'fresh', 'frozen']);
@@ -71,7 +81,7 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
   }
 
   if (/kilogram|\bkg\b/.test(t)) return { amount: num * 1000, baseUnit: 'g' };
-  if (/gram|\bg\b/.test(t)) return { amount: num, baseUnit: 'g' };
+  if (/gram|\bgr\b|\bg\b/.test(t)) return { amount: num, baseUnit: 'g' };
   if (/pound|\blb\b|\blbs\b/.test(t)) return { amount: num * 453.592, baseUnit: 'g' };
   if (/ounce|\boz\b/.test(t)) return { amount: num * 28.3495, baseUnit: 'g' };
   if (/litre|liter|\bl\b/.test(t)) return { amount: num * 1000, baseUnit: 'ml' };
@@ -80,6 +90,12 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
   if (/teaspoon|\btsp\b/.test(t)) return { amount: num * 4.92892, baseUnit: 'ml' };
   if (/cup/.test(t)) return { amount: num * 236.588, baseUnit: 'ml' };
   if (/dozen/.test(t)) return { amount: num * 12, baseUnit: 'each' };
+  // A garlic clove is a sub-unit of the whole bulb/head that reference
+  // prices are denominated in -- without this, "3 cloves" and "1 bulb"
+  // both collapse to a bare 'each' amount and get divided as if they're
+  // the same unit, pricing 3 cloves as 3 whole bulbs (10x+ too much).
+  // ~10 cloves/bulb is a standard estimate.
+  if (/clove/.test(t)) return { amount: num / 10, baseUnit: 'each' };
   return { amount: num, baseUnit: 'each' };
 }
 
@@ -105,14 +121,25 @@ export function scaleReferencePrice(
   }
 
   const ingWords = normalizeWords(ingredientName);
+
+  let cookedRatio = 1;
+  for (const [yieldName, ratio] of Object.entries(STAPLE_COOKED_YIELD_RATIO)) {
+    const yieldWords = normalizeWords(yieldName);
+    if (yieldWords.length > 0 && yieldWords.every((w) => ingWords.includes(w))) {
+      cookedRatio = ratio;
+      break;
+    }
+  }
+
   for (const [densityName, gramsPerCup] of Object.entries(STAPLE_DENSITIES_G_PER_CUP)) {
     const densityWords = normalizeWords(densityName);
     if (densityWords.length > 0 && densityWords.every((w) => ingWords.includes(w))) {
       if (recipeUa.baseUnit === 'ml' && refUa.baseUnit === 'g') {
-        return round4(refPrice * (((recipeUa.amount / 236.588) * gramsPerCup) / refUa.amount));
+        const dryEquivalentCups = recipeUa.amount / 236.588 / cookedRatio;
+        return round4(refPrice * ((dryEquivalentCups * gramsPerCup) / refUa.amount));
       }
       if (recipeUa.baseUnit === 'g' && refUa.baseUnit === 'ml') {
-        return round4(refPrice * (((recipeUa.amount / gramsPerCup) * 236.588) / refUa.amount));
+        return round4(refPrice * (((recipeUa.amount / gramsPerCup) * cookedRatio * 236.588) / refUa.amount));
       }
     }
   }
@@ -122,4 +149,125 @@ export function scaleReferencePrice(
 
 function round4(n: number): number {
   return Math.round(n * 10000) / 10000;
+}
+
+const CUP_FRACTIONS: Array<[number, string]> = [
+  [1 / 8, '⅛'], [1 / 4, '¼'], [1 / 3, '⅓'], [3 / 8, '⅜'], [1 / 2, '½'],
+  [2 / 3, '⅔'], [3 / 4, '¾'], [5 / 6, '⅚'], [7 / 8, '⅞'],
+];
+
+function formatCups(amount: number): string {
+  const whole = Math.floor(amount);
+  const frac = amount - whole;
+  for (const [value, symbol] of CUP_FRACTIONS) {
+    if (Math.abs(frac - value) < 0.02) {
+      return whole > 0 ? `${whole}${symbol} cups` : `${symbol} cup`;
+    }
+  }
+  if (frac < 0.02) return `${whole} cup${whole === 1 ? '' : 's'}`;
+  const rounded = Math.round(amount * 100) / 100;
+  return `${rounded} cup${rounded === 1 ? '' : 's'}`;
+}
+
+// For grocery-list display only: a recipe's stated quantity for a
+// cooked-yield staple (e.g. "2 cups Rice") is how much the DISH uses
+// once cooked, not what you'd buy off the shelf -- converts to the
+// dry-equivalent amount actually needed, e.g. "2 cups" (cooked rice) ->
+// "⅔ cup (123 g) dry". Independent of any matched reference price/unit,
+// since it only depends on the ingredient's own cooked-yield ratio and
+// (optionally) its dry density -- both keyed by ingredient name, same as
+// scaleReferencePrice's bridging. Returns undefined when no cooked-yield
+// entry matches (most staples, e.g. flour/sugar/oil, aren't cooked-and-
+// expanded) or the recipe's quantity isn't a parseable volume.
+export function describeDryEquivalent(
+  ingredientName: string,
+  recipeQuantity: string | undefined,
+  recipeUnit: string | undefined
+): string | undefined {
+  const ua = parseUnitAmount(recipeQuantity, recipeUnit);
+  if (Number.isNaN(ua.amount) || ua.baseUnit !== 'ml') return undefined;
+
+  const ingWords = normalizeWords(ingredientName);
+  const yieldEntry = Object.entries(STAPLE_COOKED_YIELD_RATIO).find(([name]) => {
+    const words = normalizeWords(name);
+    return words.length > 0 && words.every((w) => ingWords.includes(w));
+  });
+  if (!yieldEntry) return undefined;
+  const [, ratio] = yieldEntry;
+
+  const dryCups = ua.amount / 236.588 / ratio;
+
+  const densityEntry = Object.entries(STAPLE_DENSITIES_G_PER_CUP).find(([name]) => {
+    const words = normalizeWords(name);
+    return words.length > 0 && words.every((w) => ingWords.includes(w));
+  });
+  // Rounded up to the nearest 5 g -- a shopper measuring dry rice off a
+  // kitchen scale doesn't need (or want) single-gram precision, and
+  // rounding up rather than to nearest never understates what to buy.
+  const gramsText = densityEntry ? ` (${roundUpTo5(dryCups * densityEntry[1])} g)` : '';
+
+  return `${formatCups(dryCups)}${gramsText} dry`;
+}
+
+function roundUpTo5(n: number): number {
+  return Math.ceil(n / 5) * 5;
+}
+
+// Staples conventionally bought and measured as whole discrete items (a
+// whole onion, half an onion) rather than by weight -- lets a recipe's
+// gram quantity (needed for accurate pricing, same reasoning as
+// STAPLE_DENSITIES_G_PER_CUP) display as a natural kitchen count
+// instead. Deliberately small; only add an entry once actually
+// confirmed, same policy as the other staple tables.
+// Keyed by the plural form -- normalizeWords doesn't stem ("Onions"
+// normalizes to "onions", not "onion"), and recipe ingredients are
+// consistently written plural ("Onions"), so the singular form used only
+// in the display label wouldn't match here.
+export const STAPLE_UNIT_WEIGHTS_G: Record<string, { gramsPerUnit: number; singular: string; plural: string }> = {
+  onions: { gramsPerUnit: 150, singular: 'Onion', plural: 'Onions' },
+};
+
+// Snaps to a coarse kitchen fraction rather than an oddly precise
+// decimal: quarters or halves below 1 whole unit, halves above it.
+function snapUnitCount(amount: number): number {
+  if (amount <= 1.25) {
+    const candidates = [0.25, 0.5, 1];
+    return candidates.reduce((best, c) => (Math.abs(amount - c) < Math.abs(amount - best) ? c : best));
+  }
+  return Math.round(amount * 2) / 2;
+}
+
+function formatFraction(n: number): string {
+  const whole = Math.floor(n);
+  const frac = n - whole;
+  const fracLabel = frac === 0.25 ? '¼' : frac === 0.5 ? '½' : frac === 0.75 ? '¾' : '';
+  if (whole === 0) return fracLabel || `${n}`;
+  return fracLabel ? `${whole}${fracLabel}` : `${whole}`;
+}
+
+// For grocery-list display only, same role as describeDryEquivalent: a
+// recipe's gram quantity for a whole-unit staple (e.g. "150 g Onions")
+// is what pricing needs, but a shopper thinks in whole onions, not
+// grams -- converts to a natural count like "1 Onion" or "½ Onion".
+// Returns undefined when the ingredient isn't in STAPLE_UNIT_WEIGHTS_G
+// or the recipe's quantity isn't a parseable weight.
+export function describeUnitCount(
+  ingredientName: string,
+  recipeQuantity: string | undefined,
+  recipeUnit: string | undefined
+): string | undefined {
+  const ua = parseUnitAmount(recipeQuantity, recipeUnit);
+  if (Number.isNaN(ua.amount) || ua.baseUnit !== 'g') return undefined;
+
+  const ingWords = normalizeWords(ingredientName);
+  const entry = Object.entries(STAPLE_UNIT_WEIGHTS_G).find(([name]) => {
+    const words = normalizeWords(name);
+    return words.length > 0 && words.every((w) => ingWords.includes(w));
+  });
+  if (!entry) return undefined;
+  const [, { gramsPerUnit, singular, plural }] = entry;
+
+  const count = snapUnitCount(ua.amount / gramsPerUnit);
+  const label = count > 1 ? plural : singular;
+  return `${formatFraction(count)} ${label}`;
 }

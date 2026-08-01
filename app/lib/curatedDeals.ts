@@ -14,6 +14,13 @@ export interface Deal {
 
 const UNCATEGORIZED = 'Other';
 
+// A produce item approved close to (or even slightly below) its own
+// reference price -- e.g. $2.49 vs. a $2.50 reference -- isn't a real
+// markdown, just normal week-to-week price variation. Below this
+// threshold, show the item (image/price/store) without claiming a
+// discount at all, rather than a misleading "Up to 0% off" badge.
+export const MIN_DISPLAYED_DISCOUNT_PCT = 5;
+
 function mapRowToDeal(row: {
   id: string;
   chain_name: string;

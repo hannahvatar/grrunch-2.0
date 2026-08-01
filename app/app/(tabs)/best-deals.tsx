@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { type Deal, fetchAllDeals, groupDealsByCategory } from '../../lib/curatedDeals';
+import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, groupDealsByCategory } from '../../lib/curatedDeals';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 
 // This week's curated flyer deals (Airtable Admin Review Tool, status
@@ -97,11 +97,13 @@ export default function BestDealsScreen() {
                                 <Text style={styles.dealImagePlaceholderIcon}>🏷️</Text>
                               </View>
                             )}
-                            <View style={styles.discountBadge}>
-                              <Text style={styles.discountBadgeText}>
-                                Up to {Math.round(deal.discountPct)}% off
-                              </Text>
-                            </View>
+                            {deal.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+                              <View style={styles.discountBadge}>
+                                <Text style={styles.discountBadgeText}>
+                                  Up to {Math.round(deal.discountPct)}% off
+                                </Text>
+                              </View>
+                            )}
                           </View>
                           <Text style={styles.dealName} numberOfLines={2}>
                             {deal.itemName}
@@ -111,9 +113,11 @@ export default function BestDealsScreen() {
                           </Text>
                           <View style={styles.priceRow}>
                             <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
-                            <Text style={styles.dealOriginalPrice}>
-                              ${deal.originalPrice.toFixed(2)}
-                            </Text>
+                            {deal.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+                              <Text style={styles.dealOriginalPrice}>
+                                ${deal.originalPrice.toFixed(2)}
+                              </Text>
+                            )}
                           </View>
                         </Pressable>
                         <Pressable

@@ -26,6 +26,12 @@ export interface IngredientLine {
   name: string;
   dealTag?: DealTag;
   estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'staple' };
+  // Grocery-list-only override of `text`, for staples the recipe states
+  // in cooked terms (e.g. "2 cups Rice") but that you actually buy dry
+  // (e.g. "⅔ cup (123 g) dry Rice") -- see lib/unitConversion.ts
+  // describeDryEquivalent. The recipe page keeps showing `text` (the
+  // cooked amount the dish/instructions actually use) unchanged.
+  groceryText?: string;
 }
 
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the
