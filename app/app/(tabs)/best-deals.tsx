@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -7,8 +8,12 @@ import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSubscription } from '../../lib/subscription';
 
 // Free tier sees only the first 3 items in each category -- Grrunch Plus
-// (30-day free trial, then $5.99/mo) unlocks the rest.
+// (30-day free trial, then $5.99/mo) unlocks the rest. A couple of the
+// locked ones render dimmed (real image/name/price, no working actions)
+// right in the grid, rather than just disappearing -- shows there's
+// genuinely more there instead of making 3 look like the whole category.
 const FREE_DEALS_PER_CATEGORY = 3;
+const LOCKED_PREVIEW_COUNT = 2;
 
 // This week's curated flyer deals (Airtable Admin Review Tool, status
 // "deals"/"both" -> curated_deals), grouped into collapsible category
@@ -82,6 +87,9 @@ export default function BestDealsScreen() {
             ? categoryDeals
             : categoryDeals.slice(0, FREE_DEALS_PER_CATEGORY);
           const lockedDealCount = categoryDeals.length - visibleDeals.length;
+          const previewDeals = isSubscribed
+            ? []
+            : categoryDeals.slice(FREE_DEALS_PER_CATEGORY, FREE_DEALS_PER_CATEGORY + LOCKED_PREVIEW_COUNT);
           const isExpanded = expandedCategories.has(category);
           return (
             <View key={category} style={styles.categorySection}>
@@ -146,6 +154,40 @@ export default function BestDealsScreen() {
                       </View>
                     );
                   })}
+                  {previewDeals.map((deal) => (
+                    <Pressable
+                      key={deal.id}
+                      style={styles.lockedDealCard}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/upgrade',
+                          params: {
+                            reason: `see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`,
+                          },
+                        })
+                      }
+                    >
+                      {deal.imageUrl ? (
+                        <Image source={{ uri: deal.imageUrl }} style={styles.dealImage} />
+                      ) : (
+                        <View style={[styles.dealImage, styles.dealImagePlaceholder]}>
+                          <Text style={styles.dealImagePlaceholderIcon}>🏷️</Text>
+                        </View>
+                      )}
+                      <Text style={styles.dealName} numberOfLines={2}>
+                        {deal.itemName}
+                      </Text>
+                      <Text style={styles.dealChain} numberOfLines={1}>
+                        {deal.chainName}
+                      </Text>
+                      <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
+                      <View style={styles.lockedOverlay}>
+                        <View style={styles.lockedBadge}>
+                          <Text style={styles.lockedBadgeIcon}>🔒</Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))}
                 </View>
               )}
 
@@ -193,6 +235,34 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 4,
   },
+  lockedDealCard: {
+    width: '47%',
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 14,
+    padding: 10,
+    gap: 4,
+    opacity: 0.45,
+    position: 'relative',
+  },
+  lockedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockedBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockedBadgeIcon: { fontSize: 16 },
   dealImageWrap: { position: 'relative' },
   dealImage: { width: '100%', height: 90, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
