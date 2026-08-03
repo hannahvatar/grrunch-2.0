@@ -18,6 +18,12 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Lets the client auto-detect and complete a session from the URL
+    // fragment on web -- needed for the email confirmation/magic link
+    // flow (see login.tsx), which redirects back with access/refresh
+    // tokens in the URL rather than a code. This SDK check only looks at
+    // window.location, so it's a no-op on native (see login.tsx's own
+    // expo-linking listener for the native equivalent).
+    detectSessionInUrl: true,
   },
 });

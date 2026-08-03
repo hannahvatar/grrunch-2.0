@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AccountBanner } from '../../components/AccountBanner';
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
 import type { Meal } from '../../lib/mealData';
 import { scaleMealToTargets } from '../../lib/mealScaling';
@@ -72,10 +73,7 @@ export default function MealsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.guestBanner}>
-          <Text style={styles.guestBannerText}>Browsing as guest</Text>
-          <Text style={styles.signUpLink}>Sign up</Text>
-        </View>
+        <AccountBanner />
 
         <Text style={styles.title}>Your meal plan</Text>
         <Text style={styles.subtitle}>
@@ -184,16 +182,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { padding: 20, paddingTop: 60, gap: 16 },
-  guestBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F2F2F2',
-    borderRadius: 12,
-    padding: 14,
-  },
-  guestBannerText: { color: '#666' },
-  signUpLink: { fontWeight: '700', textDecorationLine: 'underline' },
   title: { fontSize: 24, fontWeight: '800' },
   subtitle: { fontSize: 13, color: '#888', marginTop: -8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },

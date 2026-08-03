@@ -1,25 +1,25 @@
-// Free vs paid tier limits — architecture.md section 2.5, with two
-// deliberate deviations from what's currently written there: the doc says
-// free tier gets "1 store selection." That was superseded in-session — free
-// now auto-selects all nearest stores same as paid, just can't edit that
-// selection (remove a store or swap a location) without upgrading. storeCount
-// is 6, not 5 — Real Canadian Superstore and No Frills are tracked as two
-// separate chains (separate storefronts/flyers/pricing), not one merged
-// slot. The doc itself hasn't been updated to match either change yet.
+// Free vs paid tier limits -- trimmed to only what's actually enforced
+// somewhere in the app. architecture.md section 2.5 describes a broader
+// paid-tier vision (10 meals vs. 5, multiple household profiles, deal
+// notifications, unlimited swap/regenerate, unlimited saved recipes) --
+// none of those are real gates today: mealCount/householdProfiles/
+// savedRecipesMax used to live here but nothing ever read them, household
+// profiles aren't a built feature at all this pass (see
+// [[project-grrunch-build-status]]), and swap/regenerate/notifications
+// don't exist as features yet either. storeCount was identical between
+// tiers (6, not a real differentiator) and unused outside this file, so
+// it's dropped too -- store editability is the only real free/paid split
+// today (see app/stores.tsx, app/(tabs)/profile.tsx).
+//
+// Add a field back here only once its underlying feature is actually
+// built and something in the app reads it -- otherwise this file quietly
+// drifts from reality again.
 export const TIER_LIMITS = {
   free: {
-    storeCount: 6,
     storesEditable: false,
-    mealCount: 5,
-    householdProfiles: 1,
-    savedRecipesMax: 2,
   },
   paid: {
-    storeCount: 6,
     storesEditable: true,
-    mealCount: 10,
-    householdProfiles: Infinity,
-    savedRecipesMax: Infinity,
   },
 } as const;
 
