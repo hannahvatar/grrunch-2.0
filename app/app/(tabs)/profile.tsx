@@ -7,6 +7,10 @@ import type { Meal } from '../../lib/mealData';
 import { usePersonalTargets } from '../../lib/personalTargets';
 import { fetchRecipesByIds } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
+import { useSelectedStores } from '../../lib/selectedStores';
+import { TIER_LIMITS } from '../../lib/tier';
+
+const storesEditable = TIER_LIMITS.free.storesEditable;
 
 // Not yet detailed in the wireframes beyond Saved recipes — placeholder tab.
 // Grocery list access lives in its own tab (app/(tabs)/grocery.tsx).
@@ -14,6 +18,8 @@ export default function ProfileScreen() {
   const { savedIds, toggleSaved } = useSavedRecipes();
   const [savedMeals, setSavedMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const { stores: myStores, loaded: storesLoaded } = useSelectedStores();
 
   const { targets: personalTargets, loaded: personalTargetsLoaded, setTargets: setPersonalTargets } =
     usePersonalTargets();
@@ -55,11 +61,37 @@ export default function ProfileScreen() {
 
       <View style={styles.headerRow}>
         <Text style={styles.title}>Profile</Text>
-        {/* No settings screen yet -- account settings will nest under here later. */}
-        <Pressable hitSlop={8}>
+        <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
           <Text style={styles.gearIcon}>⚙️</Text>
         </Pressable>
       </View>
+
+      <Text style={styles.sectionTitle}>My stores</Text>
+      {!storesEditable && (
+        <Text style={styles.sectionHint}>Auto-selected from your location · Upgrade to customize</Text>
+      )}
+      {storesLoaded && myStores.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>
+            No stores yet — set your location to find nearby stores.
+          </Text>
+          <Pressable style={styles.smallLinkButton} onPress={() => router.push('/location')}>
+            <Text style={styles.smallLinkButtonText}>Set my location</Text>
+          </Pressable>
+        </View>
+      ) : (
+        myStores.map((store) => (
+          <View key={store.id} style={styles.storeRow}>
+            <View style={styles.storeAvatar}>
+              <Text style={styles.storeAvatarText}>{store.initial}</Text>
+            </View>
+            <View style={styles.storeInfo}>
+              <Text style={styles.storeName}>{store.name}</Text>
+              <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
+            </View>
+          </View>
+        ))
+      )}
 
       <Text style={styles.sectionTitle}>Personal targets</Text>
       <Text style={styles.sectionHint}>
@@ -139,8 +171,6 @@ export default function ProfileScreen() {
           </View>
         ))
       )}
-
-      <Text style={styles.body}>My stores and Settings aren't built yet.</Text>
     </ScrollView>
   );
 }
@@ -176,8 +206,31 @@ const styles = StyleSheet.create({
   saveButtonDisabled: { backgroundColor: '#ddd' },
   saveButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   loadingIndicator: { marginTop: 8 },
-  emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 16 },
+  emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 16, gap: 10 },
   emptyStateText: { color: '#666', fontSize: 14 },
+  smallLinkButton: { alignSelf: 'flex-start' },
+  smallLinkButtonText: { color: '#111', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+  storeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
+  },
+  storeAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storeAvatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  storeInfo: { flex: 1 },
+  storeName: { fontSize: 14, fontWeight: '700' },
+  storeSubtitle: { fontSize: 12, color: '#888', marginTop: 1 },
   savedCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -191,5 +244,4 @@ const styles = StyleSheet.create({
   savedInfo: { flex: 1 },
   savedName: { fontSize: 15, fontWeight: '700' },
   savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
-  body: { fontSize: 14, color: '#888', marginTop: 8 },
 });
