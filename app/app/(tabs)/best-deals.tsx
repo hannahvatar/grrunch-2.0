@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { UpgradeCta } from '../../components/UpgradeCta';
 import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, groupDealsByCategory } from '../../lib/curatedDeals';
 import { useSelectedDeals } from '../../lib/selectedDeals';
+import { useSubscription } from '../../lib/subscription';
+
+// Free tier sees only the first 3 items in each category -- Grrunch Plus
+// (30-day free trial, then $5.99/mo) unlocks the rest.
+const FREE_DEALS_PER_CATEGORY = 3;
 
 // This week's curated flyer deals (Airtable Admin Review Tool, status
 // "deals"/"both" -> curated_deals), grouped into collapsible category
@@ -10,6 +16,7 @@ import { useSelectedDeals } from '../../lib/selectedDeals';
 // can be added straight to the grocery list without going through a
 // recipe.
 export default function BestDealsScreen() {
+  const { isSubscribed } = useSubscription();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -71,6 +78,10 @@ export default function BestDealsScreen() {
 
         {categories.map((category) => {
           const categoryDeals = groups.get(category)!;
+          const visibleDeals = isSubscribed
+            ? categoryDeals
+            : categoryDeals.slice(0, FREE_DEALS_PER_CATEGORY);
+          const lockedDealCount = categoryDeals.length - visibleDeals.length;
           const isExpanded = expandedCategories.has(category);
           return (
             <View key={category} style={styles.categorySection}>
@@ -84,7 +95,7 @@ export default function BestDealsScreen() {
 
               {isExpanded && (
                 <View style={styles.dealsGrid}>
-                  {categoryDeals.map((deal) => {
+                  {visibleDeals.map((deal) => {
                     const isAdded = selectedDealIds.has(deal.id);
                     return (
                       <View key={deal.id} style={styles.dealCard}>
@@ -136,6 +147,10 @@ export default function BestDealsScreen() {
                     );
                   })}
                 </View>
+              )}
+
+              {isExpanded && lockedDealCount > 0 && (
+                <UpgradeCta reason={`see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`} />
               )}
             </View>
           );

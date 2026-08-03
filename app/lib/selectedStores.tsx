@@ -21,8 +21,8 @@ const SelectedStoresContext = createContext<SelectedStoresContextValue | undefin
 // The stores confirmed during onboarding (see app/stores.tsx), persisted
 // locally so Profile > My stores can show them later without re-fetching
 // the nearest-stores Edge Function or asking for location access again.
-// Free tier can't edit this list (see lib/tier.ts storesEditable) -- it's
-// display-only until a paid tier exists.
+// Free tier can't edit this list (see lib/subscription.tsx isSubscribed) --
+// it's display-only until the user is on a Grrunch Plus trial/membership.
 export function SelectedStoresProvider({ children }: { children: ReactNode }) {
   const [stores, setStoresState] = useState<SelectedStore[]>([]);
   const [loaded, setLoaded] = useState(false);

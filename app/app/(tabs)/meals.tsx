@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AccountBanner } from '../../components/AccountBanner';
+import { UpgradeCta } from '../../components/UpgradeCta';
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
 import type { Meal } from '../../lib/mealData';
 import { scaleMealToTargets } from '../../lib/mealScaling';
@@ -10,6 +11,11 @@ import { type PlanTargets, usePlanTargets } from '../../lib/planTargets';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedMeals } from '../../lib/selectedMeals';
+import { useSubscription } from '../../lib/subscription';
+
+// Free tier sees only the first 3 meal recommendations -- Grrunch Plus
+// (30-day free trial, then $5.99/mo) unlocks the rest.
+const FREE_MEAL_LIMIT = 3;
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
 // A recipe's ingredients (and its deal-tagged anchor package) are fixed for
@@ -40,9 +46,18 @@ export default function MealsScreen() {
   const { targets } = usePlanTargets();
   const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
+  const { isSubscribed } = useSubscription();
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+
+  function handleToggleSaved(mealId: string) {
+    if (!isSubscribed) {
+      router.push({ pathname: '/upgrade', params: { reason: 'save recipes' } });
+      return;
+    }
+    toggleSaved(mealId);
+  }
 
   useEffect(() => {
     fetchAllRecipes()
@@ -57,9 +72,11 @@ export default function MealsScreen() {
   }, []);
 
   const planMeals = eligibleMeals(allMeals, targets);
+  const visibleMeals = isSubscribed ? planMeals : planMeals.slice(0, FREE_MEAL_LIMIT);
+  const lockedMealCount = planMeals.length - visibleMeals.length;
 
-  const totalServings = planMeals.reduce((sum, meal) => sum + meal.servings, 0);
-  const totalPrice = planMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);
+  const totalServings = visibleMeals.reduce((sum, meal) => sum + meal.servings, 0);
+  const totalPrice = visibleMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);
   const avgPerServing = totalServings > 0 ? totalPrice / totalServings : 0;
 
   if (loading) {
@@ -77,7 +94,7 @@ export default function MealsScreen() {
 
         <Text style={styles.title}>Your meal plan</Text>
         <Text style={styles.subtitle}>
-          {planMeals.length} recipe{planMeals.length === 1 ? '' : 's'} · {totalServings} serving
+          {visibleMeals.length} recipe{visibleMeals.length === 1 ? '' : 's'} · {totalServings} serving
           {totalServings === 1 ? '' : 's'} total
         </Text>
 
@@ -90,7 +107,7 @@ export default function MealsScreen() {
           </View>
         )}
 
-        {planMeals.map((meal) => (
+        {visibleMeals.map((meal) => (
           <View key={meal.id} style={styles.mealCard}>
             <View style={styles.mealImagePlaceholder}>
               <Text style={styles.mealImageIcon}>🍴</Text>
@@ -99,7 +116,7 @@ export default function MealsScreen() {
                   <Text style={styles.groceryConfirmBadgeText}>✓ Added</Text>
                 </View>
               )}
-              <Pressable style={styles.saveButton} onPress={() => toggleSaved(meal.id)} hitSlop={8}>
+              <Pressable style={styles.saveButton} onPress={() => handleToggleSaved(meal.id)} hitSlop={8}>
                 <Text style={styles.saveButtonIcon}>{savedIds.has(meal.id) ? '❤️' : '🤍'}</Text>
               </Pressable>
             </View>
@@ -161,6 +178,10 @@ export default function MealsScreen() {
             </View>
           </View>
         ))}
+
+        {lockedMealCount > 0 && (
+          <UpgradeCta reason={`see ${lockedMealCount} more matching meal${lockedMealCount === 1 ? '' : 's'}`} />
+        )}
 
         {planMeals.length > 0 && (
           <View style={styles.totalCard}>
