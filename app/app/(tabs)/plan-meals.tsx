@@ -3,16 +3,20 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { usePlanTargets } from '../../lib/planTargets';
+
 // Guest-mode wireframe step 5 — Plan your meals.
 //
-// No quantity picker: recipes have a real, fixed serving count (the actual
-// yield of their ingredients as sold, not an arbitrary number), so there's
-// nothing to derive a "meals from recipes" ratio from anymore. Meals just
-// shows every recipe matching these nutrition targets; the user
-// checks off which ones they want and adds them to their grocery list.
+// No quantity picker: a recipe's ingredients (and its deal-tagged anchor
+// package) are fixed for the whole batch, so there's nothing to derive a
+// "meals from recipes" ratio from anymore. These targets instead choose
+// how many equal servings each matching recipe's batch gets divided into
+// (see lib/mealScaling.ts) -- the user checks off which recipes they want
+// and adds them to their grocery list.
 export default function PlanMealsScreen() {
   const [calories, setCalories] = useState(600);
   const [protein, setProtein] = useState(30);
+  const { setTargets } = usePlanTargets();
 
   return (
     <View style={styles.container}>
@@ -68,15 +72,10 @@ export default function PlanMealsScreen() {
       <View style={styles.footer}>
         <Pressable
           style={styles.primaryButton}
-          onPress={() =>
-            router.replace({
-              pathname: '/(tabs)/meals',
-              params: {
-                maxCalories: String(calories),
-                minProtein: String(protein),
-              },
-            })
-          }
+          onPress={() => {
+            setTargets({ maxCalories: calories, minProtein: protein });
+            router.replace('/(tabs)/meals');
+          }}
         >
           <Text style={styles.primaryButtonText}>Get my meals</Text>
         </Pressable>

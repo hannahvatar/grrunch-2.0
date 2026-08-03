@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { Meal } from '../lib/mealData';
+import { scaleMealToTargets } from '../lib/mealScaling';
+import { usePlanTargets } from '../lib/planTargets';
 import { fetchRecipeById } from '../lib/recipes';
 
 // Recipe detail — presented as a modal over the Meals tab, opened via each
@@ -10,17 +12,23 @@ import { fetchRecipeById } from '../lib/recipes';
 // stays plain/functional like the rest of the guest-mode flow.
 export default function RecipeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [meal, setMeal] = useState<Meal | null | undefined>(undefined);
+  const { targets } = usePlanTargets();
+  const [rawMeal, setRawMeal] = useState<Meal | null | undefined>(undefined);
 
   useEffect(() => {
     if (!id) {
-      setMeal(null);
+      setRawMeal(null);
       return;
     }
     fetchRecipeById(id)
-      .then(setMeal)
-      .catch(() => setMeal(null));
+      .then(setRawMeal)
+      .catch(() => setRawMeal(null));
   }, [id]);
+
+  // Re-derived from the same plan targets that picked this recipe's
+  // serving size on the Meals tab, so the modal shows the same numbers --
+  // not the recipe's raw, un-scaled DB values.
+  const meal = rawMeal ? (scaleMealToTargets(rawMeal, targets) ?? rawMeal) : rawMeal;
 
   if (meal === undefined) {
     return (
