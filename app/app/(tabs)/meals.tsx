@@ -170,9 +170,13 @@ export default function MealsScreen() {
                       <Text style={styles.dealTagName} numberOfLines={1}>
                         🏷️ {dealTag.name}
                       </Text>
-                      {dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+                      {dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
                         <View style={styles.dealTagBadge}>
                           <Text style={styles.dealTagBadgeText}>Up to {dealTag.discountPct}% off</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.fairPriceBadge}>
+                          <Text style={styles.dealTagBadgeText}>Fair price</Text>
                         </View>
                       )}
                     </View>
@@ -292,6 +296,7 @@ const styles = StyleSheet.create({
   dealTagName: { color: '#2C5FD6', fontSize: 12, fontWeight: '600', flexShrink: 1 },
   dealTagBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   dealTagBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   groceryToggleButton: {
     borderWidth: 1,
     borderColor: '#111',
