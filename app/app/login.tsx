@@ -2,29 +2,50 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
 import * as Network from 'expo-network';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { Alert, ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { supabase } from '../lib/supabase';
+
+// makeRedirectUri() is meant to auto-detect web vs. native, but in
+// practice returned the native grrunch:// scheme even when called from
+// the web build -- so this checks Platform.OS directly instead of
+// trusting that detection, which matters a lot here: a native-scheme
+// redirect is meaningless to a browser (or an email client's "open link"
+// action opening one), so getting this wrong makes the confirmation link
+// silently fail rather than error clearly.
+function getRedirectUri(): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return makeRedirectUri();
+}
 
 // Guest-mode wireframe step 2 — Sign up / Log in.
 // Apple, Google, and email are all wired to real Supabase auth now. Apple
 // uses the real native "Sign in with Apple" system sheet (Face ID / account
 // picker) via expo-apple-authentication -- that sheet is Apple's own UI, not
 // something to rebuild in React Native. Google uses Supabase's OAuth
-// redirect flow via expo-web-browser. Email uses a one-time code (not a
-// magic link) so completing sign-in never depends on deep-link handling --
-// the same request both creates the account and signs in, so there's no
-// separate "log in" form to build.
+// redirect flow via expo-web-browser. Email uses Supabase's own confirmation
+// link (not a one-time code) -- the project's free tier locks email
+// template editing behind custom SMTP, which isn't set up, so the code
+// variable ({{ .Token }}) never actually appears in the email that gets
+// sent. The link approach needs no template changes: it's completed via
+// detectSessionInUrl on web (see lib/supabase.ts) and the deep-link
+// listener below on native. Same request both creates the account and
+// signs in, so there's no separate "log in" form to build.
 //
-// Apple and Google will genuinely fail (a real, honest Supabase error, not
-// a bug) until their providers are configured in the Supabase dashboard --
-// Apple needs a Services ID/Team ID/key from an Apple Developer account,
-// Google needs an OAuth client ID/secret from Google Cloud Console. Neither
-// can be done from here; both are dashboard/console steps only Anabelle can
-// complete.
+// Apple, Google, and email all need one thing from the Supabase dashboard
+// before they'll fully work end to end, none of which can be done from
+// here: Apple needs a Services ID/Team ID/key from an Apple Developer
+// account (Auth > Providers > Apple); Google needs an OAuth client
+// ID/secret from Google Cloud Console (Auth > Providers > Google); email's
+// redirect target (see makeRedirectUri() below) needs to be added to
+// Auth > URL Configuration > Redirect URLs, or Supabase will reject the
+// confirmation link as an untrusted redirect.
 WebBrowser.maybeCompleteAuthSession();
 
 // Real connectivity check (expo-network works in Expo Go, unlike
@@ -48,11 +69,12 @@ export default function LoginScreen() {
   // shows the same banner.
   const [cancelledMessage, setCancelledMessage] = useState<string | null>(null);
 
-  // Email is a two-step flow: request a one-time code, then verify it --
-  // otpSent switches the form from the email step to the code step.
+  // emailSent switches the form from "enter your email" to "check your
+  // email" -- sign-in itself completes later, out of band, when the
+  // confirmation link is tapped (see the deep-link listener below and
+  // lib/supabase.ts's detectSessionInUrl for the web case).
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
 
@@ -60,6 +82,26 @@ export default function LoginScreen() {
     AppleAuthentication.isAvailableAsync()
       .then(setAppleAuthAvailable)
       .catch(() => setAppleAuthAvailable(false));
+  }, []);
+
+  // Native equivalent of lib/supabase.ts's detectSessionInUrl (which only
+  // handles web, since it reads window.location) -- the confirmation link
+  // opens the app via its grrunch:// scheme with the session tokens in the
+  // URL, which the Supabase JS SDK never sees on its own there.
+  useEffect(() => {
+    const subscription = Linking.addEventListener('url', async ({ url }) => {
+      const parsed = Linking.parse(url);
+      const fragment = url.split('#')[1];
+      const fromFragment = fragment ? new URLSearchParams(fragment) : null;
+      const accessToken =
+        (parsed.queryParams?.access_token as string | undefined) ?? fromFragment?.get('access_token');
+      const refreshToken =
+        (parsed.queryParams?.refresh_token as string | undefined) ?? fromFragment?.get('refresh_token');
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      }
+    });
+    return () => subscription.remove();
   }, []);
 
   async function handleAppleSignIn() {
@@ -118,7 +160,7 @@ export default function LoginScreen() {
       router.push('/offline');
       return;
     }
-    const redirectTo = makeRedirectUri();
+    const redirectTo = getRedirectUri();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo, skipBrowserRedirect: true },
@@ -175,30 +217,16 @@ export default function LoginScreen() {
     if (!email.trim()) return;
     setEmailError(null);
     setEmailLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
-    setEmailLoading(false);
-    if (error) {
-      setEmailError(error.message);
-      return;
-    }
-    setOtpSent(true);
-  }
-
-  async function handleVerifyCode() {
-    if (!code.trim()) return;
-    setEmailError(null);
-    setEmailLoading(true);
-    const { error } = await supabase.auth.verifyOtp({
+    const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      token: code.trim(),
-      type: 'email',
+      options: { emailRedirectTo: getRedirectUri() },
     });
     setEmailLoading(false);
     if (error) {
       setEmailError(error.message);
       return;
     }
-    router.push('/location');
+    setEmailSent(true);
   }
 
   // Expo Go (and web) can't run the real native module, so there's no real
@@ -263,32 +291,18 @@ export default function LoginScreen() {
         </View>
       )}
 
-      {otpSent ? (
-        <>
-          <Text style={styles.otpHint}>Enter the code we emailed to {email}.</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="123456"
-            placeholderTextColor="#999"
-            keyboardType="number-pad"
-            value={code}
-            onChangeText={setCode}
-          />
-          <Pressable
-            style={[styles.primaryButton, emailLoading && styles.primaryButtonDisabled]}
-            onPress={handleVerifyCode}
-            disabled={emailLoading}
-          >
-            {emailLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Verify code</Text>
-            )}
-          </Pressable>
-          <Pressable onPress={() => setOtpSent(false)}>
-            <Text style={styles.loginPrompt}>Use a different email</Text>
-          </Pressable>
-        </>
+      {emailSent ? (
+        <View style={styles.statusBanner}>
+          <Text style={styles.statusBannerIcon}>✉️</Text>
+          <View style={styles.emailSentTextBlock}>
+            <Text style={styles.statusBannerText}>
+              We sent a confirmation link to {email}. Open it to finish signing in.
+            </Text>
+            <Pressable onPress={() => setEmailSent(false)}>
+              <Text style={styles.loginPrompt}>Use a different email</Text>
+            </Pressable>
+          </View>
+        </View>
       ) : (
         <>
           <TextInput
@@ -366,8 +380,8 @@ const styles = StyleSheet.create({
   },
   primaryButtonDisabled: { opacity: 0.6 },
   primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  otpHint: { fontSize: 14, color: '#666' },
-  loginPrompt: { textAlign: 'center', color: '#666', marginTop: 4, textDecorationLine: 'underline' },
+  emailSentTextBlock: { flex: 1, gap: 6 },
+  loginPrompt: { color: '#666', textDecorationLine: 'underline' },
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 12 },
   guestButton: { alignItems: 'center', gap: 4 },
   guestText: { fontSize: 16, color: '#333' },
