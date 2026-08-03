@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AccountBanner } from '../../components/AccountBanner';
-import { UpgradeCta } from '../../components/UpgradeCta';
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
 import type { Meal } from '../../lib/mealData';
 import { scaleMealToTargets } from '../../lib/mealScaling';
@@ -14,12 +13,10 @@ import { useSelectedMeals } from '../../lib/selectedMeals';
 import { useSubscription } from '../../lib/subscription';
 
 // Free tier sees only the first 3 meal recommendations -- Grrunch Plus
-// (30-day free trial, then $5.99/mo) unlocks the rest. A couple of the
-// locked ones render dimmed (real name/image, no working actions) right
-// after, rather than just disappearing -- shows there's genuinely more
-// there instead of making 3 look like the whole list.
+// (30-day free trial, then $5.99/mo) unlocks the rest. A single "Unlock N
+// more recipes" tile stands in for however many are left, naming the real
+// count rather than a generic upsell.
 const FREE_MEAL_LIMIT = 3;
-const LOCKED_PREVIEW_COUNT = 2;
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
 // A recipe's ingredients (and its deal-tagged anchor package) are fixed for
@@ -78,9 +75,6 @@ export default function MealsScreen() {
   const planMeals = eligibleMeals(allMeals, targets);
   const visibleMeals = isSubscribed ? planMeals : planMeals.slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = planMeals.length - visibleMeals.length;
-  const previewMeals = isSubscribed
-    ? []
-    : planMeals.slice(FREE_MEAL_LIMIT, FREE_MEAL_LIMIT + LOCKED_PREVIEW_COUNT);
 
   const totalServings = visibleMeals.reduce((sum, meal) => sum + meal.servings, 0);
   const totalPrice = visibleMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);
@@ -186,10 +180,9 @@ export default function MealsScreen() {
           </View>
         ))}
 
-        {previewMeals.map((meal) => (
+        {lockedMealCount > 0 && (
           <Pressable
-            key={meal.id}
-            style={styles.lockedMealCard}
+            style={styles.unlockCard}
             onPress={() =>
               router.push({
                 pathname: '/upgrade',
@@ -197,31 +190,12 @@ export default function MealsScreen() {
               })
             }
           >
-            <View style={styles.mealImagePlaceholder}>
-              <Text style={styles.mealImageIcon}>🍴</Text>
-            </View>
-            <View style={styles.mealCardBody}>
-              <View style={styles.mealHeaderRow}>
-                <Text style={styles.mealName}>{meal.name}</Text>
-                <View style={styles.priceBlock}>
-                  <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
-                  <Text style={styles.perServing}>/ serving</Text>
-                </View>
-              </View>
-              <Text style={styles.mealTime}>
-                🕐 {meal.minutes} min · makes {meal.servings} serving{meal.servings === 1 ? '' : 's'}
-              </Text>
-            </View>
-            <View style={styles.lockedOverlay}>
-              <View style={styles.lockedBadge}>
-                <Text style={styles.lockedBadgeIcon}>🔒</Text>
-              </View>
-            </View>
+            <Text style={styles.unlockIcon}>🔒</Text>
+            <Text style={styles.unlockTitle}>
+              Unlock {lockedMealCount} more recipe{lockedMealCount === 1 ? '' : 's'}
+            </Text>
+            <Text style={styles.unlockSubtitle}>Start your 30-day free trial · Then $5.99/mo</Text>
           </Pressable>
-        ))}
-
-        {lockedMealCount > 0 && (
-          <UpgradeCta reason={`see ${lockedMealCount} more matching meal${lockedMealCount === 1 ? '' : 's'}`} />
         )}
 
         {planMeals.length > 0 && (
@@ -249,32 +223,18 @@ const styles = StyleSheet.create({
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
   mealCard: { borderWidth: 1, borderColor: '#eee', borderRadius: 14, overflow: 'hidden' },
-  lockedMealCard: {
+  unlockCard: {
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#111',
     borderRadius: 14,
-    overflow: 'hidden',
-    opacity: 0.45,
-    position: 'relative',
-  },
-  lockedOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
   },
-  lockedBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#111',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockedBadgeIcon: { fontSize: 18 },
+  unlockIcon: { fontSize: 22, marginBottom: 4 },
+  unlockTitle: { fontSize: 16, fontWeight: '800', textAlign: 'center' },
+  unlockSubtitle: { fontSize: 13, color: '#888', textAlign: 'center' },
   mealImagePlaceholder: {
     height: 100,
     backgroundColor: '#F2F2F2',

@@ -2,18 +2,15 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { UpgradeCta } from '../../components/UpgradeCta';
 import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, groupDealsByCategory } from '../../lib/curatedDeals';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSubscription } from '../../lib/subscription';
 
 // Free tier sees only the first 3 items in each category -- Grrunch Plus
-// (30-day free trial, then $5.99/mo) unlocks the rest. A couple of the
-// locked ones render dimmed (real image/name/price, no working actions)
-// right in the grid, rather than just disappearing -- shows there's
-// genuinely more there instead of making 3 look like the whole category.
+// (30-day free trial, then $5.99/mo) unlocks the rest. A single "Unlock N
+// more deals" tile stands in for however many are left, naming the real
+// count rather than a generic upsell.
 const FREE_DEALS_PER_CATEGORY = 3;
-const LOCKED_PREVIEW_COUNT = 2;
 
 // This week's curated flyer deals (Airtable Admin Review Tool, status
 // "deals"/"both" -> curated_deals), grouped into collapsible category
@@ -87,9 +84,6 @@ export default function BestDealsScreen() {
             ? categoryDeals
             : categoryDeals.slice(0, FREE_DEALS_PER_CATEGORY);
           const lockedDealCount = categoryDeals.length - visibleDeals.length;
-          const previewDeals = isSubscribed
-            ? []
-            : categoryDeals.slice(FREE_DEALS_PER_CATEGORY, FREE_DEALS_PER_CATEGORY + LOCKED_PREVIEW_COUNT);
           const isExpanded = expandedCategories.has(category);
           return (
             <View key={category} style={styles.categorySection}>
@@ -154,10 +148,9 @@ export default function BestDealsScreen() {
                       </View>
                     );
                   })}
-                  {previewDeals.map((deal) => (
+                  {lockedDealCount > 0 && (
                     <Pressable
-                      key={deal.id}
-                      style={styles.lockedDealCard}
+                      style={styles.unlockCard}
                       onPress={() =>
                         router.push({
                           pathname: '/upgrade',
@@ -167,32 +160,14 @@ export default function BestDealsScreen() {
                         })
                       }
                     >
-                      {deal.imageUrl ? (
-                        <Image source={{ uri: deal.imageUrl }} style={styles.dealImage} />
-                      ) : (
-                        <View style={[styles.dealImage, styles.dealImagePlaceholder]}>
-                          <Text style={styles.dealImagePlaceholderIcon}>🏷️</Text>
-                        </View>
-                      )}
-                      <Text style={styles.dealName} numberOfLines={2}>
-                        {deal.itemName}
+                      <Text style={styles.unlockIcon}>🔒</Text>
+                      <Text style={styles.unlockTitle}>
+                        Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
                       </Text>
-                      <Text style={styles.dealChain} numberOfLines={1}>
-                        {deal.chainName}
-                      </Text>
-                      <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
-                      <View style={styles.lockedOverlay}>
-                        <View style={styles.lockedBadge}>
-                          <Text style={styles.lockedBadgeIcon}>🔒</Text>
-                        </View>
-                      </View>
+                      <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo</Text>
                     </Pressable>
-                  ))}
+                  )}
                 </View>
-              )}
-
-              {isExpanded && lockedDealCount > 0 && (
-                <UpgradeCta reason={`see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`} />
               )}
             </View>
           );
@@ -235,34 +210,19 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 4,
   },
-  lockedDealCard: {
+  unlockCard: {
     width: '47%',
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#111',
     borderRadius: 14,
-    padding: 10,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
-    opacity: 0.45,
-    position: 'relative',
   },
-  lockedOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockedBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#111',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockedBadgeIcon: { fontSize: 16 },
+  unlockIcon: { fontSize: 20, marginBottom: 2 },
+  unlockTitle: { fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  unlockSubtitle: { fontSize: 11, color: '#888', textAlign: 'center' },
   dealImageWrap: { position: 'relative' },
   dealImage: { width: '100%', height: 90, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
