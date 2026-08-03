@@ -1,8 +1,9 @@
 import Slider from '@react-native-community/slider';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { usePersonalTargets } from '../../lib/personalTargets';
 import { usePlanTargets } from '../../lib/planTargets';
 
 // Guest-mode wireframe step 5 — Plan your meals.
@@ -14,9 +15,23 @@ import { usePlanTargets } from '../../lib/planTargets';
 // (see lib/mealScaling.ts) -- the user checks off which recipes they want
 // and adds them to their grocery list.
 export default function PlanMealsScreen() {
+  const { targets: personalTargets, loaded: personalTargetsLoaded } = usePersonalTargets();
+  const { setTargets } = usePlanTargets();
   const [calories, setCalories] = useState(600);
   const [protein, setProtein] = useState(30);
-  const { setTargets } = usePlanTargets();
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Pre-fill from the user's saved default (Profile > Personal targets)
+  // once it's actually loaded from storage, rather than always starting at
+  // a hardcoded 600/30. Only runs once -- freely adjusting these sliders
+  // for a single plan shouldn't keep getting reset back to the default.
+  useEffect(() => {
+    if (personalTargetsLoaded && !prefilled) {
+      setCalories(personalTargets.calories);
+      setProtein(personalTargets.protein);
+      setPrefilled(true);
+    }
+  }, [personalTargetsLoaded, personalTargets, prefilled]);
 
   return (
     <View style={styles.container}>
