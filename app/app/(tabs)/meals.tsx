@@ -1,25 +1,22 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
 import type { Meal } from '../../lib/mealData';
+import { scaleMealToTargets } from '../../lib/mealScaling';
+import { type PlanTargets, usePlanTargets } from '../../lib/planTargets';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedMeals } from '../../lib/selectedMeals';
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
-// A recipe's servings are a real, fixed property (however many servings its
-// ingredients actually yield as sold -- not a number the user picks), so
-// there's no "servings per recipe" to derive or edit here anymore. This
-// screen shows every real recipe matching the calorie/protein targets
-// from Plan your meals; the user checks off which ones they actually want
-// and adds them to their grocery list.
-interface PlanTargets {
-  maxCalories?: string;
-  minProtein?: string;
-}
-
+// A recipe's ingredients (and its deal-tagged anchor package) are fixed for
+// the whole batch, so there's no "servings per recipe" to arbitrarily pick.
+// What the Plan tab's calorie/protein targets actually choose is how many
+// equal servings that batch is divided into (see lib/mealScaling.ts) --
+// this screen shows every recipe for which some such split exists.
+//
 // Meal Plan Engine is a pure query against the recipe library -- never a
 // live AI call -- so filtering to targets can legitimately come back with
 // fewer matches than requested. That's an intentional tradeoff (see
@@ -31,45 +28,24 @@ interface PlanTargets {
 // of its ingredients currently on sale stops surfacing here entirely
 // (rather than showing at regular price) until one of them is on sale
 // again, since the app's whole value prop is deal-driven meal planning.
-function eligibleMeals(allMeals: Meal[], targets: PlanTargets = {}): Meal[] {
-  const maxCalories = Number(targets.maxCalories);
-  const minProtein = Number(targets.minProtein);
-
-  return allMeals.filter((m) => {
-    if (m.dealTags.length === 0) return false;
-    if (Number.isFinite(maxCalories) && m.calories > maxCalories) return false;
-    if (Number.isFinite(minProtein) && m.protein < minProtein) return false;
-    return true;
-  });
-}
-
-function planIdsFromParams(allMeals: Meal[], targets: PlanTargets = {}): string[] {
-  return eligibleMeals(allMeals, targets).map((m) => m.id);
+function eligibleMeals(allMeals: Meal[], targets: PlanTargets): Meal[] {
+  return allMeals
+    .filter((m) => m.dealTags.length > 0)
+    .map((m) => scaleMealToTargets(m, targets))
+    .filter((m): m is Meal => m !== null);
 }
 
 export default function MealsScreen() {
-  const params = useLocalSearchParams<{
-    maxCalories?: string;
-    minProtein?: string;
-  }>();
+  const { targets } = usePlanTargets();
   const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [planMealIds, setPlanMealIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchAllRecipes()
-      .then((meals) => {
-        setAllMeals(meals);
-        setPlanMealIds(
-          planIdsFromParams(meals, {
-            maxCalories: params.maxCalories,
-            minProtein: params.minProtein,
-          })
-        );
-      })
+      .then(setAllMeals)
       .catch(() => {
         router.replace({
           pathname: '/error',
@@ -77,32 +53,9 @@ export default function MealsScreen() {
         });
       })
       .finally(() => setLoading(false));
-    // Only ever runs once on mount -- the plan-reapply effect below handles
-    // subsequent param changes without re-fetching.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tab screens stay mounted when you switch tabs (they don't remount), so
-  // if this screen was ever visited before "Get my meals" was pressed, the
-  // useState initializer above already ran against stale params and won't
-  // re-run on its own. This effect re-applies the plan whenever the targets
-  // actually change, so pressing the button always takes effect even if the
-  // tab was mounted earlier.
-  useEffect(() => {
-    if (allMeals.length === 0) return;
-    if (!params.maxCalories && !params.minProtein) return;
-    setPlanMealIds(
-      planIdsFromParams(allMeals, {
-        maxCalories: params.maxCalories,
-        minProtein: params.minProtein,
-      })
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allMeals, params.maxCalories, params.minProtein]);
-
-  const planMeals = planMealIds
-    .map((id) => allMeals.find((m) => m.id === id))
-    .filter((m): m is Meal => m !== undefined);
+  const planMeals = eligibleMeals(allMeals, targets);
 
   const totalServings = planMeals.reduce((sum, meal) => sum + meal.servings, 0);
   const totalPrice = planMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);

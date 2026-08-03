@@ -4,6 +4,8 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
 import type { DealTag, Meal } from '../lib/mealData';
+import { scaleMealToTargets } from '../lib/mealScaling';
+import { usePlanTargets } from '../lib/planTargets';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
@@ -67,7 +69,8 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 export function GroceryListView() {
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { selectedDealIds } = useSelectedDeals();
-  const [selectedMeals, setSelectedMeals] = useState<Meal[]>([]);
+  const { targets } = usePlanTargets();
+  const [rawSelectedMeals, setRawSelectedMeals] = useState<Meal[]>([]);
   const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
   // This week's full deal list, used only to look up which store carries a
   // non-deal ingredient (e.g. "Watermelon" -> T&T) -- separate from
@@ -81,13 +84,21 @@ export function GroceryListView() {
 
   useEffect(() => {
     if (selectedIds.size === 0) {
-      setSelectedMeals([]);
+      setRawSelectedMeals([]);
       return;
     }
     fetchRecipesByIds(Array.from(selectedIds))
-      .then(setSelectedMeals)
-      .catch(() => setSelectedMeals([]));
+      .then(setRawSelectedMeals)
+      .catch(() => setRawSelectedMeals([]));
   }, [selectedIds]);
+
+  // Re-derived from the same plan targets used on the Meals tab, so a
+  // recipe's serving size/price/nutrition here matches what the user
+  // actually picked -- not the recipe's raw, un-scaled DB values. Falls
+  // back to the raw meal if no split satisfies the current targets (e.g.
+  // the targets changed since this recipe was added), rather than
+  // silently dropping an item the user explicitly selected.
+  const selectedMeals = rawSelectedMeals.map((m) => scaleMealToTargets(m, targets) ?? m);
 
   useEffect(() => {
     if (selectedDealIds.size === 0) {
