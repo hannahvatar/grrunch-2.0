@@ -97,11 +97,15 @@ export default function BestDealsScreen() {
                                 <Text style={styles.dealImagePlaceholderIcon}>🏷️</Text>
                               </View>
                             )}
-                            {deal.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+                            {deal.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
                               <View style={styles.discountBadge}>
                                 <Text style={styles.discountBadgeText}>
                                   Up to {Math.round(deal.discountPct)}% off
                                 </Text>
+                              </View>
+                            ) : (
+                              <View style={styles.fairPriceBadge}>
+                                <Text style={styles.discountBadgeText}>Fair price</Text>
                               </View>
                             )}
                           </View>
@@ -188,6 +192,15 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  fairPriceBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: '#E8B800',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
   dealName: { fontSize: 13, fontWeight: '700', marginTop: 4, minHeight: 34 },
   dealChain: { fontSize: 11, color: '#999' },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },

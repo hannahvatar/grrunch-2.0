@@ -302,10 +302,16 @@ export function GroceryListView() {
                         {`$${item.estimatedPrice.avgPrice.toFixed(2)} avg.`}
                       </Text>
                     )}
-                    {item.dealTag && item.dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
-                      <View style={styles.discountBadge}>
-                        <Text style={styles.discountBadgeText}>Up to {item.dealTag.discountPct}% off</Text>
-                      </View>
+                    {item.dealTag && (
+                      item.dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
+                        <View style={styles.discountBadge}>
+                          <Text style={styles.discountBadgeText}>Up to {item.dealTag.discountPct}% off</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.fairPriceBadge}>
+                          <Text style={styles.fairPriceBadgeText}>Fair price</Text>
+                        </View>
+                      )
                     )}
                   </View>
                 </View>
@@ -403,6 +409,8 @@ const styles = StyleSheet.create({
   itemPriceEstimated: { fontSize: 12, color: '#888' },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  fairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
   multiplierBadge: { backgroundColor: '#F2F2F2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   multiplierBadgeText: { color: '#666', fontSize: 11, fontWeight: '800' },
   iconButton: { fontSize: 14, color: '#999', paddingHorizontal: 4 },
