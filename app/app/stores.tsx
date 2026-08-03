@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useSelectedStores } from '../lib/selectedStores';
 import { supabase } from '../lib/supabase';
 import { TIER_LIMITS } from '../lib/tier';
 
@@ -49,6 +50,7 @@ function showUpgradePrompt() {
 export default function StoresScreen() {
   const { lat, lng } = useLocalSearchParams<{ lat?: string; lng?: string }>();
   const hasLocation = typeof lat === 'string' && typeof lng === 'string';
+  const { setStores: setSelectedStores } = useSelectedStores();
 
   const [loading, setLoading] = useState(hasLocation);
   const [stores, setStores] = useState<DisplayStore[]>([]);
@@ -107,6 +109,21 @@ export default function StoresScreen() {
   }, [hasLocation, lat, lng]);
 
   function goToPlanMeals() {
+    router.push('/plan-meals');
+  }
+
+  // Only persists on the deliberate "Track all N stores" confirmation, not
+  // on "Skip for now" -- Profile > My stores should only ever show a real,
+  // confirmed selection, never an unconfirmed fetch result.
+  function confirmStores() {
+    setSelectedStores(
+      stores.map((store) => ({
+        id: store.id,
+        initial: store.initial,
+        name: store.name,
+        subtitle: store.subtitle,
+      }))
+    );
     router.push('/plan-meals');
   }
 
@@ -172,7 +189,7 @@ export default function StoresScreen() {
         ))}
       </ScrollView>
       <View style={styles.footer}>
-        <Pressable style={styles.primaryButton} onPress={goToPlanMeals}>
+        <Pressable style={styles.primaryButton} onPress={confirmStores}>
           <Text style={styles.primaryButtonText}>Track all {stores.length} stores</Text>
         </Pressable>
         {!storesEditable && (
