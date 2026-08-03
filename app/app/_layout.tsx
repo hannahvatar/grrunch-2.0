@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SupportBubble } from '../components/SupportBubble';
+import { AuthProvider } from '../lib/auth';
 import { PersonalTargetsProvider } from '../lib/personalTargets';
 import { PlanTargetsProvider } from '../lib/planTargets';
 import { SavedRecipesProvider } from '../lib/savedRecipes';
@@ -17,48 +18,50 @@ import { SelectedStoresProvider } from '../lib/selectedStores';
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <PersonalTargetsProvider>
-        <SelectedStoresProvider>
-          <SavedRecipesProvider>
-            <SelectedMealsProvider>
-              <SelectedDealsProvider>
-                <PlanTargetsProvider>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="login" />
-                    <Stack.Screen name="location" />
-                    <Stack.Screen name="stores" />
-                    <Stack.Screen name="(tabs)" />
-                    <Stack.Screen name="settings" />
-                    <Stack.Screen name="settings-detail" />
-                    <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />
-                    <Stack.Screen name="upgrade" options={{ presentation: 'modal', headerShown: false }} />
-                    <Stack.Screen name="error" options={{ presentation: 'modal', headerShown: false }} />
-                    <Stack.Screen name="offline" options={{ presentation: 'modal', headerShown: false }} />
-                    <Stack.Screen
-                      name="no-account"
-                      options={{ presentation: 'modal', headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="account-unavailable"
-                      options={{ presentation: 'modal', headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="account-deleted"
-                      options={{ presentation: 'modal', headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="access-revoked"
-                      options={{ presentation: 'modal', headerShown: false }}
-                    />
-                  </Stack>
-                  <SupportBubble />
-                </PlanTargetsProvider>
-              </SelectedDealsProvider>
-            </SelectedMealsProvider>
-          </SavedRecipesProvider>
-        </SelectedStoresProvider>
-      </PersonalTargetsProvider>
+      <AuthProvider>
+        <PersonalTargetsProvider>
+          <SelectedStoresProvider>
+            <SavedRecipesProvider>
+              <SelectedMealsProvider>
+                <SelectedDealsProvider>
+                  <PlanTargetsProvider>
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="index" />
+                      <Stack.Screen name="login" />
+                      <Stack.Screen name="location" />
+                      <Stack.Screen name="stores" />
+                      <Stack.Screen name="(tabs)" />
+                      <Stack.Screen name="settings" />
+                      <Stack.Screen name="settings-detail" />
+                      <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />
+                      <Stack.Screen name="upgrade" options={{ presentation: 'modal', headerShown: false }} />
+                      <Stack.Screen name="error" options={{ presentation: 'modal', headerShown: false }} />
+                      <Stack.Screen name="offline" options={{ presentation: 'modal', headerShown: false }} />
+                      <Stack.Screen
+                        name="no-account"
+                        options={{ presentation: 'modal', headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="account-unavailable"
+                        options={{ presentation: 'modal', headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="account-deleted"
+                        options={{ presentation: 'modal', headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="access-revoked"
+                        options={{ presentation: 'modal', headerShown: false }}
+                      />
+                    </Stack>
+                    <SupportBubble />
+                  </PlanTargetsProvider>
+                </SelectedDealsProvider>
+              </SelectedMealsProvider>
+            </SavedRecipesProvider>
+          </SelectedStoresProvider>
+        </PersonalTargetsProvider>
+      </AuthProvider>
       <StatusBar style="auto" />
     </SafeAreaProvider>
   );

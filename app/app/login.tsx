@@ -1,15 +1,31 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as Crypto from 'expo-crypto';
 import { router } from 'expo-router';
 import * as Network from 'expo-network';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { supabase } from '../lib/supabase';
 
 // Guest-mode wireframe step 2 — Sign up / Log in.
-// Only "Continue as guest" and Apple are wired up so far. Apple uses the
-// real native "Sign in with Apple" system sheet (Face ID / account picker)
-// via expo-apple-authentication -- that sheet is Apple's own UI, not
-// something to rebuild in React Native. Google/email auth and the "Log in"
-// link still belong to the account-holder flow, not yet built.
+// Apple, Google, and email are all wired to real Supabase auth now. Apple
+// uses the real native "Sign in with Apple" system sheet (Face ID / account
+// picker) via expo-apple-authentication -- that sheet is Apple's own UI, not
+// something to rebuild in React Native. Google uses Supabase's OAuth
+// redirect flow via expo-web-browser. Email uses a one-time code (not a
+// magic link) so completing sign-in never depends on deep-link handling --
+// the same request both creates the account and signs in, so there's no
+// separate "log in" form to build.
+//
+// Apple and Google will genuinely fail (a real, honest Supabase error, not
+// a bug) until their providers are configured in the Supabase dashboard --
+// Apple needs a Services ID/Team ID/key from an Apple Developer account,
+// Google needs an OAuth client ID/secret from Google Cloud Console. Neither
+// can be done from here; both are dashboard/console steps only Anabelle can
+// complete.
+WebBrowser.maybeCompleteAuthSession();
 
 // Real connectivity check (expo-network works in Expo Go, unlike
 // expo-apple-authentication) -- checked before attempting sign-in so the
@@ -29,9 +45,16 @@ async function isOffline(): Promise<boolean> {
 export default function LoginScreen() {
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   // Shared across Apple/Google/email -- whichever method gets cancelled
-  // shows the same banner. Only Apple actually wires into it so far; Google
-  // and email aren't implemented yet, so they have nothing to cancel.
+  // shows the same banner.
   const [cancelledMessage, setCancelledMessage] = useState<string | null>(null);
+
+  // Email is a two-step flow: request a one-time code, then verify it --
+  // otpSent switches the form from the email step to the code step.
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     AppleAuthentication.isAvailableAsync()
@@ -46,18 +69,33 @@ export default function LoginScreen() {
       return;
     }
     try {
+      const rawNonce = Crypto.randomUUID();
+      const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
+        nonce: hashedNonce,
       });
-      // TODO: exchange credential.identityToken with Supabase
-      // (supabase.auth.signInWithIdToken({ provider: 'apple', token: ... }))
-      // once Apple Sign In is configured as an auth provider in the
-      // Supabase dashboard -- that needs an Apple Developer Services ID
-      // and key, which hasn't been set up yet.
-      void credential;
+      if (!credential.identityToken) {
+        throw new Error('Apple did not return an identity token.');
+      }
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+        nonce: rawNonce,
+      });
+      if (error) {
+        router.push({
+          pathname: '/error',
+          params: {
+            body: `Apple sign-in failed: ${error.message}`,
+            footnote: "Apple verified your identity -- this usually means Sign in with Apple isn't configured yet in Supabase.",
+          },
+        });
+        return;
+      }
       router.push('/location');
     } catch (error) {
       if ((error as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
@@ -72,6 +110,95 @@ export default function LoginScreen() {
         });
       }
     }
+  }
+
+  async function handleGoogleSignIn() {
+    setCancelledMessage(null);
+    if (await isOffline()) {
+      router.push('/offline');
+      return;
+    }
+    const redirectTo = makeRedirectUri();
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error || !data?.url) {
+      router.push({
+        pathname: '/error',
+        params: {
+          body: `Google sign-in failed: ${error?.message ?? 'no auth URL returned'}`,
+          footnote: "This usually means Google isn't configured yet as a Supabase auth provider.",
+        },
+      });
+      return;
+    }
+    // The system browser/popup can be blocked by the platform (mobile
+    // browsers in particular) rather than the user actually cancelling --
+    // that's a real, expected outcome here, not a bug, so it gets the same
+    // graceful error handling as an actual auth failure.
+    let result: WebBrowser.WebBrowserAuthSessionResult;
+    try {
+      result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    } catch (openError) {
+      router.push({
+        pathname: '/error',
+        params: {
+          body: `Couldn't open Google sign-in: ${(openError as Error).message}`,
+          footnote: 'This can happen when the browser blocks the sign-in popup.',
+        },
+      });
+      return;
+    }
+    if (result.type === 'success' && result.url) {
+      const returned = new URL(result.url);
+      const params = new URLSearchParams(returned.hash ? returned.hash.slice(1) : returned.search);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      if (accessToken && refreshToken) {
+        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        router.push('/location');
+        return;
+      }
+      router.push({
+        pathname: '/error',
+        params: { body: "Google sign-in didn't return a usable session. Please try again." },
+      });
+      return;
+    }
+    if (result.type === 'cancel' || result.type === 'dismiss') {
+      setCancelledMessage('Sign-in was cancelled.');
+    }
+  }
+
+  async function handleEmailContinue() {
+    if (!email.trim()) return;
+    setEmailError(null);
+    setEmailLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim() });
+    setEmailLoading(false);
+    if (error) {
+      setEmailError(error.message);
+      return;
+    }
+    setOtpSent(true);
+  }
+
+  async function handleVerifyCode() {
+    if (!code.trim()) return;
+    setEmailError(null);
+    setEmailLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'email',
+    });
+    setEmailLoading(false);
+    if (error) {
+      setEmailError(error.message);
+      return;
+    }
+    router.push('/location');
   }
 
   // Expo Go (and web) can't run the real native module, so there's no real
@@ -119,7 +246,7 @@ export default function LoginScreen() {
           <Text style={styles.oauthText}>🍎  Continue with Apple</Text>
         </Pressable>
       )}
-      <Pressable style={styles.oauthButton}>
+      <Pressable style={styles.oauthButton} onPress={handleGoogleSignIn}>
         <Text style={styles.oauthText}>G  Continue with Google</Text>
       </Pressable>
 
@@ -129,14 +256,63 @@ export default function LoginScreen() {
         <View style={styles.dividerLine} />
       </View>
 
-      <TextInput style={styles.input} placeholder="you@example.com" placeholderTextColor="#999" />
-      <Pressable style={styles.primaryButton}>
-        <Text style={styles.primaryButtonText}>Continue</Text>
-      </Pressable>
+      {emailError && (
+        <View style={styles.statusBanner}>
+          <Text style={styles.statusBannerIcon}>✕</Text>
+          <Text style={styles.statusBannerText}>{emailError}</Text>
+        </View>
+      )}
 
-      <Text style={styles.loginPrompt}>
-        Already have an account? <Text style={styles.loginLink}>Log in</Text>
-      </Text>
+      {otpSent ? (
+        <>
+          <Text style={styles.otpHint}>Enter the code we emailed to {email}.</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="123456"
+            placeholderTextColor="#999"
+            keyboardType="number-pad"
+            value={code}
+            onChangeText={setCode}
+          />
+          <Pressable
+            style={[styles.primaryButton, emailLoading && styles.primaryButtonDisabled]}
+            onPress={handleVerifyCode}
+            disabled={emailLoading}
+          >
+            {emailLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Verify code</Text>
+            )}
+          </Pressable>
+          <Pressable onPress={() => setOtpSent(false)}>
+            <Text style={styles.loginPrompt}>Use a different email</Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <TextInput
+            style={styles.input}
+            placeholder="you@example.com"
+            placeholderTextColor="#999"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <Pressable
+            style={[styles.primaryButton, emailLoading && styles.primaryButtonDisabled]}
+            onPress={handleEmailContinue}
+            disabled={emailLoading}
+          >
+            {emailLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>Continue</Text>
+            )}
+          </Pressable>
+        </>
+      )}
 
       <View style={styles.divider} />
 
@@ -188,9 +364,10 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
+  primaryButtonDisabled: { opacity: 0.6 },
   primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  loginPrompt: { textAlign: 'center', color: '#666', marginTop: 4 },
-  loginLink: { fontWeight: '700', color: '#111' },
+  otpHint: { fontSize: 14, color: '#666' },
+  loginPrompt: { textAlign: 'center', color: '#666', marginTop: 4, textDecorationLine: 'underline' },
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 12 },
   guestButton: { alignItems: 'center', gap: 4 },
   guestText: { fontSize: 16, color: '#333' },

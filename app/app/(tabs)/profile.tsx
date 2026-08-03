@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { AccountBanner } from '../../components/AccountBanner';
 import type { Meal } from '../../lib/mealData';
 import { usePersonalTargets } from '../../lib/personalTargets';
 import { fetchRecipesByIds } from '../../lib/recipes';
@@ -52,12 +53,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.guestBanner}>
-        <Text style={styles.guestBannerText}>Browsing as guest</Text>
-        <Pressable onPress={() => router.push('/login')} hitSlop={8}>
-          <Text style={styles.signUpLink}>Sign up</Text>
-        </Pressable>
-      </View>
+      <AccountBanner />
 
       <View style={styles.headerRow}>
         <Text style={styles.title}>Profile</Text>
@@ -177,16 +173,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, paddingTop: 64, gap: 12 },
-  guestBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F2F2F2',
-    borderRadius: 12,
-    padding: 14,
-  },
-  guestBannerText: { color: '#666' },
-  signUpLink: { fontWeight: '700', textDecorationLine: 'underline' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: '800' },
   gearIcon: { fontSize: 22 },
