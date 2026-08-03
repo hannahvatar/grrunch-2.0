@@ -160,6 +160,18 @@ export interface Database {
         };
         Update: Partial<Database['public']['Tables']['saved_recipes']['Insert']>;
       };
+      subscriptions: {
+        Row: {
+          user_id: string;
+          status: 'trialing' | 'active' | 'expired';
+          trial_ends_at: string;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['subscriptions']['Row'], 'created_at'> & {
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['subscriptions']['Insert']>;
+      };
     };
   };
 }

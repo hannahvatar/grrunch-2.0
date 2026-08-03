@@ -1,8 +1,16 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, groupDealsByCategory } from '../../lib/curatedDeals';
 import { useSelectedDeals } from '../../lib/selectedDeals';
+import { useSubscription } from '../../lib/subscription';
+
+// Free tier sees only the first 3 items in each category -- Grrunch Plus
+// (30-day free trial, then $5.99/mo) unlocks the rest. A single "Unlock N
+// more deals" tile stands in for however many are left, naming the real
+// count rather than a generic upsell.
+const FREE_DEALS_PER_CATEGORY = 3;
 
 // This week's curated flyer deals (Airtable Admin Review Tool, status
 // "deals"/"both" -> curated_deals), grouped into collapsible category
@@ -10,6 +18,7 @@ import { useSelectedDeals } from '../../lib/selectedDeals';
 // can be added straight to the grocery list without going through a
 // recipe.
 export default function BestDealsScreen() {
+  const { isSubscribed } = useSubscription();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -71,6 +80,10 @@ export default function BestDealsScreen() {
 
         {categories.map((category) => {
           const categoryDeals = groups.get(category)!;
+          const visibleDeals = isSubscribed
+            ? categoryDeals
+            : categoryDeals.slice(0, FREE_DEALS_PER_CATEGORY);
+          const lockedDealCount = categoryDeals.length - visibleDeals.length;
           const isExpanded = expandedCategories.has(category);
           return (
             <View key={category} style={styles.categorySection}>
@@ -84,7 +97,7 @@ export default function BestDealsScreen() {
 
               {isExpanded && (
                 <View style={styles.dealsGrid}>
-                  {categoryDeals.map((deal) => {
+                  {visibleDeals.map((deal) => {
                     const isAdded = selectedDealIds.has(deal.id);
                     return (
                       <View key={deal.id} style={styles.dealCard}>
@@ -135,6 +148,25 @@ export default function BestDealsScreen() {
                       </View>
                     );
                   })}
+                  {lockedDealCount > 0 && (
+                    <Pressable
+                      style={styles.unlockCard}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/upgrade',
+                          params: {
+                            reason: `see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`,
+                          },
+                        })
+                      }
+                    >
+                      <Text style={styles.unlockIcon}>🔒</Text>
+                      <Text style={styles.unlockTitle}>
+                        Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
+                      </Text>
+                      <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo</Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
             </View>
@@ -178,6 +210,19 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 4,
   },
+  unlockCard: {
+    width: '47%',
+    borderWidth: 1,
+    borderColor: '#111',
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  unlockIcon: { fontSize: 20, marginBottom: 2 },
+  unlockTitle: { fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  unlockSubtitle: { fontSize: 11, color: '#888', textAlign: 'center' },
   dealImageWrap: { position: 'relative' },
   dealImage: { width: '100%', height: 90, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },

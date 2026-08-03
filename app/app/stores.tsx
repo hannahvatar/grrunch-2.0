@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useSelectedStores } from '../lib/selectedStores';
+import { useSubscription } from '../lib/subscription';
 import { supabase } from '../lib/supabase';
-import { TIER_LIMITS } from '../lib/tier';
 
 // Guest-mode wireframe step 4 — Stores near you.
 // Wired to the deployed nearest-stores Edge Function (see
@@ -39,10 +39,6 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-// Guest sessions are treated as free tier — no account/paid-tier check
-// exists yet, so this is hardcoded until that's built.
-const storesEditable = TIER_LIMITS.free.storesEditable;
-
 function showUpgradePrompt() {
   router.push({ pathname: '/upgrade', params: { reason: 'remove a store or change its location' } });
 }
@@ -51,6 +47,7 @@ export default function StoresScreen() {
   const { lat, lng } = useLocalSearchParams<{ lat?: string; lng?: string }>();
   const hasLocation = typeof lat === 'string' && typeof lng === 'string';
   const { setStores: setSelectedStores } = useSelectedStores();
+  const { isSubscribed: storesEditable } = useSubscription();
 
   const [loading, setLoading] = useState(hasLocation);
   const [stores, setStores] = useState<DisplayStore[]>([]);

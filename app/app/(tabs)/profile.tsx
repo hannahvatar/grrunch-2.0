@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AccountBanner } from '../../components/AccountBanner';
+import { UpgradeCta } from '../../components/UpgradeCta';
 import type { Meal } from '../../lib/mealData';
 import { usePersonalTargets } from '../../lib/personalTargets';
 import { fetchRecipesByIds } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedStores } from '../../lib/selectedStores';
-import { TIER_LIMITS } from '../../lib/tier';
-
-const storesEditable = TIER_LIMITS.free.storesEditable;
+import { useSubscription } from '../../lib/subscription';
 
 // Not yet detailed in the wireframes beyond Saved recipes — placeholder tab.
 // Grocery list access lives in its own tab (app/(tabs)/grocery.tsx).
@@ -21,6 +20,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
 
   const { stores: myStores, loaded: storesLoaded } = useSelectedStores();
+  const { isSubscribed } = useSubscription();
 
   const { targets: personalTargets, loaded: personalTargetsLoaded, setTargets: setPersonalTargets } =
     usePersonalTargets();
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>My stores</Text>
-      {!storesEditable && (
+      {!isSubscribed && (
         <Text style={styles.sectionHint}>Auto-selected from your location · Upgrade to customize</Text>
       )}
       {storesLoaded && myStores.length === 0 ? (
@@ -141,7 +141,9 @@ export default function ProfileScreen() {
       </Pressable>
 
       <Text style={styles.sectionTitle}>Saved recipes</Text>
-      {loading ? (
+      {!isSubscribed ? (
+        <UpgradeCta reason="save recipes" />
+      ) : loading ? (
         <ActivityIndicator size="small" color="#111" style={styles.loadingIndicator} />
       ) : savedMeals.length === 0 ? (
         <View style={styles.emptyState}>
