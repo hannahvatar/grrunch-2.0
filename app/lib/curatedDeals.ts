@@ -102,6 +102,14 @@ function normalizeWords(text: string): string[] {
 // the false-positive brand/product matches.
 const MAX_EXTRA_WORDS = 1;
 
+// An extra word here means a genuinely different product, not a variant
+// of the same one -- unlike "Watermelon (Seedless)" (still watermelon),
+// "Green Onions" are scallions, a different vegetable from the "Onions"
+// a recipe actually calls for. Blocked even within MAX_EXTRA_WORDS's
+// normal tolerance. Deliberately small; add a word here only once a
+// specific false match like this is actually found, not preemptively.
+const DIFFERENT_PRODUCT_WORDS = new Set(['green']);
+
 export function matchItemStore(ingredientName: string, deals: Deal[]): string | undefined {
   const ingredientWords = normalizeWords(ingredientName);
   if (ingredientWords.length === 0) return undefined;
@@ -110,7 +118,9 @@ export function matchItemStore(ingredientName: string, deals: Deal[]): string | 
   for (const deal of deals) {
     const dealWords = normalizeWords(deal.itemName);
     if (ingredientWords.every((word) => dealWords.includes(word))) {
-      const extra = dealWords.length - ingredientWords.length;
+      const extraWords = dealWords.filter((word) => !ingredientWords.includes(word));
+      if (extraWords.some((word) => DIFFERENT_PRODUCT_WORDS.has(word))) continue;
+      const extra = extraWords.length;
       if (extra <= MAX_EXTRA_WORDS && extra < bestExtraWords) {
         best = deal.chainName;
         bestExtraWords = extra;
