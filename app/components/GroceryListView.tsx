@@ -171,21 +171,38 @@ export function GroceryListView() {
   const dealsTotalPrice = selectedDeals.reduce((sum, deal) => sum + deal.price, 0);
   const totalPrice = recipesTotalPrice + dealsTotalPrice;
 
-  // Regular (pre-discount) total: real original_price for standalone deals
-  // -- recipes don't have a comparable original price on file (their
-  // estimate is a single AI-generated per-serving figure, not itemized
-  // per ingredient), so they contribute the same number to both totals
-  // rather than an invented markup.
+  // Regular (pre-discount) total: a recipe's own price already bakes in
+  // each deal-tagged ingredient's discounted price, so recompute what the
+  // recipe would cost without those specific discounts by adding back
+  // each tag's real (original_price - price), then the standalone deals'
+  // real original_price on top. deal_tags carries a real original_price
+  // per tagged ingredient (see refresh_recipe_deal_tags), so this is an
+  // actual number, not an invented markup.
+  const recipesTotalOriginalPrice = selectedMeals.reduce((sum, meal) => {
+    const multiplier = multipliers.get(meal.id) ?? 1;
+    const dealSavings = meal.dealTags.reduce((s, tag) => {
+      if (tag.price == null || tag.originalPrice == null) return s;
+      return s + Math.max(0, tag.originalPrice - tag.price);
+    }, 0);
+    return sum + (meal.price * meal.servings + dealSavings) * multiplier;
+  }, 0);
   const dealsTotalOriginalPrice = selectedDeals.reduce((sum, deal) => sum + deal.originalPrice, 0);
-  const totalOriginalPrice = recipesTotalPrice + dealsTotalOriginalPrice;
+  const totalOriginalPrice = recipesTotalOriginalPrice + dealsTotalOriginalPrice;
 
   // Average saving: the mean discount_pct across items actually tied to a
-  // real flyer deal -- a dollar-savings total isn't knowable since recipes
-  // don't carry a pre-discount "original price" to compare against.
+  // real flyer deal.
   const avgSavingsPct =
     itemsWithDeal.length > 0
       ? itemsWithDeal.reduce((sum, item) => sum + (item.dealTag?.discountPct ?? 0), 0) /
         itemsWithDeal.length
+      : 0;
+
+  // Average of each selected recipe's own price-per-serving -- a simple
+  // mean across recipes, not weighted by servings (that's the Meals
+  // tab's "avg. $X / serving", which is total$/totalServings instead).
+  const avgRecipeCostPerServing =
+    selectedMeals.length > 0
+      ? selectedMeals.reduce((sum, meal) => sum + meal.price, 0) / selectedMeals.length
       : 0;
 
   return (
@@ -322,19 +339,24 @@ export function GroceryListView() {
 
         {items.length > 0 && (
           <View style={styles.totalSection}>
-            {totalOriginalPrice > totalPrice && (
-              <Text style={styles.regularPriceLine}>
-                Regular price:{' '}
-                <Text style={styles.regularPriceStrike}>${totalOriginalPrice.toFixed(2)}</Text>
-              </Text>
-            )}
             <View style={styles.totalCard}>
               <View style={styles.totalTextBlock}>
                 <Text style={styles.totalLabel}>Total</Text>
+                {totalOriginalPrice > totalPrice && (
+                  <Text style={styles.regularPriceLine}>
+                    Total before savings:{' '}
+                    <Text style={styles.regularPriceStrike}>${totalOriginalPrice.toFixed(2)}</Text>
+                  </Text>
+                )}
                 {dealItemCount > 0 && (
                   <Text style={styles.totalSublabel}>
                     Avg. {Math.round(avgSavingsPct)}% off on {dealItemCount} deal item
                     {dealItemCount === 1 ? '' : 's'}
+                  </Text>
+                )}
+                {selectedMeals.length > 0 && (
+                  <Text style={styles.totalSublabel}>
+                    Avg. ${avgRecipeCostPerServing.toFixed(2)} / serving across recipes
                   </Text>
                 )}
               </View>
@@ -415,7 +437,7 @@ const styles = StyleSheet.create({
   multiplierBadgeText: { color: '#666', fontSize: 11, fontWeight: '800' },
   iconButton: { fontSize: 14, color: '#999', paddingHorizontal: 4 },
   totalSection: { gap: 6 },
-  regularPriceLine: { fontSize: 13, color: '#999', textAlign: 'right' },
+  regularPriceLine: { fontSize: 13, color: '#999', marginTop: 2 },
   regularPriceStrike: { textDecorationLine: 'line-through' },
   totalCard: {
     flexDirection: 'row',
