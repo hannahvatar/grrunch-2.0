@@ -42,10 +42,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  logoText: { color: '#fff', fontSize: 32, fontWeight: '800' },
-  title: { fontSize: 28, fontWeight: '800', marginBottom: 16 },
+  logoText: { color: '#fff', fontSize: 32, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  title: { fontSize: 28, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 16 },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#333' },
-  link: { fontWeight: '700', textDecorationLine: 'underline' },
+  link: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
   primaryButton: {
     width: '100%',
     backgroundColor: '#111',
@@ -54,6 +54,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   declineText: { color: '#888', fontSize: 15 },
 });

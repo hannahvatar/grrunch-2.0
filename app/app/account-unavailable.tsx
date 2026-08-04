@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { StatusScreen } from '../components/StatusScreen';
 
@@ -9,7 +10,7 @@ import { StatusScreen } from '../components/StatusScreen';
 export default function AccountUnavailableScreen() {
   return (
     <StatusScreen
-      icon="🔒"
+      icon={<LockClosedIcon size={24} color="#999" />}
       title="Account unavailable"
       body="Your account is currently unavailable. Contact support for help."
       actions={[{ label: 'Contact support', onPress: () => router.back() }]}

@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ChevronLeftIcon, ChevronRightIcon } from 'react-native-heroicons/outline';
 
 const SECTIONS = ['Manage account', 'Payment', 'Notifications', 'Get support', 'Privacy', 'Legal'];
 
@@ -12,8 +13,9 @@ export default function SettingsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.backButton}>‹ Back</Text>
+        <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeftIcon size={18} color="#111" />
+          <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
         <Text style={styles.title}>Settings</Text>
         <View style={styles.headerSpacer} />
@@ -26,7 +28,7 @@ export default function SettingsScreen() {
             onPress={() => router.push({ pathname: '/settings-detail', params: { title: section } })}
           >
             <Text style={styles.rowText}>{section}</Text>
-            <Text style={styles.chevron}>›</Text>
+            <ChevronRightIcon size={16} color="#ccc" />
           </Pressable>
         ))}
       </ScrollView>
@@ -43,8 +45,9 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
-  backButton: { fontSize: 16, color: '#111' },
-  title: { fontSize: 18, fontWeight: '800' },
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  backButtonText: { fontSize: 16, color: '#111' },
+  title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   headerSpacer: { width: 44 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
   row: {
@@ -55,6 +58,5 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     paddingVertical: 16,
   },
-  rowText: { fontSize: 15, fontWeight: '600' },
-  chevron: { fontSize: 18, color: '#ccc' },
+  rowText: { fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });

@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { TrashIcon } from 'react-native-heroicons/outline';
 
 import { StatusScreen } from '../components/StatusScreen';
 
@@ -9,7 +10,7 @@ import { StatusScreen } from '../components/StatusScreen';
 export default function AccountDeletedScreen() {
   return (
     <StatusScreen
-      icon="🗑"
+      icon={<TrashIcon size={24} color="#999" />}
       title="Account was deleted"
       body="This Grrunch account was previously deleted."
       actions={[

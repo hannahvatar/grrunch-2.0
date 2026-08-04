@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CheckIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
 import type { DealTag, Meal } from '../lib/mealData';
@@ -252,7 +253,7 @@ export function GroceryListView() {
                       <Text style={styles.selectedRowMeta}>${meal.price.toFixed(2)} / serving</Text>
                     </Pressable>
                     <Pressable onPress={() => toggleSelected(meal.id)} hitSlop={8}>
-                      <Text style={styles.iconButton}>✕</Text>
+                      <XMarkIcon size={16} color="#999" />
                     </Pressable>
                   </View>
                   <View style={styles.stepperRow}>
@@ -262,7 +263,7 @@ export function GroceryListView() {
                       disabled={multiplier === 1}
                       hitSlop={8}
                     >
-                      <Text style={styles.stepperButtonText}>−</Text>
+                      <MinusIcon size={14} color="#111" />
                     </Pressable>
                     <Text style={styles.stepperValue}>
                       {totalServings} serving{totalServings === 1 ? '' : 's'}
@@ -272,7 +273,7 @@ export function GroceryListView() {
                       onPress={() => adjustMultiplier(meal.id, 1)}
                       hitSlop={8}
                     >
-                      <Text style={styles.stepperButtonText}>+</Text>
+                      <PlusIcon size={14} color="#111" />
                     </Pressable>
                   </View>
                 </View>
@@ -293,7 +294,7 @@ export function GroceryListView() {
                     onPress={() => toggleChecked(item.key)}
                     hitSlop={8}
                   >
-                    {isChecked && <Text style={styles.checkboxMark}>✓</Text>}
+                    {isChecked && <CheckIcon size={12} color="#fff" />}
                   </Pressable>
                   {item.dealTag?.imageUrl && (
                     <Image source={{ uri: item.dealTag.imageUrl }} style={styles.itemImage} />
@@ -383,13 +384,13 @@ export function GroceryListView() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   header: { padding: 20, paddingTop: 60 },
-  title: { fontSize: 24, fontWeight: '800' },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitle: { fontSize: 13, color: '#888', marginTop: 2 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 20 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
   selectedSection: { gap: 10 },
-  selectedSectionTitle: { fontSize: 15, fontWeight: '700' },
+  selectedSectionTitle: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   selectedRow: {
     gap: 10,
     borderWidth: 1,
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
   },
   selectedRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectedRowInfo: { flex: 1 },
-  selectedRowName: { fontSize: 14, fontWeight: '600' },
+  selectedRowName: { fontSize: 14, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   selectedRowMeta: { fontSize: 12, color: '#999', marginTop: 2 },
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stepperButton: {
@@ -413,10 +414,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepperButtonDisabled: { opacity: 0.35 },
-  stepperButtonText: { fontSize: 16, fontWeight: '700' },
-  stepperValue: { fontSize: 13, color: '#666', fontWeight: '600' },
+  stepperValue: { fontSize: 13, color: '#666', fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   storeSection: { gap: 10 },
-  storeName: { fontSize: 15, fontWeight: '700' },
+  storeName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   checkbox: {
     width: 20,
@@ -428,7 +428,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
-  checkboxMark: { fontSize: 12, fontWeight: '700', color: '#fff' },
   itemImage: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#F2F2F2' },
   itemInfo: { flex: 1 },
   itemName: { fontSize: 15 },
@@ -437,16 +436,15 @@ const styles = StyleSheet.create({
   estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
   itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
-  itemPriceValue: { fontSize: 14, fontWeight: '800' },
+  itemPriceValue: { fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   itemPriceOriginal: { fontSize: 11, color: '#aaa', textDecorationLine: 'line-through' },
   itemPriceEstimated: { fontSize: 12, color: '#888' },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  fairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  fairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   multiplierBadge: { backgroundColor: '#F2F2F2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  multiplierBadgeText: { color: '#666', fontSize: 11, fontWeight: '800' },
-  iconButton: { fontSize: 14, color: '#999', paddingHorizontal: 4 },
+  multiplierBadgeText: { color: '#666', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   totalSection: { gap: 6 },
   regularPriceLine: { fontSize: 13, color: '#999', marginTop: 2 },
   regularPriceStrike: { textDecorationLine: 'line-through' },
@@ -460,7 +458,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   totalTextBlock: { flex: 1, marginRight: 12 },
-  totalLabel: { fontSize: 16, fontWeight: '700' },
+  totalLabel: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   totalSublabel: { fontSize: 13, color: '#888', marginTop: 2 },
-  totalValue: { fontSize: 24, fontWeight: '800' },
+  totalValue: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
 });

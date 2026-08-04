@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LockClosedIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { useAuth } from '../lib/auth';
 import { useSubscription } from '../lib/subscription';
@@ -44,11 +45,11 @@ export default function UpgradeScreen() {
     <View style={styles.container}>
       <View style={styles.handle} />
       <Pressable style={styles.closeButton} onPress={() => router.back()}>
-        <Text style={styles.closeButtonText}>✕</Text>
+        <XMarkIcon size={20} color="#999" />
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <Text style={styles.icon}>🔒</Text>
+          <LockClosedIcon size={30} color="#111" />
         </View>
         <Text style={styles.title}>Upgrade to Grrunch Plus</Text>
         <Text style={styles.body}>
@@ -89,7 +90,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   closeButton: { position: 'absolute', top: 20, right: 20 },
-  closeButtonText: { fontSize: 20, color: '#999' },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   iconCircle: {
     width: 72,
@@ -100,8 +100,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
   },
-  icon: { fontSize: 30 },
-  title: { fontSize: 22, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 12, textAlign: 'center' },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#666' },
   priceNote: { fontSize: 13, color: '#999', marginTop: 12 },
   errorText: { fontSize: 13, color: '#c0392b', marginTop: 12, textAlign: 'center' },
@@ -112,5 +111,5 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });

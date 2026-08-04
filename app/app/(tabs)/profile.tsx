@@ -2,6 +2,8 @@ import Slider from '@react-native-community/slider';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Cog6ToothIcon } from 'react-native-heroicons/outline';
+import { HeartIcon } from 'react-native-heroicons/solid';
 
 import { AccountBanner } from '../../components/AccountBanner';
 import { UpgradeCta } from '../../components/UpgradeCta';
@@ -58,7 +60,7 @@ export default function ProfileScreen() {
       <View style={styles.headerRow}>
         <Text style={styles.title}>Profile</Text>
         <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
-          <Text style={styles.gearIcon}>⚙️</Text>
+          <Cog6ToothIcon size={22} color="#111" />
         </Pressable>
       </View>
 
@@ -155,7 +157,7 @@ export default function ProfileScreen() {
         savedMeals.map((meal) => (
           <View key={meal.id} style={styles.savedCard}>
             <Pressable onPress={() => toggleSaved(meal.id)} hitSlop={8}>
-              <Text style={styles.savedHeart}>❤️</Text>
+              <HeartIcon size={18} color="#e0245e" />
             </Pressable>
             <Pressable
               style={styles.savedInfo}
@@ -176,14 +178,13 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { padding: 24, paddingTop: 64, gap: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: '800' },
-  gearIcon: { fontSize: 22 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 8 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 8 },
   sectionHint: { fontSize: 13, color: '#888', marginTop: -8 },
   sliderBlock: { marginTop: 4 },
   sliderHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  label: { fontSize: 12, fontWeight: '700', color: '#888', letterSpacing: 0.5 },
-  sliderValue: { fontSize: 18, fontWeight: '800' },
+  label: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#888', letterSpacing: 0.5 },
+  sliderValue: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   saveButton: {
     backgroundColor: '#111',
     borderRadius: 12,
@@ -192,12 +193,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   saveButtonDisabled: { backgroundColor: '#ddd' },
-  saveButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  saveButtonText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   loadingIndicator: { marginTop: 8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 16, gap: 10 },
   emptyStateText: { color: '#666', fontSize: 14 },
   smallLinkButton: { alignSelf: 'flex-start' },
-  smallLinkButtonText: { color: '#111', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+  smallLinkButtonText: { color: '#111', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
   storeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -215,9 +216,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  storeAvatarText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  storeAvatarText: { color: '#fff', fontWeight: '700', fontFamily: 'OpenSans_700Bold', fontSize: 13 },
   storeInfo: { flex: 1 },
-  storeName: { fontSize: 14, fontWeight: '700' },
+  storeName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 12, color: '#888', marginTop: 1 },
   savedCard: {
     flexDirection: 'row',
@@ -228,8 +229,7 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 12,
   },
-  savedHeart: { fontSize: 18 },
   savedInfo: { flex: 1 },
-  savedName: { fontSize: 15, fontWeight: '700' },
+  savedName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
 });

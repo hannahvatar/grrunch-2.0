@@ -7,6 +7,7 @@ import * as Network from 'expo-network';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { Alert, ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { EnvelopeIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { supabase } from '../lib/supabase';
 
@@ -256,7 +257,7 @@ export default function LoginScreen() {
 
       {cancelledMessage && (
         <View style={styles.statusBanner}>
-          <Text style={styles.statusBannerIcon}>✕</Text>
+          <XMarkIcon size={16} color="#888" />
           <Text style={styles.statusBannerText}>{cancelledMessage}</Text>
         </View>
       )}
@@ -286,14 +287,14 @@ export default function LoginScreen() {
 
       {emailError && (
         <View style={styles.statusBanner}>
-          <Text style={styles.statusBannerIcon}>✕</Text>
+          <XMarkIcon size={16} color="#888" />
           <Text style={styles.statusBannerText}>{emailError}</Text>
         </View>
       )}
 
       {emailSent ? (
         <View style={styles.statusBanner}>
-          <Text style={styles.statusBannerIcon}>✉️</Text>
+          <EnvelopeIcon size={16} color="#888" />
           <View style={styles.emailSentTextBlock}>
             <Text style={styles.statusBannerText}>
               We sent a confirmation link to {email}. Open it to finish signing in.
@@ -340,7 +341,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24, paddingTop: 64, gap: 12 },
-  title: { fontSize: 26, fontWeight: '800' },
+  title: { fontSize: 26, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitle: { fontSize: 15, color: '#666', marginBottom: 12 },
   statusBanner: {
     flexDirection: 'row',
@@ -351,7 +352,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
-  statusBannerIcon: { fontSize: 14, color: '#888' },
   statusBannerText: { fontSize: 14, color: '#555' },
   oauthButton: {
     borderWidth: 1,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
   },
-  oauthText: { fontSize: 16, fontWeight: '600' },
+  oauthText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   appleButton: { width: '100%', height: 54 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 8, gap: 8 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#eee' },
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonDisabled: { opacity: 0.6 },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   emailSentTextBlock: { flex: 1, gap: 6 },
   loginPrompt: { color: '#666', textDecorationLine: 'underline' },
   divider: { height: 1, backgroundColor: '#eee', marginVertical: 12 },

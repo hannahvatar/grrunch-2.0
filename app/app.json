@@ -33,7 +33,8 @@
           "locationWhenInUsePermission": "Grrunch uses your location to find nearby grocery stores."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CakeIcon, CheckIcon, ClockIcon, HeartIcon, LockClosedIcon, TagIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
 
 import { AccountBanner } from '../../components/AccountBanner';
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
@@ -111,14 +113,19 @@ export default function MealsScreen() {
         {visibleMeals.map((meal) => (
           <View key={meal.id} style={styles.mealCard}>
             <View style={styles.mealImagePlaceholder}>
-              <Text style={styles.mealImageIcon}>🍴</Text>
+              <CakeIcon size={28} color="#ccc" />
               {selectedIds.has(meal.id) && (
                 <View style={styles.groceryConfirmBadge}>
-                  <Text style={styles.groceryConfirmBadgeText}>✓ Added</Text>
+                  <CheckIcon size={12} color="#fff" />
+                  <Text style={styles.groceryConfirmBadgeText}>Added</Text>
                 </View>
               )}
               <Pressable style={styles.saveButton} onPress={() => handleToggleSaved(meal.id)} hitSlop={8}>
-                <Text style={styles.saveButtonIcon}>{savedIds.has(meal.id) ? '❤️' : '🤍'}</Text>
+                {savedIds.has(meal.id) ? (
+                  <HeartIconSolid size={16} color="#e0245e" />
+                ) : (
+                  <HeartIcon size={16} color="#111" />
+                )}
               </Pressable>
             </View>
             <View style={styles.mealCardBody}>
@@ -129,15 +136,19 @@ export default function MealsScreen() {
                   <Text style={styles.perServing}>/ serving</Text>
                 </View>
               </View>
-              <Text style={styles.mealTime}>
-                🕐 {meal.minutes} min · makes {meal.servings} serving{meal.servings === 1 ? '' : 's'}
-              </Text>
+              <View style={styles.mealTimeRow}>
+                <ClockIcon size={13} color="#888" />
+                <Text style={styles.mealTime}>
+                  {meal.minutes} min · makes {meal.servings} serving{meal.servings === 1 ? '' : 's'}
+                </Text>
+              </View>
               {meal.dealTags.length > 0 && (
                 <View style={styles.dealTagsRow}>
                   {meal.dealTags.map((dealTag) => (
                     <View key={dealTag.name} style={styles.dealTagPill}>
+                      <TagIcon size={12} color="#2C5FD6" />
                       <Text style={styles.dealTagName} numberOfLines={1}>
-                        🏷️ {dealTag.name}
+                        {dealTag.name}
                       </Text>
                       {dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
                         <View style={styles.dealTagBadge}>
@@ -190,7 +201,7 @@ export default function MealsScreen() {
               })
             }
           >
-            <Text style={styles.unlockIcon}>🔒</Text>
+            <LockClosedIcon size={22} color="#111" />
             <Text style={styles.unlockTitle}>
               Unlock {lockedMealCount} more recipe{lockedMealCount === 1 ? '' : 's'}
             </Text>
@@ -218,7 +229,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { padding: 20, paddingTop: 60, gap: 16 },
-  title: { fontSize: 24, fontWeight: '800' },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitle: { fontSize: 13, color: '#888', marginTop: -8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
@@ -232,8 +243,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  unlockIcon: { fontSize: 22, marginBottom: 4 },
-  unlockTitle: { fontSize: 16, fontWeight: '800', textAlign: 'center' },
+  unlockTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', textAlign: 'center' },
   unlockSubtitle: { fontSize: 13, color: '#888', textAlign: 'center' },
   mealImagePlaceholder: {
     height: 100,
@@ -241,7 +251,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mealImageIcon: { fontSize: 28, opacity: 0.4 },
   saveButton: {
     position: 'absolute',
     top: 8,
@@ -253,23 +262,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveButtonIcon: { fontSize: 16 },
   groceryConfirmBadge: {
     position: 'absolute',
     top: 8,
     right: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: '#1E9E5A',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
-  groceryConfirmBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  groceryConfirmBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   mealCardBody: { padding: 14, gap: 8 },
   mealHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  mealName: { fontSize: 16, fontWeight: '700', flex: 1, marginRight: 8 },
+  mealName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', flex: 1, marginRight: 8 },
   priceBlock: { alignItems: 'flex-end' },
-  mealPrice: { fontSize: 17, fontWeight: '800' },
+  mealPrice: { fontSize: 17, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   perServing: { fontSize: 11, color: '#999' },
+  mealTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   mealTime: { fontSize: 13, color: '#888' },
   dealTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   dealTagPill: {
@@ -282,9 +294,9 @@ const styles = StyleSheet.create({
     gap: 6,
     maxWidth: '100%',
   },
-  dealTagName: { color: '#2C5FD6', fontSize: 12, fontWeight: '600', flexShrink: 1 },
+  dealTagName: { color: '#2C5FD6', fontSize: 12, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', flexShrink: 1 },
   dealTagBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  dealTagBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  dealTagBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   groceryToggleButton: {
     borderWidth: 1,
@@ -294,7 +306,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   groceryToggleButtonActive: { backgroundColor: '#111' },
-  groceryToggleButtonText: { fontSize: 13, fontWeight: '700', color: '#111' },
+  groceryToggleButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#111' },
   groceryToggleButtonTextActive: { color: '#fff' },
   recipeButton: {
     borderWidth: 1,
@@ -303,7 +315,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  recipeButtonText: { fontSize: 14, fontWeight: '700' },
+  recipeButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   totalCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -313,7 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
   },
-  totalLabel: { fontSize: 16, fontWeight: '700' },
+  totalLabel: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   totalSublabel: { fontSize: 13, color: '#888' },
-  totalValue: { fontSize: 24, fontWeight: '800' },
+  totalValue: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
 });
