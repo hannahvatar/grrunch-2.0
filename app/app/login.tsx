@@ -7,11 +7,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Network from 'expo-network';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { Alert, ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ArrowRightIcon, EnvelopeIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { AppleIcon } from '../components/icons/AppleIcon';
 import { GoogleIcon } from '../components/icons/GoogleIcon';
+import { InputField } from '../components/InputField';
 import { supabase } from '../lib/supabase';
 
 // makeRedirectUri() is meant to auto-detect web vs. native, but in
@@ -78,7 +79,6 @@ export default function LoginScreen() {
   // confirmation link is tapped (see the deep-link listener below and
   // lib/supabase.ts's detectSessionInUrl for the web case).
   const [email, setEmail] = useState('');
-  const [emailFocused, setEmailFocused] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -283,19 +283,12 @@ export default function LoginScreen() {
           </View>
         </Pressable>
       )}
-      <Pressable style={styles.oauthButton} onPress={handleGoogleSignIn}>
+      <Pressable style={[styles.oauthButton, styles.googleButton]} onPress={handleGoogleSignIn}>
         <View style={styles.oauthRow}>
           <GoogleIcon size={18} color={INK} />
           <Text style={styles.oauthText}>Continue with Google</Text>
         </View>
       </Pressable>
-
-      {emailError && (
-        <View style={styles.statusBanner}>
-          <XMarkIcon size={16} color="#888" />
-          <Text style={styles.statusBannerText}>{emailError}</Text>
-        </View>
-      )}
 
       {emailSent ? (
         <View style={styles.statusBanner}>
@@ -312,26 +305,28 @@ export default function LoginScreen() {
       ) : (
         <>
           <Text style={styles.inputLabel}>Continue with email</Text>
-          <TextInput
-            style={[styles.input, emailFocused && styles.inputFocused]}
+          <InputField
             placeholder="you@example.com"
-            placeholderTextColor="#999"
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
-            onFocus={() => setEmailFocused(true)}
-            onBlur={() => setEmailFocused(false)}
+            error={emailError ?? undefined}
           />
           <Pressable
-            style={[styles.primaryButton, emailLoading && styles.primaryButtonDisabled]}
             onPress={handleEmailContinue}
             disabled={emailLoading}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              emailLoading ? styles.primaryButtonDisabled : pressed ? styles.primaryButtonPressed : null,
+            ]}
           >
             {emailLoading ? (
               <ActivityIndicator color={INK} />
             ) : (
-              <Text style={styles.primaryButtonText}>Continue</Text>
+              <Text style={[styles.primaryButtonText, emailLoading && styles.primaryButtonTextDisabled]}>
+                Continue
+              </Text>
             )}
           </Pressable>
         </>
@@ -357,6 +352,12 @@ export default function LoginScreen() {
 // shaped controls (see the DS's btn-search and input-search components).
 const ACCENT = '#FFA955';
 const INK = '#111';
+// btn-primary-orange state colors, per the DS's Hover/Active/Disabled
+// swatches (node 100-2529) -- Active reuses white, matching the DS exactly.
+const ACCENT_HOVER = '#FFD8AC';
+const ACCENT_DISABLED_BG = '#DDD0C2';
+const ACCENT_DISABLED_BORDER = '#BFB3A3';
+const ACCENT_DISABLED_TEXT = '#8F8577';
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
@@ -374,12 +375,14 @@ const styles = StyleSheet.create({
   },
   statusBannerText: { fontSize: 14, color: '#555' },
   oauthButton: {
+    height: 56,
+    justifyContent: 'center',
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 28,
-    paddingVertical: 16,
     alignItems: 'center',
   },
+  googleButton: { marginTop: 4 },
   oauthRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   oauthText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   appleButton: { width: '100%', height: 56 },
@@ -391,29 +394,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'OpenSans_600SemiBold',
     color: INK,
-    marginTop: 20,
+    marginTop: 4,
     marginBottom: -8,
   },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: INK,
-    borderRadius: 28,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    fontSize: 16,
-  },
-  inputFocused: { borderWidth: 2, borderColor: INK, outlineStyle: 'none' },
   primaryButton: {
+    height: 56,
+    justifyContent: 'center',
     backgroundColor: ACCENT,
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 28,
-    paddingVertical: 20,
     alignItems: 'center',
   },
-  primaryButtonDisabled: { opacity: 0.6 },
+  primaryButtonPressed: { borderColor: INK },
+  primaryButtonDisabled: { backgroundColor: ACCENT_DISABLED_BG, borderColor: ACCENT_DISABLED_BORDER },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  primaryButtonTextDisabled: { color: ACCENT_DISABLED_TEXT },
   emailSentTextBlock: { flex: 1, gap: 8 },
   loginPrompt: { color: '#666', textDecorationLine: 'underline' },
   guestButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
