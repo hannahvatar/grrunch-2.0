@@ -1,11 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CheckIcon, LockClosedIcon, MapPinIcon } from 'react-native-heroicons/outline';
+import { ArrowRightIcon, BuildingStorefrontIcon, MapPinIcon } from 'react-native-heroicons/outline';
 
 import { useSelectedStores } from '../lib/selectedStores';
 import { useSubscription } from '../lib/subscription';
 import { supabase } from '../lib/supabase';
+
+// GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx's palette.
+const ACCENT = '#FFA955';
+const INK = '#111';
 
 // Guest-mode wireframe step 4 — Stores near you.
 // Wired to the deployed nearest-stores Edge Function (see
@@ -110,7 +115,7 @@ export default function StoresScreen() {
     router.push('/plan-meals');
   }
 
-  // Only persists on the deliberate "Track all N stores" confirmation, not
+  // Only persists on the deliberate "Continue" confirmation, not
   // on "Skip for now" -- Profile > My stores should only ever show a real,
   // confirmed selection, never an unconfirmed fetch result.
   function confirmStores() {
@@ -127,131 +132,161 @@ export default function StoresScreen() {
 
   if (!hasLocation) {
     return (
-      <View style={styles.container}>
-        <View style={styles.emptyState}>
-          <MapPinIcon size={40} color="#111" />
-          <Text style={styles.title}>No location yet</Text>
-          <Text style={styles.subtitle}>
-            Turn on location to see the stores nearest you. Manual store search isn't available yet.
-          </Text>
-          <Pressable style={styles.primaryButton} onPress={() => router.back()}>
-            <Text style={styles.primaryButtonText}>Enable location</Text>
-          </Pressable>
-          <Pressable onPress={goToPlanMeals}>
-            <Text style={styles.skipText}>Skip for now</Text>
-          </Pressable>
+      <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
+        <View style={styles.container}>
+          <View style={styles.emptyState}>
+            <MapPinIcon size={48} color={INK} strokeWidth={1} />
+            <Text style={styles.title}>No location yet</Text>
+            <Text style={styles.subtitle}>
+              Turn on location to see the stores nearest you. Manual store search isn't available yet.
+            </Text>
+            <Pressable
+              style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.primaryButtonText}>Enable location</Text>
+            </Pressable>
+            <Pressable style={styles.skipButton} onPress={goToPlanMeals}>
+              <Text style={styles.skipText}>Skip for now</Text>
+              <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
+            </Pressable>
+          </View>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#111" />
-        <Text style={styles.loadingText}>Finding stores near you…</Text>
-      </View>
+      <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
+        <View style={[styles.container, styles.centered]}>
+          <ActivityIndicator size="large" color={INK} />
+          <Text style={styles.loadingText}>Finding stores near you…</Text>
+        </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Stores near you</Text>
-        <Text style={styles.subtitle}>
-          {storesEditable
-            ? 'Select the stores you want to track — you can refine this anytime in Profile settings.'
-            : 'Your nearest stores, selected automatically. Upgrade to remove a store or change a location.'}
-        </Text>
-        {stores.map((store) => (
+    <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Stores near you</Text>
+          <Text style={[styles.subtitle, !storesEditable && styles.subtitleInk]}>
+            {storesEditable
+              ? 'Select the stores you want to track — you can refine this anytime in Profile settings.'
+              : "Based on your location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."}
+          </Text>
+        </View>
+
+        <View style={styles.listCardOuter}>
+          <View style={styles.listCardShadow} />
+          <View style={styles.listCard}>
+            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+              {stores.map((store, index) => (
+                <Pressable
+                  key={store.id}
+                  style={[styles.storeRow, index === stores.length - 1 && styles.storeRowLast]}
+                  onPress={storesEditable ? undefined : showUpgradePrompt}
+                >
+                  <View style={styles.avatar}>
+                    <BuildingStorefrontIcon size={32} color={INK} />
+                  </View>
+                  <View style={styles.storeInfo}>
+                    <View style={styles.storeTopRow}>
+                      <Text style={styles.storeName}>{store.name}</Text>
+                      {store.distanceKm !== null && (
+                        <Text style={styles.distance}>{store.distanceKm.toFixed(1)} km</Text>
+                      )}
+                    </View>
+                    <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+
+        <View style={styles.floatingButtonOuter}>
           <Pressable
-            key={store.id}
-            style={styles.storeRow}
-            onPress={storesEditable ? undefined : showUpgradePrompt}
+            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+            onPress={confirmStores}
           >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{store.initial}</Text>
-            </View>
-            <View style={styles.storeInfo}>
-              <Text style={styles.storeName}>{store.name}</Text>
-              <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
-            </View>
-            {store.distanceKm !== null && (
-              <Text style={styles.distance}>{store.distanceKm.toFixed(1)} km</Text>
-            )}
-            <View style={styles.checkmarkOn}>
-              <CheckIcon size={13} color="#fff" />
-            </View>
-            {!storesEditable && <LockClosedIcon size={14} color="#999" style={styles.lockIcon} />}
+            <Text style={styles.primaryButtonText}>Continue</Text>
           </Pressable>
-        ))}
-      </ScrollView>
-      <View style={styles.footer}>
-        <Pressable style={styles.primaryButton} onPress={confirmStores}>
-          <Text style={styles.primaryButtonText}>Track all {stores.length} stores</Text>
-        </Pressable>
-        {!storesEditable && (
-          <Pressable onPress={showUpgradePrompt}>
-            <Text style={styles.upgradeText}>Want to change a store? Upgrade to customize</Text>
-          </Pressable>
-        )}
-        <Pressable onPress={goToPlanMeals}>
-          <Text style={styles.skipText}>Skip for now</Text>
-        </Pressable>
+        </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: { flex: 1 },
   container: { flex: 1 },
   centered: { alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { fontSize: 14, color: '#888' },
-  scrollContent: { padding: 24, paddingTop: 64, gap: 12 },
+  loadingText: { fontSize: 14, color: '#343837' },
+  header: { padding: 24, paddingTop: 64, paddingBottom: 0 },
+  listCardOuter: { flex: 1, marginHorizontal: 24, marginTop: 20 },
+  // Same flat offset-shadow technique as the legal modal's card and the
+  // floating Continue button.
+  listCardShadow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
+    borderRadius: 24,
+    transform: [{ translateX: -1 }, { translateY: 1 }],
+  },
+  listCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: 20, paddingVertical: 4 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 8 },
+  subtitle: { fontSize: 14, color: '#343837', marginBottom: 8 },
+  subtitleInk: { color: INK },
   emptyState: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
   storeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 14,
-    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#343837',
+    paddingVertical: 14,
     gap: 12,
   },
+  storeRowLast: { borderBottomWidth: 0 },
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 10,
-    backgroundColor: '#111',
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: '#fff', fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeInfo: { flex: 1 },
+  storeTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 13, color: '#888' },
-  distance: { fontSize: 13, color: '#999' },
-  lockIcon: { fontSize: 14, marginLeft: 4 },
-  checkmarkOn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#111',
-    borderColor: '#111',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#eee' },
+  distance: { fontSize: 13, color: INK },
+  floatingButtonOuter: { padding: 24, paddingTop: 20 },
   primaryButton: {
     width: '100%',
-    backgroundColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 18,
+    height: 56,
+    justifyContent: 'center',
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  upgradeText: { color: '#2C5FD6', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', textAlign: 'center', marginTop: 14 },
-  skipText: { color: '#999', fontSize: 15, textAlign: 'center', marginTop: 10 },
+  primaryButtonPressed: { borderColor: INK },
+  primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  skipButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
+  skipText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });

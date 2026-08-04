@@ -1,8 +1,13 @@
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MapPinIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ArrowRightIcon, MapPinIcon, XMarkIcon } from 'react-native-heroicons/outline';
+
+// GRRUNCH DS -- matches login.tsx/index.tsx's palette.
+const ACCENT = '#FFA955';
+const INK = '#111';
 
 // Guest-mode wireframe step 3 — Location permission.
 // "Allow location access" requests real device location and forwards the
@@ -39,60 +44,64 @@ export default function LocationScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.spacer} />
-      <View style={styles.iconCircle}>
-        <MapPinIcon size={36} color="#111" />
-      </View>
-      <Text style={styles.title}>Find deals near you</Text>
-      <Text style={styles.body}>
-        Grrunch can use your location to show nearby stores. This is optional — you can always
-        search manually instead.
-      </Text>
-
-      {statusMessage && (
-        <View style={styles.statusBanner}>
-          <XMarkIcon size={16} color="#888" />
-          <Text style={styles.statusBannerText}>{statusMessage}</Text>
+    <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
+      <View style={styles.container}>
+        <View style={styles.spacer} />
+        <View style={styles.iconCircle}>
+          <MapPinIcon size={48} color={INK} strokeWidth={1} />
         </View>
-      )}
-
-      <View style={styles.spacer} />
-      <Pressable style={styles.primaryButton} onPress={handleAllowLocation} disabled={requesting}>
-        <Text style={styles.primaryButtonText}>
-          {requesting ? 'Locating…' : 'Allow location access'}
+        <Text style={styles.title}>Find deals near you</Text>
+        <Text style={styles.body}>
+          Grrunch can use your location to show nearby stores. This is optional — you can always
+          search manually instead.
         </Text>
-      </Pressable>
-      <Pressable style={styles.secondaryButton} onPress={() => router.push('/stores')}>
-        <Text style={styles.secondaryButtonText}>Choose store manually</Text>
-      </Pressable>
-      <Pressable onPress={() => router.push('/stores')}>
-        <Text style={styles.skipText}>Skip for now</Text>
-      </Pressable>
-    </View>
+
+        {statusMessage && (
+          <View style={styles.statusBanner}>
+            <XMarkIcon size={16} color="#888" />
+            <Text style={styles.statusBannerText}>{statusMessage}</Text>
+          </View>
+        )}
+
+        <View style={styles.spacer} />
+        <Pressable
+          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+          onPress={handleAllowLocation}
+          disabled={requesting}
+        >
+          <Text style={styles.primaryButtonText}>
+            {requesting ? 'Locating…' : 'Allow location access'}
+          </Text>
+        </Pressable>
+        <Pressable style={styles.secondaryButton} onPress={() => router.push('/stores')}>
+          <Text style={styles.secondaryButtonText}>Choose store manually</Text>
+        </Pressable>
+        <Pressable style={styles.skipButton} onPress={() => router.push('/stores')}>
+          <Text style={styles.skipText}>Skip for now</Text>
+          <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
+        </Pressable>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: { flex: 1 },
   container: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
   spacer: { height: 24 },
   iconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#F2F2F7',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 12, textAlign: 'center' },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#666' },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: '#F2F2F2',
-    borderRadius: 12,
+    borderRadius: 20,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginTop: 16,
@@ -101,22 +110,28 @@ const styles = StyleSheet.create({
   statusBannerText: { fontSize: 14, color: '#555', flex: 1 },
   primaryButton: {
     width: '100%',
-    backgroundColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 18,
+    height: 56,
+    justifyContent: 'center',
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
     alignItems: 'center',
     marginBottom: 12,
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  primaryButtonPressed: { borderColor: INK },
+  primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   secondaryButton: {
     width: '100%',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 14,
-    paddingVertical: 18,
+    height: 56,
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
     alignItems: 'center',
     marginBottom: 12,
   },
-  secondaryButtonText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
-  skipText: { color: '#999', fontSize: 15 },
+  secondaryButtonText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
+  skipButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  skipText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });
