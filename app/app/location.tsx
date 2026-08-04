@@ -2,6 +2,7 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { MapPinIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 // Guest-mode wireframe step 3 — Location permission.
 // "Allow location access" requests real device location and forwards the
@@ -41,7 +42,7 @@ export default function LocationScreen() {
     <View style={styles.container}>
       <View style={styles.spacer} />
       <View style={styles.iconCircle}>
-        <Text style={styles.icon}>📍</Text>
+        <MapPinIcon size={36} color="#111" />
       </View>
       <Text style={styles.title}>Find deals near you</Text>
       <Text style={styles.body}>
@@ -51,7 +52,7 @@ export default function LocationScreen() {
 
       {statusMessage && (
         <View style={styles.statusBanner}>
-          <Text style={styles.statusBannerIcon}>✕</Text>
+          <XMarkIcon size={16} color="#888" />
           <Text style={styles.statusBannerText}>{statusMessage}</Text>
         </View>
       )}
@@ -84,8 +85,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  icon: { fontSize: 36 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 12, textAlign: 'center' },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#666' },
   statusBanner: {
     flexDirection: 'row',
@@ -98,7 +98,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     width: '100%',
   },
-  statusBannerIcon: { fontSize: 14, color: '#888' },
   statusBannerText: { fontSize: 14, color: '#555', flex: 1 },
   primaryButton: {
     width: '100%',
@@ -108,7 +107,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   secondaryButton: {
     width: '100%',
     borderWidth: 1,
@@ -118,6 +117,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  secondaryButtonText: { fontSize: 16, fontWeight: '600' },
+  secondaryButtonText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   skipText: { color: '#999', fontSize: 15 },
 });

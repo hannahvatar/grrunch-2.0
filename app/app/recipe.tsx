@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ClockIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import type { Meal } from '../lib/mealData';
 import { scaleMealToTargets } from '../lib/mealScaling';
@@ -52,12 +53,15 @@ export default function RecipeScreen() {
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.title}>{meal.name}</Text>
-          <Text style={styles.subtitle}>
-            🕐 {meal.minutes} min · ${meal.price.toFixed(2)} / serving
-          </Text>
+          <View style={styles.subtitleRow}>
+            <ClockIcon size={13} color="#888" />
+            <Text style={styles.subtitle}>
+              {meal.minutes} min · ${meal.price.toFixed(2)} / serving
+            </Text>
+          </View>
         </View>
         <Pressable onPress={() => router.back()}>
-          <Text style={styles.closeButton}>✕</Text>
+          <XMarkIcon size={20} color="#999" />
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -111,9 +115,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   headerText: { flex: 1, marginRight: 12 },
-  title: { fontSize: 20, fontWeight: '800' },
-  subtitle: { fontSize: 13, color: '#888', marginTop: 4 },
-  closeButton: { fontSize: 20, color: '#999' },
+  title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  subtitle: { fontSize: 13, color: '#888' },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 4 },
   macrosRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   macroPill: {
@@ -123,9 +127,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
   },
-  macroValue: { fontSize: 16, fontWeight: '800' },
+  macroValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   macroLabel: { fontSize: 11, color: '#888' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginTop: 16, marginBottom: 8 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
   estimatedDisclaimer: { fontSize: 12, color: '#B8860B', fontStyle: 'italic' },
   notFound: { padding: 24, fontSize: 15, color: '#888' },

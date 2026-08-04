@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { MagnifyingGlassIcon } from 'react-native-heroicons/outline';
 
 import { StatusScreen } from '../components/StatusScreen';
 
@@ -15,7 +16,7 @@ export default function NoAccountScreen() {
 
   return (
     <StatusScreen
-      icon="🔎"
+      icon={<MagnifyingGlassIcon size={24} color="#999" />}
       title="No Grrunch account found"
       body={`We couldn't find the Grrunch account connected to this ${providerName} Account.`}
       actions={[

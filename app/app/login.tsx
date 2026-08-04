@@ -3,11 +3,15 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Network from 'expo-network';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { Alert, ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ArrowRightIcon, EnvelopeIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
+import { AppleIcon } from '../components/icons/AppleIcon';
+import { GoogleIcon } from '../components/icons/GoogleIcon';
 import { supabase } from '../lib/supabase';
 
 // makeRedirectUri() is meant to auto-detect web vs. native, but in
@@ -74,6 +78,7 @@ export default function LoginScreen() {
   // confirmation link is tapped (see the deep-link listener below and
   // lib/supabase.ts's detectSessionInUrl for the web case).
   const [email, setEmail] = useState('');
+  const [emailFocused, setEmailFocused] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -250,13 +255,14 @@ export default function LoginScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Save deals & build your lists</Text>
-      <Text style={styles.subtitle}>Create a free account to get started.</Text>
+    <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
+      <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Turn grocery deals into affordable meals</Text>
+      <Text style={styles.subtitle}>Create a free account to start saving.</Text>
 
       {cancelledMessage && (
         <View style={styles.statusBanner}>
-          <Text style={styles.statusBannerIcon}>✕</Text>
+          <XMarkIcon size={16} color="#888" />
           <Text style={styles.statusBannerText}>{cancelledMessage}</Text>
         </View>
       )}
@@ -265,35 +271,35 @@ export default function LoginScreen() {
         <AppleAuthentication.AppleAuthenticationButton
           buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
           buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-          cornerRadius={14}
+          cornerRadius={28}
           style={styles.appleButton}
           onPress={handleAppleSignIn}
         />
       ) : (
         <Pressable style={styles.oauthButton} onPress={handleAppleSignInFallback}>
-          <Text style={styles.oauthText}>🍎  Continue with Apple</Text>
+          <View style={styles.oauthRow}>
+            <AppleIcon size={18} color={INK} />
+            <Text style={styles.oauthText}>Continue with Apple</Text>
+          </View>
         </Pressable>
       )}
       <Pressable style={styles.oauthButton} onPress={handleGoogleSignIn}>
-        <Text style={styles.oauthText}>G  Continue with Google</Text>
+        <View style={styles.oauthRow}>
+          <GoogleIcon size={18} color={INK} />
+          <Text style={styles.oauthText}>Continue with Google</Text>
+        </View>
       </Pressable>
-
-      <View style={styles.dividerRow}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
 
       {emailError && (
         <View style={styles.statusBanner}>
-          <Text style={styles.statusBannerIcon}>✕</Text>
+          <XMarkIcon size={16} color="#888" />
           <Text style={styles.statusBannerText}>{emailError}</Text>
         </View>
       )}
 
       {emailSent ? (
         <View style={styles.statusBanner}>
-          <Text style={styles.statusBannerIcon}>✉️</Text>
+          <EnvelopeIcon size={16} color="#888" />
           <View style={styles.emailSentTextBlock}>
             <Text style={styles.statusBannerText}>
               We sent a confirmation link to {email}. Open it to finish signing in.
@@ -305,14 +311,17 @@ export default function LoginScreen() {
         </View>
       ) : (
         <>
+          <Text style={styles.inputLabel}>Continue with email</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, emailFocused && styles.inputFocused]}
             placeholder="you@example.com"
             placeholderTextColor="#999"
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
           />
           <Pressable
             style={[styles.primaryButton, emailLoading && styles.primaryButtonDisabled]}
@@ -320,7 +329,7 @@ export default function LoginScreen() {
             disabled={emailLoading}
           >
             {emailLoading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={INK} />
             ) : (
               <Text style={styles.primaryButtonText}>Continue</Text>
             )}
@@ -328,62 +337,85 @@ export default function LoginScreen() {
         </>
       )}
 
-      <View style={styles.divider} />
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
       <Pressable style={styles.guestButton} onPress={() => router.push('/location')}>
         <Text style={styles.guestText}>Continue as guest</Text>
-        <Text style={styles.guestSubtext}>Deals browsing only · no saved lists</Text>
+        <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
       </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
+// GRRUNCH DS accent -- warm orange used for primary/filled actions, paired
+// with bold black outlines on secondary/outline actions and fully pill-
+// shaped controls (see the DS's btn-search and input-search components).
+const ACCENT = '#FFA955';
+const INK = '#111';
+
 const styles = StyleSheet.create({
+  gradient: { flex: 1 },
   container: { padding: 24, paddingTop: 64, gap: 12 },
-  title: { fontSize: 26, fontWeight: '800' },
-  subtitle: { fontSize: 15, color: '#666', marginBottom: 12 },
+  title: { fontSize: 32, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  subtitle: { fontSize: 16, color: '#343837', marginBottom: 12 },
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: '#F2F2F2',
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 20,
+    paddingVertical: 16,
     paddingHorizontal: 16,
   },
-  statusBannerIcon: { fontSize: 14, color: '#888' },
   statusBannerText: { fontSize: 14, color: '#555' },
   oauthButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
     paddingVertical: 16,
     alignItems: 'center',
   },
-  oauthText: { fontSize: 16, fontWeight: '600' },
-  appleButton: { width: '100%', height: 54 },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 8, gap: 8 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#eee' },
-  dividerText: { color: '#999', fontSize: 13 },
+  oauthRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  oauthText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
+  appleButton: { width: '100%', height: 56 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 8 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#343837' },
+  dividerText: { color: '#343837', fontSize: 13 },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'OpenSans_600SemiBold',
+    color: INK,
+    marginTop: 20,
+    marginBottom: -8,
+  },
   input: {
-    backgroundColor: '#F2F2F2',
-    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 28,
     paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     fontSize: 16,
   },
+  inputFocused: { borderWidth: 2, borderColor: INK, outlineStyle: 'none' },
   primaryButton: {
-    backgroundColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 18,
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
+    paddingVertical: 20,
     alignItems: 'center',
   },
   primaryButtonDisabled: { opacity: 0.6 },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  emailSentTextBlock: { flex: 1, gap: 6 },
+  primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  emailSentTextBlock: { flex: 1, gap: 8 },
   loginPrompt: { color: '#666', textDecorationLine: 'underline' },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 12 },
-  guestButton: { alignItems: 'center', gap: 4 },
-  guestText: { fontSize: 16, color: '#333' },
-  guestSubtext: { fontSize: 13, color: '#999' },
+  guestButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  guestText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });

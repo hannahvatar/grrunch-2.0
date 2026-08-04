@@ -1,6 +1,15 @@
+import {
+  OpenSans_400Regular,
+  OpenSans_600SemiBold,
+  OpenSans_700Bold,
+  OpenSans_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/open-sans';
 import { Stack, router } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Text, TextInput } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SupportBubble } from '../components/SupportBubble';
@@ -13,6 +22,22 @@ import { SelectedMealsProvider } from '../lib/selectedMeals';
 import { SelectedStoresProvider } from '../lib/selectedStores';
 import { SubscriptionProvider } from '../lib/subscription';
 import { supabase } from '../lib/supabase';
+
+SplashScreen.preventAutoHideAsync();
+
+// App-wide default -- individual styles still set fontWeight (600/700/800)
+// alongside an explicit fontFamily (OpenSans_600SemiBold etc, see the
+// per-screen StyleSheets) since a custom single-weight font family doesn't
+// get visually bolder from the fontWeight style prop alone the way a
+// system font does.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(Text as any).defaultProps = { ...(Text as any).defaultProps, style: { fontFamily: 'OpenSans_400Regular' } };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(TextInput as any).defaultProps = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ...(TextInput as any).defaultProps,
+  style: { fontFamily: 'OpenSans_400Regular' },
+};
 
 // Advances past login once a session genuinely appears from signing in --
 // specifically the 'SIGNED_IN' event, not Supabase's 'INITIAL_SESSION'
@@ -39,6 +64,23 @@ function AuthRedirect() {
 // the "Meals" tab, i.e. Plan your meals). Grocery list lives in the
 // (tabs) group as its own tab now, not a pushed modal screen.
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    OpenSans_400Regular,
+    OpenSans_600SemiBold,
+    OpenSans_700Bold,
+    OpenSans_800ExtraBold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       <AuthProvider>

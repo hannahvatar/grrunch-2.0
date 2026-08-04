@@ -1,3 +1,5 @@
+import { SignalSlashIcon } from 'react-native-heroicons/outline';
+
 import { StatusScreen } from '../components/StatusScreen';
 
 // Sign-in offline path. Shown when a network check fails before attempting
@@ -5,7 +7,7 @@ import { StatusScreen } from '../components/StatusScreen';
 export default function OfflineScreen() {
   return (
     <StatusScreen
-      icon="🚫"
+      icon={<SignalSlashIcon size={24} color="#999" />}
       title="You're offline"
       body="Check your connection and try again."
     />

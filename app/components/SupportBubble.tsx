@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { ChatBubbleOvalLeftEllipsisIcon } from 'react-native-heroicons/solid';
 
 // Rendered once, in the root layout, so it floats over every screen in the
 // app -- not just reachable from Settings > Get support. Same destination
@@ -12,7 +13,7 @@ export function SupportBubble() {
       onPress={() => router.push({ pathname: '/settings-detail', params: { title: 'Get support' } })}
       hitSlop={8}
     >
-      <Text style={styles.icon}>💬</Text>
+      <ChatBubbleOvalLeftEllipsisIcon size={24} color="#fff" />
     </Pressable>
   );
 }
@@ -34,5 +35,4 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
-  icon: { fontSize: 22 },
 });

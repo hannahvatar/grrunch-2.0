@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 // Inline teaser shown beside a locked, paid-tier feature -- always routes
 // to the shared /upgrade modal (app/upgrade.tsx), which is where the real
@@ -12,12 +13,12 @@ export function UpgradeCta({ reason }: { reason: string }) {
       style={styles.container}
       onPress={() => router.push({ pathname: '/upgrade', params: { reason } })}
     >
-      <Text style={styles.icon}>🔒</Text>
+      <LockClosedIcon size={18} color="#fff" />
       <View style={styles.textBlock}>
         <Text style={styles.title}>Start 30-day free trial</Text>
         <Text style={styles.subtitle}>Then $5.99/mo · Cancel anytime</Text>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <ChevronRightIcon size={18} color="#999" />
     </Pressable>
   );
 }
@@ -31,9 +32,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
   },
-  icon: { fontSize: 18 },
   textBlock: { flex: 1 },
-  title: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  title: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   subtitle: { color: '#ccc', fontSize: 12, marginTop: 2 },
-  chevron: { color: '#999', fontSize: 18 },
 });

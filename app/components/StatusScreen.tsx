@@ -1,5 +1,7 @@
 import { router } from 'expo-router';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
 export interface StatusAction {
   label: string;
@@ -25,7 +27,7 @@ export function StatusScreen({
   actions,
   onBack,
 }: {
-  icon: string;
+  icon: ReactNode;
   title: string;
   body: string;
   footnote?: string;
@@ -42,12 +44,10 @@ export function StatusScreen({
         onPress={onBack ?? (() => router.back())}
         hitSlop={8}
       >
-        <Text style={styles.backButtonText}>‹</Text>
+        <ChevronLeftIcon size={24} color="#111" />
       </Pressable>
       <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <Text style={styles.icon}>{icon}</Text>
-        </View>
+        <View style={styles.iconCircle}>{icon}</View>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.body}>{body}</Text>
       </View>
@@ -93,7 +93,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   backButton: { position: 'absolute', top: 24, left: 20 },
-  backButtonText: { fontSize: 28, color: '#111' },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   iconCircle: {
     width: 64,
@@ -105,8 +104,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
   },
-  icon: { fontSize: 24, color: '#999' },
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 8, textAlign: 'center' },
   body: { fontSize: 15, color: '#666', textAlign: 'center' },
   footer: { padding: 24, gap: 12 },
   primaryButton: {
@@ -115,7 +113,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   secondaryButton: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -123,8 +121,8 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
-  secondaryButtonText: { color: '#111', fontSize: 17, fontWeight: '700' },
+  secondaryButtonText: { color: '#111', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   textButton: { alignItems: 'center', paddingVertical: 6 },
-  textButtonLabel: { color: '#666', fontSize: 15, fontWeight: '600' },
+  textButtonLabel: { color: '#666', fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   footnote: { fontSize: 12, color: '#999', textAlign: 'center', marginTop: -2 },
 });

@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
+import { ExclamationTriangleIcon } from 'react-native-heroicons/outline';
 
 import { StatusScreen } from '../components/StatusScreen';
 
@@ -18,7 +19,7 @@ export default function ErrorScreen() {
 
   return (
     <StatusScreen
-      icon="!"
+      icon={<ExclamationTriangleIcon size={24} color="#999" />}
       title={title || 'Something went wrong'}
       body={body || 'Something went wrong. Please try again.'}
       footnote={footnote}

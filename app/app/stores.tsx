@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CheckIcon, LockClosedIcon, MapPinIcon } from 'react-native-heroicons/outline';
 
 import { useSelectedStores } from '../lib/selectedStores';
 import { useSubscription } from '../lib/subscription';
@@ -128,7 +129,7 @@ export default function StoresScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📍</Text>
+          <MapPinIcon size={40} color="#111" />
           <Text style={styles.title}>No location yet</Text>
           <Text style={styles.subtitle}>
             Turn on location to see the stores nearest you. Manual store search isn't available yet.
@@ -179,9 +180,9 @@ export default function StoresScreen() {
               <Text style={styles.distance}>{store.distanceKm.toFixed(1)} km</Text>
             )}
             <View style={styles.checkmarkOn}>
-              <Text style={styles.checkmarkText}>✓</Text>
+              <CheckIcon size={13} color="#fff" />
             </View>
-            {!storesEditable && <Text style={styles.lockIcon}>🔒</Text>}
+            {!storesEditable && <LockClosedIcon size={14} color="#999" style={styles.lockIcon} />}
           </Pressable>
         ))}
       </ScrollView>
@@ -207,10 +208,9 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14, color: '#888' },
   scrollContent: { padding: 24, paddingTop: 64, gap: 12 },
-  title: { fontSize: 24, fontWeight: '800' },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitle: { fontSize: 14, color: '#666', marginBottom: 8 },
   emptyState: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyIcon: { fontSize: 40, marginBottom: 8 },
   storeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -228,9 +228,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: '#fff', fontWeight: '700' },
+  avatarText: { color: '#fff', fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeInfo: { flex: 1 },
-  storeName: { fontSize: 16, fontWeight: '700' },
+  storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 13, color: '#888' },
   distance: { fontSize: 13, color: '#999' },
   lockIcon: { fontSize: 14, marginLeft: 4 },
@@ -243,7 +243,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkmarkText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   footer: { padding: 24, borderTopWidth: 1, borderTopColor: '#eee' },
   primaryButton: {
     width: '100%',
@@ -252,7 +251,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  upgradeText: { color: '#2C5FD6', fontSize: 14, fontWeight: '700', textAlign: 'center', marginTop: 14 },
+  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  upgradeText: { color: '#2C5FD6', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', textAlign: 'center', marginTop: 14 },
   skipText: { color: '#999', fontSize: 15, textAlign: 'center', marginTop: 10 },
 });

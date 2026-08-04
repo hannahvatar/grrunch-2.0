@@ -44,5 +44,5 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   text: { color: '#666', flexShrink: 1 },
-  link: { fontWeight: '700', textDecorationLine: 'underline' },
+  link: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
 });

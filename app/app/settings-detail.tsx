@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
 // Shared stub destination for every Settings row, and for the persistent
 // support bubble (both land here with title="Get support"). None of these
@@ -12,8 +13,9 @@ export default function SettingsDetailScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.backButton}>‹ Back</Text>
+        <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeftIcon size={18} color="#111" />
+          <Text style={styles.backButtonText}>Back</Text>
         </Pressable>
         <Text style={styles.title}>{title ?? 'Settings'}</Text>
         <View style={styles.headerSpacer} />
@@ -34,8 +36,9 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
-  backButton: { fontSize: 16, color: '#111' },
-  title: { fontSize: 18, fontWeight: '800' },
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  backButtonText: { fontSize: 16, color: '#111' },
+  title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   headerSpacer: { width: 44 },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   bodyText: { fontSize: 14, color: '#888', textAlign: 'center' },

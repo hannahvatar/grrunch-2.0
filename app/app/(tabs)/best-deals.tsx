@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon, TagIcon } from 'react-native-heroicons/outline';
 
 import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, groupDealsByCategory } from '../../lib/curatedDeals';
 import { useSelectedDeals } from '../../lib/selectedDeals';
@@ -91,7 +92,11 @@ export default function BestDealsScreen() {
                 <Text style={styles.categoryTitle}>{category}</Text>
                 <View style={styles.categoryHeaderRight}>
                   <Text style={styles.categoryCount}>{categoryDeals.length}</Text>
-                  <Text style={styles.categoryChevron}>{isExpanded ? '▾' : '▸'}</Text>
+                  {isExpanded ? (
+                    <ChevronDownIcon size={16} color="#999" />
+                  ) : (
+                    <ChevronRightIcon size={16} color="#999" />
+                  )}
                 </View>
               </Pressable>
 
@@ -107,7 +112,7 @@ export default function BestDealsScreen() {
                               <Image source={{ uri: deal.imageUrl }} style={styles.dealImage} />
                             ) : (
                               <View style={[styles.dealImage, styles.dealImagePlaceholder]}>
-                                <Text style={styles.dealImagePlaceholderIcon}>🏷️</Text>
+                                <TagIcon size={24} color="#ccc" />
                               </View>
                             )}
                             {deal.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
@@ -141,8 +146,9 @@ export default function BestDealsScreen() {
                           style={[styles.addButton, isAdded && styles.addButtonActive]}
                           onPress={() => toggleDealSelected(deal.id)}
                         >
+                          {isAdded && <CheckIcon size={12} color="#fff" />}
                           <Text style={[styles.addButtonText, isAdded && styles.addButtonTextActive]}>
-                            {isAdded ? '✓ Added' : '+ Add to grocery list'}
+                            {isAdded ? 'Added' : '+ Add to grocery list'}
                           </Text>
                         </Pressable>
                       </View>
@@ -160,7 +166,7 @@ export default function BestDealsScreen() {
                         })
                       }
                     >
-                      <Text style={styles.unlockIcon}>🔒</Text>
+                      <LockClosedIcon size={20} color="#111" />
                       <Text style={styles.unlockTitle}>
                         Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
                       </Text>
@@ -182,7 +188,7 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   errorText: { fontSize: 14, color: '#888', textAlign: 'center', paddingHorizontal: 24 },
   scrollContent: { padding: 20, paddingTop: 60, gap: 20 },
-  title: { fontSize: 24, fontWeight: '800' },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitle: { fontSize: 13, color: '#888', marginTop: -12 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
@@ -197,10 +203,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  categoryTitle: { fontSize: 16, fontWeight: '800' },
+  categoryTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   categoryHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  categoryCount: { fontSize: 13, color: '#999', fontWeight: '600' },
-  categoryChevron: { fontSize: 14, color: '#999' },
+  categoryCount: { fontSize: 13, color: '#999', fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   dealCard: {
     width: '47%',
@@ -220,13 +225,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  unlockIcon: { fontSize: 20, marginBottom: 2 },
-  unlockTitle: { fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  unlockTitle: { fontSize: 13, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', textAlign: 'center' },
   unlockSubtitle: { fontSize: 11, color: '#888', textAlign: 'center' },
   dealImageWrap: { position: 'relative' },
   dealImage: { width: '100%', height: 90, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  dealImagePlaceholderIcon: { fontSize: 24, opacity: 0.4 },
   discountBadge: {
     position: 'absolute',
     top: 6,
@@ -236,7 +239,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   fairPriceBadge: {
     position: 'absolute',
     top: 6,
@@ -246,13 +249,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  dealName: { fontSize: 13, fontWeight: '700', marginTop: 4, minHeight: 34 },
+  dealName: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 4, minHeight: 34 },
   dealChain: { fontSize: 11, color: '#999' },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },
-  dealPrice: { fontSize: 15, fontWeight: '800' },
+  dealPrice: { fontSize: 15, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   dealOriginalPrice: { fontSize: 12, color: '#aaa', textDecorationLine: 'line-through' },
   addButton: {
     marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
     borderWidth: 1,
     borderColor: '#111',
     borderRadius: 8,
@@ -260,6 +266,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addButtonActive: { backgroundColor: '#111' },
-  addButtonText: { fontSize: 11, fontWeight: '700', color: '#111' },
+  addButtonText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#111' },
   addButtonTextActive: { color: '#fff' },
 });
