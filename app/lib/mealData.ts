@@ -32,11 +32,6 @@ export interface IngredientLine {
   // describeDryEquivalent. The recipe page keeps showing `text` (the
   // cooked amount the dish/instructions actually use) unchanged.
   groceryText?: string;
-  // True for generic staples (no dealTag) -- the portion of a recipe
-  // scaleMealToTargets can scale up/down (meal.stapleMultiplier) to help
-  // hit a calorie/protein target, unlike a deal-tagged anchor item bought
-  // as a whole package. See mealScaling.ts.
-  isFlexible: boolean;
 }
 
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the
@@ -52,34 +47,20 @@ export interface Meal {
   protein: number;
   ingredients: IngredientLine[];
   instructions: string[];
-  // Whole-recipe (not per-serving) totals split by whether that portion
-  // can flex: fixed* comes from deal-tagged anchor ingredients (bought as
-  // a whole package, never fragmented -- see docs/grrunch-architecture.md
-  // item 12); flexible* comes from generic staples at this recipe's
-  // original quantities, which scaleMealToTargets CAN scale up/down to
-  // help hit a calorie/protein target. fixed + flexible = calories/
-  // protein/price * servings, at baseline (stapleMultiplier = 1).
-  // Undefined on rows synced before this split existed.
+  // Whole-recipe (not per-serving) totals split by whether an ingredient
+  // is a deal-tagged anchor (fixed*, bought as a whole package, never
+  // fragmented -- see docs/grrunch-architecture.md item 12) or a generic
+  // staple (flexible*). Computed server-side (refresh_recipe_nutrition/
+  // refresh_recipe_deal_tags) but not currently used client-side -- see
+  // the archive/dynamic-meal-scaling branch for the earlier feature that
+  // consumed this to resize a recipe toward a calorie/protein target.
+  // Left populated (not removed) in case that's revisited later; every
+  // recipe's displayed calories/protein/price is just its own real,
+  // un-scaled serving now (lib/mealScaling.ts).
   fixedCalories?: number;
   flexibleCalories?: number;
   fixedProtein?: number;
   flexibleProtein?: number;
   fixedPrice?: number;
   flexiblePrice?: number;
-  // Set by scaleMealToTargets when hitting the plan's targets required
-  // more than a serving-count change -- how much this recipe's flexible
-  // (staple) ingredients were scaled by, e.g. 1.4 = 40% more rice/potatoes/
-  // etc. than the recipe's original quantities. Undefined (equivalent to
-  // 1, no change) on the raw, un-scaled meal.
-  stapleMultiplier?: number;
-  // This recipe's protein-anchor deal item (see lib/dealNutrition.ts
-  // findAnchor), if one was identified -- e.g. the chicken breast pack in
-  // a roasted-chicken recipe, not the broccoli also on the flyer that
-  // week. scaleMealToTargets sizes this ingredient's per-serving portion
-  // to the Plan tab's protein target directly (see mealScaling.ts) rather
-  // than splitting the whole package evenly across the recipe's originally
-  // authored serving count. Undefined when no ingredient in the recipe is
-  // both protein-dense enough and has a known package size to anchor on --
-  // those recipes fall back to the older whole-batch model.
-  anchor?: { caloriesPer100g: number; proteinPer100g: number; packageGrams: number };
 }

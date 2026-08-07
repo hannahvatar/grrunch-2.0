@@ -5,8 +5,6 @@ import { CheckIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicon
 
 import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
 import type { DealTag, Meal } from '../lib/mealData';
-import { scaleMealToTargets } from '../lib/mealScaling';
-import { usePlanTargets } from '../lib/planTargets';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
@@ -70,7 +68,6 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 export function GroceryListView() {
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { selectedDealIds } = useSelectedDeals();
-  const { targets } = usePlanTargets();
   const [rawSelectedMeals, setRawSelectedMeals] = useState<Meal[]>([]);
   const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
   // This week's full deal list, used only to look up which store carries a
@@ -93,13 +90,9 @@ export function GroceryListView() {
       .catch(() => setRawSelectedMeals([]));
   }, [selectedIds]);
 
-  // Re-derived from the same plan targets used on the Meals tab, so a
-  // recipe's serving size/price/nutrition here matches what the user
-  // actually picked -- not the recipe's raw, un-scaled DB values. Falls
-  // back to the raw meal if no split satisfies the current targets (e.g.
-  // the targets changed since this recipe was added), rather than
-  // silently dropping an item the user explicitly selected.
-  const selectedMeals = rawSelectedMeals.map((m) => scaleMealToTargets(m, targets) ?? m);
+  // Each recipe's real, un-scaled serving size/price/nutrition -- see
+  // lib/mealScaling.ts for why nothing here gets resized to a target.
+  const selectedMeals = rawSelectedMeals;
 
   useEffect(() => {
     if (selectedDealIds.size === 0) {

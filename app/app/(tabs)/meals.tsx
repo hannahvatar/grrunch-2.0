@@ -8,7 +8,7 @@ import { AccountBanner } from '../../components/AccountBanner';
 import { AvocadoBeanIcon, RestaurantIcon } from '../../components/MaterialSymbols';
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
 import type { Meal } from '../../lib/mealData';
-import { scaleMealToTargets } from '../../lib/mealScaling';
+import { sortMealsByTargetFit } from '../../lib/mealScaling';
 import { type PlanTargets, usePlanTargets } from '../../lib/planTargets';
 import { getRecipeImage } from '../../lib/recipeImages';
 import { fetchAllRecipes } from '../../lib/recipes';
@@ -35,17 +35,11 @@ function toTitleCase(text: string): string {
 }
 
 // Guest-mode wireframe step 6 — Main App, Meals tab.
-// A recipe's ingredients (and its deal-tagged anchor package) are fixed for
-// the whole batch, so there's no "servings per recipe" to arbitrarily pick.
-// What the Plan tab's calorie/protein targets actually choose is how many
-// equal servings that batch is divided into (see lib/mealScaling.ts) --
-// this screen shows every recipe for which some such split exists.
-//
-// Meal Plan Engine is a pure query against the recipe library -- never a
-// live AI call -- so filtering to targets can legitimately come back with
-// fewer matches than requested. That's an intentional tradeoff (see
-// architecture.md), not a bug: a thinner plan beats silently ignoring the
-// user's calorie/protein targets.
+// Every recipe with an active deal shows, full stop -- coverage and real
+// cost-per-serving matter more here than hitting an exact macro number
+// (see lib/mealScaling.ts). The Plan tab's calorie/protein sliders just
+// reorder this same list so whichever recipes are closest to what
+// someone's after surface first; nothing gets hidden or resized to fit.
 //
 // Recipes are persistent and reused week to week, but their deal_tags are
 // re-matched against each new week's curated_deals -- a recipe with none
@@ -53,10 +47,10 @@ function toTitleCase(text: string): string {
 // (rather than showing at regular price) until one of them is on sale
 // again, since the app's whole value prop is deal-driven meal planning.
 function eligibleMeals(allMeals: Meal[], targets: PlanTargets): Meal[] {
-  return allMeals
-    .filter((m) => m.dealTags.length > 0)
-    .map((m) => scaleMealToTargets(m, targets))
-    .filter((m): m is Meal => m !== null);
+  return sortMealsByTargetFit(
+    allMeals.filter((m) => m.dealTags.length > 0),
+    targets
+  );
 }
 
 export default function MealsScreen() {
@@ -114,34 +108,30 @@ export default function MealsScreen() {
           <Text style={styles.subtitle}>
             {visibleMeals.length} recipe{visibleMeals.length === 1 ? '' : 's'}
           </Text>
-          <View style={styles.tipPill}>
-            <LightBulbIcon size={20} color={INK} strokeWidth={2} />
-            <Text style={styles.tip}>
-              Want more results? Adjust your{' '}
-              <Text style={styles.tipLink} onPress={() => router.push('/(tabs)/plan-meals')}>
-                meal settings
+          {(targets.maxCalories !== undefined || targets.minProtein !== undefined) && (
+            <View style={styles.tipPill}>
+              <LightBulbIcon size={20} color={INK} strokeWidth={2} />
+              <Text style={styles.tip}>
+                Sorted to match your{' '}
+                <Text style={styles.tipLink} onPress={() => router.push('/(tabs)/plan-meals')}>
+                  meal settings
+                </Text>
+                .
               </Text>
-              .
-            </Text>
-          </View>
+            </View>
+          )}
         </View>
 
         {planMeals.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
-              No meals left in your plan. Try loosening your calorie or protein targets, or
-              start over.
+              No deals available for a recipe right now. Check back when this week's flyers
+              update.
             </Text>
           </View>
         )}
 
         {visibleMeals.map((meal) => {
-          // price/calories/protein all come from the same scaleMealToTargets
-          // output -- same serving size for all three, so they stay
-          // internally consistent (a recipe sliced into more, smaller
-          // servings to fit the calorie ceiling costs less per serving too).
-          const effectivePrice = meal.price;
-
           return (
           <View key={meal.id} style={styles.mealCardOuter}>
             <View pointerEvents="none" style={styles.mealCardShadow} />
@@ -172,7 +162,7 @@ export default function MealsScreen() {
               </View>
               <View style={styles.priceNutritionRow}>
                 <View style={styles.priceBlock}>
-                  <Text style={styles.mealPrice}>${effectivePrice.toFixed(2)}</Text>
+                  <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
                   <Text style={styles.perServing}>/ serving</Text>
                 </View>
                 <View style={styles.nutritionRow}>
@@ -185,25 +175,6 @@ export default function MealsScreen() {
                     <Text style={styles.nutritionText}>{meal.protein}g protein</Text>
                   </View>
                 </View>
-              </View>
-              {targets.maxCalories !== undefined && targets.minProtein !== undefined && (
-                <Text
-                  style={styles.mealTargetsHint}
-                  onPress={() => router.push('/(tabs)/plan-meals')}
-                >
-                  Based on {targets.maxCalories} cal, {targets.minProtein}g protein. Adjust your
-                  meal size to lower price per serving.
-                </Text>
-              )}
-              <View style={[styles.tipPill, styles.tipPillInCard]}>
-                <LightBulbIcon size={20} color={INK} strokeWidth={2} />
-                <Text style={styles.tip}>
-                  Want lower price per serving? Adjust your{' '}
-                  <Text style={styles.tipLink} onPress={() => router.push('/(tabs)/plan-meals')}>
-                    meal settings
-                  </Text>
-                  .
-                </Text>
               </View>
               {meal.dealTags.length > 0 && (
                 <View style={styles.dealTagsRow}>
@@ -309,7 +280,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  tipPillInCard: { backgroundColor: '#FFEAD4' },
   tip: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
   tipLink: { textDecorationLine: 'underline' },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
@@ -396,7 +366,6 @@ const styles = StyleSheet.create({
   nutritionText: { fontSize: 13, color: '#888' },
   mealPrice: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   perServing: { fontSize: 13, color: '#888' },
-  mealTargetsHint: { fontSize: 12, fontStyle: 'italic', color: '#767676' },
   dealTagsRow: { gap: 6 },
   dealTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dealTagName: { color: '#888', fontSize: 13, flex: 1 },

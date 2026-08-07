@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { type DealNutrition, fetchDealNutrition, findAnchor } from './dealNutrition';
 import type { DealTag, IngredientLine, Meal } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
 import { describeDryEquivalent, describeUnitCount } from './unitConversion';
@@ -61,7 +60,7 @@ function mapIngredient(
   const text = dryEquivalent ? `${rawText} (cooked)` : unitCount ?? rawText;
   const groceryText = dryEquivalent ? `${dryEquivalent} ${ingredient.name}` : unitCount;
   const dealTag = dealTags.find((tag) => tag.name === ingredient.name);
-  if (dealTag) return { text, name: ingredient.name, dealTag, groceryText, isFlexible: false };
+  if (dealTag) return { text, name: ingredient.name, dealTag, groceryText };
   const match = matchReferencePrice(
     ingredient.name, ingredient.quantity, ingredient.unit,
     statcanPrices, producePrices, staplePrices
@@ -71,10 +70,6 @@ function mapIngredient(
     name: ingredient.name,
     estimatedPrice: match ? { avgPrice: match.avgPrice, unit: match.unit, source: match.source } : undefined,
     groceryText,
-    // Mirrors refresh_recipe_nutrition's fixed/flexible split: anything
-    // without a dealTag is a generic staple, the portion scaleMealToTargets
-    // can flex -- see mealData.ts.
-    isFlexible: true,
   };
 }
 
@@ -99,11 +94,9 @@ function mapRowToMeal(
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
-  staplePrices: StaplePrice[],
-  dealNutrition: DealNutrition[]
+  staplePrices: StaplePrice[]
 ): Meal {
   const dealTags = ((row.deal_tags as RecipeDealTagRow[]) ?? []).map(mapDealTag);
-  const anchor = findAnchor(dealTags.map((t) => t.name), dealNutrition);
   return {
     id: row.id,
     name: row.name,
@@ -123,45 +116,39 @@ function mapRowToMeal(
     flexibleProtein: row.flexible_protein ?? undefined,
     fixedPrice: row.fixed_price ?? undefined,
     flexiblePrice: row.flexible_price ?? undefined,
-    anchor: anchor
-      ? { caloriesPer100g: anchor.caloriesPer100g, proteinPer100g: anchor.proteinPer100g, packageGrams: anchor.packageGrams! }
-      : undefined,
   };
 }
 
 export async function fetchAllRecipes(): Promise<Meal[]> {
-  const [{ data, error }, statcanPrices, producePrices, staplePrices, dealNutrition] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
     supabase.from('recipes').select('*'),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
-    fetchDealNutrition(),
   ]);
   if (error) throw error;
-  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices, dealNutrition));
+  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices));
 }
 
 export async function fetchRecipeById(id: string): Promise<Meal | null> {
-  const [{ data, error }, statcanPrices, producePrices, staplePrices, dealNutrition] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
     supabase.from('recipes').select('*').eq('id', id).maybeSingle(),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
-    fetchDealNutrition(),
   ]);
   if (error) throw error;
-  return data ? mapRowToMeal(data, statcanPrices, producePrices, staplePrices, dealNutrition) : null;
+  return data ? mapRowToMeal(data, statcanPrices, producePrices, staplePrices) : null;
 }
 
 export async function fetchRecipesByIds(ids: string[]): Promise<Meal[]> {
   if (ids.length === 0) return [];
-  const [{ data, error }, statcanPrices, producePrices, staplePrices, dealNutrition] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
     supabase.from('recipes').select('*').in('id', ids),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
-    fetchDealNutrition(),
   ]);
   if (error) throw error;
-  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices, dealNutrition));
+  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices));
 }
