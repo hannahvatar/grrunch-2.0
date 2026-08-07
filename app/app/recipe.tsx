@@ -77,11 +77,20 @@ export default function RecipeScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Ingredients</Text>
+        {meal.stapleMultiplier !== undefined && (
+          <Text style={styles.flexNote}>
+            To hit your plan's targets, use {meal.stapleMultiplier}× the amount shown below for
+            items marked *
+          </Text>
+        )}
         {meal.ingredients.map((ingredient, index) => (
           <Text key={index} style={styles.listItem}>
             •  {ingredient.text}
             {ingredient.dealTag?.quantityEstimated && (
               <Text style={styles.estimatedDisclaimer}>  *estimated. See store</Text>
+            )}
+            {meal.stapleMultiplier !== undefined && ingredient.isFlexible && (
+              <Text style={styles.flexDisclaimer}>  *</Text>
             )}
           </Text>
         ))}
@@ -132,5 +141,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
   estimatedDisclaimer: { fontSize: 12, color: '#B8860B', fontStyle: 'italic' },
+  flexNote: { fontSize: 12, color: '#888', fontStyle: 'italic', marginBottom: 8 },
+  flexDisclaimer: { fontSize: 15, color: '#FFA955', fontWeight: '800' },
   notFound: { padding: 24, fontSize: 15, color: '#888' },
 });

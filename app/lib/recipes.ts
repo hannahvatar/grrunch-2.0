@@ -60,7 +60,7 @@ function mapIngredient(
   const text = dryEquivalent ? `${rawText} (cooked)` : unitCount ?? rawText;
   const groceryText = dryEquivalent ? `${dryEquivalent} ${ingredient.name}` : unitCount;
   const dealTag = dealTags.find((tag) => tag.name === ingredient.name);
-  if (dealTag) return { text, name: ingredient.name, dealTag, groceryText };
+  if (dealTag) return { text, name: ingredient.name, dealTag, groceryText, isFlexible: false };
   const match = matchReferencePrice(
     ingredient.name, ingredient.quantity, ingredient.unit,
     statcanPrices, producePrices, staplePrices
@@ -70,6 +70,10 @@ function mapIngredient(
     name: ingredient.name,
     estimatedPrice: match ? { avgPrice: match.avgPrice, unit: match.unit, source: match.source } : undefined,
     groceryText,
+    // Mirrors refresh_recipe_nutrition's fixed/flexible split: anything
+    // without a dealTag is a generic staple, the portion scaleMealToTargets
+    // can flex -- see mealData.ts.
+    isFlexible: true,
   };
 }
 
@@ -85,6 +89,12 @@ function mapRowToMeal(
     minutes: number | null;
     price: number | null;
     servings: number;
+    fixed_calories: number | null;
+    flexible_calories: number | null;
+    fixed_protein: number | null;
+    flexible_protein: number | null;
+    fixed_price: number | null;
+    flexible_price: number | null;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -104,6 +114,12 @@ function mapRowToMeal(
       mapIngredient(ingredient, dealTags, statcanPrices, producePrices, staplePrices)
     ),
     instructions: row.instructions as string[],
+    fixedCalories: row.fixed_calories ?? undefined,
+    flexibleCalories: row.flexible_calories ?? undefined,
+    fixedProtein: row.fixed_protein ?? undefined,
+    flexibleProtein: row.flexible_protein ?? undefined,
+    fixedPrice: row.fixed_price ?? undefined,
+    flexiblePrice: row.flexible_price ?? undefined,
   };
 }
 
