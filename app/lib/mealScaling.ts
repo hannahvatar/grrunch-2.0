@@ -1,68 +1,50 @@
 import type { Meal } from './mealData';
 import type { PlanTargets } from './planTargets';
 
-// A recipe's deal-tagged anchor ingredients (see docs/grrunch-architecture.md
-// item 12) are fixed for the whole batch -- bought as a whole package,
-// never fragmented, nothing about that changes here. Its generic staples
-// (rice, potatoes, oil...), on the other hand, CAN be bought in more or
-// less quantity -- see meal.flexibleCalories/flexibleProtein/flexiblePrice
-// (the portion of the whole-recipe totals that come from staples, split
-// out by refresh_recipe_nutrition/refresh_recipe_deal_tags) vs meal.fixed*
-// (deal-tagged, never changes).
+// A recipe's deal-tagged ingredients (see docs/grrunch-architecture.md item
+// 12) are bought as whole packages, never fragmented at checkout -- that
+// part never changes. But how much of a protein-dense anchor ingredient
+// (chicken breast, pork, fish -- see lib/dealNutrition.ts findAnchor) goes
+// into a single SERVING is a different question from how the package was
+// bought, and doesn't have to be "the whole package split evenly across
+// whatever count the recipe author originally wrote down." A person eating
+// this dish wants roughly their protein target's worth of that ingredient,
+// not a mechanically equal quarter of a family-size pack.
 //
-// Critically, servings is NOT a free lever here -- see
-// recipes.servings' own column comment: "based on the actual package/bulk
-// size of its anchor ingredient(s) -- not an arbitrary user-chosen
-// quantity." You can't buy 4/5 of a chicken-breast pack, so the only way
-// to get MORE food than one batch yields is to buy another whole batch's
-// worth of every fixed ingredient -- servings only ever comes in whole
-// multiples of the recipe's own natural yield (naturalServings, 2x, 3x,
-// ...), never an arbitrary in-between count (see resizeMealServings/
-// servingsOptions below, used by the recipe page's manual stepper).
-// Making N whole batches instead of 1 scales the fixed AND flexible
-// totals by the same N, which cancels out of the per-serving math
-// entirely -- per-serving calories/protein/price are the same whether
-// you make 1 batch or 4, so batch count is purely a "how much to prep"
-// choice, never a target-fitting lever. The staple multiplier (k) is the
-// one genuine lever for hitting a calorie/protein target -- staples are
-// bought by weight/bulk, not as a discrete package, so their quantity
-// can flex continuously.
+// So when a protein target is set and the recipe has an identified anchor,
+// its per-serving portion is sized directly to that target (clamped to
+// [30g, the whole package] -- never an unrealistically tiny sliver, never
+// more than what's actually in the package), and the package's serving
+// yield is recomputed from that (floor(packageGrams / portionGrams)) --
+// which can come out higher OR lower than the recipe's originally authored
+// count. This is still never fragmenting the purchase: exactly one whole
+// package is still bought, cooked, and used -- what changes is recognizing
+// it might reasonably serve more (smaller, sensible portions) or fewer
+// (if the target calls for a bigger portion than the recipe assumed)
+// people than the original recipe's guess. The recipe's OTHER fixed
+// ingredients (a side vegetable also on the flyer that week, say) keep
+// their existing whole-package-total treatment, just divided across
+// however many servings the anchor now yields.
 //
-// Bounded the same spirit as before: staple multiplier within half to 3x
-// the recipe's original staple quantity -- wide enough to matter, narrow
-// enough that a recommendation never balloons into "10x the rice."
+// Once the anchor portion supplies its (roughly-target) protein, the
+// remaining calorie budget is filled by the recipe's flexible staples
+// (rice, potatoes, oil...) via the staple multiplier, exactly as before --
+// see MIN/MAX_STAPLE_MULTIPLIER. Recipes with no identified anchor (see
+// findAnchor's threshold) fall back to the older whole-batch model:
+// servings stays whatever was passed in, and the WHOLE fixed total is
+// treated as unavoidable, unadjustable per serving.
 //
-// maxCalories is a ceiling (use the budget, don't blow it) but
-// minProtein is a floor (clear it -- modest overshoot exceeding it isn't
-// a defect worth avoiding). Confirmed live: pulling calories back to
-// shave a Chicken Souvlaki recipe's protein overshoot from 28% to 21%
-// would waste 100+ calories of budget for basically no benefit -- not a
-// trade worth making, so ordinary overshoot stays untaxed and calorie
-// budget usage stays the primary objective, same as before.
-//
-// But a floor still isn't a LICENSE for unlimited overshoot: a recipe
-// whose protein is ~100% baked into its fixed (non-flexible) ingredients
-// -- e.g. a plain roasted-chicken-breast dish, where the only flexible
-// ingredient is a pat of butter with negligible protein of its own -- has
-// NO lever that can bring it anywhere near a low protein target. No
-// scoring tweak fixes this: confirmed live, that recipe showed 43g
-// protein for a 15g target (187% over) no matter what staple multiplier
-// was tried, because the multiplier genuinely cannot touch a number
-// that's fixed by the anchor ingredient alone. Showing it anyway isn't
-// "using the budget", it's recommending a recipe that doesn't fit the
-// person's meal size at all -- so once protein is set, MAX_PROTEIN_OVERSHOOT
-// acts as a genuine second ceiling: if even the LOWEST achievable protein
-// (the most staple-light option) still overshoots the floor by more than
-// this, every k is rejected and the recipe is excluded from results,
-// exactly like a recipe that can't fit under the calorie ceiling already
-// is. A more moderate recipe (like the rice-and-chicken souvlaki above,
-// which still exceeds a 15g floor but not by nearly as much) can still
-// clear this bar even while its ordinary overshoot goes untaxed by the
-// objective above.
+// maxCalories is a ceiling (use the budget, don't blow it); minProtein is
+// now something the anchor sizing targets directly, so ordinary overshoot
+// should be rare -- MAX_PROTEIN_OVERSHOOT remains as a safety net (e.g. a
+// recipe's OTHER fixed ingredients or flexible staples pushing protein up
+// further on top of an already-on-target anchor portion), not the primary
+// mechanism it was before this existed.
 const MIN_STAPLE_MULTIPLIER = 0.5;
 const MAX_STAPLE_MULTIPLIER = 3;
 const STAPLE_MULTIPLIER_STEP = 0.1;
-const MAX_PROTEIN_OVERSHOOT = 2; // protein may not exceed 2x the floor
+const MAX_PROTEIN_OVERSHOOT = 1.4; // protein may not exceed 1.4x the floor
+const MIN_ANCHOR_PORTION_GRAMS = 30; // never suggest a sliver smaller than this
 
 export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | null {
   const { maxCalories, minProtein } = targets;
@@ -72,19 +54,57 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
   const totalProtein = meal.protein * meal.servings;
   const totalPrice = meal.price * meal.servings;
 
-  // Split into fixed/flexible when the data's available (see mealData.ts);
-  // falls back to treating the whole total as fixed (staple multiplier
-  // locked at 1) for rows synced before this split existed, or recipes
-  // with no matched staples at all -- those recipes have no lever to
-  // work with, so they either already fit the targets or don't.
-  const fixedCalories = meal.fixedCalories ?? totalCalories;
-  const flexibleCalories = meal.flexibleCalories ?? 0;
-  const fixedProtein = meal.fixedProtein ?? totalProtein;
-  const flexibleProtein = meal.flexibleProtein ?? 0;
-  const fixedPrice = meal.fixedPrice ?? totalPrice;
-  const flexiblePrice = meal.flexiblePrice ?? 0;
-  const hasFlexibleIngredients = flexibleCalories > 0 || flexibleProtein > 0;
-  const servings = meal.servings;
+  // Whole-recipe (not per-serving) totals -- see mealData.ts. Falls back
+  // to treating everything as fixed for rows/recipes with no split data.
+  const wholeFixedCalories = meal.fixedCalories ?? totalCalories;
+  const wholeFlexibleCalories = meal.flexibleCalories ?? 0;
+  const wholeFixedProtein = meal.fixedProtein ?? totalProtein;
+  const wholeFlexibleProtein = meal.flexibleProtein ?? 0;
+  const wholeFixedPrice = meal.fixedPrice ?? totalPrice;
+  const wholeFlexiblePrice = meal.flexiblePrice ?? 0;
+
+  // Dynamic anchor sizing only applies with both an identified anchor and
+  // a protein target to size it against -- otherwise fall back to the
+  // recipe's own servings, unadjusted, same as before this existed.
+  let servings = meal.servings;
+  let fixedCaloriesPerServing = wholeFixedCalories / servings;
+  let fixedProteinPerServing = wholeFixedProtein / servings;
+  let fixedPricePerServing = wholeFixedPrice / servings;
+
+  if (meal.anchor && minProtein !== undefined) {
+    const { caloriesPer100g, proteinPer100g, packageGrams } = meal.anchor;
+    const portionGrams = Math.min(
+      packageGrams,
+      Math.max(MIN_ANCHOR_PORTION_GRAMS, (minProtein / proteinPer100g) * 100)
+    );
+    servings = Math.max(1, Math.floor(packageGrams / portionGrams));
+
+    const anchorCaloriesPerServing = (portionGrams / 100) * caloriesPer100g;
+    const anchorProteinPerServing = (portionGrams / 100) * proteinPer100g;
+
+    // The rest of the recipe's fixed total (a side vegetable also
+    // deal-tagged that week, say) minus what the anchor itself
+    // contributes at full package size -- keeps its existing whole-total
+    // treatment, just divided across the anchor's new serving yield.
+    const anchorWholeCalories = (packageGrams / 100) * caloriesPer100g;
+    const anchorWholeProtein = (packageGrams / 100) * proteinPer100g;
+    const otherFixedCalories = Math.max(0, wholeFixedCalories - anchorWholeCalories);
+    const otherFixedProtein = Math.max(0, wholeFixedProtein - anchorWholeProtein);
+
+    fixedCaloriesPerServing = anchorCaloriesPerServing + otherFixedCalories / servings;
+    fixedProteinPerServing = anchorProteinPerServing + otherFixedProtein / servings;
+    // Price isn't re-portioned this way -- the whole package is still
+    // bought and paid for regardless of how much of it one serving's
+    // nutrition profile represents, so it's just spread across however
+    // many servings the anchor now yields (more, smaller servings ->
+    // cheaper per serving, correctly).
+    fixedPricePerServing = wholeFixedPrice / servings;
+  }
+
+  const flexCaloriesPerServing = wholeFlexibleCalories / servings;
+  const flexProteinPerServing = wholeFlexibleProtein / servings;
+  const flexPricePerServing = wholeFlexiblePrice / servings;
+  const hasFlexibleIngredients = flexCaloriesPerServing > 0 || flexProteinPerServing > 0;
 
   const multiplierRange = hasFlexibleIngredients
     ? rangeInclusive(MIN_STAPLE_MULTIPLIER, MAX_STAPLE_MULTIPLIER, STAPLE_MULTIPLIER_STEP)
@@ -94,8 +114,8 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
   let bestScore = Infinity;
 
   for (const k of multiplierRange) {
-    const caloriesPerServing = (fixedCalories + k * flexibleCalories) / servings;
-    const proteinPerServing = (fixedProtein + k * flexibleProtein) / servings;
+    const caloriesPerServing = fixedCaloriesPerServing + k * flexCaloriesPerServing;
+    const proteinPerServing = fixedProteinPerServing + k * flexProteinPerServing;
     if (maxCalories !== undefined && caloriesPerServing > maxCalories) continue;
     if (minProtein !== undefined && proteinPerServing < minProtein) continue;
     if (minProtein !== undefined && proteinPerServing > minProtein * MAX_PROTEIN_OVERSHOOT) continue;
@@ -118,38 +138,39 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
 
   if (bestMultiplier === null) return null;
 
-  const finalCalories = fixedCalories + bestMultiplier * flexibleCalories;
-  const finalProtein = fixedProtein + bestMultiplier * flexibleProtein;
-  const finalPrice = fixedPrice + bestMultiplier * flexiblePrice;
+  const finalCaloriesPerServing = fixedCaloriesPerServing + bestMultiplier * flexCaloriesPerServing;
+  const finalProteinPerServing = fixedProteinPerServing + bestMultiplier * flexProteinPerServing;
+  const finalPricePerServing = fixedPricePerServing + bestMultiplier * flexPricePerServing;
 
   return {
     ...meal,
     servings,
-    calories: Math.round(finalCalories / servings),
-    protein: Math.round((finalProtein / servings) * 10) / 10,
-    price: Math.round((finalPrice / servings) * 100) / 100,
+    calories: Math.round(finalCaloriesPerServing),
+    protein: Math.round(finalProteinPerServing * 10) / 10,
+    price: Math.round(finalPricePerServing * 100) / 100,
     stapleMultiplier: Math.abs(bestMultiplier - 1) > 0.001 ? Math.round(bestMultiplier * 100) / 100 : undefined,
   };
 }
 
 // Lets the recipe page's manual servings stepper choose how many whole
-// batches to make (see the module docstring for why this only ever comes
-// in multiples of the recipe's natural yield). Per-serving
-// calories/protein/price don't change with batch count -- making 2
-// batches instead of 1 doubles the total food, not what's in each
-// serving -- so this only ever updates the displayed serving count,
-// never the macros scaleMealToTargets already computed.
+// batches to make, on top of whatever base serving count
+// scaleMealToTargets already landed on (which, with an anchor, may itself
+// differ from the recipe's originally authored count -- see above). Per-
+// serving calories/protein/price don't change with batch count -- making
+// 2 batches instead of 1 doubles the total food, not what's in each
+// serving -- so this only ever updates the displayed serving count, never
+// the macros scaleMealToTargets already computed.
 export function resizeMealServings(meal: Meal, servings: number): Meal {
   return servings === meal.servings ? meal : { ...meal, servings };
 }
 
-// The only servings counts resizeMealServings should ever be called
-// with: whole multiples of the recipe's own natural yield, 1x up to 4x
-// (matching the staple multiplier's upper bound's spirit -- wide enough
-// to matter, narrow enough that a recipe never suggests preparing an
-// unrealistic 10 batches at once).
-export function servingsOptions(naturalServings: number): number[] {
-  return [1, 2, 3, 4].map((n) => naturalServings * n);
+// The servings counts resizeMealServings should be called with: whole
+// multiples of whatever base serving count is currently showing (the
+// recipe's natural yield, or scaleMealToTargets' anchor-derived count when
+// it applies), 1x up to 4x -- wide enough to matter, narrow enough that a
+// recipe never suggests preparing an unrealistic 10 batches at once.
+export function servingsOptions(baseServings: number): number[] {
+  return [1, 2, 3, 4].map((n) => baseServings * n);
 }
 
 function rangeInclusive(min: number, max: number, step: number): number[] {

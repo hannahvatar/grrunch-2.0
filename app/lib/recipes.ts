@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { type DealNutrition, fetchDealNutrition, findAnchor } from './dealNutrition';
 import type { DealTag, IngredientLine, Meal } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
 import { describeDryEquivalent, describeUnitCount } from './unitConversion';
@@ -98,9 +99,11 @@ function mapRowToMeal(
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
-  staplePrices: StaplePrice[]
+  staplePrices: StaplePrice[],
+  dealNutrition: DealNutrition[]
 ): Meal {
   const dealTags = ((row.deal_tags as RecipeDealTagRow[]) ?? []).map(mapDealTag);
+  const anchor = findAnchor(dealTags.map((t) => t.name), dealNutrition);
   return {
     id: row.id,
     name: row.name,
@@ -120,39 +123,45 @@ function mapRowToMeal(
     flexibleProtein: row.flexible_protein ?? undefined,
     fixedPrice: row.fixed_price ?? undefined,
     flexiblePrice: row.flexible_price ?? undefined,
+    anchor: anchor
+      ? { caloriesPer100g: anchor.caloriesPer100g, proteinPer100g: anchor.proteinPer100g, packageGrams: anchor.packageGrams! }
+      : undefined,
   };
 }
 
 export async function fetchAllRecipes(): Promise<Meal[]> {
-  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices, dealNutrition] = await Promise.all([
     supabase.from('recipes').select('*'),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
+    fetchDealNutrition(),
   ]);
   if (error) throw error;
-  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices));
+  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices, dealNutrition));
 }
 
 export async function fetchRecipeById(id: string): Promise<Meal | null> {
-  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices, dealNutrition] = await Promise.all([
     supabase.from('recipes').select('*').eq('id', id).maybeSingle(),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
+    fetchDealNutrition(),
   ]);
   if (error) throw error;
-  return data ? mapRowToMeal(data, statcanPrices, producePrices, staplePrices) : null;
+  return data ? mapRowToMeal(data, statcanPrices, producePrices, staplePrices, dealNutrition) : null;
 }
 
 export async function fetchRecipesByIds(ids: string[]): Promise<Meal[]> {
   if (ids.length === 0) return [];
-  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices, dealNutrition] = await Promise.all([
     supabase.from('recipes').select('*').in('id', ids),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
+    fetchDealNutrition(),
   ]);
   if (error) throw error;
-  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices));
+  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices, dealNutrition));
 }

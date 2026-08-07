@@ -43,11 +43,13 @@ export default function RecipeScreen() {
 
   const meal =
     autoMeal && servingsOverride !== null ? resizeMealServings(autoMeal, servingsOverride) : autoMeal;
-  // Whole multiples of the recipe's own natural yield only -- see
-  // mealScaling.ts's module docstring. You can't buy 4/5 of a package,
-  // so "5 servings" from a 4-serving recipe isn't a real option; making
-  // it twice gives 8.
-  const options = rawMeal ? servingsOptions(rawMeal.servings) : null;
+  // Whole multiples of the CURRENT base serving count -- autoMeal.servings,
+  // not the recipe's raw/authored count, since scaleMealToTargets may have
+  // recomputed servings from an anchor ingredient sized to the protein
+  // target (see mealScaling.ts's module docstring). Either way, you can't
+  // buy a fraction of a package, so "N+1 servings" isn't a real option;
+  // making another whole batch is.
+  const options = autoMeal ? servingsOptions(autoMeal.servings) : null;
 
   if (meal === undefined) {
     return (
