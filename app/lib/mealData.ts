@@ -72,4 +72,14 @@ export interface Meal {
   // etc. than the recipe's original quantities. Undefined (equivalent to
   // 1, no change) on the raw, un-scaled meal.
   stapleMultiplier?: number;
+  // This recipe's protein-anchor deal item (see lib/dealNutrition.ts
+  // findAnchor), if one was identified -- e.g. the chicken breast pack in
+  // a roasted-chicken recipe, not the broccoli also on the flyer that
+  // week. scaleMealToTargets sizes this ingredient's per-serving portion
+  // to the Plan tab's protein target directly (see mealScaling.ts) rather
+  // than splitting the whole package evenly across the recipe's originally
+  // authored serving count. Undefined when no ingredient in the recipe is
+  // both protein-dense enough and has a known package size to anchor on --
+  // those recipes fall back to the older whole-batch model.
+  anchor?: { caloriesPer100g: number; proteinPer100g: number; packageGrams: number };
 }

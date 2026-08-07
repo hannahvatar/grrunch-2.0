@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ClockIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import type { Meal } from '../lib/mealData';
-import { scaleMealToTargets } from '../lib/mealScaling';
+import { resizeMealServings, scaleMealToTargets, servingsOptions } from '../lib/mealScaling';
 import { usePlanTargets } from '../lib/planTargets';
 import { fetchRecipeById } from '../lib/recipes';
 
@@ -15,6 +15,12 @@ export default function RecipeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { targets } = usePlanTargets();
   const [rawMeal, setRawMeal] = useState<Meal | null | undefined>(undefined);
+  // Manual override of the auto-picked serving count, via the stepper
+  // below -- null means "use whatever scaleMealToTargets picked". Reset
+  // whenever the underlying recipe or its auto-picked serving count
+  // changes (new recipe opened, or Plan targets changed elsewhere), so a
+  // stale manual choice from a previous recipe/target never lingers.
+  const [servingsOverride, setServingsOverride] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -29,7 +35,21 @@ export default function RecipeScreen() {
   // Re-derived from the same plan targets that picked this recipe's
   // serving size on the Meals tab, so the modal shows the same numbers --
   // not the recipe's raw, un-scaled DB values.
-  const meal = rawMeal ? (scaleMealToTargets(rawMeal, targets) ?? rawMeal) : rawMeal;
+  const autoMeal = rawMeal ? (scaleMealToTargets(rawMeal, targets) ?? rawMeal) : rawMeal;
+
+  useEffect(() => {
+    setServingsOverride(null);
+  }, [autoMeal?.id, autoMeal?.servings]);
+
+  const meal =
+    autoMeal && servingsOverride !== null ? resizeMealServings(autoMeal, servingsOverride) : autoMeal;
+  // Whole multiples of the CURRENT base serving count -- autoMeal.servings,
+  // not the recipe's raw/authored count, since scaleMealToTargets may have
+  // recomputed servings from an anchor ingredient sized to the protein
+  // target (see mealScaling.ts's module docstring). Either way, you can't
+  // buy a fraction of a package, so "N+1 servings" isn't a real option;
+  // making another whole batch is.
+  const options = autoMeal ? servingsOptions(autoMeal.servings) : null;
 
   if (meal === undefined) {
     return (
@@ -75,6 +95,40 @@ export default function RecipeScreen() {
             <Text style={styles.macroLabel}>protein</Text>
           </View>
         </View>
+
+        {options && (
+          <View style={styles.stepperRow}>
+            <Text style={styles.stepperLabel}>Servings</Text>
+            <View style={styles.stepperControl}>
+              <Pressable
+                style={[styles.stepperButton, meal.servings <= options[0] && styles.stepperButtonDisabled]}
+                onPress={() => {
+                  const i = options.indexOf(meal.servings);
+                  if (i > 0) setServingsOverride(options[i - 1]);
+                }}
+                disabled={meal.servings <= options[0]}
+                hitSlop={8}
+              >
+                <MinusIcon size={14} color="#111" />
+              </Pressable>
+              <Text style={styles.stepperValue}>{meal.servings}</Text>
+              <Pressable
+                style={[
+                  styles.stepperButton,
+                  meal.servings >= options[options.length - 1] && styles.stepperButtonDisabled,
+                ]}
+                onPress={() => {
+                  const i = options.indexOf(meal.servings);
+                  if (i >= 0 && i < options.length - 1) setServingsOverride(options[i + 1]);
+                }}
+                disabled={meal.servings >= options[options.length - 1]}
+                hitSlop={8}
+              >
+                <PlusIcon size={14} color="#111" />
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Ingredients</Text>
         {meal.stapleMultiplier !== undefined && (
@@ -138,6 +192,25 @@ const styles = StyleSheet.create({
   },
   macroValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   macroLabel: { fontSize: 11, color: '#888' },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  stepperLabel: { fontSize: 14, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: '#333' },
+  stepperControl: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepperButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperButtonDisabled: { opacity: 0.35 },
+  stepperValue: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', minWidth: 16, textAlign: 'center' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
   estimatedDisclaimer: { fontSize: 12, color: '#B8860B', fontStyle: 'italic' },

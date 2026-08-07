@@ -33,6 +33,11 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   'baking soda': 220,
   'baking powder': 192,
   'chili flakes': 80,
+  // 0.92 g/mL, standard olive oil density -- see
+  // 20260807050000_olive_oil_density.sql for why this matters: without
+  // it, olive oil (measured in mL in every recipe using it) silently
+  // contributed 0 to both price and nutrition, in 6 of 9 recipes.
+  'olive oil': 217.7,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
