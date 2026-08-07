@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
+import { IngredientRow } from '../components/IngredientRow';
 import type { Meal } from '../lib/mealData';
 import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
 import { fetchRecipeById } from '../lib/recipes';
@@ -120,14 +121,16 @@ export default function RecipeScreen() {
         )}
 
         <Text style={styles.sectionTitle}>Ingredients</Text>
-        {meal.ingredients.map((ingredient, index) => (
-          <Text key={index} style={styles.listItem}>
-            •  {ingredient.text}
-            {ingredient.dealTag?.quantityEstimated && (
-              <Text style={styles.estimatedDisclaimer}>  *estimated. See store</Text>
-            )}
-          </Text>
-        ))}
+        <View style={styles.ingredientsList}>
+          {meal.ingredients.map((ingredient, index) => (
+            <IngredientRow
+              key={index}
+              text={ingredient.text}
+              dealTag={ingredient.dealTag}
+              estimatedPrice={ingredient.estimatedPrice}
+            />
+          ))}
+        </View>
 
         <Text style={styles.sectionTitle}>Instructions</Text>
         {meal.instructions.map((step, index) => (
@@ -192,7 +195,7 @@ const styles = StyleSheet.create({
   stepperButtonDisabled: { opacity: 0.35 },
   stepperValue: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', minWidth: 16, textAlign: 'center' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
+  ingredientsList: { gap: 10 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
-  estimatedDisclaimer: { fontSize: 12, color: '#B8860B', fontStyle: 'italic' },
   notFound: { padding: 24, fontSize: 15, color: '#888' },
 });
