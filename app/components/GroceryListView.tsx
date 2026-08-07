@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CheckIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
-import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
+import { type Deal, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
+import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
@@ -278,67 +279,18 @@ export function GroceryListView() {
         {storeNames.map((store) => (
           <View key={store} style={styles.storeSection}>
             <Text style={styles.storeName}>{store}</Text>
-            {storeGroups.get(store)!.map((item) => {
-              const isChecked = checked.has(item.key);
-              return (
-                <View key={item.key} style={styles.itemRow}>
-                  <Pressable
-                    style={[styles.checkbox, isChecked && styles.checkboxChecked]}
-                    onPress={() => toggleChecked(item.key)}
-                    hitSlop={8}
-                  >
-                    {isChecked && <CheckIcon size={12} color="#fff" />}
-                  </Pressable>
-                  {item.dealTag?.imageUrl && (
-                    <Image source={{ uri: item.dealTag.imageUrl }} style={styles.itemImage} />
-                  )}
-                  <View style={styles.itemInfo}>
-                    <Text style={[styles.itemName, isChecked && styles.itemNameChecked]}>
-                      {item.text}
-                    </Text>
-                    <Text style={styles.itemMeta}>{item.source}</Text>
-                    {item.dealTag?.quantityEstimated && (
-                      <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
-                    )}
-                  </View>
-                  <View style={styles.itemRightColumn}>
-                    {!!item.multiplier && item.multiplier > 1 && (
-                      <View style={styles.multiplierBadge}>
-                        <Text style={styles.multiplierBadgeText}>×{item.multiplier}</Text>
-                      </View>
-                    )}
-                    {item.dealTag?.price != null && (
-                      <View style={styles.itemPriceRow}>
-                        <Text style={styles.itemPriceValue}>${item.dealTag.price.toFixed(2)}</Text>
-                        {item.dealTag.originalPrice != null &&
-                          item.dealTag.originalPrice > item.dealTag.price &&
-                          item.dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
-                            <Text style={styles.itemPriceOriginal}>
-                              ${item.dealTag.originalPrice.toFixed(2)}
-                            </Text>
-                          )}
-                      </View>
-                    )}
-                    {!item.dealTag && item.estimatedPrice && (
-                      <Text style={styles.itemPriceEstimated}>
-                        {`$${item.estimatedPrice.avgPrice.toFixed(2)} avg.`}
-                      </Text>
-                    )}
-                    {item.dealTag && (
-                      item.dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
-                        <View style={styles.discountBadge}>
-                          <Text style={styles.discountBadgeText}>Up to {item.dealTag.discountPct}% off</Text>
-                        </View>
-                      ) : (
-                        <View style={styles.fairPriceBadge}>
-                          <Text style={styles.fairPriceBadgeText}>Fair price</Text>
-                        </View>
-                      )
-                    )}
-                  </View>
-                </View>
-              );
-            })}
+            {storeGroups.get(store)!.map((item) => (
+              <IngredientRow
+                key={item.key}
+                text={item.text}
+                dealTag={item.dealTag}
+                estimatedPrice={item.estimatedPrice}
+                meta={item.source}
+                checked={checked.has(item.key)}
+                onToggleCheck={() => toggleChecked(item.key)}
+                multiplier={item.multiplier}
+              />
+            ))}
           </View>
         ))}
 
@@ -410,34 +362,6 @@ const styles = StyleSheet.create({
   stepperValue: { fontSize: 13, color: '#666', fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   storeSection: { gap: 10 },
   storeName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
-  itemImage: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#F2F2F2' },
-  itemInfo: { flex: 1 },
-  itemName: { fontSize: 15 },
-  itemNameChecked: { textDecorationLine: 'line-through', color: '#aaa' },
-  itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
-  estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },
-  itemRightColumn: { alignItems: 'flex-end', gap: 6 },
-  itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
-  itemPriceValue: { fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  itemPriceOriginal: { fontSize: 11, color: '#aaa', textDecorationLine: 'line-through' },
-  itemPriceEstimated: { fontSize: 12, color: '#888' },
-  discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  fairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  multiplierBadge: { backgroundColor: '#F2F2F2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  multiplierBadgeText: { color: '#666', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   totalSection: { gap: 6 },
   regularPriceLine: { fontSize: 13, color: '#999', marginTop: 2 },
   regularPriceStrike: { textDecorationLine: 'line-through' },
