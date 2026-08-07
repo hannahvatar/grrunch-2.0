@@ -242,7 +242,7 @@ def update_ingredient(table, ingredient_name, fields):
 
 
 def fetch_unreviewed_rows(table):
-    url = f"{SUPABASE_URL}/rest/v1/{table}?select=ingredient_name&nutrition_reviewed_by=is.null&calories_per_100g=not.is.null"
+    url = f"{SUPABASE_URL}/rest/v1/{table}?select=ingredient_name,calories_per_100g,protein_per_100g,nutrition_source&nutrition_reviewed_by=is.null&calories_per_100g=not.is.null"
     return http_get_json(url, headers=supabase_headers())
 
 
@@ -297,6 +297,9 @@ def push_review_queue(name_to_table):
                 continue
             airtable_create_record(REVIEW_TABLE, {
                 "Ingredient Name": name,
+                "Source": row.get("nutrition_source") or "",
+                "Calories per 100g": row["calories_per_100g"],
+                "Protein per 100g": row["protein_per_100g"],
                 "Status": "Pending",
                 "Resolved": False,
             })
