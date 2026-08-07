@@ -10,44 +10,37 @@ import type { PlanTargets } from './planTargets';
 // out by refresh_recipe_nutrition/refresh_recipe_deal_tags) vs meal.fixed*
 // (deal-tagged, never changes).
 //
-// The Plan tab's calorie/protein targets get two independent levers to
-// work with: how many equal servings the batch is divided into (as
-// before), and a staple multiplier scaling the flexible portion up or
-// down (e.g. more rice bulks up calories with little protein cost; less
-// rice concentrates protein-per-calorie). Searches both jointly rather
-// than serving count alone -- a recipe with a lot of flexible calories
-// (e.g. a pasta dish) can genuinely hit a much tighter target this way
-// than serving count alone allows.
+// Critically, servings is NOT a free lever here -- see
+// recipes.servings' own column comment: "based on the actual package/bulk
+// size of its anchor ingredient(s) -- not an arbitrary user-chosen
+// quantity." You can't buy 4/5 of a chicken-breast pack, so the only way
+// to get MORE food than one batch yields is to buy another whole batch's
+// worth of every fixed ingredient -- servings only ever comes in whole
+// multiples of the recipe's own natural yield (naturalServings, 2x, 3x,
+// ...), never an arbitrary in-between count (see resizeMealServings/
+// servingsOptions below, used by the recipe page's manual stepper).
+// Making N whole batches instead of 1 scales the fixed AND flexible
+// totals by the same N, which cancels out of the per-serving math
+// entirely -- per-serving calories/protein/price are the same whether
+// you make 1 batch or 4, so batch count is purely a "how much to prep"
+// choice, never a target-fitting lever. The staple multiplier (k) is the
+// one genuine lever for hitting a calorie/protein target -- staples are
+// bought by weight/bulk, not as a discrete package, so their quantity
+// can flex continuously.
 //
-// Bounded the same spirit as before: servings within half to 4x the
-// recipe's own natural yield, staple multiplier within half to 3x the
-// recipe's original staple quantity -- wide enough to matter, narrow
+// Bounded the same spirit as before: staple multiplier within half to 3x
+// the recipe's original staple quantity -- wide enough to matter, narrow
 // enough that a recommendation never balloons into "10x the rice."
 //
 // maxCalories is a ceiling (use the budget, don't blow it) but
 // minProtein is a floor (clear it -- exceeding it isn't a defect worth
-// avoiding). Both are still hard constraints -- only combinations that
-// fit under the ceiling and clear the floor are ever considered -- but
-// among those, the objective is to get calories as close to the ceiling
-// as the staple multiplier allows, full stop. (Servings-only scaling,
-// pre-2b, had to balance the two gaps against each other -- see the old
-// minimax reasoning in git history -- because calories and protein were
-// locked together 1:1 by serving count alone; every route to more
-// calories was also a route to more protein, so pushing hard toward the
-// calorie ceiling could badly overshoot the protein floor for no
-// benefit. With a staple multiplier as a second, largely-independent
-// lever, that coupling is gone -- more rice raises calories toward the
-// ceiling with only a small protein side-effect, so there's no longer a
-// real tension to balance, and treating "protein above the floor" as a
-// cost to minimize was actively wrong: it stopped the search from using
-// the calorie budget it had plenty of room to use (confirmed: a 600
-// cal/30g protein target was landing at 471 cal when 571 was reachable
-// within the multiplier bound). When only minProtein is set (no
-// calorie ceiling to approach), falls back to the old "stay close to
-// the floor" objective -- unaffected by this change, since there's
-// nothing to approach on the calorie side in that case. A small
-// tiebreak still prefers the least distortion from the recipe's
-// original staple quantity when multiple combinations tie exactly.
+// avoiding). Both are still hard constraints -- only k values that fit
+// under the ceiling and clear the floor are ever considered -- but among
+// those, the objective is to get calories as close to the ceiling as the
+// staple multiplier allows, full stop (protein overshoot isn't a cost:
+// once the floor's cleared, more protein is a bonus, not a defect worth
+// trading calorie-budget usage away for). Falls back to "stay close to
+// the floor" only when there's no calorie ceiling to approach at all.
 const MIN_STAPLE_MULTIPLIER = 0.5;
 const MAX_STAPLE_MULTIPLIER = 3;
 const STAPLE_MULTIPLIER_STEP = 0.1;
@@ -62,8 +55,9 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
 
   // Split into fixed/flexible when the data's available (see mealData.ts);
   // falls back to treating the whole total as fixed (staple multiplier
-  // locked at 1, same as the old servings-only behavior) for rows synced
-  // before this split existed, or recipes with no matched staples at all.
+  // locked at 1) for rows synced before this split existed, or recipes
+  // with no matched staples at all -- those recipes have no lever to
+  // work with, so they either already fit the targets or don't.
   const fixedCalories = meal.fixedCalories ?? totalCalories;
   const flexibleCalories = meal.flexibleCalories ?? 0;
   const fixedProtein = meal.fixedProtein ?? totalProtein;
@@ -71,53 +65,38 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
   const fixedPrice = meal.fixedPrice ?? totalPrice;
   const flexiblePrice = meal.flexiblePrice ?? 0;
   const hasFlexibleIngredients = flexibleCalories > 0 || flexibleProtein > 0;
+  const servings = meal.servings;
 
-  const minServings = Math.max(1, Math.ceil(meal.servings / 2));
-  const maxServings = meal.servings * 4;
+  const multiplierRange = hasFlexibleIngredients
+    ? rangeInclusive(MIN_STAPLE_MULTIPLIER, MAX_STAPLE_MULTIPLIER, STAPLE_MULTIPLIER_STEP)
+    : [1];
 
-  let bestServings: number | null = null;
-  let bestMultiplier = 1;
+  let bestMultiplier: number | null = null;
   let bestScore = Infinity;
 
-  for (let s = minServings; s <= maxServings; s++) {
-    // Without flexible ingredients to work with, multiplier is locked at
-    // 1 -- searching a range that can't change anything would just waste
-    // cycles and risk a spurious tiebreak drift away from 1.
-    const multiplierRange = hasFlexibleIngredients
-      ? rangeInclusive(MIN_STAPLE_MULTIPLIER, MAX_STAPLE_MULTIPLIER, STAPLE_MULTIPLIER_STEP)
-      : [1];
+  for (const k of multiplierRange) {
+    const caloriesPerServing = (fixedCalories + k * flexibleCalories) / servings;
+    const proteinPerServing = (fixedProtein + k * flexibleProtein) / servings;
+    if (maxCalories !== undefined && caloriesPerServing > maxCalories) continue;
+    if (minProtein !== undefined && proteinPerServing < minProtein) continue;
 
-    for (const k of multiplierRange) {
-      const caloriesPerServing = (fixedCalories + k * flexibleCalories) / s;
-      const proteinPerServing = (fixedProtein + k * flexibleProtein) / s;
-      if (maxCalories !== undefined && caloriesPerServing > maxCalories) continue;
-      if (minProtein !== undefined && proteinPerServing < minProtein) continue;
-
-      // Primary objective: get as close to the calorie ceiling as
-      // possible (it's a budget to use, not just a limit to respect).
-      // Only falls back to "stay close to the protein floor" when
-      // there's no calorie ceiling to approach at all -- see comment
-      // above for why protein overshoot isn't a cost once a ceiling
-      // exists to optimize toward instead.
-      const primaryGap =
-        maxCalories !== undefined
-          ? (maxCalories - caloriesPerServing) / maxCalories
-          : minProtein !== undefined
-            ? (proteinPerServing - minProtein) / minProtein
-            : 0;
-      // Tiny tiebreak weight (0.001) so it only ever decides between
-      // combinations that are otherwise equally good -- never enough to
-      // override a genuinely better fit on the primary objective.
-      const score = primaryGap + 0.001 * Math.abs(k - 1);
-      if (score < bestScore) {
-        bestScore = score;
-        bestServings = s;
-        bestMultiplier = k;
-      }
+    const primaryGap =
+      maxCalories !== undefined
+        ? (maxCalories - caloriesPerServing) / maxCalories
+        : minProtein !== undefined
+          ? (proteinPerServing - minProtein) / minProtein
+          : 0;
+    // Tiny tiebreak weight (0.001) so it only ever decides between
+    // combinations that are otherwise equally good -- never enough to
+    // override a genuinely better fit on the primary objective.
+    const score = primaryGap + 0.001 * Math.abs(k - 1);
+    if (score < bestScore) {
+      bestScore = score;
+      bestMultiplier = k;
     }
   }
 
-  if (bestServings === null) return null;
+  if (bestMultiplier === null) return null;
 
   const finalCalories = fixedCalories + bestMultiplier * flexibleCalories;
   const finalProtein = fixedProtein + bestMultiplier * flexibleProtein;
@@ -125,42 +104,32 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
 
   return {
     ...meal,
-    servings: bestServings,
-    calories: Math.round(finalCalories / bestServings),
-    protein: Math.round((finalProtein / bestServings) * 10) / 10,
-    price: Math.round((finalPrice / bestServings) * 100) / 100,
+    servings,
+    calories: Math.round(finalCalories / servings),
+    protein: Math.round((finalProtein / servings) * 10) / 10,
+    price: Math.round((finalPrice / servings) * 100) / 100,
     stapleMultiplier: Math.abs(bestMultiplier - 1) > 0.001 ? Math.round(bestMultiplier * 100) / 100 : undefined,
   };
 }
 
-// Lets the recipe page's manual servings stepper resize a meal (typically
-// one already fit to the Plan tab's targets by scaleMealToTargets above)
-// to an exact serving count the person chooses, overriding the automatic
-// choice. Keeps the same total batch -- fixed ingredients, and the
-// flexible/staple portion at whatever multiplier scaleMealToTargets
-// already picked -- and just re-slices it into a different number of
-// servings, same "total stays fixed, only how thick each slice is
-// changes" principle as scaleMealToTargets itself. Deliberately doesn't
-// re-run the target search: this is a direct override, not a new fit.
+// Lets the recipe page's manual servings stepper choose how many whole
+// batches to make (see the module docstring for why this only ever comes
+// in multiples of the recipe's natural yield). Per-serving
+// calories/protein/price don't change with batch count -- making 2
+// batches instead of 1 doubles the total food, not what's in each
+// serving -- so this only ever updates the displayed serving count,
+// never the macros scaleMealToTargets already computed.
 export function resizeMealServings(meal: Meal, servings: number): Meal {
-  if (servings === meal.servings) return meal;
-  const totalCalories = meal.calories * meal.servings;
-  const totalProtein = meal.protein * meal.servings;
-  const totalPrice = meal.price * meal.servings;
-  return {
-    ...meal,
-    servings,
-    calories: Math.round(totalCalories / servings),
-    protein: Math.round((totalProtein / servings) * 10) / 10,
-    price: Math.round((totalPrice / servings) * 100) / 100,
-  };
+  return servings === meal.servings ? meal : { ...meal, servings };
 }
 
-// Same bounds scaleMealToTargets searches within -- half to 4x a recipe's
-// own natural yield -- reused here so the manual stepper never offers a
-// serving count the automatic search wouldn't itself have considered.
-export function servingsBounds(naturalServings: number): { min: number; max: number } {
-  return { min: Math.max(1, Math.ceil(naturalServings / 2)), max: naturalServings * 4 };
+// The only servings counts resizeMealServings should ever be called
+// with: whole multiples of the recipe's own natural yield, 1x up to 4x
+// (matching the staple multiplier's upper bound's spirit -- wide enough
+// to matter, narrow enough that a recipe never suggests preparing an
+// unrealistic 10 batches at once).
+export function servingsOptions(naturalServings: number): number[] {
+  return [1, 2, 3, 4].map((n) => naturalServings * n);
 }
 
 function rangeInclusive(min: number, max: number, step: number): number[] {

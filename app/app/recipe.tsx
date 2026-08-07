@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import type { Meal } from '../lib/mealData';
-import { resizeMealServings, scaleMealToTargets, servingsBounds } from '../lib/mealScaling';
+import { resizeMealServings, scaleMealToTargets, servingsOptions } from '../lib/mealScaling';
 import { usePlanTargets } from '../lib/planTargets';
 import { fetchRecipeById } from '../lib/recipes';
 
@@ -43,7 +43,11 @@ export default function RecipeScreen() {
 
   const meal =
     autoMeal && servingsOverride !== null ? resizeMealServings(autoMeal, servingsOverride) : autoMeal;
-  const bounds = rawMeal ? servingsBounds(rawMeal.servings) : null;
+  // Whole multiples of the recipe's own natural yield only -- see
+  // mealScaling.ts's module docstring. You can't buy 4/5 of a package,
+  // so "5 servings" from a 4-serving recipe isn't a real option; making
+  // it twice gives 8.
+  const options = rawMeal ? servingsOptions(rawMeal.servings) : null;
 
   if (meal === undefined) {
     return (
@@ -90,23 +94,32 @@ export default function RecipeScreen() {
           </View>
         </View>
 
-        {bounds && (
+        {options && (
           <View style={styles.stepperRow}>
             <Text style={styles.stepperLabel}>Servings</Text>
             <View style={styles.stepperControl}>
               <Pressable
-                style={[styles.stepperButton, meal.servings <= bounds.min && styles.stepperButtonDisabled]}
-                onPress={() => setServingsOverride(Math.max(bounds.min, meal.servings - 1))}
-                disabled={meal.servings <= bounds.min}
+                style={[styles.stepperButton, meal.servings <= options[0] && styles.stepperButtonDisabled]}
+                onPress={() => {
+                  const i = options.indexOf(meal.servings);
+                  if (i > 0) setServingsOverride(options[i - 1]);
+                }}
+                disabled={meal.servings <= options[0]}
                 hitSlop={8}
               >
                 <MinusIcon size={14} color="#111" />
               </Pressable>
               <Text style={styles.stepperValue}>{meal.servings}</Text>
               <Pressable
-                style={[styles.stepperButton, meal.servings >= bounds.max && styles.stepperButtonDisabled]}
-                onPress={() => setServingsOverride(Math.min(bounds.max, meal.servings + 1))}
-                disabled={meal.servings >= bounds.max}
+                style={[
+                  styles.stepperButton,
+                  meal.servings >= options[options.length - 1] && styles.stepperButtonDisabled,
+                ]}
+                onPress={() => {
+                  const i = options.indexOf(meal.servings);
+                  if (i >= 0 && i < options.length - 1) setServingsOverride(options[i + 1]);
+                }}
+                disabled={meal.servings >= options[options.length - 1]}
                 hitSlop={8}
               >
                 <PlusIcon size={14} color="#111" />
