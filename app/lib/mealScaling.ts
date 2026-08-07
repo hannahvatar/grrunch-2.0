@@ -133,6 +133,36 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
   };
 }
 
+// Lets the recipe page's manual servings stepper resize a meal (typically
+// one already fit to the Plan tab's targets by scaleMealToTargets above)
+// to an exact serving count the person chooses, overriding the automatic
+// choice. Keeps the same total batch -- fixed ingredients, and the
+// flexible/staple portion at whatever multiplier scaleMealToTargets
+// already picked -- and just re-slices it into a different number of
+// servings, same "total stays fixed, only how thick each slice is
+// changes" principle as scaleMealToTargets itself. Deliberately doesn't
+// re-run the target search: this is a direct override, not a new fit.
+export function resizeMealServings(meal: Meal, servings: number): Meal {
+  if (servings === meal.servings) return meal;
+  const totalCalories = meal.calories * meal.servings;
+  const totalProtein = meal.protein * meal.servings;
+  const totalPrice = meal.price * meal.servings;
+  return {
+    ...meal,
+    servings,
+    calories: Math.round(totalCalories / servings),
+    protein: Math.round((totalProtein / servings) * 10) / 10,
+    price: Math.round((totalPrice / servings) * 100) / 100,
+  };
+}
+
+// Same bounds scaleMealToTargets searches within -- half to 4x a recipe's
+// own natural yield -- reused here so the manual stepper never offers a
+// serving count the automatic search wouldn't itself have considered.
+export function servingsBounds(naturalServings: number): { min: number; max: number } {
+  return { min: Math.max(1, Math.ceil(naturalServings / 2)), max: naturalServings * 4 };
+}
+
 function rangeInclusive(min: number, max: number, step: number): number[] {
   const values: number[] = [];
   // Rounding guards against float drift (e.g. 0.7 + 0.1 landing on
