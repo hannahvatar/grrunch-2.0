@@ -23,12 +23,31 @@ import type { PlanTargets } from './planTargets';
 // recipe's own natural yield, staple multiplier within half to 3x the
 // recipe's original staple quantity -- wide enough to matter, narrow
 // enough that a recommendation never balloons into "10x the rice."
-// Among combinations that fit under the calorie ceiling and clear the
-// protein floor, picks whichever balances the two best (minimax gap,
-// each measured relative to its own target -- see the servings-only
-// version's reasoning, unchanged), with a small tiebreak preferring the
-// least distortion from the recipe's original staple quantity when
-// multiple combinations balance equally well.
+//
+// maxCalories is a ceiling (use the budget, don't blow it) but
+// minProtein is a floor (clear it -- exceeding it isn't a defect worth
+// avoiding). Both are still hard constraints -- only combinations that
+// fit under the ceiling and clear the floor are ever considered -- but
+// among those, the objective is to get calories as close to the ceiling
+// as the staple multiplier allows, full stop. (Servings-only scaling,
+// pre-2b, had to balance the two gaps against each other -- see the old
+// minimax reasoning in git history -- because calories and protein were
+// locked together 1:1 by serving count alone; every route to more
+// calories was also a route to more protein, so pushing hard toward the
+// calorie ceiling could badly overshoot the protein floor for no
+// benefit. With a staple multiplier as a second, largely-independent
+// lever, that coupling is gone -- more rice raises calories toward the
+// ceiling with only a small protein side-effect, so there's no longer a
+// real tension to balance, and treating "protein above the floor" as a
+// cost to minimize was actively wrong: it stopped the search from using
+// the calorie budget it had plenty of room to use (confirmed: a 600
+// cal/30g protein target was landing at 471 cal when 571 was reachable
+// within the multiplier bound). When only minProtein is set (no
+// calorie ceiling to approach), falls back to the old "stay close to
+// the floor" objective -- unaffected by this change, since there's
+// nothing to approach on the calorie side in that case. A small
+// tiebreak still prefers the least distortion from the recipe's
+// original staple quantity when multiple combinations tie exactly.
 const MIN_STAPLE_MULTIPLIER = 0.5;
 const MAX_STAPLE_MULTIPLIER = 3;
 const STAPLE_MULTIPLIER_STEP = 0.1;
@@ -74,12 +93,22 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
       if (maxCalories !== undefined && caloriesPerServing > maxCalories) continue;
       if (minProtein !== undefined && proteinPerServing < minProtein) continue;
 
-      const calorieGap = maxCalories !== undefined ? (maxCalories - caloriesPerServing) / maxCalories : 0;
-      const proteinGap = minProtein !== undefined ? (proteinPerServing - minProtein) / minProtein : 0;
+      // Primary objective: get as close to the calorie ceiling as
+      // possible (it's a budget to use, not just a limit to respect).
+      // Only falls back to "stay close to the protein floor" when
+      // there's no calorie ceiling to approach at all -- see comment
+      // above for why protein overshoot isn't a cost once a ceiling
+      // exists to optimize toward instead.
+      const primaryGap =
+        maxCalories !== undefined
+          ? (maxCalories - caloriesPerServing) / maxCalories
+          : minProtein !== undefined
+            ? (proteinPerServing - minProtein) / minProtein
+            : 0;
       // Tiny tiebreak weight (0.001) so it only ever decides between
       // combinations that are otherwise equally good -- never enough to
-      // override a genuinely better calorie/protein fit.
-      const score = Math.max(calorieGap, proteinGap) + 0.001 * Math.abs(k - 1);
+      // override a genuinely better fit on the primary objective.
+      const score = primaryGap + 0.001 * Math.abs(k - 1);
       if (score < bestScore) {
         bestScore = score;
         bestServings = s;
