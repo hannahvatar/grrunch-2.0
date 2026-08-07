@@ -33,17 +33,36 @@ import type { PlanTargets } from './planTargets';
 // enough that a recommendation never balloons into "10x the rice."
 //
 // maxCalories is a ceiling (use the budget, don't blow it) but
-// minProtein is a floor (clear it -- exceeding it isn't a defect worth
-// avoiding). Both are still hard constraints -- only k values that fit
-// under the ceiling and clear the floor are ever considered -- but among
-// those, the objective is to get calories as close to the ceiling as the
-// staple multiplier allows, full stop (protein overshoot isn't a cost:
-// once the floor's cleared, more protein is a bonus, not a defect worth
-// trading calorie-budget usage away for). Falls back to "stay close to
-// the floor" only when there's no calorie ceiling to approach at all.
+// minProtein is a floor (clear it -- modest overshoot exceeding it isn't
+// a defect worth avoiding). Confirmed live: pulling calories back to
+// shave a Chicken Souvlaki recipe's protein overshoot from 28% to 21%
+// would waste 100+ calories of budget for basically no benefit -- not a
+// trade worth making, so ordinary overshoot stays untaxed and calorie
+// budget usage stays the primary objective, same as before.
+//
+// But a floor still isn't a LICENSE for unlimited overshoot: a recipe
+// whose protein is ~100% baked into its fixed (non-flexible) ingredients
+// -- e.g. a plain roasted-chicken-breast dish, where the only flexible
+// ingredient is a pat of butter with negligible protein of its own -- has
+// NO lever that can bring it anywhere near a low protein target. No
+// scoring tweak fixes this: confirmed live, that recipe showed 43g
+// protein for a 15g target (187% over) no matter what staple multiplier
+// was tried, because the multiplier genuinely cannot touch a number
+// that's fixed by the anchor ingredient alone. Showing it anyway isn't
+// "using the budget", it's recommending a recipe that doesn't fit the
+// person's meal size at all -- so once protein is set, MAX_PROTEIN_OVERSHOOT
+// acts as a genuine second ceiling: if even the LOWEST achievable protein
+// (the most staple-light option) still overshoots the floor by more than
+// this, every k is rejected and the recipe is excluded from results,
+// exactly like a recipe that can't fit under the calorie ceiling already
+// is. A more moderate recipe (like the rice-and-chicken souvlaki above,
+// which still exceeds a 15g floor but not by nearly as much) can still
+// clear this bar even while its ordinary overshoot goes untaxed by the
+// objective above.
 const MIN_STAPLE_MULTIPLIER = 0.5;
 const MAX_STAPLE_MULTIPLIER = 3;
 const STAPLE_MULTIPLIER_STEP = 0.1;
+const MAX_PROTEIN_OVERSHOOT = 2; // protein may not exceed 2x the floor
 
 export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | null {
   const { maxCalories, minProtein } = targets;
@@ -79,6 +98,7 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
     const proteinPerServing = (fixedProtein + k * flexibleProtein) / servings;
     if (maxCalories !== undefined && caloriesPerServing > maxCalories) continue;
     if (minProtein !== undefined && proteinPerServing < minProtein) continue;
+    if (minProtein !== undefined && proteinPerServing > minProtein * MAX_PROTEIN_OVERSHOOT) continue;
 
     const primaryGap =
       maxCalories !== undefined
