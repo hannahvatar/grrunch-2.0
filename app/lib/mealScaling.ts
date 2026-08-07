@@ -40,7 +40,16 @@ import type { PlanTargets } from './planTargets';
 // recipe's OTHER fixed ingredients or flexible staples pushing protein up
 // further on top of an already-on-target anchor portion), not the primary
 // mechanism it was before this existed.
-const MIN_STAPLE_MULTIPLIER = 0.5;
+// 0.1, not 0.5 -- confirmed live this was wrongly excluding a genuinely
+// feasible recipe. Staples are bought by weight/bulk, not as a discrete
+// package -- unlike servings (bounded to whole multiples because you
+// can't buy a fraction of a package), there's no real constraint that
+// stops a dish from using well under half its usual amount of rice or
+// pasta. Sardine & Tomato Pasta needed ~a quarter of its normal pasta
+// (k=0.27) to fit a 600cal ceiling while its anchor already cleared the
+// protein floor on its own -- a 0.5x floor was blocking a real,
+// legitimate answer for no real-world reason.
+const MIN_STAPLE_MULTIPLIER = 0.1;
 const MAX_STAPLE_MULTIPLIER = 3;
 const STAPLE_MULTIPLIER_STEP = 0.1;
 const MAX_PROTEIN_OVERSHOOT = 1.4; // protein may not exceed 1.4x the floor
