@@ -1,20 +1,25 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CakeIcon, CheckIcon, HeartIcon, LightBulbIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import { CakeIcon, CheckIcon, ChevronDownIcon, HeartIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
 
 import { AccountBanner } from '../../components/AccountBanner';
 import { AvocadoBeanIcon, RestaurantIcon } from '../../components/MaterialSymbols';
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
 import type { Meal } from '../../lib/mealData';
-import { sortMealsByTargetFit } from '../../lib/mealScaling';
+import { type MealSortMode, sortMealsByPrice, sortMealsByTargetFit } from '../../lib/mealScaling';
 import { type PlanTargets, usePlanTargets } from '../../lib/planTargets';
 import { getRecipeImage } from '../../lib/recipeImages';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedMeals } from '../../lib/selectedMeals';
 import { useSubscription } from '../../lib/subscription';
+
+const SORT_OPTIONS: { mode: MealSortMode; label: string }[] = [
+  { mode: 'targetFit', label: 'Best match' },
+  { mode: 'price', label: 'Best deal' },
+];
 
 // GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx/stores.tsx/plan-meals.tsx's palette.
 const ACCENT = '#FFA955';
@@ -46,11 +51,9 @@ function toTitleCase(text: string): string {
 // of its ingredients currently on sale stops surfacing here entirely
 // (rather than showing at regular price) until one of them is on sale
 // again, since the app's whole value prop is deal-driven meal planning.
-function eligibleMeals(allMeals: Meal[], targets: PlanTargets): Meal[] {
-  return sortMealsByTargetFit(
-    allMeals.filter((m) => m.dealTags.length > 0),
-    targets
-  );
+function eligibleMeals(allMeals: Meal[], targets: PlanTargets, sortMode: MealSortMode): Meal[] {
+  const withDeals = allMeals.filter((m) => m.dealTags.length > 0);
+  return sortMode === 'price' ? sortMealsByPrice(withDeals) : sortMealsByTargetFit(withDeals, targets);
 }
 
 export default function MealsScreen() {
@@ -61,6 +64,8 @@ export default function MealsScreen() {
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortMode, setSortMode] = useState<MealSortMode>('targetFit');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   function handleToggleSaved(mealId: string) {
     if (!isSubscribed) {
@@ -82,7 +87,7 @@ export default function MealsScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  const planMeals = eligibleMeals(allMeals, targets);
+  const planMeals = eligibleMeals(allMeals, targets, sortMode);
   const visibleMeals = isSubscribed ? planMeals : planMeals.slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = planMeals.length - visibleMeals.length;
 
@@ -108,18 +113,34 @@ export default function MealsScreen() {
           <Text style={styles.subtitle}>
             {visibleMeals.length} recipe{visibleMeals.length === 1 ? '' : 's'}
           </Text>
-          {(targets.maxCalories !== undefined || targets.minProtein !== undefined) && (
-            <View style={styles.tipPill}>
-              <LightBulbIcon size={20} color={INK} strokeWidth={2} />
-              <Text style={styles.tip}>
-                Sorted to match your{' '}
-                <Text style={styles.tipLink} onPress={() => router.push('/(tabs)/plan-meals')}>
-                  meal settings
+          <View style={styles.sortSection}>
+            <Text style={styles.sortByLabel}>Sort by:</Text>
+            <View>
+              <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
+                <Text style={styles.sortPillText}>
+                  {SORT_OPTIONS.find((o) => o.mode === sortMode)?.label}
                 </Text>
-                .
-              </Text>
+                <ChevronDownIcon size={16} color={INK} strokeWidth={2} />
+              </Pressable>
+              {sortMenuOpen && (
+                <View style={styles.sortMenu}>
+                  {SORT_OPTIONS.map((option) => (
+                    <Pressable
+                      key={option.mode}
+                      style={styles.sortMenuItem}
+                      onPress={() => {
+                        setSortMode(option.mode);
+                        setSortMenuOpen(false);
+                      }}
+                    >
+                      <Text style={styles.sortMenuItemText}>{option.label}</Text>
+                      {sortMode === option.mode && <CheckIcon size={16} color={INK} strokeWidth={2} />}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
-          )}
+          </View>
         </View>
 
         {planMeals.length === 0 && (
@@ -268,20 +289,65 @@ const styles = StyleSheet.create({
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { padding: 20, paddingTop: 60, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  subtitleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: -8 },
+  // zIndex here (well above the mealCardOuter siblings below it, which sit
+  // at the default stacking level) is load-bearing on web: React Native
+  // Web gives every View an explicit zIndex (0, not auto), so each level
+  // of nesting is its own stacking context -- a high zIndex set deep
+  // inside (e.g. just on sortSection) only wins against ITS siblings, not
+  // against mealCardOuter further up the tree. It has to go on the
+  // container that's the actual sibling of the meal cards.
+  subtitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: -8,
+    zIndex: 20,
+  },
   subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  tipPill: {
+  sortSection: { alignItems: 'flex-end' },
+  sortByLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'OpenSans_700Bold',
+    color: INK,
+    marginBottom: 6,
+  },
+  sortPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-end',
     backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: INK,
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  tip: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
-  tipLink: { textDecorationLine: 'underline' },
+  sortPillText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
+  sortMenu: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    marginTop: 6,
+    minWidth: 240,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: INK,
+    borderRadius: 14,
+    paddingVertical: 4,
+    zIndex: 10,
+    elevation: 4,
+  },
+  sortMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  sortMenuItemText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, flex: 1 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
   mealCardOuter: { position: 'relative' },

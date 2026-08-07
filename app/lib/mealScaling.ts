@@ -41,6 +41,15 @@ export function sortMealsByTargetFit(meals: Meal[], targets: PlanTargets): Meal[
   return [...meals].sort((a, b) => distance(a) - distance(b));
 }
 
+// The Meals tab's other sort option -- cheapest real cost-per-serving
+// first, no target involved. Same "never resize, just reorder"
+// principle as sortMealsByTargetFit.
+export function sortMealsByPrice(meals: Meal[]): Meal[] {
+  return [...meals].sort((a, b) => a.price - b.price);
+}
+
+export type MealSortMode = 'targetFit' | 'price';
+
 // Lets the recipe page's manual servings stepper choose how many whole
 // batches of a recipe's own natural serving count to make -- e.g. 2x a
 // 4-serving recipe to prep 8. Per-serving calories/protein/price don't
