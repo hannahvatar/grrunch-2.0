@@ -32,6 +32,11 @@ export interface IngredientLine {
   // describeDryEquivalent. The recipe page keeps showing `text` (the
   // cooked amount the dish/instructions actually use) unchanged.
   groceryText?: string;
+  // True for generic staples (no dealTag) -- the portion of a recipe
+  // scaleMealToTargets can scale up/down (meal.stapleMultiplier) to help
+  // hit a calorie/protein target, unlike a deal-tagged anchor item bought
+  // as a whole package. See mealScaling.ts.
+  isFlexible: boolean;
 }
 
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the
@@ -47,4 +52,24 @@ export interface Meal {
   protein: number;
   ingredients: IngredientLine[];
   instructions: string[];
+  // Whole-recipe (not per-serving) totals split by whether that portion
+  // can flex: fixed* comes from deal-tagged anchor ingredients (bought as
+  // a whole package, never fragmented -- see docs/grrunch-architecture.md
+  // item 12); flexible* comes from generic staples at this recipe's
+  // original quantities, which scaleMealToTargets CAN scale up/down to
+  // help hit a calorie/protein target. fixed + flexible = calories/
+  // protein/price * servings, at baseline (stapleMultiplier = 1).
+  // Undefined on rows synced before this split existed.
+  fixedCalories?: number;
+  flexibleCalories?: number;
+  fixedProtein?: number;
+  flexibleProtein?: number;
+  fixedPrice?: number;
+  flexiblePrice?: number;
+  // Set by scaleMealToTargets when hitting the plan's targets required
+  // more than a serving-count change -- how much this recipe's flexible
+  // (staple) ingredients were scaled by, e.g. 1.4 = 40% more rice/potatoes/
+  // etc. than the recipe's original quantities. Undefined (equivalent to
+  // 1, no change) on the raw, un-scaled meal.
+  stapleMultiplier?: number;
 }
