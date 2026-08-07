@@ -4,8 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import type { Meal } from '../lib/mealData';
-import { resizeMealServings, scaleMealToTargets, servingsOptions } from '../lib/mealScaling';
-import { usePlanTargets } from '../lib/planTargets';
+import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
 import { fetchRecipeById } from '../lib/recipes';
 
 // Recipe detail — presented as a modal over the Meals tab, opened via each
@@ -13,13 +12,11 @@ import { fetchRecipeById } from '../lib/recipes';
 // stays plain/functional like the rest of the guest-mode flow.
 export default function RecipeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { targets } = usePlanTargets();
   const [rawMeal, setRawMeal] = useState<Meal | null | undefined>(undefined);
-  // Manual override of the auto-picked serving count, via the stepper
-  // below -- null means "use whatever scaleMealToTargets picked". Reset
-  // whenever the underlying recipe or its auto-picked serving count
-  // changes (new recipe opened, or Plan targets changed elsewhere), so a
-  // stale manual choice from a previous recipe/target never lingers.
+  // Manual override of the recipe's own natural serving count, via the
+  // stepper below -- null means "show it as authored". Reset whenever a
+  // different recipe is opened, so a stale override from a previous
+  // recipe never lingers.
   const [servingsOverride, setServingsOverride] = useState<number | null>(null);
 
   useEffect(() => {
@@ -32,24 +29,16 @@ export default function RecipeScreen() {
       .catch(() => setRawMeal(null));
   }, [id]);
 
-  // Re-derived from the same plan targets that picked this recipe's
-  // serving size on the Meals tab, so the modal shows the same numbers --
-  // not the recipe's raw, un-scaled DB values.
-  const autoMeal = rawMeal ? (scaleMealToTargets(rawMeal, targets) ?? rawMeal) : rawMeal;
-
   useEffect(() => {
     setServingsOverride(null);
-  }, [autoMeal?.id, autoMeal?.servings]);
+  }, [rawMeal?.id]);
 
   const meal =
-    autoMeal && servingsOverride !== null ? resizeMealServings(autoMeal, servingsOverride) : autoMeal;
-  // Whole multiples of the CURRENT base serving count -- autoMeal.servings,
-  // not the recipe's raw/authored count, since scaleMealToTargets may have
-  // recomputed servings from an anchor ingredient sized to the protein
-  // target (see mealScaling.ts's module docstring). Either way, you can't
-  // buy a fraction of a package, so "N+1 servings" isn't a real option;
-  // making another whole batch is.
-  const options = autoMeal ? servingsOptions(autoMeal.servings) : null;
+    rawMeal && servingsOverride !== null ? resizeMealServings(rawMeal, servingsOverride) : rawMeal;
+  // Whole multiples of the recipe's own natural serving count -- you
+  // can't buy a fraction of a deal-tagged package, so "N+1 servings"
+  // isn't a real option; making another whole batch is.
+  const options = rawMeal ? servingsOptions(rawMeal.servings) : null;
 
   if (meal === undefined) {
     return (
@@ -131,20 +120,11 @@ export default function RecipeScreen() {
         )}
 
         <Text style={styles.sectionTitle}>Ingredients</Text>
-        {meal.stapleMultiplier !== undefined && (
-          <Text style={styles.flexNote}>
-            To hit your plan's targets, use {meal.stapleMultiplier}× the amount shown below for
-            items marked *
-          </Text>
-        )}
         {meal.ingredients.map((ingredient, index) => (
           <Text key={index} style={styles.listItem}>
             •  {ingredient.text}
             {ingredient.dealTag?.quantityEstimated && (
               <Text style={styles.estimatedDisclaimer}>  *estimated. See store</Text>
-            )}
-            {meal.stapleMultiplier !== undefined && ingredient.isFlexible && (
-              <Text style={styles.flexDisclaimer}>  *</Text>
             )}
           </Text>
         ))}
@@ -214,7 +194,5 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
   estimatedDisclaimer: { fontSize: 12, color: '#B8860B', fontStyle: 'italic' },
-  flexNote: { fontSize: 12, color: '#888', fontStyle: 'italic', marginBottom: 8 },
-  flexDisclaimer: { fontSize: 15, color: '#FFA955', fontWeight: '800' },
   notFound: { padding: 24, fontSize: 15, color: '#888' },
 });
