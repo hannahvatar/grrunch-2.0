@@ -46,6 +46,26 @@ const STAPLE_MULTIPLIER_STEP = 0.1;
 const MAX_PROTEIN_OVERSHOOT = 1.4; // protein may not exceed 1.4x the floor
 const MIN_ANCHOR_PORTION_GRAMS = 30; // never suggest a sliver smaller than this
 
+// Real bug, confirmed live: sizing the anchor portion PURELY to the
+// protein target, with no bound on the resulting serving count, let a
+// lower-protein-density anchor in a modest package (e.g. wieners, 10g
+// protein/100g, 375g package) demand an ~260-300g portion to hit an
+// ordinary 26-30g protein target -- more than the WHOLE package could
+// give more than one of, collapsing servings to 1. That in turn divided
+// the recipe's other fixed/flexible totals (meant for the original 4
+// servings) across just that 1, exploding calories per serving to 3-4x
+// the recipe's real size and failing the calorie ceiling outright -- the
+// same recipe that fit fine at the exact same target when computed with
+// the recipe's original serving count. Bounding the anchor-derived
+// serving count to the same half-to-4x range used everywhere else this
+// session (servingsOptions, the old servings search) keeps a
+// low-density anchor from ever ballooning into an unrealistic single
+// giant portion: if the bound forces fewer servings than the ideal
+// portion would need, the portion shrinks to fit instead (delivering
+// less than the full target protein) -- letting the protein-floor check
+// reject it honestly, rather than letting portion size explode and
+// failing on calories for a confusing, unrelated-looking reason.
+
 export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | null {
   const { maxCalories, minProtein } = targets;
   if (maxCalories === undefined && minProtein === undefined) return meal;
@@ -73,11 +93,21 @@ export function scaleMealToTargets(meal: Meal, targets: PlanTargets): Meal | nul
 
   if (meal.anchor && minProtein !== undefined) {
     const { caloriesPer100g, proteinPer100g, packageGrams } = meal.anchor;
-    const portionGrams = Math.min(
+    const idealPortionGrams = Math.min(
       packageGrams,
       Math.max(MIN_ANCHOR_PORTION_GRAMS, (minProtein / proteinPer100g) * 100)
     );
-    servings = Math.max(1, Math.floor(packageGrams / portionGrams));
+    const rawServings = Math.max(1, Math.floor(packageGrams / idealPortionGrams));
+    const minServings = Math.max(1, Math.ceil(meal.servings / 2));
+    const maxServings = meal.servings * 4;
+    servings = Math.min(maxServings, Math.max(minServings, rawServings));
+    // If the bound pushed servings up from what the ideal portion would
+    // have needed, shrink the portion to fit what the package can
+    // actually supply across that many servings -- delivers less than
+    // the full target protein rather than overusing the anchor, and
+    // lets the protein-floor check below reject this recipe honestly if
+    // that's not enough, instead of the portion silently blowing calories.
+    const portionGrams = servings > rawServings ? packageGrams / servings : idealPortionGrams;
 
     const anchorCaloriesPerServing = (portionGrams / 100) * caloriesPer100g;
     const anchorProteinPerServing = (portionGrams / 100) * proteinPer100g;
