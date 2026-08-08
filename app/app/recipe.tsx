@@ -140,6 +140,21 @@ export default function RecipeScreen() {
             {index + 1}.  {step}
           </Text>
         ))}
+
+        {meal.optionalAdditions.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Optional</Text>
+            <View style={styles.optionalList}>
+              {meal.optionalAdditions.map((addition) => (
+                <Text key={addition.title} style={styles.optionalText}>
+                  <Text style={styles.optionalTitle}>{addition.title}</Text>
+                  {'  —  '}
+                  {addition.description}
+                </Text>
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -199,5 +214,11 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   ingredientsList: { gap: 10 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
+  // Not a priced ingredient list -- a short paragraph per suggestion,
+  // title inline-bolded rather than styled as its own list row, so it
+  // reads as "here's an idea" rather than "here's what to buy."
+  optionalList: { gap: 12 },
+  optionalText: { fontSize: 15, lineHeight: 24, color: '#333' },
+  optionalTitle: { fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   notFound: { padding: 24, fontSize: 15, color: '#888' },
 });
