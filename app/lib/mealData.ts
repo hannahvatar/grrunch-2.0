@@ -47,20 +47,4 @@ export interface Meal {
   protein: number;
   ingredients: IngredientLine[];
   instructions: string[];
-  // Whole-recipe (not per-serving) totals split by whether an ingredient
-  // is a deal-tagged anchor (fixed*, bought as a whole package, never
-  // fragmented -- see docs/grrunch-architecture.md item 12) or a generic
-  // staple (flexible*). Computed server-side (refresh_recipe_nutrition/
-  // refresh_recipe_deal_tags) but not currently used client-side -- see
-  // the archive/dynamic-meal-scaling branch for the earlier feature that
-  // consumed this to resize a recipe toward a calorie/protein target.
-  // Left populated (not removed) in case that's revisited later; every
-  // recipe's displayed calories/protein/price is just its own real,
-  // un-scaled serving now (lib/mealScaling.ts).
-  fixedCalories?: number;
-  flexibleCalories?: number;
-  fixedProtein?: number;
-  flexibleProtein?: number;
-  fixedPrice?: number;
-  flexiblePrice?: number;
 }

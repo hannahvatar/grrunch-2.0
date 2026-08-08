@@ -28,7 +28,10 @@ function mapRowToDeal(row: {
   category: string | null;
   price: number;
   original_price: number;
-  discount_pct: number;
+  // A generated (price/original_price-derived) column -- Postgres doesn't
+  // infer NOT NULL for generated columns even though this one always
+  // produces a real number given price/original_price are both required.
+  discount_pct: number | null;
   product_url: string;
   image_url: string | null;
 }): Deal {
@@ -39,7 +42,7 @@ function mapRowToDeal(row: {
     category: row.category ?? UNCATEGORIZED,
     price: row.price,
     originalPrice: row.original_price,
-    discountPct: row.discount_pct,
+    discountPct: row.discount_pct ?? 0,
     productUrl: row.product_url,
     imageUrl: row.image_url,
   };
