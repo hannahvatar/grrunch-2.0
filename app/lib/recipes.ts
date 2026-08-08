@@ -85,12 +85,6 @@ function mapRowToMeal(
     minutes: number | null;
     price: number | null;
     servings: number;
-    fixed_calories: number | null;
-    flexible_calories: number | null;
-    fixed_protein: number | null;
-    flexible_protein: number | null;
-    fixed_price: number | null;
-    flexible_price: number | null;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -110,12 +104,6 @@ function mapRowToMeal(
       mapIngredient(ingredient, dealTags, statcanPrices, producePrices, staplePrices)
     ),
     instructions: row.instructions as string[],
-    fixedCalories: row.fixed_calories ?? undefined,
-    flexibleCalories: row.flexible_calories ?? undefined,
-    fixedProtein: row.fixed_protein ?? undefined,
-    flexibleProtein: row.flexible_protein ?? undefined,
-    fixedPrice: row.fixed_price ?? undefined,
-    flexiblePrice: row.flexible_price ?? undefined,
   };
 }
 
