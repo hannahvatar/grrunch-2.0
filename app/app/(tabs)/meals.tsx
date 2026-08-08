@@ -33,9 +33,14 @@ const FREE_MEAL_LIMIT = 3;
 // cost-per-serving matter more here than hitting an exact macro number
 // (see lib/mealScaling.ts). There's no per-user calorie/protein target to
 // sort against anymore: every recipe's own serving is designed to land in
-// a normal range (~500 cal / ~25g protein, +/-30%) by construction, not
-// by a live filter. The sort dropdown below just reorders this same
-// always-shown list by price or name; nothing gets hidden or resized.
+// a normal range (~500 cal / ~20g protein, +/-30%) by construction, not
+// by a live filter, and its own real price/serving stays under $4 --
+// the servings count is the lever for that (divide a deal anchor's
+// fixed package cost across more portions), never the ingredients or
+// macro target, which don't move price at all for a deal-tagged item
+// (see lib/mealScaling.ts's price-vs-quantity note). The sort dropdown
+// below just reorders this same always-shown list by price or name;
+// nothing gets hidden or resized.
 //
 // Recipes are persistent and reused week to week, but their deal_tags are
 // re-matched against each new week's curated_deals -- a recipe with none
