@@ -1,0 +1,109 @@
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { MealCard } from '../components/MealCard';
+import type { Meal } from '../lib/mealData';
+import { sortMealsByName } from '../lib/mealScaling';
+import { fetchAllRecipes } from '../lib/recipes';
+import { useSavedRecipes } from '../lib/savedRecipes';
+import { useSelectedMeals } from '../lib/selectedMeals';
+
+const INK = '#111';
+
+// Internal-only recipe review screen -- every recipe, exactly as the
+// Meals tab renders it (same MealCard component), with no login and no
+// subscription check. Built because Anabelle's actual recipe-review
+// workflow is checking how a recipe she's editing looks in the app, and
+// having to sign in each time (even with a valid trial account) was
+// friction that got in the way of that. Deliberately does NOT reuse
+// Meals' free-tier slicing/upgrade-prompt logic -- there is none here,
+// on purpose.
+//
+// __DEV__ is React Native's standard global, true only in a local dev
+// build (expo start) and false in any production build (EAS build,
+// `expo export --no-dev`, etc.) -- this screen literally can't do
+// anything in a real build, even if someone finds the URL.
+export default function DevRecipesScreen() {
+  const { savedIds, toggleSaved } = useSavedRecipes();
+  const { selectedIds, toggleSelected } = useSelectedMeals();
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetchAllRecipes()
+      .then(setMeals)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (!__DEV__) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.notDevText}>This screen only exists in local development builds.</Text>
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color={INK} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.notDevText}>Couldn't load recipes. Check the dev server/console.</Text>
+      </View>
+    );
+  }
+
+  const sorted = sortMealsByName(meals);
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.devBanner}>
+          <Text style={styles.devBannerText}>
+            DEV ONLY -- all {meals.length} recipes, no login, no free-tier limit
+          </Text>
+        </View>
+        <Text style={styles.title}>All Recipes</Text>
+        <Text style={styles.subtitle}>
+          {sorted.length} recipe{sorted.length === 1 ? '' : 's'} · deal-tagged and not, A to Z
+        </Text>
+
+        {sorted.map((meal) => (
+          <MealCard
+            key={meal.id}
+            meal={meal}
+            isSelected={selectedIds.has(meal.id)}
+            isSaved={savedIds.has(meal.id)}
+            onToggleSelected={() => toggleSelected(meal.id)}
+            onToggleSaved={() => toggleSaved(meal.id)}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#FFEAD4' },
+  centered: { alignItems: 'center', justifyContent: 'center' },
+  notDevText: { padding: 24, fontSize: 15, color: '#888', textAlign: 'center' },
+  scrollContent: { padding: 20, paddingTop: 60, gap: 16 },
+  devBanner: {
+    backgroundColor: '#111',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+  },
+  devBannerText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: -8 },
+});
