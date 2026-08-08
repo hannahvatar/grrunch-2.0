@@ -70,7 +70,9 @@ export default function RecipeScreen() {
             </Text>
           </View>
         </View>
-        <Pressable onPress={() => router.back()}>
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/meals'))}
+        >
           <XMarkIcon size={20} color="#999" />
         </Pressable>
       </View>
