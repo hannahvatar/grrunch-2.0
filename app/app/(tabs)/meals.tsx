@@ -8,8 +8,7 @@ import { AccountBanner } from '../../components/AccountBanner';
 import { AvocadoBeanIcon, RestaurantIcon } from '../../components/MaterialSymbols';
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../../lib/curatedDeals';
 import type { Meal } from '../../lib/mealData';
-import { type MealSortMode, sortMealsByPrice, sortMealsByTargetFit } from '../../lib/mealScaling';
-import { type PlanTargets, usePlanTargets } from '../../lib/planTargets';
+import { type MealSortMode, sortMealsByName, sortMealsByPrice } from '../../lib/mealScaling';
 import { getRecipeImage } from '../../lib/recipeImages';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
@@ -17,11 +16,11 @@ import { useSelectedMeals } from '../../lib/selectedMeals';
 import { useSubscription } from '../../lib/subscription';
 
 const SORT_OPTIONS: { mode: MealSortMode; label: string }[] = [
-  { mode: 'targetFit', label: 'Best match' },
   { mode: 'price', label: 'Best deal' },
+  { mode: 'alphabetical', label: 'A to Z' },
 ];
 
-// GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx/stores.tsx/plan-meals.tsx's palette.
+// GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx/stores.tsx's palette.
 const ACCENT = '#FFA955';
 const INK = '#111';
 
@@ -39,32 +38,34 @@ function toTitleCase(text: string): string {
   return text.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 }
 
-// Guest-mode wireframe step 6 — Main App, Meals tab.
+// Guest-mode wireframe step 6 — Main App, Meals tab (the app's landing
+// tab now that there's no separate Plan step before it).
 // Every recipe with an active deal shows, full stop -- coverage and real
 // cost-per-serving matter more here than hitting an exact macro number
-// (see lib/mealScaling.ts). The Plan tab's calorie/protein sliders just
-// reorder this same list so whichever recipes are closest to what
-// someone's after surface first; nothing gets hidden or resized to fit.
+// (see lib/mealScaling.ts). There's no per-user calorie/protein target to
+// sort against anymore: every recipe's own serving is designed to land in
+// a normal range (~500 cal / ~25g protein, +/-30%) by construction, not
+// by a live filter. The sort dropdown below just reorders this same
+// always-shown list by price or name; nothing gets hidden or resized.
 //
 // Recipes are persistent and reused week to week, but their deal_tags are
 // re-matched against each new week's curated_deals -- a recipe with none
 // of its ingredients currently on sale stops surfacing here entirely
 // (rather than showing at regular price) until one of them is on sale
 // again, since the app's whole value prop is deal-driven meal planning.
-function eligibleMeals(allMeals: Meal[], targets: PlanTargets, sortMode: MealSortMode): Meal[] {
+function eligibleMeals(allMeals: Meal[], sortMode: MealSortMode): Meal[] {
   const withDeals = allMeals.filter((m) => m.dealTags.length > 0);
-  return sortMode === 'price' ? sortMealsByPrice(withDeals) : sortMealsByTargetFit(withDeals, targets);
+  return sortMode === 'alphabetical' ? sortMealsByName(withDeals) : sortMealsByPrice(withDeals);
 }
 
 export default function MealsScreen() {
-  const { targets } = usePlanTargets();
   const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { isSubscribed } = useSubscription();
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortMode, setSortMode] = useState<MealSortMode>('targetFit');
+  const [sortMode, setSortMode] = useState<MealSortMode>('price');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   function handleToggleSaved(mealId: string) {
@@ -87,9 +88,9 @@ export default function MealsScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  const planMeals = eligibleMeals(allMeals, targets, sortMode);
-  const visibleMeals = isSubscribed ? planMeals : planMeals.slice(0, FREE_MEAL_LIMIT);
-  const lockedMealCount = planMeals.length - visibleMeals.length;
+  const sortedMeals = eligibleMeals(allMeals, sortMode);
+  const visibleMeals = isSubscribed ? sortedMeals : sortedMeals.slice(0, FREE_MEAL_LIMIT);
+  const lockedMealCount = sortedMeals.length - visibleMeals.length;
 
   const totalServings = visibleMeals.reduce((sum, meal) => sum + meal.servings, 0);
   const totalPrice = visibleMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);
@@ -143,7 +144,7 @@ export default function MealsScreen() {
           </View>
         </View>
 
-        {planMeals.length === 0 && (
+        {sortedMeals.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
               No deals available for a recipe right now. Check back when this week's flyers
@@ -267,7 +268,7 @@ export default function MealsScreen() {
           </Pressable>
         )}
 
-        {planMeals.length > 0 && (
+        {sortedMeals.length > 0 && (
           <View style={styles.totalCard}>
             <View>
               <Text style={styles.totalLabel}>
