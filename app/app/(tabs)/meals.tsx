@@ -33,7 +33,7 @@ const FREE_MEAL_LIMIT = 3;
 // cost-per-serving matter more here than hitting an exact macro number
 // (see lib/mealScaling.ts). There's no per-user calorie/protein target to
 // sort against anymore: every recipe's own serving is designed to land in
-// a normal range (~500 cal / ~25g protein, +/-30%) by construction, not
+// a normal range (~500 cal / ~20g protein, +/-30%) by construction, not
 // by a live filter. The sort dropdown below just reorders this same
 // always-shown list by price or name; nothing gets hidden or resized.
 //

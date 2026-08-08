@@ -8,7 +8,7 @@ import type { Meal } from './mealData';
 // complexity for a benefit that turned out not to matter as much as
 // three simpler things: every recipe with an active deal is visible,
 // every recipe's own serving is designed to already land in a normal
-// range (~500 cal / ~25g protein, +/-30%) rather than needing a filter
+// range (~500 cal / ~20g protein, +/-30%) rather than needing a filter
 // to find one that does, and real cost-per-serving is front and center.
 // These two functions just reorder that same always-shown list -- never
 // resized, never excluded.
