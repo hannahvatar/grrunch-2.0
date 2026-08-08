@@ -149,10 +149,14 @@ export type Database = {
         Row: {
           airtable_record_id: string | null
           avg_price: number
+          calories_per_100g: number | null
           geography: string
           id: string
           ingredient_name: string
           last_synced_at: string
+          nutrition_reviewed_by: string | null
+          nutrition_source: string | null
+          protein_per_100g: number | null
           reference_date: string
           source: string
           unit: string
@@ -160,10 +164,14 @@ export type Database = {
         Insert: {
           airtable_record_id?: string | null
           avg_price: number
+          calories_per_100g?: number | null
           geography?: string
           id?: string
           ingredient_name: string
           last_synced_at?: string
+          nutrition_reviewed_by?: string | null
+          nutrition_source?: string | null
+          protein_per_100g?: number | null
           reference_date: string
           source?: string
           unit: string
@@ -171,10 +179,14 @@ export type Database = {
         Update: {
           airtable_record_id?: string | null
           avg_price?: number
+          calories_per_100g?: number | null
           geography?: string
           id?: string
           ingredient_name?: string
           last_synced_at?: string
+          nutrition_reviewed_by?: string | null
+          nutrition_source?: string | null
+          protein_per_100g?: number | null
           reference_date?: string
           source?: string
           unit?: string
@@ -191,6 +203,7 @@ export type Database = {
           instructions: Json
           minutes: number | null
           name: string
+          optional_additions: Json
           price: number | null
           protein: number | null
           servings: number
@@ -206,6 +219,7 @@ export type Database = {
           instructions: Json
           minutes?: number | null
           name: string
+          optional_additions?: Json
           price?: number | null
           protein?: number | null
           servings?: number
@@ -221,6 +235,7 @@ export type Database = {
           instructions?: Json
           minutes?: number | null
           name?: string
+          optional_additions?: Json
           price?: number | null
           protein?: number | null
           servings?: number

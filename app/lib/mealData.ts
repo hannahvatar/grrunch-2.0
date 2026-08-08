@@ -34,6 +34,18 @@ export interface IngredientLine {
   groceryText?: string;
 }
 
+// A serving suggestion shown at the bottom of the recipe page -- e.g.
+// "Roasted Lemon Asparagus" alongside a creamy mushroom chicken skillet.
+// Deliberately not an IngredientLine: no quantity, no price, no deal
+// tag, no nutrition contribution -- just a title and a short paragraph
+// of how to make it. Never appears in `ingredients` (which is what
+// refresh_recipe_deal_tags/refresh_recipe_nutrition actually cost and
+// count), so it can never accidentally get priced or nutrition-counted.
+export interface OptionalAddition {
+  title: string;
+  description: string;
+}
+
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the
 // screens that render it (Meals tab, recipe.tsx, Profile's saved recipes).
 export interface Meal {
@@ -47,4 +59,5 @@ export interface Meal {
   protein: number;
   ingredients: IngredientLine[];
   instructions: string[];
+  optionalAdditions: OptionalAddition[];
 }

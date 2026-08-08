@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { DealTag, IngredientLine, Meal } from './mealData';
+import type { DealTag, IngredientLine, Meal, OptionalAddition } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
 import { describeDryEquivalent, describeUnitCount } from './unitConversion';
 
@@ -85,6 +85,7 @@ function mapRowToMeal(
     minutes: number | null;
     price: number | null;
     servings: number;
+    optional_additions: unknown;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -104,6 +105,7 @@ function mapRowToMeal(
       mapIngredient(ingredient, dealTags, statcanPrices, producePrices, staplePrices)
     ),
     instructions: row.instructions as string[],
+    optionalAdditions: (row.optional_additions as OptionalAddition[]) ?? [],
   };
 }
 
