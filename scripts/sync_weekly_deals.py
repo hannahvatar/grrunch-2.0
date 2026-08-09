@@ -422,6 +422,17 @@ def resolve_produce_gaps():
                 "image_url": image_url,
                 "status": "approved",
                 "airtable_record_id": g["id"],
+                # Same generic-category tagging as the main "Deals" table
+                # (see 20260808040000_deal_keyword_matches.sql) -- most of
+                # what currently reaches curated_deals via this Gaps path
+                # IS produce (flyers rarely print a regular price for
+                # produce, so nearly everything lands here rather than
+                # the main Deals table), so this matters at least as
+                # much here, not less. Field is named "keyword_matches"
+                # (lowercase) on this table too, same as "Deals" --
+                # Anabelle's own choice, not this table's usual Title
+                # Case convention.
+                "keyword_matches": f.get("keyword_matches") or [],
             }
             deal_req = urllib.request.Request(
                 f"{SUPABASE_URL}/rest/v1/curated_deals?on_conflict=airtable_record_id",
