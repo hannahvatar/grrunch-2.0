@@ -124,6 +124,16 @@ def sync_curated_deals(records):
             "image_url": image_url,
             "status": "approved",
             "airtable_record_id": r["id"],
+            # A deal's own generic category tags (e.g. "chicken breast"),
+            # assigned by hand during this week's review -- see
+            # 20260808040000_deal_keyword_matches.sql. Lets a recipe
+            # ingredient still match a DIFFERENTLY-branded deal in a
+            # future week's flyer, as long as this week's and that
+            # week's deal share a keyword. Empty for most deals --
+            # only worth tagging a genuinely generic category, never a
+            # specialty/branded item that should stay matched to its
+            # own exact name.
+            "keyword_matches": f.get("keyword_matches") or [],
         })
 
     # Wipe last week's synced rows, then insert this week's full set --
