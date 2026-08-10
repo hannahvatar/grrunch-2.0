@@ -174,7 +174,11 @@ export default function RecipeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  // Matches the Meals tab / dev-recipes list's own background (see
+  // app/(tabs)/meals.tsx `gradient`, app/dev-recipes.tsx `container`) --
+  // this modal is a continuation of that screen, not a separate white
+  // sheet.
+  container: { flex: 1, backgroundColor: '#FFEAD4' },
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   handle: {
     width: 40,
