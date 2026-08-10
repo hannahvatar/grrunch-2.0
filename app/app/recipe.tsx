@@ -102,15 +102,19 @@ export default function RecipeScreen() {
             secondary text/icons, and there's no min. servings note --
             the stepper right below already covers that. */}
         <View style={styles.priceNutritionRow}>
-          <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
-          <Text style={styles.perServing}>/ serving</Text>
-          <View style={styles.nutritionItem}>
-            <RestaurantIcon size={16} color={INK} />
-            <Text style={styles.nutritionText}>{meal.calories} cal</Text>
+          <View style={styles.priceBlock}>
+            <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
+            <Text style={styles.perServing}>/ serving</Text>
           </View>
-          <View style={styles.nutritionItem}>
-            <AvocadoBeanIcon size={16} color={INK} />
-            <Text style={styles.nutritionText}>{meal.protein}g protein</Text>
+          <View style={styles.nutritionRow}>
+            <View style={styles.nutritionItem}>
+              <RestaurantIcon size={16} color={INK} />
+              <Text style={styles.nutritionText}>{meal.calories} cal</Text>
+            </View>
+            <View style={styles.nutritionItem}>
+              <AvocadoBeanIcon size={16} color={INK} />
+              <Text style={styles.nutritionText}>{meal.protein}g protein</Text>
+            </View>
           </View>
         </View>
 
@@ -272,6 +276,14 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
+  // Grouped into priceBlock/nutritionRow (not flattened directly into
+  // priceNutritionRow) to match MealCard's exact nesting -- baseline
+  // alignment on a row mixing plain Text with icon+text View children
+  // doesn't line up reliably; aligning two View groups at baseline
+  // (each internally its own alignment) is what MealCard actually does
+  // and is what renders correctly there.
+  priceBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  nutritionRow: { flexDirection: 'row', gap: 16 },
   mealPrice: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   perServing: { fontSize: 13, color: INK },
   nutritionItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -280,6 +292,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     marginBottom: 12,
   },
   stepperLabel: { fontSize: 14, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: '#333' },
