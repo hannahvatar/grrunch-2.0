@@ -262,28 +262,40 @@ const styles = StyleSheet.create({
   },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 4 },
   // Mirrors MealCard's own priceNutritionRow/priceBlock/nutritionRow
-  // values exactly (fontSize/weight/gap/alignItems: 'baseline' --
-  // bottom-aligns the big $3.43 against the smaller "/ serving" and
-  // "375 cal"/"20.8g protein" text, same as the card), except color --
-  // MealCard uses grey (#888) for the secondary price label and
-  // nutrition icons/text, this page uses black (INK) throughout, and
-  // everything stays on one line (MealCard allows itself to wrap on a
-  // narrow card).
+  // values (fontSize/weight/gap), except color (black here vs
+  // MealCard's grey secondary text/icons), one line always (MealCard
+  // can wrap), and alignItems -- MealCard uses 'baseline', which looked
+  // right there but measurably (getBoundingClientRect) did NOT line up
+  // "375 cal"/"20.8g protein" with "/ serving" here: outer
+  // align-items: baseline recomputes each flex item's cross-axis
+  // position from its own synthetic baseline, and that recalculation
+  // happens AFTER margin is applied to the item -- so a marginTop nudge
+  // on nutritionRow measurably shifted nutritionRow's own box (confirmed
+  // via computed style) but the browser then re-shifted it back by the
+  // same amount to preserve baseline alignment, netting zero visible
+  // change. 'flex-end' instead bottom-aligns each child's actual box
+  // (unaffected by font baseline metrics), which is what actually lines
+  // up mealPrice's box-bottom with nutritionRow's box-bottom -- verified
+  // by remeasuring after switching.
   priceNutritionRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'flex-end',
     flexWrap: 'nowrap',
     gap: 12,
     marginBottom: 16,
   },
   // Grouped into priceBlock/nutritionRow (not flattened directly into
-  // priceNutritionRow) to match MealCard's exact nesting -- baseline
-  // alignment on a row mixing plain Text with icon+text View children
-  // doesn't line up reliably; aligning two View groups at baseline
-  // (each internally its own alignment) is what MealCard actually does
-  // and is what renders correctly there.
+  // priceNutritionRow) to match MealCard's exact nesting.
   priceBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  nutritionRow: { flexDirection: 'row', gap: 16 },
+  // marginBottom pulls nutritionRow's text up to match perServing's own
+  // baseline-computed bottom exactly (both are 13px text) -- flex-end
+  // alone bottom-aligns nutritionRow's box against mealPrice's full box
+  // (which extends further down, past its own baseline, to account for
+  // descenders on a 24px font), overshooting past where 13px text
+  // actually belongs. Margin works correctly here because flex-end
+  // (unlike baseline) doesn't recompute position to cancel it out --
+  // verified by remeasuring (getBoundingClientRect) after each change.
+  nutritionRow: { flexDirection: 'row', gap: 16, marginBottom: 4 },
   mealPrice: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   perServing: { fontSize: 13, color: INK },
   nutritionItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
