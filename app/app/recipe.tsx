@@ -153,7 +153,10 @@ export default function RecipeScreen() {
                   multiplier={batchMultiplier}
                   // Bigger than the Grocery list's default 36px -- each
                   // deal ingredient has its own white card to fill here.
-                  imageSize={90}
+                  // 120 is comfortably under every source cutout's own
+                  // ~400px max dimension across all chains, so this
+                  // never upscales past real resolution.
+                  imageSize={120}
                 />
               </View>
             ))}

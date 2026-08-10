@@ -52,6 +52,16 @@ export function IngredientRow({
       {dealTag?.imageUrl && (
         <Image
           source={{ uri: dealTag.imageUrl }}
+          // Flyer cutouts are never square (real source dimensions range
+          // from ~186x400 to 400x119 across our own recipes' deals, all
+          // capped at 400px on the longer side) -- 'contain' (default is
+          // RN's own 'cover') shows each image in full, letterboxed on
+          // itemImage's placeholder background, instead of cropping off
+          // whatever doesn't fit a square. Matters more at a bigger
+          // imageSize, not less: 'cover' always shows the same fraction
+          // of the source regardless of box size, so a bigger box just
+          // makes an already-bad crop more visible.
+          resizeMode="contain"
           style={[
             styles.itemImage,
             { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 },
