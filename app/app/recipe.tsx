@@ -40,6 +40,15 @@ export default function RecipeScreen() {
   // can't buy a fraction of a deal-tagged package, so "N+1 servings"
   // isn't a real option; making another whole batch is.
   const options = rawMeal ? servingsOptions(rawMeal.servings) : null;
+  // How many whole batches the stepper is asking for -- 1 when shown as
+  // authored. Every ingredient line scales by this uniformly (same
+  // convention as the Grocery list's per-recipe multiplier below), since
+  // making N batches means buying N of everything the recipe calls for,
+  // not just the deal-tagged anchor -- a deal-tagged line already reads
+  // as "1 package" (see describeDealPackage), so ×2 there means 2 whole
+  // packages, never a fragment.
+  const batchMultiplier =
+    rawMeal && servingsOverride !== null ? servingsOverride / rawMeal.servings : 1;
 
   if (meal === undefined) {
     return (
@@ -130,6 +139,7 @@ export default function RecipeScreen() {
               text={ingredient.text}
               dealTag={ingredient.dealTag}
               estimatedPrice={ingredient.estimatedPrice}
+              multiplier={batchMultiplier}
             />
           ))}
         </View>
