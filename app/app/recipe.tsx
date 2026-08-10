@@ -40,6 +40,14 @@ export default function RecipeScreen() {
   // can't buy a fraction of a deal-tagged package, so "N+1 servings"
   // isn't a real option; making another whole batch is.
   const options = rawMeal ? servingsOptions(rawMeal.servings) : null;
+  // How many whole batches the stepper is asking for -- 1 when shown as
+  // authored. `meal` (via resizeMealServings) already scaled every
+  // staple ingredient's own displayed quantity by this; deal-tagged
+  // lines are the one exception (never fragmented, so a doubled batch
+  // still reads "1 package ...") and need this multiplier passed through
+  // separately to show as a x2 badge instead -- see IngredientRow below.
+  const batchMultiplier =
+    rawMeal && servingsOverride !== null ? servingsOverride / rawMeal.servings : 1;
 
   if (meal === undefined) {
     return (
@@ -130,6 +138,11 @@ export default function RecipeScreen() {
               text={ingredient.text}
               dealTag={ingredient.dealTag}
               estimatedPrice={ingredient.estimatedPrice}
+              // Deal-tagged lines stay "1 package ..." and get a x2
+              // badge (never fragmented); staple lines already have the
+              // scaled quantity baked into `text` by resizeMealServings,
+              // so they get no badge -- see scaleIngredientDisplay.
+              multiplier={ingredient.dealTag ? batchMultiplier : undefined}
             />
           ))}
         </View>

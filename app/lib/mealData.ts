@@ -32,6 +32,13 @@ export interface IngredientLine {
   // describeDryEquivalent. The recipe page keeps showing `text` (the
   // cooked amount the dish/instructions actually use) unchanged.
   groceryText?: string;
+  // The raw recipe quantity/unit `text`/`groceryText` were built from --
+  // kept alongside the flattened display strings so a batch multiplier
+  // (recipe page's servings stepper, Grocery list's "make Nx") can
+  // re-derive them at a scaled quantity (see lib/mealScaling.ts
+  // scaleIngredientDisplay) without re-running staple price matching.
+  quantity: string;
+  unit: string;
 }
 
 // A serving suggestion shown at the bottom of the recipe page -- e.g.

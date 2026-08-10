@@ -72,6 +72,56 @@ function parseQuantity(quantity: string | undefined): number {
   return NaN; // unparseable (e.g. "to taste") -- propagates to NaN amount, caller treats as unscalable
 }
 
+// Scales a recipe ingredient's own stated quantity by a whole-batch
+// multiplier (e.g. "4.5" cups doubled -> "9") -- used only for staple
+// ingredients, whose amount genuinely grows with batch count (unlike a
+// deal-tagged package, which is never fragmented; see
+// lib/mealScaling.ts scaleIngredientDisplay). Returns the quantity
+// unchanged when it isn't a plain number/fraction (e.g. "to taste" --
+// there's nothing to scale) rather than guessing.
+export function scaleQuantityString(quantity: string | undefined, multiplier: number): string | undefined {
+  const qtyText = (quantity ?? '').trim();
+  if (multiplier === 1 || qtyText === '') return quantity;
+  const fraction = qtyText.match(/^(\d+)\s*\/\s*(\d+)$/);
+  const amount = fraction
+    ? parseInt(fraction[1], 10) / parseInt(fraction[2], 10)
+    : /^\d+(\.\d+)?$/.test(qtyText)
+      ? parseFloat(qtyText)
+      : NaN;
+  if (Number.isNaN(amount)) return quantity;
+  // Rounded to 2 decimals to clear binary-float noise (e.g. 0.1 + 0.2),
+  // not because the display itself wants 2 decimal places -- an integer
+  // result still prints as "9", not "9.00".
+  return String(Math.round(amount * multiplier * 100) / 100);
+}
+
+// Builds an ingredient's display text/groceryText from its name and
+// quantity/unit -- factored out of mapIngredient() (lib/recipes.ts) so
+// scaleIngredientDisplay (lib/mealScaling.ts) can rebuild the same
+// strings from a scaled quantity, without re-running staple price
+// matching (which doesn't depend on the batch multiplier at all).
+export function describeQuantityText(
+  name: string,
+  quantity: string | undefined,
+  unit: string | undefined
+): { text: string; groceryText?: string } {
+  const dryEquivalent = describeDryEquivalent(name, quantity, unit);
+  const unitCount = describeUnitCount(name, quantity, unit);
+  const rawText = [quantity, unit, name].filter(Boolean).join(' ').trim();
+  // "(cooked)" only on the recipe-page text -- a bare "2 cups Rice"
+  // reads as if 2 cups is what to buy, when it's actually the dish's
+  // cooked amount (see describeDryEquivalent). The name itself (used for
+  // deal/price matching) is untouched, so this is display-only.
+  //
+  // unitCount (e.g. "1 Onion" for "150 g Onions"), by contrast, isn't a
+  // different amount the way dry-vs-cooked is -- it's the exact same
+  // quantity in friendlier units, so it replaces `text` everywhere
+  // (recipe page included), not just the grocery list.
+  const text = dryEquivalent ? `${rawText} (cooked)` : unitCount ?? rawText;
+  const groceryText = dryEquivalent ? `${dryEquivalent} ${name}` : unitCount;
+  return { text, groceryText };
+}
+
 export function parseUnitAmount(quantity: string | undefined, unitText: string | undefined): UnitAmount {
   const qty = parseQuantity(quantity);
   let t = (unitText ?? '').trim().toLowerCase();
@@ -216,6 +266,29 @@ export function describeDryEquivalent(
 
 function roundUpTo5(n: number): number {
   return Math.ceil(n / 5) * 5;
+}
+
+// A deal-tagged ingredient's stated quantity can be a FRACTION of what's
+// actually purchased -- deal items are never fragmented (see
+// docs/grrunch-architecture.md item 12), so a recipe using "230 g" of a
+// bigger chicken pack to hit a nutrition/protein target still means
+// buying exactly 1 whole package off the shelf. Display-only, and
+// intentionally not folded into describeUnitCount/describeDryEquivalent
+// above: those describe the SAME quantity in friendlier units (a
+// staple's price still scales with how much you use), where this
+// instead REPLACES the quantity, because a deal item's price doesn't
+// scale with how much of the package the recipe calls for (a
+// sub-package quantity still credits exactly one package price -- see
+// refresh_recipe_deal_tags()). Returns undefined when the quantity
+// already reads as a package count (e.g. "2 pack", "1 rack", a bare
+// whole item like "1 CAULIFLOWER") and needs no override.
+export function describeDealPackage(
+  recipeQuantity: string | undefined,
+  recipeUnit: string | undefined
+): string | undefined {
+  const ua = parseUnitAmount(recipeQuantity, recipeUnit);
+  if (Number.isNaN(ua.amount) || ua.baseUnit === 'each') return undefined;
+  return '1 package';
 }
 
 // Staples conventionally bought and measured as whole discrete items (a

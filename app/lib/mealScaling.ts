@@ -1,4 +1,5 @@
-import type { Meal } from './mealData';
+import type { IngredientLine, Meal } from './mealData';
+import { describeQuantityText, scaleQuantityString } from './unitConversion';
 
 // There's no per-user calorie/protein target anymore (see git history /
 // the archive/calorie-protein-plan-targets and archive/dynamic-meal-
@@ -30,14 +31,47 @@ export function sortMealsByName(meals: Meal[]): Meal[] {
 
 export type MealSortMode = 'price' | 'alphabetical';
 
+// Rebuilds a single ingredient's display text for a whole-batch
+// multiplier -- shared by the recipe page's servings stepper
+// (resizeMealServings below) and the Grocery list's per-recipe "make
+// this Nx" control, so "2x the recipe" reads identically wherever it
+// shows up.
+//
+// A deal-tagged ingredient is left completely untouched: we never
+// fragment a deal item, so 2x a recipe never means "2x the recipe's
+// stated gram amount" for it -- it means buying 2 whole packages,
+// which the UI communicates with a x2 badge next to the unscaled "1
+// package ..." text (see IngredientRow's multiplier prop), not by
+// rewriting the ingredient line itself.
+//
+// A staple (no deal tag) genuinely uses more of itself per batch, so
+// its own stated quantity is scaled directly into the text instead --
+// "4.5 cups Rice" at 2x becomes "9 cups Rice", not "4.5 cups Rice x2".
+export function scaleIngredientDisplay(
+  ingredient: IngredientLine,
+  multiplier: number
+): { text: string; groceryText?: string } {
+  if (ingredient.dealTag || multiplier === 1) {
+    return { text: ingredient.text, groceryText: ingredient.groceryText };
+  }
+  const scaledQuantity = scaleQuantityString(ingredient.quantity, multiplier);
+  return describeQuantityText(ingredient.name, scaledQuantity, ingredient.unit);
+}
+
 // Lets the recipe page's manual servings stepper choose how many whole
 // batches of a recipe's own natural serving count to make -- e.g. 2x a
 // 4-serving recipe to prep 8. Per-serving calories/protein/price don't
 // change with batch count (making 2 batches doubles the total food, not
-// what's in each serving), so this only ever updates the displayed
-// serving count.
+// what's in each serving) -- only the displayed serving count and each
+// staple ingredient's displayed quantity (see scaleIngredientDisplay).
 export function resizeMealServings(meal: Meal, servings: number): Meal {
-  return servings === meal.servings ? meal : { ...meal, servings };
+  if (servings === meal.servings) return meal;
+  const multiplier = servings / meal.servings;
+  const ingredients = meal.ingredients.map((ingredient) => ({
+    ...ingredient,
+    ...scaleIngredientDisplay(ingredient, multiplier),
+  }));
+  return { ...meal, servings, ingredients };
 }
 
 // The servings counts resizeMealServings should be called with: whole
