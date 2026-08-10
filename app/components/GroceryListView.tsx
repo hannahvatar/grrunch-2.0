@@ -6,6 +6,7 @@ import { MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 import { type Deal, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
 import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
+import { scaleIngredientDisplay } from '../lib/mealScaling';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
@@ -134,25 +135,33 @@ export function GroceryListView() {
 
   const recipeItems: GroceryItem[] = selectedMeals.flatMap((meal) => {
     const multiplier = multipliers.get(meal.id) ?? 1;
-    return meal.ingredients.map((ingredient, index) => ({
-      key: `${meal.id}-${index}`,
-      // The grocery list shows what to actually buy, not what the dish
-      // uses once prepared -- for a cooked-yield staple like rice, that's
-      // the dry-equivalent amount (see lib/unitConversion.ts
-      // describeDryEquivalent), not the recipe's cooked-quantity text.
-      // The recipe page keeps showing the cooked text unchanged.
-      text: ingredient.groceryText ?? ingredient.text,
-      source: meal.name,
-      dealTag: ingredient.dealTag,
-      estimatedPrice: ingredient.estimatedPrice,
-      // Only a real match against this week's flyers earns a store --
-      // never guessed from "well you're already buying other stuff at
-      // Store X for this recipe." A true pantry staple with no flyer
-      // presence belongs in "Other items", not implied to be at a store
-      // we have no actual data for.
-      store: ingredient.dealTag?.store ?? matchItemStore(ingredient.name, allDeals),
-      multiplier,
-    }));
+    return meal.ingredients.map((ingredient, index) => {
+      // Deal-tagged lines never fragment -- 2x the recipe means buying 2
+      // whole packages, shown as a x2 badge next to the unscaled "1
+      // package ..." text. A staple's own quantity genuinely doubles, so
+      // it's scaled directly into the text instead, with no badge (see
+      // lib/mealScaling.ts scaleIngredientDisplay).
+      const scaled = scaleIngredientDisplay(ingredient, multiplier);
+      return {
+        key: `${meal.id}-${index}`,
+        // The grocery list shows what to actually buy, not what the dish
+        // uses once prepared -- for a cooked-yield staple like rice, that's
+        // the dry-equivalent amount (see lib/unitConversion.ts
+        // describeDryEquivalent), not the recipe's cooked-quantity text.
+        // The recipe page keeps showing the cooked text unchanged.
+        text: scaled.groceryText ?? scaled.text,
+        source: meal.name,
+        dealTag: ingredient.dealTag,
+        estimatedPrice: ingredient.estimatedPrice,
+        // Only a real match against this week's flyers earns a store --
+        // never guessed from "well you're already buying other stuff at
+        // Store X for this recipe." A true pantry staple with no flyer
+        // presence belongs in "Other items", not implied to be at a store
+        // we have no actual data for.
+        store: ingredient.dealTag?.store ?? matchItemStore(ingredient.name, allDeals),
+        multiplier: ingredient.dealTag ? multiplier : undefined,
+      };
+    });
   });
   const dealItems: GroceryItem[] = selectedDeals.map(mapDealToGroceryItem);
   const items: GroceryItem[] = [...recipeItems, ...dealItems];

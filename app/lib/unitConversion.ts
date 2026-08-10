@@ -72,6 +72,56 @@ function parseQuantity(quantity: string | undefined): number {
   return NaN; // unparseable (e.g. "to taste") -- propagates to NaN amount, caller treats as unscalable
 }
 
+// Scales a recipe ingredient's own stated quantity by a whole-batch
+// multiplier (e.g. "4.5" cups doubled -> "9") -- used only for staple
+// ingredients, whose amount genuinely grows with batch count (unlike a
+// deal-tagged package, which is never fragmented; see
+// lib/mealScaling.ts scaleIngredientDisplay). Returns the quantity
+// unchanged when it isn't a plain number/fraction (e.g. "to taste" --
+// there's nothing to scale) rather than guessing.
+export function scaleQuantityString(quantity: string | undefined, multiplier: number): string | undefined {
+  const qtyText = (quantity ?? '').trim();
+  if (multiplier === 1 || qtyText === '') return quantity;
+  const fraction = qtyText.match(/^(\d+)\s*\/\s*(\d+)$/);
+  const amount = fraction
+    ? parseInt(fraction[1], 10) / parseInt(fraction[2], 10)
+    : /^\d+(\.\d+)?$/.test(qtyText)
+      ? parseFloat(qtyText)
+      : NaN;
+  if (Number.isNaN(amount)) return quantity;
+  // Rounded to 2 decimals to clear binary-float noise (e.g. 0.1 + 0.2),
+  // not because the display itself wants 2 decimal places -- an integer
+  // result still prints as "9", not "9.00".
+  return String(Math.round(amount * multiplier * 100) / 100);
+}
+
+// Builds an ingredient's display text/groceryText from its name and
+// quantity/unit -- factored out of mapIngredient() (lib/recipes.ts) so
+// scaleIngredientDisplay (lib/mealScaling.ts) can rebuild the same
+// strings from a scaled quantity, without re-running staple price
+// matching (which doesn't depend on the batch multiplier at all).
+export function describeQuantityText(
+  name: string,
+  quantity: string | undefined,
+  unit: string | undefined
+): { text: string; groceryText?: string } {
+  const dryEquivalent = describeDryEquivalent(name, quantity, unit);
+  const unitCount = describeUnitCount(name, quantity, unit);
+  const rawText = [quantity, unit, name].filter(Boolean).join(' ').trim();
+  // "(cooked)" only on the recipe-page text -- a bare "2 cups Rice"
+  // reads as if 2 cups is what to buy, when it's actually the dish's
+  // cooked amount (see describeDryEquivalent). The name itself (used for
+  // deal/price matching) is untouched, so this is display-only.
+  //
+  // unitCount (e.g. "1 Onion" for "150 g Onions"), by contrast, isn't a
+  // different amount the way dry-vs-cooked is -- it's the exact same
+  // quantity in friendlier units, so it replaces `text` everywhere
+  // (recipe page included), not just the grocery list.
+  const text = dryEquivalent ? `${rawText} (cooked)` : unitCount ?? rawText;
+  const groceryText = dryEquivalent ? `${dryEquivalent} ${name}` : unitCount;
+  return { text, groceryText };
+}
+
 export function parseUnitAmount(quantity: string | undefined, unitText: string | undefined): UnitAmount {
   const qty = parseQuantity(quantity);
   let t = (unitText ?? '').trim().toLowerCase();
