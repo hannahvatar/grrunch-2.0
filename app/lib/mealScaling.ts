@@ -1,5 +1,5 @@
 import type { IngredientLine, Meal } from './mealData';
-import { describeQuantityText, scaleQuantityString } from './unitConversion';
+import { describeQuantityText } from './unitConversion';
 
 // There's no per-user calorie/protein target anymore (see git history /
 // the archive/calorie-protein-plan-targets and archive/dynamic-meal-
@@ -47,6 +47,11 @@ export type MealSortMode = 'price' | 'alphabetical';
 // A staple (no deal tag) genuinely uses more of itself per batch, so
 // its own stated quantity is scaled directly into the text instead --
 // "4.5 cups Rice" at 2x becomes "9 cups Rice", not "4.5 cups Rice x2".
+// Passes the ingredient's own NATURAL quantity through to
+// describeQuantityText along with the multiplier, rather than
+// pre-scaling it here -- describeQuantityText needs the natural amount
+// to snap a whole-unit-count staple (e.g. Onions) BEFORE scaling, not
+// after (see describeUnitCount).
 export function scaleIngredientDisplay(
   ingredient: IngredientLine,
   multiplier: number
@@ -54,8 +59,7 @@ export function scaleIngredientDisplay(
   if (ingredient.dealTag || multiplier === 1) {
     return { text: ingredient.text, groceryText: ingredient.groceryText };
   }
-  const scaledQuantity = scaleQuantityString(ingredient.quantity, multiplier);
-  return describeQuantityText(ingredient.name, scaledQuantity, ingredient.unit);
+  return describeQuantityText(ingredient.name, ingredient.quantity, ingredient.unit, multiplier);
 }
 
 // Lets the recipe page's manual servings stepper choose how many whole

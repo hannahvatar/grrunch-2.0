@@ -98,16 +98,26 @@ export function scaleQuantityString(quantity: string | undefined, multiplier: nu
 // Builds an ingredient's display text/groceryText from its name and
 // quantity/unit -- factored out of mapIngredient() (lib/recipes.ts) so
 // scaleIngredientDisplay (lib/mealScaling.ts) can rebuild the same
-// strings from a scaled quantity, without re-running staple price
+// strings at a whole-batch multiplier, without re-running staple price
 // matching (which doesn't depend on the batch multiplier at all).
+//
+// `quantity` is always the recipe's own NATURAL (1x) amount, never
+// pre-scaled by the caller -- multiplier is applied here, differently
+// per path: scaled directly into rawText/dryEquivalent (both are exact,
+// linear conversions with no rounding grid to land wrong), but passed
+// through to describeUnitCount to be applied AFTER its snap-to-nearest-
+// fraction step instead (see describeUnitCount for why re-snapping a
+// pre-scaled quantity independently breaks predictable doubling).
 export function describeQuantityText(
   name: string,
   quantity: string | undefined,
-  unit: string | undefined
+  unit: string | undefined,
+  multiplier = 1
 ): { text: string; groceryText?: string } {
-  const dryEquivalent = describeDryEquivalent(name, quantity, unit);
-  const unitCount = describeUnitCount(name, quantity, unit);
-  const rawText = [quantity, unit, name].filter(Boolean).join(' ').trim();
+  const scaledQuantity = scaleQuantityString(quantity, multiplier);
+  const dryEquivalent = describeDryEquivalent(name, scaledQuantity, unit);
+  const unitCount = describeUnitCount(name, quantity, unit, multiplier);
+  const rawText = [scaledQuantity, unit, name].filter(Boolean).join(' ').trim();
   // "(cooked)" only on the recipe-page text -- a bare "2 cups Rice"
   // reads as if 2 cups is what to buy, when it's actually the dish's
   // cooked amount (see describeDryEquivalent). The name itself (used for
@@ -329,10 +339,22 @@ function formatFraction(n: number): string {
 // grams -- converts to a natural count like "1 Onion" or "½ Onion".
 // Returns undefined when the ingredient isn't in STAPLE_UNIT_WEIGHTS_G
 // or the recipe's quantity isn't a parseable weight.
+//
+// `multiplier` (a whole-batch scale, e.g. 2 for "double the recipe")
+// is applied AFTER snapping the recipe's own natural quantity, not
+// before -- snapUnitCount only has a coarse quarter/half grid to work
+// with, and re-snapping a scaled gram amount independently can land on
+// a different grid point purely from where the multiplied total falls
+// relative to a whole unit's weight (e.g. 100 g Onions snaps to "½
+// Onion", but 200 g -- 2x that same 100 g -- snaps to "1½ Onions", not
+// the "1 Onion" doubling ½ would suggest). Scaling the already-snapped
+// count instead keeps doubling/tripling/etc. exactly predictable: "½
+// Onion" at 1x is always exactly "1 Onion" at 2x, "1½ Onions" at 3x.
 export function describeUnitCount(
   ingredientName: string,
   recipeQuantity: string | undefined,
-  recipeUnit: string | undefined
+  recipeUnit: string | undefined,
+  multiplier = 1
 ): string | undefined {
   const ua = parseUnitAmount(recipeQuantity, recipeUnit);
   if (Number.isNaN(ua.amount) || ua.baseUnit !== 'g') return undefined;
@@ -345,7 +367,7 @@ export function describeUnitCount(
   if (!entry) return undefined;
   const [, { gramsPerUnit, singular, plural }] = entry;
 
-  const count = snapUnitCount(ua.amount / gramsPerUnit);
+  const count = snapUnitCount(ua.amount / gramsPerUnit) * multiplier;
   const label = count > 1 ? plural : singular;
   return `${formatFraction(count)} ${label}`;
 }
