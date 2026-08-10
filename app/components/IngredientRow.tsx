@@ -130,7 +130,9 @@ export function IngredientRow({
         </View>
       )}
       <View style={styles.itemInfo}>
-        <Text style={[styles.itemName, checked && styles.itemNameChecked]}>{text}</Text>
+        <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
+          {text}
+        </Text>
         {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
         {showStoreLink && dealTag?.productUrl && (
           <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
@@ -200,6 +202,11 @@ const styles = StyleSheet.create({
   itemImageInset: { position: 'absolute', top: '10%', left: '10%', right: '10%', bottom: '10%' },
   itemInfo: { flex: 1 },
   itemName: { fontSize: 15 },
+  // Deal items (dealTag present) read at 16px -- both the name here and
+  // itemPriceValue below, which only ever renders for a deal-tagged row
+  // already (see the dealTag?.price != null check), so it didn't need
+  // its own conditional variant the way the shared itemName Text does.
+  itemNameDeal: { fontSize: 16 },
   itemNameChecked: { textDecorationLine: 'line-through', color: '#aaa' },
   itemStore: { fontSize: 12, color: '#767676', marginTop: 2 },
   flyerLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
@@ -214,7 +221,7 @@ const styles = StyleSheet.create({
   estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
   itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
-  itemPriceValue: { fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  itemPriceValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   itemPriceOriginal: { fontSize: 11, color: '#aaa', textDecorationLine: 'line-through' },
   itemPriceEstimated: { fontSize: 12, color: '#888' },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
