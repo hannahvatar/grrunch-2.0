@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon } from 'react-native-heroicons/outline';
 
@@ -15,12 +16,49 @@ interface IngredientRowProps {
   checked?: boolean;
   onToggleCheck?: () => void;
   multiplier?: number;
-  // Deal image size in px (square) -- defaults to the Grocery list's
-  // compact 36, but the recipe page's own deal cards (see app/recipe.tsx)
-  // want a larger 90 now that each deal-tagged ingredient has its own
-  // white card to fill. Border radius scales with it so a bigger image
-  // doesn't look disproportionately sharp-cornered.
+  // Deal image size in px (square) -- the Grocery list's compact
+  // default, 36. Mutually exclusive with imageMaxSize below (recipe
+  // page uses that instead); a caller should only ever pass one.
   imageSize?: number;
+  // Fit-to-box mode: the image is scaled to its own real aspect ratio,
+  // capped at imageMaxSize in WHICHEVER dimension is larger, instead of
+  // forced into a square. The recipe page (see app/recipe.tsx) uses
+  // this at 160 -- a fixed square badly cropped flyer cutouts, which
+  // are never square themselves (real ratios across our own recipes'
+  // deals range 0.47, Green Onions -- tall and narrow -- to 3.36, Swiss
+  // Chalet ribs -- wide and flat). A strict fixed-width version was
+  // tried first and rejected: it fixed wide images but forced every
+  // tall/narrow one (Green Onions) to a wasteful 160x344 box. Capping
+  // by whichever dimension is larger keeps every image's box at exactly
+  // its own natural shape, never exceeding imageMaxSize in either
+  // direction.
+  imageMaxSize?: number;
+}
+
+// Fetches an image's real aspect ratio so imageMaxSize mode can size
+// its box to match instead of guessing -- react-native's <Image>,
+// unlike a web <img>, never auto-sizes to its source's intrinsic
+// dimensions. Falls back to a square (1) if the URL fails to resolve,
+// and only probes at all when a caller actually asked for imageMaxSize
+// mode (the Grocery list's square imageSize mode never triggers a
+// fetch).
+function useImageAspectRatio(uri: string | undefined): number {
+  const [ratio, setRatio] = useState(1);
+  useEffect(() => {
+    if (!uri) return;
+    let cancelled = false;
+    Image.getSize(
+      uri,
+      (width, height) => {
+        if (!cancelled && height > 0) setRatio(width / height);
+      },
+      () => {} // keep the square fallback -- no source dimensions to size against
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [uri]);
+  return ratio;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -37,7 +75,19 @@ export function IngredientRow({
   onToggleCheck,
   multiplier,
   imageSize = 36,
+  imageMaxSize,
 }: IngredientRowProps) {
+  // Only probes the image's real dimensions in imageMaxSize mode --
+  // square imageSize mode (the Grocery list) never needs them.
+  const aspectRatio = useImageAspectRatio(imageMaxSize ? dealTag?.imageUrl : undefined);
+  // Fit the image within an imageMaxSize x imageMaxSize box, preserving
+  // its real aspect ratio -- whichever dimension is larger gets capped
+  // at imageMaxSize, the other shrinks proportionally. A wide image
+  // (ratio > 1) is capped by width; a tall one (ratio < 1) by height;
+  // never both, so the box always matches the image's own shape instead
+  // of a fixed square or a fixed width.
+  const fitWidth = imageMaxSize ? Math.min(imageMaxSize, imageMaxSize * aspectRatio) : undefined;
+  const fitHeight = imageMaxSize ? Math.min(imageMaxSize, imageMaxSize / aspectRatio) : undefined;
   return (
     <View style={styles.itemRow}>
       {onToggleCheck && (
@@ -49,25 +99,34 @@ export function IngredientRow({
           {checked && <CheckIcon size={12} color="#fff" />}
         </Pressable>
       )}
-      {dealTag?.imageUrl && (
-        <Image
-          source={{ uri: dealTag.imageUrl }}
-          // Flyer cutouts are never square (real source dimensions range
-          // from ~186x400 to 400x119 across our own recipes' deals, all
-          // capped at 400px on the longer side) -- 'contain' (default is
-          // RN's own 'cover') shows each image in full, letterboxed on
-          // itemImage's placeholder background, instead of cropping off
-          // whatever doesn't fit a square. Matters more at a bigger
-          // imageSize, not less: 'cover' always shows the same fraction
-          // of the source regardless of box size, so a bigger box just
-          // makes an already-bad crop more visible.
-          resizeMode="contain"
-          style={[
-            styles.itemImage,
-            { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 },
-          ]}
-        />
-      )}
+      {dealTag?.imageUrl &&
+        (imageMaxSize ? (
+          <Image
+            source={{ uri: dealTag.imageUrl }}
+            // Box is sized to the image's own real aspect ratio (fetched
+            // above), not forced square or a fixed width -- 'cover' vs
+            // 'contain' is moot once width/height already match the
+            // source's shape, so nothing gets cropped or letterboxed.
+            style={[
+              styles.itemImage,
+              { width: fitWidth, height: fitHeight, borderRadius: Math.round(imageMaxSize / 10) },
+            ]}
+          />
+        ) : (
+          <Image
+            source={{ uri: dealTag.imageUrl }}
+            // Flyer cutouts are never square (real source dimensions
+            // range from ~186x400 to 400x119 across our own recipes'
+            // deals) -- 'contain' shows each image in full, letterboxed
+            // on itemImage's placeholder background, instead of
+            // cropping off whatever doesn't fit the square.
+            resizeMode="contain"
+            style={[
+              styles.itemImage,
+              { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 },
+            ]}
+          />
+        ))}
       <View style={styles.itemInfo}>
         <Text style={[styles.itemName, checked && styles.itemNameChecked]}>{text}</Text>
         {meta && <Text style={styles.itemMeta}>{meta}</Text>}
