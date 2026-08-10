@@ -67,7 +67,7 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
                   be made in, since the recipe page's stepper only ever
                   scales UP from here in whole multiples (servingsOptions),
                   never down. */}
-              <Text style={styles.minServings}>min. servings {meal.servings}</Text>
+              <Text style={styles.minServings}>• min. servings {meal.servings}</Text>
             </View>
             <View style={styles.nutritionRow}>
               <View style={styles.nutritionItem}>
