@@ -1,8 +1,21 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon } from 'react-native-heroicons/outline';
 
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../lib/curatedDeals';
 import type { DealTag } from '../lib/mealData';
+
+// Explicit window.open (same as a target="_blank" link) on web to
+// guarantee an actual new tab rather than relying on Linking.openURL's
+// web behavior. On native there's no tab concept -- Linking.openURL
+// hands off to the system browser / an in-app browser view instead,
+// the closest equivalent.
+function openInNewTab(url: string) {
+  if (Platform.OS === 'web') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else {
+    Linking.openURL(url);
+  }
+}
 
 interface IngredientRowProps {
   text: string;
@@ -33,6 +46,16 @@ interface IngredientRowProps {
   // only; the Grocery list's compact 36px is too small for the effect
   // to matter.
   blurredBackdrop?: boolean;
+  // Shows the deal's store name (dealTag.store) below the ingredient
+  // name, plus a "See in flyer" link (dealTag.productUrl) that opens
+  // that store's weekly flyer in a new tab -- recipe-page only. The
+  // Grocery list already groups items under a store-name section
+  // header, so repeating it per-row there would be redundant; the
+  // recipe page has no other store attribution at all. The link itself
+  // only renders when productUrl is a real, non-empty value (produce-
+  // gap-sourced deals have none -- see DealTag.productUrl) -- never a
+  // dead link.
+  showStoreLink?: boolean;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -50,6 +73,7 @@ export function IngredientRow({
   multiplier,
   imageSize = 36,
   blurredBackdrop,
+  showStoreLink,
 }: IngredientRowProps) {
   return (
     <View style={styles.itemRow}>
@@ -104,6 +128,12 @@ export function IngredientRow({
       )}
       <View style={styles.itemInfo}>
         <Text style={[styles.itemName, checked && styles.itemNameChecked]}>{text}</Text>
+        {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
+        {showStoreLink && dealTag?.productUrl && (
+          <Pressable onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
+            <Text style={styles.flyerLink}>See in flyer</Text>
+          </Pressable>
+        )}
         {meta && <Text style={styles.itemMeta}>{meta}</Text>}
         {dealTag?.quantityEstimated && (
           <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
@@ -167,6 +197,15 @@ const styles = StyleSheet.create({
   itemInfo: { flex: 1 },
   itemName: { fontSize: 15 },
   itemNameChecked: { textDecorationLine: 'line-through', color: '#aaa' },
+  itemStore: { fontSize: 12, color: '#767676', marginTop: 2 },
+  flyerLink: {
+    fontSize: 12,
+    color: '#2C5FD6',
+    fontWeight: '700',
+    fontFamily: 'OpenSans_700Bold',
+    textDecorationLine: 'underline',
+    marginTop: 2,
+  },
   itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
   estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },

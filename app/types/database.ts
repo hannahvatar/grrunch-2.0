@@ -1,7 +1,3 @@
-// Generated via `supabase gen types typescript --linked` -- regenerate this
-// (not hand-edit it) whenever the schema changes. See supabase/migrations/
-// for the actual source of truth.
-
 export type Json =
   | string
   | number
@@ -55,6 +51,7 @@ export type Database = {
           id: string
           image_url: string | null
           item_name: string
+          keyword_matches: string[]
           original_price: number
           price: number
           product_url: string
@@ -73,6 +70,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           item_name: string
+          keyword_matches?: string[]
           original_price: number
           price: number
           product_url: string
@@ -91,6 +89,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           item_name?: string
+          keyword_matches?: string[]
           original_price?: number
           price?: number
           product_url?: string
@@ -535,8 +534,13 @@ export type Database = {
         }
         Returns: number
       }
+      singularize: { Args: { word: string }; Returns: string }
       staple_alias_words: { Args: { words: string[] }; Returns: string[] }
       variety_descriptors: { Args: never; Returns: string[] }
+      words_loosely_subset: {
+        Args: { haystack: string[]; needle: string[] }
+        Returns: boolean
+      }
     }
     Enums: {
       deal_status: "pending" | "approved" | "rejected"

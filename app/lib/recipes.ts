@@ -16,6 +16,7 @@ interface RecipeDealTagRow {
   original_price?: number;
   store?: string;
   image_url?: string;
+  product_url?: string;
   quantity_estimated?: boolean;
 }
 
@@ -27,6 +28,10 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     originalPrice: tag.original_price,
     store: tag.store,
     imageUrl: tag.image_url,
+    // "" for produce-gap-sourced deals (no real flyer link to give) --
+    // normalized to undefined so callers can check truthiness directly
+    // instead of also handling an empty-but-present string.
+    productUrl: tag.product_url || undefined,
     quantityEstimated: tag.quantity_estimated,
   };
 }

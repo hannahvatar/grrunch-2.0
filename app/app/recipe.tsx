@@ -160,6 +160,11 @@ export default function RecipeScreen() {
                   // background instead of bare placeholder grey.
                   imageSize={120}
                   blurredBackdrop
+                  // The recipe page has no other store attribution --
+                  // shows the store name plus a "See in flyer" link out
+                  // to that store's weekly flyer (curated_deals.
+                  // product_url, threaded through deal_tags).
+                  showStoreLink
                 />
               </View>
             ))}
