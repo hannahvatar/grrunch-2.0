@@ -160,6 +160,11 @@ export default function RecipeScreen() {
                   // background instead of bare placeholder grey.
                   imageSize={120}
                   blurredBackdrop
+                  // The recipe page has no other store attribution --
+                  // shows the store name plus a "See in flyer" link out
+                  // to that store's weekly flyer (curated_deals.
+                  // product_url, threaded through deal_tags).
+                  showStoreLink
                 />
               </View>
             ))}
@@ -229,7 +234,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 4 },
   macrosRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   macroPill: {
-    backgroundColor: '#F2F2F2',
+    backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 16,

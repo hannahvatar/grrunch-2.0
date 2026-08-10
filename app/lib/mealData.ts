@@ -5,6 +5,13 @@ export interface DealTag {
   originalPrice?: number;
   store?: string;
   imageUrl?: string;
+  // The store's weekly flyer link (curated_deals.product_url, same
+  // field app/(tabs)/best-deals.tsx already links out to) -- lets the
+  // recipe page offer a "See in flyer" link per deal-tagged ingredient.
+  // Empty for produce-gap-sourced deals (see resolve_produce_gaps() in
+  // scripts/sync_weekly_deals.py, which has no real flyer link to give)
+  // -- never shown as a link when empty, rather than guessing one.
+  productUrl?: string;
   // True when the deal's package size was our best assumption (Airtable
   // "Estimated quantity") rather than stated on the flyer itself -- lets
   // the grocery list flag that the quantity shown is a guess, not a fact.
