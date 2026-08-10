@@ -8,6 +8,8 @@ import type { Meal } from '../lib/mealData';
 import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
 import { fetchRecipeById } from '../lib/recipes';
 
+const INK = '#111';
+
 // Recipe detail — presented as a modal over the Meals tab, opened via each
 // meal card's "View recipe" button. Not covered by a wireframe yet, so this
 // stays plain/functional like the rest of the guest-mode flow.
@@ -80,25 +82,28 @@ export default function RecipeScreen() {
         <View style={styles.headerText}>
           <Text style={styles.title}>{meal.name}</Text>
           <View style={styles.subtitleRow}>
-            <ClockIcon size={13} color="#888" />
-            <Text style={styles.subtitle}>
-              {meal.minutes} min · ${meal.price.toFixed(2)} / serving
-            </Text>
+            <ClockIcon size={13} color={INK} />
+            <Text style={styles.subtitle}>{meal.minutes} min</Text>
           </View>
         </View>
         <Pressable
+          style={styles.closeButton}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/meals'))}
         >
-          <XMarkIcon size={20} color="#999" />
+          <XMarkIcon size={18} color={INK} />
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.macrosRow}>
           <View style={styles.macroPill}>
+            <Text style={styles.macroValue}>${meal.price.toFixed(2)}</Text>
+            <Text style={styles.macroLabel}>/ serving</Text>
+          </View>
+          <View style={[styles.macroPill, styles.macroPillOutlined]}>
             <Text style={styles.macroValue}>{meal.calories}</Text>
             <Text style={styles.macroLabel}>kcal</Text>
           </View>
-          <View style={styles.macroPill}>
+          <View style={[styles.macroPill, styles.macroPillOutlined]}>
             <Text style={styles.macroValue}>{meal.protein} g</Text>
             <Text style={styles.macroLabel}>protein</Text>
           </View>
@@ -235,7 +240,17 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, marginRight: 12 },
   title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
-  subtitle: { fontSize: 13, color: '#888' },
+  subtitle: { fontSize: 14, color: INK },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 4 },
   macrosRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   macroPill: {
@@ -244,9 +259,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: INK,
   },
-  macroValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  macroLabel: { fontSize: 11, color: '#888' },
+  // Calories/protein pills only -- outlined instead of filled; the
+  // black border above is shared by all three pills, this just clears
+  // the white fill the price pill keeps.
+  macroPillOutlined: { backgroundColor: 'transparent' },
+  macroValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  macroLabel: { fontSize: 11, color: INK },
   stepperRow: {
     flexDirection: 'row',
     alignItems: 'center',
