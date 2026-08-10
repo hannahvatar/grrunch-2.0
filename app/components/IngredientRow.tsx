@@ -15,6 +15,12 @@ interface IngredientRowProps {
   checked?: boolean;
   onToggleCheck?: () => void;
   multiplier?: number;
+  // Deal image size in px (square) -- defaults to the Grocery list's
+  // compact 36, but the recipe page's own deal cards (see app/recipe.tsx)
+  // want a larger 90 now that each deal-tagged ingredient has its own
+  // white card to fill. Border radius scales with it so a bigger image
+  // doesn't look disproportionately sharp-cornered.
+  imageSize?: number;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -30,6 +36,7 @@ export function IngredientRow({
   checked,
   onToggleCheck,
   multiplier,
+  imageSize = 36,
 }: IngredientRowProps) {
   return (
     <View style={styles.itemRow}>
@@ -42,7 +49,15 @@ export function IngredientRow({
           {checked && <CheckIcon size={12} color="#fff" />}
         </Pressable>
       )}
-      {dealTag?.imageUrl && <Image source={{ uri: dealTag.imageUrl }} style={styles.itemImage} />}
+      {dealTag?.imageUrl && (
+        <Image
+          source={{ uri: dealTag.imageUrl }}
+          style={[
+            styles.itemImage,
+            { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 },
+          ]}
+        />
+      )}
       <View style={styles.itemInfo}>
         <Text style={[styles.itemName, checked && styles.itemNameChecked]}>{text}</Text>
         {meta && <Text style={styles.itemMeta}>{meta}</Text>}
@@ -96,7 +111,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
-  itemImage: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#F2F2F2' },
+  // width/height/borderRadius are overridden inline per imageSize --
+  // only the placeholder background lives here.
+  itemImage: { backgroundColor: '#F2F2F2' },
   itemInfo: { flex: 1 },
   itemName: { fontSize: 15 },
   itemNameChecked: { textDecorationLine: 'line-through', color: '#aaa' },

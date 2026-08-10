@@ -151,6 +151,9 @@ export default function RecipeScreen() {
                   // ..." with a x2 badge instead of a scaled quantity --
                   // see scaleIngredientDisplay.
                   multiplier={batchMultiplier}
+                  // Bigger than the Grocery list's default 36px -- each
+                  // deal ingredient has its own white card to fill here.
+                  imageSize={90}
                 />
               </View>
             ))}
