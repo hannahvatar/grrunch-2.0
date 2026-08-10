@@ -63,6 +63,11 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
             <View style={styles.priceBlock}>
               <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
               <Text style={styles.perServing}>/ serving</Text>
+              {/* The recipe's own natural yield -- the smallest batch it can
+                  be made in, since the recipe page's stepper only ever
+                  scales UP from here in whole multiples (servingsOptions),
+                  never down. */}
+              <Text style={styles.minServings}>min. servings {meal.servings}</Text>
             </View>
             <View style={styles.nutritionRow}>
               <View style={styles.nutritionItem}>
@@ -191,6 +196,7 @@ const styles = StyleSheet.create({
   nutritionText: { fontSize: 13, color: '#888' },
   mealPrice: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   perServing: { fontSize: 13, color: '#888' },
+  minServings: { fontSize: 13, color: '#888' },
   dealTagsRow: { gap: 6 },
   dealTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dealTagName: { color: '#888', fontSize: 13, flex: 1 },
