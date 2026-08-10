@@ -81,6 +81,21 @@ function mapIngredient(
   };
 }
 
+// Keeps every deal-tagged ingredient together as one contiguous group
+// (in their authored relative order), ahead of the non-deal staples (in
+// theirs) -- a recipe authored with a staple in between two deal items
+// (e.g. "Longanisa, Marinated Eggs, Rice, Green Onions") otherwise reads
+// as if Rice were also on sale, or splits the "what's actually
+// discounted" items apart for no reason. A produce deal (e.g. Green
+// Onions) is exactly as much a deal item as a packaged one (e.g.
+// Marinated Eggs) here -- both simply have a dealTag, so both group
+// together regardless of what kind of deal tagged them.
+function groupDealItemsTogether(ingredients: IngredientLine[]): IngredientLine[] {
+  const dealItems = ingredients.filter((ingredient) => ingredient.dealTag);
+  const staples = ingredients.filter((ingredient) => !ingredient.dealTag);
+  return [...dealItems, ...staples];
+}
+
 function mapRowToMeal(
   row: {
     id: string;
@@ -109,8 +124,10 @@ function mapRowToMeal(
     dealTags,
     calories: row.calories ?? 0,
     protein: row.protein ?? 0,
-    ingredients: (row.ingredients as RecipeIngredient[]).map((ingredient) =>
-      mapIngredient(ingredient, dealTags, statcanPrices, producePrices, staplePrices)
+    ingredients: groupDealItemsTogether(
+      (row.ingredients as RecipeIngredient[]).map((ingredient) =>
+        mapIngredient(ingredient, dealTags, statcanPrices, producePrices, staplePrices)
+      )
     ),
     instructions: row.instructions as string[],
     optionalAdditions: (row.optional_additions as OptionalAddition[]) ?? [],
