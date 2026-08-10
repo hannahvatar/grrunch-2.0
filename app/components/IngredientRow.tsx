@@ -3,6 +3,9 @@ import { CheckIcon } from 'react-native-heroicons/outline';
 
 import { MIN_DISPLAYED_DISCOUNT_PCT } from '../lib/curatedDeals';
 import type { DealTag } from '../lib/mealData';
+import { ArrowOutwardIcon } from './MaterialSymbols';
+
+const INK = '#111';
 
 // Explicit window.open (same as a target="_blank" link) on web to
 // guarantee an actual new tab rather than relying on Linking.openURL's
@@ -130,8 +133,9 @@ export function IngredientRow({
         <Text style={[styles.itemName, checked && styles.itemNameChecked]}>{text}</Text>
         {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
         {showStoreLink && dealTag?.productUrl && (
-          <Pressable onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
+          <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
             <Text style={styles.flyerLink}>See in flyer</Text>
+            <ArrowOutwardIcon size={12} color={INK} />
           </Pressable>
         )}
         {meta && <Text style={styles.itemMeta}>{meta}</Text>}
@@ -198,13 +202,13 @@ const styles = StyleSheet.create({
   itemName: { fontSize: 15 },
   itemNameChecked: { textDecorationLine: 'line-through', color: '#aaa' },
   itemStore: { fontSize: 12, color: '#767676', marginTop: 2 },
+  flyerLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   flyerLink: {
     fontSize: 12,
-    color: '#2C5FD6',
+    color: INK,
     fontWeight: '700',
     fontFamily: 'OpenSans_700Bold',
     textDecorationLine: 'underline',
-    marginTop: 2,
   },
   itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
   estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },

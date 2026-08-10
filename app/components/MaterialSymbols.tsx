@@ -24,3 +24,13 @@ export function AvocadoBeanIcon({ size = 16, color = '#888' }: MaterialSymbolPro
     </Svg>
   );
 }
+
+// "arrow_outward" -- used as a trailing icon on external links (e.g. the
+// recipe page's "See in flyer" link) to signal it opens outside the app.
+export function ArrowOutwardIcon({ size = 16, color = '#888' }: MaterialSymbolProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 -960 960 960" fill={color}>
+      <Path d="m256-240-56-56 384-384H240v-80h480v480h-80v-344L256-240Z" />
+    </Svg>
+  );
+}
