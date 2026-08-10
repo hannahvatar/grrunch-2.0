@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
+import { AvocadoBeanIcon, RestaurantIcon } from '../components/MaterialSymbols';
 import type { Meal } from '../lib/mealData';
 import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
 import { fetchRecipeById } from '../lib/recipes';
@@ -94,18 +95,22 @@ export default function RecipeScreen() {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.macrosRow}>
-          <View style={styles.macroPill}>
-            <Text style={styles.macroValue}>${meal.price.toFixed(2)}</Text>
-            <Text style={styles.macroLabel}>/ serving</Text>
+        {/* Same layout as MealCard's own priceNutritionRow (the Meals
+            results page) -- price/cal/protein as plain icon+text, not
+            pills, all on one line. Only real difference from MealCard:
+            everything here is black (INK) instead of MealCard's grey
+            secondary text/icons, and there's no min. servings note --
+            the stepper right below already covers that. */}
+        <View style={styles.priceNutritionRow}>
+          <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
+          <Text style={styles.perServing}>/ serving</Text>
+          <View style={styles.nutritionItem}>
+            <RestaurantIcon size={16} color={INK} />
+            <Text style={styles.nutritionText}>{meal.calories} cal</Text>
           </View>
-          <View style={[styles.macroPill, styles.macroPillOutlined]}>
-            <Text style={styles.macroValue}>{meal.calories}</Text>
-            <Text style={styles.macroLabel}>kcal</Text>
-          </View>
-          <View style={[styles.macroPill, styles.macroPillOutlined]}>
-            <Text style={styles.macroValue}>{meal.protein} g</Text>
-            <Text style={styles.macroLabel}>protein</Text>
+          <View style={styles.nutritionItem}>
+            <AvocadoBeanIcon size={16} color={INK} />
+            <Text style={styles.nutritionText}>{meal.protein}g protein</Text>
           </View>
         </View>
 
@@ -252,22 +257,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 4 },
-  macrosRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  macroPill: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+  // Mirrors MealCard's own priceNutritionRow/priceBlock/nutritionRow
+  // values exactly (fontSize/weight/gap), except color -- MealCard uses
+  // grey (#888) for the secondary price label and nutrition icons/text,
+  // this page uses black (INK) throughout, and everything stays on one
+  // line (MealCard allows itself to wrap on a narrow card).
+  priceNutritionRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: INK,
+    flexWrap: 'nowrap',
+    gap: 12,
+    marginBottom: 16,
   },
-  // Calories/protein pills only -- outlined instead of filled; the
-  // black border above is shared by all three pills, this just clears
-  // the white fill the price pill keeps.
-  macroPillOutlined: { backgroundColor: 'transparent' },
-  macroValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  macroLabel: { fontSize: 11, color: INK },
+  mealPrice: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  perServing: { fontSize: 13, color: INK },
+  nutritionItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  nutritionText: { fontSize: 13, color: INK },
   stepperRow: {
     flexDirection: 'row',
     alignItems: 'center',
