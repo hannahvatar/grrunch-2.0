@@ -88,8 +88,17 @@ export function IngredientRow({
             // never square (real source ratios across our own recipes'
             // deals range 0.47 to 3.36), so 'contain' avoids cropping
             // any of it off, unlike RN's own 'cover' default.
+            //
+            // Inset a fixed margin off every edge (blurredBackdrop
+            // only) rather than filling the whole box: an image that
+            // happens to already be ~square (e.g. Bulacan Sweet
+            // Longanisa, 400x399) would otherwise fill it edge-to-edge
+            // under 'contain' with zero gap left for the backdrop to
+            // show through, even though the backdrop layer is still
+            // there. The inset guarantees a visible blurred border on
+            // every image regardless of its own aspect ratio.
             resizeMode="contain"
-            style={StyleSheet.absoluteFillObject}
+            style={blurredBackdrop ? styles.itemImageInset : StyleSheet.absoluteFillObject}
           />
         </View>
       )}
@@ -151,6 +160,10 @@ const styles = StyleSheet.create({
   // foreground Image pair to the box's rounded corners; backgroundColor
   // is the fallback while an image is loading or blurredBackdrop is off.
   itemImageBox: { backgroundColor: '#F2F2F2', overflow: 'hidden', position: 'relative' },
+  // A fixed 10% margin off every edge -- see the comment above where
+  // this is used for why a same-size fill isn't always enough to
+  // guarantee the blurred backdrop shows.
+  itemImageInset: { position: 'absolute', top: '10%', left: '10%', right: '10%', bottom: '10%' },
   itemInfo: { flex: 1 },
   itemName: { fontSize: 15 },
   itemNameChecked: { textDecorationLine: 'line-through', color: '#aaa' },
