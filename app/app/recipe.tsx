@@ -151,11 +151,15 @@ export default function RecipeScreen() {
                   // ..." with a x2 badge instead of a scaled quantity --
                   // see scaleIngredientDisplay.
                   multiplier={batchMultiplier}
-                  // Fit-to-box instead of square (see IngredientRow for
-                  // why) -- 160 is comfortably under every source
-                  // cutout's own ~400px max dimension across all chains,
-                  // so this never upscales past real resolution.
-                  imageMaxSize={160}
+                  // Standardized square (see IngredientRow for why a
+                  // fit-to-box version was tried and reverted) -- 120 is
+                  // comfortably under every source cutout's own ~400px
+                  // max dimension across all chains, so this never
+                  // upscales past real resolution. blurredBackdrop fills
+                  // the letterboxed edges with the image's own blurred
+                  // background instead of bare placeholder grey.
+                  imageSize={120}
+                  blurredBackdrop
                 />
               </View>
             ))}
