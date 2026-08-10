@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import type { DealTag, IngredientLine, Meal, OptionalAddition } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
-import { describeDryEquivalent, describeUnitCount } from './unitConversion';
+import { describeDealPackage, describeDryEquivalent, describeUnitCount } from './unitConversion';
 
 interface RecipeIngredient {
   name: string;
@@ -45,6 +45,18 @@ function mapIngredient(
   producePrices: StaplePrice[],
   staplePrices: StaplePrice[]
 ): IngredientLine {
+  const dealTag = dealTags.find((tag) => tag.name === ingredient.name);
+  // A deal-tagged ingredient's stated quantity/unit can be a fraction of
+  // the actual package (see describeDealPackage) -- we never fragment
+  // deal items, so display always shows the whole package bought, even
+  // though the recipe's real quantity (unchanged below) is what drives
+  // nutrition scaling server-side. Checked before dryEquivalent/
+  // unitCount since those describe non-deal staple quantities.
+  const dealPackage = dealTag ? describeDealPackage(ingredient.quantity, ingredient.unit) : undefined;
+  if (dealPackage) {
+    const text = `${dealPackage} ${ingredient.name}`;
+    return { text, name: ingredient.name, dealTag, groceryText: text };
+  }
   const dryEquivalent = describeDryEquivalent(ingredient.name, ingredient.quantity, ingredient.unit);
   const unitCount = describeUnitCount(ingredient.name, ingredient.quantity, ingredient.unit);
   const rawText = [ingredient.quantity, ingredient.unit, ingredient.name].filter(Boolean).join(' ').trim();
@@ -59,7 +71,6 @@ function mapIngredient(
   // (recipe page included), not just the grocery list.
   const text = dryEquivalent ? `${rawText} (cooked)` : unitCount ?? rawText;
   const groceryText = dryEquivalent ? `${dryEquivalent} ${ingredient.name}` : unitCount;
-  const dealTag = dealTags.find((tag) => tag.name === ingredient.name);
   if (dealTag) return { text, name: ingredient.name, dealTag, groceryText };
   const match = matchReferencePrice(
     ingredient.name, ingredient.quantity, ingredient.unit,

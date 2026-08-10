@@ -218,6 +218,29 @@ function roundUpTo5(n: number): number {
   return Math.ceil(n / 5) * 5;
 }
 
+// A deal-tagged ingredient's stated quantity can be a FRACTION of what's
+// actually purchased -- deal items are never fragmented (see
+// docs/grrunch-architecture.md item 12), so a recipe using "230 g" of a
+// bigger chicken pack to hit a nutrition/protein target still means
+// buying exactly 1 whole package off the shelf. Display-only, and
+// intentionally not folded into describeUnitCount/describeDryEquivalent
+// above: those describe the SAME quantity in friendlier units (a
+// staple's price still scales with how much you use), where this
+// instead REPLACES the quantity, because a deal item's price doesn't
+// scale with how much of the package the recipe calls for (a
+// sub-package quantity still credits exactly one package price -- see
+// refresh_recipe_deal_tags()). Returns undefined when the quantity
+// already reads as a package count (e.g. "2 pack", "1 rack", a bare
+// whole item like "1 CAULIFLOWER") and needs no override.
+export function describeDealPackage(
+  recipeQuantity: string | undefined,
+  recipeUnit: string | undefined
+): string | undefined {
+  const ua = parseUnitAmount(recipeQuantity, recipeUnit);
+  if (Number.isNaN(ua.amount) || ua.baseUnit === 'each') return undefined;
+  return '1 package';
+}
+
 // Staples conventionally bought and measured as whole discrete items (a
 // whole onion, half an onion) rather than by weight -- lets a recipe's
 // gram quantity (needed for accurate pricing, same reasoning as
