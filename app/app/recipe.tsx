@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 4 },
   macrosRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   macroPill: {
-    backgroundColor: '#F2F2F2',
+    backgroundColor: '#fff',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 16,
