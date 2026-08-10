@@ -138,7 +138,7 @@ export default function RecipeScreen() {
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Ingredients</Text>
+        <Text style={styles.sectionTitle}>On Sale This Week</Text>
         {dealIngredients.length > 0 && (
           <View style={styles.dealIngredientsList}>
             {dealIngredients.map((ingredient, index) => (
@@ -170,7 +170,10 @@ export default function RecipeScreen() {
             ))}
           </View>
         )}
-        <View style={styles.ingredientsList}>
+        {stapleIngredients.length > 0 && (
+          <Text style={styles.sectionTitle}>You'll Also Need</Text>
+        )}
+        <View style={styles.ingredientsListCard}>
           {stapleIngredients.map((ingredient, index) => (
             <IngredientRow
               key={index}
@@ -181,11 +184,13 @@ export default function RecipeScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Instructions</Text>
-        {meal.instructions.map((step, index) => (
-          <Text key={step} style={styles.listItem}>
-            {index + 1}.  {step}
-          </Text>
-        ))}
+        <View style={styles.instructionsCard}>
+          {meal.instructions.map((step, index) => (
+            <Text key={step} style={styles.listItem}>
+              {index + 1}.  {step}
+            </Text>
+          ))}
+        </View>
 
         {meal.optionalAdditions.length > 0 && (
           <>
@@ -273,7 +278,22 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
   },
-  ingredientsList: { gap: 10 },
+  // Single shared white card (not one-per-item like dealIngredientCard
+  // above) -- these aren't individually on sale, so they don't need
+  // the same per-item visual weight, just set apart as a group from the
+  // page's plain peach background.
+  ingredientsListCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+  },
+  instructionsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    gap: 4,
+  },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
   // Not a priced ingredient list -- a short paragraph per suggestion,
   // title inline-bolded rather than styled as its own list row, so it
