@@ -258,13 +258,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 4 },
   // Mirrors MealCard's own priceNutritionRow/priceBlock/nutritionRow
-  // values exactly (fontSize/weight/gap), except color -- MealCard uses
-  // grey (#888) for the secondary price label and nutrition icons/text,
-  // this page uses black (INK) throughout, and everything stays on one
-  // line (MealCard allows itself to wrap on a narrow card).
+  // values exactly (fontSize/weight/gap/alignItems: 'baseline' --
+  // bottom-aligns the big $3.43 against the smaller "/ serving" and
+  // "375 cal"/"20.8g protein" text, same as the card), except color --
+  // MealCard uses grey (#888) for the secondary price label and
+  // nutrition icons/text, this page uses black (INK) throughout, and
+  // everything stays on one line (MealCard allows itself to wrap on a
+  // narrow card).
   priceNutritionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     flexWrap: 'nowrap',
     gap: 12,
     marginBottom: 16,
