@@ -65,6 +65,14 @@ export default function RecipeScreen() {
     );
   }
 
+  // groupDealItemsTogether (lib/recipes.ts) already sorted these to the
+  // front of meal.ingredients -- splitting here just lets the two groups
+  // render in visually distinct containers (deal items in their own
+  // white card, staples on the page's plain peach background) without
+  // re-deriving the grouping.
+  const dealIngredients = meal.ingredients.filter((ingredient) => ingredient.dealTag);
+  const stapleIngredients = meal.ingredients.filter((ingredient) => !ingredient.dealTag);
+
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
@@ -131,18 +139,29 @@ export default function RecipeScreen() {
         )}
 
         <Text style={styles.sectionTitle}>Ingredients</Text>
+        {dealIngredients.length > 0 && (
+          <View style={styles.dealIngredientsList}>
+            {dealIngredients.map((ingredient, index) => (
+              <View key={index} style={styles.dealIngredientCard}>
+                <IngredientRow
+                  text={ingredient.text}
+                  dealTag={ingredient.dealTag}
+                  estimatedPrice={ingredient.estimatedPrice}
+                  // Never fragmented, so a doubled batch stays "1 package
+                  // ..." with a x2 badge instead of a scaled quantity --
+                  // see scaleIngredientDisplay.
+                  multiplier={batchMultiplier}
+                />
+              </View>
+            ))}
+          </View>
+        )}
         <View style={styles.ingredientsList}>
-          {meal.ingredients.map((ingredient, index) => (
+          {stapleIngredients.map((ingredient, index) => (
             <IngredientRow
               key={index}
               text={ingredient.text}
-              dealTag={ingredient.dealTag}
               estimatedPrice={ingredient.estimatedPrice}
-              // Deal-tagged lines stay "1 package ..." and get a x2
-              // badge (never fragmented); staple lines already have the
-              // scaled quantity baked into `text` by resizeMealServings,
-              // so they get no badge -- see scaleIngredientDisplay.
-              multiplier={ingredient.dealTag ? batchMultiplier : undefined}
             />
           ))}
         </View>
@@ -229,6 +248,17 @@ const styles = StyleSheet.create({
   stepperButtonDisabled: { opacity: 0.35 },
   stepperValue: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', minWidth: 16, textAlign: 'center' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
+  // Each deal-tagged ingredient gets its own white card, set apart from
+  // the page's plain peach background -- calls out "this one's actually
+  // on sale" per item, distinct from the staples below (see
+  // groupDealItemsTogether, lib/recipes.ts, for why they're already
+  // contiguous in meal.ingredients).
+  dealIngredientsList: { gap: 10, marginBottom: 6 },
+  dealIngredientCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+  },
   ingredientsList: { gap: 10 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
   // Not a priced ingredient list -- a short paragraph per suggestion,
