@@ -99,11 +99,11 @@ export default function RecipeScreen() {
             <Text style={styles.macroValue}>${meal.price.toFixed(2)}</Text>
             <Text style={styles.macroLabel}>/ serving</Text>
           </View>
-          <View style={styles.macroPill}>
+          <View style={[styles.macroPill, styles.macroPillOutlined]}>
             <Text style={styles.macroValue}>{meal.calories}</Text>
             <Text style={styles.macroLabel}>kcal</Text>
           </View>
-          <View style={styles.macroPill}>
+          <View style={[styles.macroPill, styles.macroPillOutlined]}>
             <Text style={styles.macroValue}>{meal.protein} g</Text>
             <Text style={styles.macroLabel}>protein</Text>
           </View>
@@ -259,9 +259,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: INK,
   },
-  macroValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  macroLabel: { fontSize: 11, color: '#888' },
+  // Calories/protein pills only -- outlined instead of filled; the
+  // black border above is shared by all three pills, this just clears
+  // the white fill the price pill keeps.
+  macroPillOutlined: { backgroundColor: 'transparent' },
+  macroValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  macroLabel: { fontSize: 11, color: INK },
   stepperRow: {
     flexDirection: 'row',
     alignItems: 'center',
