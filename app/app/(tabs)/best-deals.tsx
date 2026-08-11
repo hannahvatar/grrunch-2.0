@@ -3,7 +3,14 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon, TagIcon } from 'react-native-heroicons/outline';
 
-import { type Deal, MIN_DISPLAYED_DISCOUNT_PCT, fetchAllDeals, groupDealsByCategory } from '../../lib/curatedDeals';
+import {
+  type Deal,
+  fetchAllDeals,
+  formatComparePriceLabel,
+  groupDealsByCategory,
+  isReferencePriced,
+  showsRealDiscount,
+} from '../../lib/curatedDeals';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSubscription } from '../../lib/subscription';
 
@@ -115,7 +122,7 @@ export default function BestDealsScreen() {
                                 <TagIcon size={24} color="#ccc" />
                               </View>
                             )}
-                            {deal.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
+                            {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
                               <View style={styles.discountBadge}>
                                 <Text style={styles.discountBadgeText}>
                                   Up to {Math.round(deal.discountPct)}% off
@@ -135,12 +142,17 @@ export default function BestDealsScreen() {
                           </Text>
                           <View style={styles.priceRow}>
                             <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
-                            {deal.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+                            {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
                               <Text style={styles.dealOriginalPrice}>
                                 ${deal.originalPrice.toFixed(2)}
                               </Text>
                             )}
                           </View>
+                          {isReferencePriced(deal.originalPriceSource) && (
+                            <Text style={styles.dealCompareAnnotation}>
+                              {formatComparePriceLabel(deal.originalPrice)}
+                            </Text>
+                          )}
                         </Pressable>
                         <Pressable
                           style={[styles.addButton, isAdded && styles.addButtonActive]}
@@ -254,6 +266,10 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },
   dealPrice: { fontSize: 15, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   dealOriginalPrice: { fontSize: 12, color: '#aaa', textDecorationLine: 'line-through' },
+  // Matches IngredientRow.tsx's itemPriceEstimated deliberately -- same
+  // "not a confirmed store fact" muted tone, reused here for a
+  // reference-sourced original price instead of a non-deal staple avg.
+  dealCompareAnnotation: { fontSize: 12, color: '#767676' },
   addButton: {
     marginTop: 8,
     flexDirection: 'row',

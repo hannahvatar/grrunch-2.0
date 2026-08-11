@@ -12,6 +12,7 @@ const INK = '#111';
 type CuratedDeal = Tables<'curated_deals'>;
 type PriceUnit = Database['public']['Enums']['deal_price_unit'];
 type PackageWeightSource = 'label' | 'measured' | 'estimated';
+type OriginalPriceSource = 'flyer' | 'reference';
 
 const PRICE_UNIT_OPTIONS: { value: PriceUnit; label: string }[] = [
   { value: 'package', label: 'Package' },
@@ -25,6 +26,17 @@ const PACKAGE_WEIGHT_SOURCE_OPTIONS: { value: PackageWeightSource; label: string
   { value: 'label', label: 'Label' },
   { value: 'measured', label: 'Measured' },
   { value: 'estimated', label: 'Estimated' },
+];
+
+// See supabase/migrations/20260812000000_curated_deals_original_price_source.sql
+// -- 'flyer' means original_price is a real price the store printed;
+// 'reference' means it's a StatCan/human-researched comparison price WE
+// derived for a price-only produce item, never printed anywhere. The
+// live app never shows a 'reference' one as a strikethrough "was $X" --
+// see app/lib/curatedDeals.ts.
+const ORIGINAL_PRICE_SOURCE_OPTIONS: { value: OriginalPriceSource; label: string }[] = [
+  { value: 'flyer', label: 'Flyer (store printed it)' },
+  { value: 'reference', label: 'Reference (we calculated it)' },
 ];
 
 // Internal-only pricing review screen -- built after finding real
@@ -236,6 +248,9 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
     (deal.package_weight_g_source as PackageWeightSource | null) ?? null
   );
   const [quantityEstimated, setQuantityEstimated] = useState(deal.quantity_estimated);
+  const [originalPriceSource, setOriginalPriceSource] = useState<OriginalPriceSource>(
+    deal.original_price_source as OriginalPriceSource
+  );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [prefillChecked, setPrefillChecked] = useState(false);
@@ -342,6 +357,7 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
         package_weight_g: weightNum,
         package_weight_g_source: weightNum === null ? null : packageWeightSource,
         quantity_estimated: quantityEstimated,
+        original_price_source: originalPriceSource,
       },
     };
   }
@@ -481,6 +497,13 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
         <Pressable style={styles.swapButton} onPress={swapPrices}>
           <Text style={styles.swapButtonText}>Swap price ↔ original price</Text>
         </Pressable>
+
+        <Text style={styles.fieldLabel}>Where did the original price come from?</Text>
+        <SegmentedControl
+          options={ORIGINAL_PRICE_SOURCE_OPTIONS}
+          value={originalPriceSource}
+          onChange={setOriginalPriceSource}
+        />
 
         <Text style={styles.fieldLabel}>What is the price denominated in?</Text>
         <SegmentedControl options={PRICE_UNIT_OPTIONS} value={priceUnit} onChange={setPriceUnit} />

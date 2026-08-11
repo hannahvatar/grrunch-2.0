@@ -53,6 +53,7 @@ export type Database = {
           item_name: string
           keyword_matches: string[]
           original_price: number | null
+          original_price_source: string
           package_weight_g: number | null
           package_weight_g_source: string | null
           price: number | null
@@ -77,6 +78,7 @@ export type Database = {
           item_name: string
           keyword_matches?: string[]
           original_price?: number | null
+          original_price_source?: string
           package_weight_g?: number | null
           package_weight_g_source?: string | null
           price?: number | null
@@ -101,6 +103,7 @@ export type Database = {
           item_name?: string
           keyword_matches?: string[]
           original_price?: number | null
+          original_price_source?: string
           package_weight_g?: number | null
           package_weight_g_source?: string | null
           price?: number | null

@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CakeIcon, CheckIcon, HeartIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
 
-import { MIN_DISPLAYED_DISCOUNT_PCT, toTitleCase } from '../lib/curatedDeals';
+import { showsRealDiscount, toTitleCase } from '../lib/curatedDeals';
 import type { Meal } from '../lib/mealData';
 import { AvocadoBeanIcon, RestaurantIcon } from './MaterialSymbols';
 import { getRecipeImage } from '../lib/recipeImages';
@@ -76,7 +76,7 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
             <View style={styles.dealTagsRow}>
               {meal.dealTags.map((dealTag) => (
                 <View key={dealTag.name} style={styles.dealTagRow}>
-                  {dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
+                  {showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
                     <View style={styles.dealTagBadge}>
                       <Text style={styles.dealTagBadgeText}>{dealTag.discountPct}% off</Text>
                     </View>

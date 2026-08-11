@@ -17,9 +17,20 @@
 //     package_weight_g: number | null,
 //     package_weight_g_source: 'label' | 'measured' | 'estimated' | null,
 //     quantity_estimated: boolean,
+//     original_price_source: 'flyer' | 'reference',
 //     reject?: boolean,
 //   }
 //   -> 200 { deal: CuratedDealRow }
+//
+// original_price_source: 'flyer' means original_price is a real price
+// the store printed; 'reference' means it's a StatCan/human-researched
+// comparison price WE derived (see resolve_produce_gaps() in
+// scripts/sync_weekly_deals.py) -- never printed on any flyer. The live
+// app never shows a 'reference' original_price with the same
+// strikethrough+"N% off" treatment as a 'flyer' one (see
+// app/lib/curatedDeals.ts), so this needs to be reviewable/correctable
+// here same as every other pricing field. See
+// supabase/migrations/20260812000000_curated_deals_original_price_source.sql.
 //
 // item_name is editable here (not just price/quantity/unit) because a
 // single flyer cutout sometimes names two distinct products joined by
@@ -73,6 +84,9 @@ const PRICE_UNITS: DealPriceUnit[] = ["package", "each", "lb", "kg", "100g"];
 type PackageWeightSource = "label" | "measured" | "estimated";
 const PACKAGE_WEIGHT_SOURCES: PackageWeightSource[] = ["label", "measured", "estimated"];
 
+type OriginalPriceSource = "flyer" | "reference";
+const ORIGINAL_PRICE_SOURCES: OriginalPriceSource[] = ["flyer", "reference"];
+
 // Minimal, function-local slice of the schema (just the columns this
 // function reads/writes) so it stays deployable on its own, without
 // reaching into the Expo app's types/database.ts across the repo --
@@ -105,6 +119,7 @@ interface Database {
           package_weight_g_source: PackageWeightSource | null;
           quantity_estimated: boolean;
           pricing_reviewed_at: string | null;
+          original_price_source: OriginalPriceSource;
         };
         Insert: never;
         Update: {
@@ -116,6 +131,7 @@ interface Database {
           package_weight_g_source?: PackageWeightSource | null;
           quantity_estimated?: boolean;
           pricing_reviewed_at?: string | null;
+          original_price_source?: OriginalPriceSource;
           status?: "pending" | "approved" | "rejected";
           reviewed_by?: string | null;
           reviewed_at?: string | null;
@@ -141,6 +157,7 @@ interface RequestBody {
   package_weight_g?: unknown;
   package_weight_g_source?: unknown;
   quantity_estimated?: unknown;
+  original_price_source?: unknown;
   reject?: unknown;
 }
 
@@ -166,6 +183,7 @@ export default {
       package_weight_g,
       package_weight_g_source,
       quantity_estimated,
+      original_price_source,
       reject,
     } = body;
 
@@ -200,6 +218,12 @@ export default {
     if (typeof quantity_estimated !== "boolean") {
       return validationError("quantity_estimated must be a boolean.");
     }
+    if (
+      typeof original_price_source !== "string" ||
+      !ORIGINAL_PRICE_SOURCES.includes(original_price_source as OriginalPriceSource)
+    ) {
+      return validationError(`original_price_source must be one of: ${ORIGINAL_PRICE_SOURCES.join(", ")}.`);
+    }
     if (reject !== undefined && typeof reject !== "boolean") {
       return validationError("reject must be a boolean.");
     }
@@ -233,6 +257,7 @@ export default {
         package_weight_g: package_weight_g as number | null,
         package_weight_g_source: package_weight_g_source as PackageWeightSource | null,
         quantity_estimated,
+        original_price_source: original_price_source as OriginalPriceSource,
         pricing_reviewed_at: new Date().toISOString(),
         ...statusUpdate,
       })
@@ -276,7 +301,8 @@ export default {
       "price_unit": "package",
       "package_weight_g": null,
       "package_weight_g_source": null,
-      "quantity_estimated": false
+      "quantity_estimated": false,
+      "original_price_source": "flyer"
     }'
 
 */
