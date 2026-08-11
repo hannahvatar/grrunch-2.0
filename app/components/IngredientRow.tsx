@@ -67,6 +67,10 @@ interface IngredientRowProps {
   // underneath -- recipe-page deal items only (grocery's 36px
   // thumbnail has plenty of room beside the text as-is).
   stackedLayout?: boolean;
+  // Leading bullet dot instead of an image -- for lists with no
+  // per-item image at all (the recipe page's staple/pantry list),
+  // where a bare name+price row otherwise reads as an unmarked list.
+  bulleted?: boolean;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -86,6 +90,7 @@ export function IngredientRow({
   blurredBackdrop,
   showStoreLink,
   stackedLayout,
+  bulleted,
 }: IngredientRowProps) {
   const imageEl = dealTag?.imageUrl && (
     <View
@@ -243,6 +248,7 @@ export function IngredientRow({
           {checked && <CheckIcon size={12} color="#fff" />}
         </Pressable>
       )}
+      {bulleted && <Text style={styles.bulletMarker}>•</Text>}
       {imageEl}
       {infoEl}
       {priceEl}
@@ -272,6 +278,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
+  bulletMarker: { fontSize: 15, color: INK },
   // width/height/borderRadius are overridden inline per imageSize.
   // overflow: 'hidden' clips the absolutely-positioned backdrop/
   // foreground Image pair to the box's rounded corners; backgroundColor

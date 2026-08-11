@@ -176,14 +176,24 @@ export default function RecipeScreen() {
           </View>
         )}
 
-        {/* Deal items and staples each get their own bordered "modal
-            treatment" container (same white/black-border/rounded-corner
-            language as the app's cards/modals elsewhere -- see
-            MealCard.tsx mealCard, LegalDocumentModal.tsx), rather than
-            sharing one box. Each card carries its own heading inside it
-            -- same pattern as the Instructions card below -- under the
-            shared "What you'll need" umbrella title, which still covers both
-            since the staples group is not on sale. */}
+        {/* Instructions sits on top now, above the ingredients --
+            reordered per request, was below. */}
+        <View style={styles.instructionsCard}>
+          <Text style={styles.innerSectionTitleFirst}>Instructions</Text>
+          {meal.instructions.map((step, index) => (
+            <Text key={step} style={styles.listItem}>
+              {index + 1}.  {step}
+            </Text>
+          ))}
+        </View>
+
+        {/* Deal items and staples share one bordered "modal treatment"
+            card (same white/black-border/rounded-corner language as
+            the app's cards/modals elsewhere -- see MealCard.tsx
+            mealCard, LegalDocumentModal.tsx), same pattern as the
+            Instructions card above -- under the shared "What you'll
+            need" umbrella title, which still covers both since the
+            staples group is not on sale. */}
         <Text style={styles.sectionTitle}>What you'll need</Text>
         {(dealIngredients.length > 0 || stapleIngredients.length > 0) && (
           <View style={styles.ingredientsModalCard}>
@@ -235,6 +245,7 @@ export default function RecipeScreen() {
             )}
             {stapleIngredients.length > 0 && (
               <View style={dealIngredients.length > 0 && styles.pantrySectionStacked}>
+                {dealIngredients.length > 0 && <View style={styles.sectionDivider} />}
                 <View style={styles.innerHeadingRow}>
                   <ChefHatIcon size={18} color={INK} />
                   <Text style={[styles.innerSectionTitleFirst, styles.headingRowTextReset]}>From your pantry</Text>
@@ -245,6 +256,7 @@ export default function RecipeScreen() {
                       key={index}
                       text={ingredient.text}
                       estimatedPrice={ingredient.estimatedPrice}
+                      bulleted
                     />
                   ))}
                 </View>
@@ -252,15 +264,6 @@ export default function RecipeScreen() {
             )}
           </View>
         )}
-
-        <View style={styles.instructionsCard}>
-          <Text style={styles.innerSectionTitleFirst}>Instructions</Text>
-          {meal.instructions.map((step, index) => (
-            <Text key={step} style={styles.listItem}>
-              {index + 1}.  {step}
-            </Text>
-          ))}
-        </View>
 
         {meal.optionalAdditions.length > 0 && (
           <>
@@ -302,9 +305,10 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: INK },
   // Floats over the ScrollView (position: absolute, sibling of it
   // rather than a row above it) and stays fixed on screen as content
-  // scrolls underneath -- no opaque container/bar behind it. No fill
-  // either now -- just the bordered circle outline over whatever
-  // scrolls behind it.
+  // scrolls underneath -- no opaque container/bar behind it, just the
+  // circle itself. Solid white fill (not the earlier translucent
+  // #ffffffcc) so the icon stays legible against whatever scrolls
+  // behind it.
   closeButton: {
     position: 'absolute',
     top: 20,
@@ -313,6 +317,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
+    backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
     alignItems: 'center',
@@ -419,6 +424,12 @@ const styles = StyleSheet.create({
   // trailing margin of its own, so without this the two sections'
   // headings would sit right on top of each other.
   pantrySectionStacked: { marginTop: 16 },
+  // Rule between the deal-items section and the pantry section (only
+  // rendered when both are present -- same condition as
+  // pantrySectionStacked). marginBottom spaces it from the pantry
+  // heading below; pantrySectionStacked's own marginTop already spaces
+  // it from the deal items above.
+  sectionDivider: { height: 1, backgroundColor: '#E8E8E8', marginBottom: 16 },
   // A card's own heading needs no top margin -- the card's padding
   // already separates it from the border.
   innerSectionTitleFirst: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
