@@ -125,7 +125,7 @@ export function IngredientRow({
   );
 
   const infoEl = (
-    <View style={[styles.itemInfo, stackedLayout && styles.itemInfoStacked]}>
+    <View style={styles.itemInfo}>
       <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
         {text}
       </Text>
@@ -144,10 +144,9 @@ export function IngredientRow({
   );
 
   // stackedLayout only -- store name + "See in flyer" link as their own
-  // mini-column (store stacked above link), sitting in the top row
-  // between the image and the price, rather than stacked under the
-  // full-width name below. flex: 1 so it soaks up whatever width is
-  // left between the fixed-size image and the price/badge column.
+  // mini-column (store stacked above link), wrapped onto the bottom row
+  // alongside the price. flex: 1 so it soaks up whatever width the
+  // price/badge column doesn't need.
   const storeLinkEl = showStoreLink && (dealTag?.store || dealTag?.productUrl) && (
     <View style={styles.storeLinkColumn}>
       {dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
@@ -160,10 +159,13 @@ export function IngredientRow({
     </View>
   );
 
-  // stackedLayout only -- just the name/meta/disclaimer, full-width
-  // under the top row (store/link already moved into storeLinkEl above).
+  // stackedLayout only -- just the name/meta/disclaimer, sharing the
+  // top row with the image (store/link and price wrap to their own row
+  // below -- see storeLinkEl/priceEl usage below). flex: 1, same as
+  // the default row's own itemInfo, to take the width left beside the
+  // image.
   const nameOnlyEl = (
-    <View style={styles.itemInfoStacked}>
+    <View style={styles.itemInfo}>
       <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
         {text}
       </Text>
@@ -207,21 +209,22 @@ export function IngredientRow({
     </View>
   );
 
-  // Stacked: image, store/link column, and price/badge all share one
-  // top row, then just the name drops full-width underneath -- instead
-  // of squeezed into whatever horizontal sliver is left beside a 120px
-  // image. No checkbox in this mode -- only the recipe page's deal
-  // items use stackedLayout, and the recipe page never passes
-  // onToggleCheck.
+  // Stacked: image + description share the top row (name gets the
+  // width beside the image, like the default row layout does), then
+  // store/link + price wrap onto their own row underneath. No checkbox
+  // in this mode -- only the recipe page's deal items use
+  // stackedLayout, and the recipe page never passes onToggleCheck.
   if (stackedLayout) {
     return (
       <View style={styles.itemRowStacked}>
         <View style={styles.stackedTopRow}>
           {imageEl}
+          {nameOnlyEl}
+        </View>
+        <View style={styles.stackedBottomRow}>
           {storeLinkEl}
           {priceEl}
         </View>
-        {nameOnlyEl}
       </View>
     );
   }
@@ -248,17 +251,15 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // stackedLayout only (see IngredientRowProps.stackedLayout).
   itemRowStacked: { gap: 10 },
-  stackedTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
-  // Soaks up the width left between the image and the price column --
-  // store name stacked above the flyer link within it (itemStore's own
+  // Row 1: image + description.
+  stackedTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  // Row 2: store name/link + price/badge, wrapped underneath.
+  stackedBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  // Soaks up the width the price/badge column doesn't need -- store
+  // name stacked above the flyer link within it (itemStore's own
   // marginTop and flyerLinkRow's own marginTop already space the two
-  // apart, same as they did stacked under the name pre-stackedLayout).
+  // apart).
   storeLinkColumn: { flex: 1 },
-  // Overrides itemInfo's flex: 1 (meant for a row context, growing to
-  // fill leftover horizontal space) -- here itemInfo is its own full
-  // row underneath the image, not sharing one with it, so it just
-  // needs its default full-width stretch, not flex growth.
-  itemInfoStacked: { flex: 0 },
   checkbox: {
     width: 20,
     height: 20,
