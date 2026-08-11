@@ -100,11 +100,25 @@ export function IngredientRow({
   // rather than repeating it at the front of the name -- the remaining
   // description is re-capitalized since it no longer opens the
   // sentence ("package Prime raised..." -> "Package Prime raised...").
-  const [dealQuantity, ...dealDescriptionWords] = text.split(' ');
+  const [dealQuantityBase, ...dealDescriptionWords] = text.split(' ');
   const dealDescriptionRest = dealDescriptionWords.join(' ');
   const dealDescription = dealDescriptionRest
     ? dealDescriptionRest.charAt(0).toUpperCase() + dealDescriptionRest.slice(1)
     : text;
+  // The badge below folds the servings stepper's batch multiplier
+  // directly into this number (rather than showing it as a separate
+  // "×2" badge alongside a static "1") -- text itself never reflects
+  // the multiplier for deal-tagged lines (never fragmented, always
+  // "1 package ..." regardless of batch size -- see
+  // lib/mealScaling.ts scaleIngredientDisplay), so without this the
+  // ellipse would keep reading "1" even after doubling the batch,
+  // sitting right next to a separate badge that DID update -- two
+  // numbers telling two different stories in the same row.
+  const dealQuantityBaseNum = parseFloat(dealQuantityBase);
+  const dealQuantity =
+    !!multiplier && multiplier > 1 && !Number.isNaN(dealQuantityBaseNum)
+      ? String(Math.round(dealQuantityBaseNum * multiplier * 100) / 100)
+      : dealQuantityBase;
   const imageEl = dealTag?.imageUrl && (
     <View
       style={[styles.itemImageBox, { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 }]}
@@ -218,15 +232,17 @@ export function IngredientRow({
     </View>
   );
 
-  // stackedLayout only -- the leading quantity token (split off dealDescription
-  // above, e.g. "1") in an ellipse badge on the left, price + original
-  // price + discount/fair-price pill grouped tightly on the right
-  // (price sits right before its own tag, not spread out from it) --
-  // the row itself is justify-content: space-between between those two
-  // sides. Pill shape/colors match the design reference for this card;
-  // wording (still "Up to X% off", not just "X% off") stays as-is
-  // since that's the real discount-estimate disclaimer, not just
-  // decorative copy.
+  // stackedLayout only -- the leading quantity token (dealQuantity,
+  // already multiplier-folded above) in an ellipse badge on the left --
+  // the row's only number badge, no separate ×N multiplier badge here
+  // (unlike priceEl's own multiplierBadge below, for the default row) --
+  // price + original price + discount/fair-price pill grouped tightly
+  // on the right (price sits right before its own tag, not spread out
+  // from it) -- the row itself is justify-content: space-between
+  // between those two sides. Pill shape/colors match the design
+  // reference for this card; wording (still "Up to X% off", not just
+  // "X% off") stays as-is since that's the real discount-estimate
+  // disclaimer, not just decorative copy.
   const dealPriceRowEl = (
     <View style={styles.dealPriceRow}>
       <View style={styles.dealQuantityBadge}>
@@ -234,11 +250,6 @@ export function IngredientRow({
       </View>
       <View style={styles.dealPriceTagGroup}>
         <View style={styles.dealPriceLeft}>
-          {!!multiplier && multiplier > 1 && (
-            <View style={styles.multiplierBadge}>
-              <Text style={styles.multiplierBadgeText}>×{multiplier}</Text>
-            </View>
-          )}
           {dealTag?.price != null && <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>}
           {dealTag?.originalPrice != null &&
             dealTag.originalPrice > dealTag.price! &&
