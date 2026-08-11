@@ -11,6 +11,7 @@
 // Client contract:
 //   POST {
 //     deal_id: string (uuid),
+//     item_name: string,
 //     price: number | null, original_price: number | null,
 //     price_unit: 'package' | 'each' | 'lb' | 'kg' | '100g',
 //     package_weight_g: number | null,
@@ -19,6 +20,12 @@
 //     reject?: boolean,
 //   }
 //   -> 200 { deal: CuratedDealRow }
+//
+// item_name is editable here (not just price/quantity/unit) because a
+// single flyer cutout sometimes names two distinct products joined by
+// "or" (e.g. "BOURSIN CHEESE 150/220 g or MARCANGELO CHARCUTERIE
+// 85/175 g") -- see duplicate-curated-deal/index.ts, which splits that
+// into two rows Anabelle then renames individually via this field.
 //
 // price/original_price null means genuinely unknown -- not yet
 // confirmed from the cutout photo (see the column comments in
@@ -101,6 +108,7 @@ interface Database {
         };
         Insert: never;
         Update: {
+          item_name?: string;
           price?: number | null;
           original_price?: number | null;
           price_unit?: DealPriceUnit;
@@ -126,6 +134,7 @@ interface Database {
 
 interface RequestBody {
   deal_id?: unknown;
+  item_name?: unknown;
   price?: unknown;
   original_price?: unknown;
   price_unit?: unknown;
@@ -148,11 +157,23 @@ export default {
       return validationError("Request body must be valid JSON.");
     }
 
-    const { deal_id, price, original_price, price_unit, package_weight_g, package_weight_g_source, quantity_estimated, reject } =
-      body;
+    const {
+      deal_id,
+      item_name,
+      price,
+      original_price,
+      price_unit,
+      package_weight_g,
+      package_weight_g_source,
+      quantity_estimated,
+      reject,
+    } = body;
 
     if (typeof deal_id !== "string" || deal_id.length === 0) {
       return validationError("deal_id is required.");
+    }
+    if (typeof item_name !== "string" || item_name.trim().length === 0) {
+      return validationError("item_name must be a non-empty string.");
     }
     // null means genuinely unknown (see the client contract comment
     // above) -- not the same as omitted/undefined, which would leave
@@ -205,6 +226,7 @@ export default {
     const { data: updated, error } = await ctx.supabaseAdmin
       .from("curated_deals")
       .update({
+        item_name: item_name.trim(),
         price: price as number | null,
         original_price: original_price as number | null,
         price_unit: price_unit as DealPriceUnit,
@@ -248,6 +270,7 @@ export default {
     --header 'Content-Type: application/json' \
     --data '{
       "deal_id": "00000000-0000-0000-0000-000000000000",
+      "item_name": "Bulacan Sweet Longanisa",
       "price": 5.27,
       "original_price": 5.27,
       "price_unit": "package",
