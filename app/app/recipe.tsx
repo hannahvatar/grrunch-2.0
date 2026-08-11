@@ -176,24 +176,12 @@ export default function RecipeScreen() {
           </View>
         )}
 
-        {/* Instructions sits on top now, above the ingredients --
-            reordered per request, was below. */}
-        <View style={styles.instructionsCard}>
-          <Text style={styles.innerSectionTitleFirst}>Instructions</Text>
-          {meal.instructions.map((step, index) => (
-            <Text key={step} style={styles.listItem}>
-              {index + 1}.  {step}
-            </Text>
-          ))}
-        </View>
-
         {/* Deal items and staples share one bordered "modal treatment"
             card (same white/black-border/rounded-corner language as
             the app's cards/modals elsewhere -- see MealCard.tsx
-            mealCard, LegalDocumentModal.tsx), same pattern as the
-            Instructions card above -- under the shared "What you'll
-            need" umbrella title, which still covers both since the
-            staples group is not on sale. */}
+            mealCard, LegalDocumentModal.tsx) under the shared "What
+            you'll need" umbrella title, which still covers both since
+            the staples group is not on sale. */}
         <Text style={styles.sectionTitle}>What you'll need</Text>
         {(dealIngredients.length > 0 || stapleIngredients.length > 0) && (
           <View style={styles.ingredientsModalCard}>
@@ -264,6 +252,18 @@ export default function RecipeScreen() {
             )}
           </View>
         )}
+
+        {/* Title sits outside/above the card now (same sectionTitle
+            style as "What you'll need"), not inside it -- was an
+            innerSectionTitleFirst heading inside instructionsCard. */}
+        <Text style={styles.sectionTitle}>Instructions</Text>
+        <View style={styles.instructionsCard}>
+          {meal.instructions.map((step, index) => (
+            <Text key={step} style={styles.listItem}>
+              {index + 1}.  {step}
+            </Text>
+          ))}
+        </View>
 
         {meal.optionalAdditions.length > 0 && (
           <>
@@ -430,8 +430,9 @@ const styles = StyleSheet.create({
   // heading below; pantrySectionStacked's own marginTop already spaces
   // it from the deal items above.
   sectionDivider: { height: 1, backgroundColor: '#E8E8E8', marginBottom: 16 },
-  // A card's own heading needs no top margin -- the card's padding
-  // already separates it from the border.
+  // "From your pantry" only now -- Instructions' title moved outside
+  // its card (see sectionTitle usage below), so this is the only
+  // remaining innerSectionTitleFirst usage.
   innerSectionTitleFirst: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
   // Leading-icon row shared by both card headings ("On Sale This Week"
   // and "From your pantry") -- icon sized/colored inline at the call
@@ -443,14 +444,12 @@ const styles = StyleSheet.create({
   innerHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   // "From your pantry" only -- cancels innerSectionTitleFirst's own
   // marginBottom, now carried by innerHeadingRow instead (see above).
-  // Doesn't touch innerSectionTitleFirst itself, which "Instructions"
-  // still uses standalone (no row, needs its own marginBottom).
   headingRowTextReset: { marginBottom: 0 },
   // "On Sale This Week" only -- its own style rather than a variant of
   // innerSectionTitleFirst, since that style is shared with "From your
-  // pantry" and "Instructions", which keep their existing bold-black
-  // look. Back to plain case/black/16px after trying small-caps/
-  // all-caps/gray -- just the leading icon now, no other differentiator.
+  // pantry", which keeps its existing bold-black look. Back to plain
+  // case/black/16px after trying small-caps/all-caps/gray -- just the
+  // leading icon now, no other differentiator.
   dealsHeading: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   dealIngredientsList: { gap: 10 },
   // Thin rule between deal items (not before the first) -- items no
