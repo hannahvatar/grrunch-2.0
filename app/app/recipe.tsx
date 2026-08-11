@@ -86,17 +86,16 @@ export default function RecipeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
-      {/* Only the close button stays pinned outside the ScrollView --
-          the title/duration used to sit fixed up here too, but now
-          scroll away with everything else below. */}
-      <View style={styles.header}>
-        <Pressable
-          style={styles.closeButton}
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/meals'))}
-        >
-          <XMarkIcon size={18} color={INK} />
-        </Pressable>
-      </View>
+      {/* Floating over the ScrollView (not a sibling row above it) so it
+          reads as pinned in place over whatever scrolls beneath it,
+          rather than sitting in its own opaque bar. Positioned outside
+          the ScrollView entirely, so it never scrolls away. */}
+      <Pressable
+        style={styles.closeButton}
+        onPress={() => (router.canGoBack() ? router.back() : router.replace('/meals'))}
+      >
+        <XMarkIcon size={18} color={INK} />
+      </Pressable>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerText}>
           <Text style={styles.title}>{meal.name}</Text>
@@ -283,34 +282,34 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 8,
   },
-  // Just the close button now -- title/duration moved into the
-  // ScrollView below, so this row only needs to hold and right-align
-  // that one pinned element. alignSelf: 'flex-end' shrinks the row down
-  // to the button's own size (rather than stretching full-width, the
-  // row's default) so its white background reads as a small patch
-  // right behind the button, not a white bar across the whole top of
-  // the page.
-  header: {
-    alignSelf: 'flex-end',
-    padding: 20,
-    paddingBottom: 0,
-    backgroundColor: '#fff',
-  },
   headerText: { marginBottom: 16 },
   title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   subtitle: { fontSize: 14, color: INK },
+  // Floats over the ScrollView (position: absolute, sibling of it
+  // rather than a row above it) and stays fixed on screen as content
+  // scrolls underneath -- no opaque container/bar behind it. The
+  // circle itself is a translucent white (matching MealCard's own
+  // floating saveButton, which sits the same way over a photo) so the
+  // icon stays legible against whatever scrolls behind it, without
+  // reading as a solid background patch.
   closeButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffffcc',
     borderWidth: 1.5,
     borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 4 },
+  // paddingTop clears the floating close button so the title doesn't
+  // scroll up underneath it before the page has scrolled at all.
+  scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40, gap: 4 },
   // Mirrors MealCard's own priceNutritionRow/priceBlock/nutritionRow
   // values (fontSize/weight/gap), except color (black here vs
   // MealCard's grey secondary text/icons), one line always (MealCard
