@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "grrunch-web",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "web", "--prefix", "app"],
-      "port": 8081
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "npm run web --prefix app -- --port \"${PORT:-8081}\""],
+      "port": 8081,
+      "autoPort": true
     }
   ]
 }
