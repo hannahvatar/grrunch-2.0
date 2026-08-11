@@ -71,6 +71,14 @@ interface IngredientRowProps {
   // per-item image at all (the recipe page's staple/pantry list),
   // where a bare name+price row otherwise reads as an unmarked list.
   bulleted?: boolean;
+  // stackedLayout only -- shown at the left of the price row (e.g.
+  // "1 package"), separate from the already-quantity-prefixed `text`
+  // above it. Deliberately the ingredient's own unscaled quantity/unit
+  // (never multiplied by a batch multiplier) -- same reasoning as
+  // `text` itself for deal-tagged lines: never fragmented, so a
+  // doubled batch stays "1 package" with a x2 badge instead of a
+  // scaled quantity.
+  quantity?: string;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -91,6 +99,7 @@ export function IngredientRow({
   showStoreLink,
   stackedLayout,
   bulleted,
+  quantity,
 }: IngredientRowProps) {
   const imageEl = dealTag?.imageUrl && (
     <View
@@ -182,38 +191,42 @@ export function IngredientRow({
     </View>
   );
 
-  // stackedLayout only -- price + original price inline on the left,
-  // discount/fair-price pill on the right, both on one row (rather than
-  // priceEl's stacked-and-right-aligned arrangement, built for sharing
-  // a row with the image instead). Pill shape/colors match the design
-  // reference for this card; wording (still "Up to X% off", not just
-  // "X% off") stays as-is since that's the real discount-estimate
-  // disclaimer, not just decorative copy.
+  // stackedLayout only -- quantity on the left, price + original price
+  // + discount/fair-price pill grouped tightly on the right (price
+  // sits right before its own tag, not spread out from it) -- the row
+  // itself is justify-content: space-between between those two sides.
+  // Pill shape/colors match the design reference for this card;
+  // wording (still "Up to X% off", not just "X% off") stays as-is
+  // since that's the real discount-estimate disclaimer, not just
+  // decorative copy.
   const dealPriceRowEl = (
     <View style={styles.dealPriceRow}>
-      <View style={styles.dealPriceLeft}>
-        {!!multiplier && multiplier > 1 && (
-          <View style={styles.multiplierBadge}>
-            <Text style={styles.multiplierBadgeText}>×{multiplier}</Text>
-          </View>
-        )}
-        {dealTag?.price != null && <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>}
-        {dealTag?.originalPrice != null &&
-          dealTag.originalPrice > dealTag.price! &&
-          dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
-            <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
+      {quantity ? <Text style={styles.dealQuantity}>{quantity}</Text> : <View />}
+      <View style={styles.dealPriceTagGroup}>
+        <View style={styles.dealPriceLeft}>
+          {!!multiplier && multiplier > 1 && (
+            <View style={styles.multiplierBadge}>
+              <Text style={styles.multiplierBadgeText}>×{multiplier}</Text>
+            </View>
           )}
+          {dealTag?.price != null && <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>}
+          {dealTag?.originalPrice != null &&
+            dealTag.originalPrice > dealTag.price! &&
+            dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+              <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
+            )}
+        </View>
+        {dealTag &&
+          (dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
+            <View style={styles.dealDiscountBadge}>
+              <Text style={styles.dealDiscountBadgeText}>Up to {dealTag.discountPct}% off</Text>
+            </View>
+          ) : (
+            <View style={styles.dealFairPriceBadge}>
+              <Text style={styles.dealFairPriceBadgeText}>Fair price</Text>
+            </View>
+          ))}
       </View>
-      {dealTag &&
-        (dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
-          <View style={styles.dealDiscountBadge}>
-            <Text style={styles.dealDiscountBadgeText}>Up to {dealTag.discountPct}% off</Text>
-          </View>
-        ) : (
-          <View style={styles.dealFairPriceBadge}>
-            <Text style={styles.dealFairPriceBadgeText}>Fair price</Text>
-          </View>
-        ))}
     </View>
   );
 
@@ -264,9 +277,15 @@ const styles = StyleSheet.create({
   dealItemRow: { gap: 10 },
   // Row 1: image + full description (name, store, link, meta).
   stackedTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  // Row 2: price (+ original, + multiplier) on the left, discount/
-  // fair-price pill on the right, both on one line.
+  // Row 2: quantity on the left, price+tag group on the right --
+  // justify-content: space-between between those two sides (not among
+  // all three individually, which would space price away from its own
+  // tag instead of sitting right before it).
   dealPriceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 6 },
+  dealQuantity: { fontSize: 13, color: '#666' },
+  // Price (+ original, + multiplier) directly beside its own discount/
+  // fair-price pill -- one tight group, not spread apart.
+  dealPriceTagGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dealPriceLeft: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   checkbox: {
     width: 20,

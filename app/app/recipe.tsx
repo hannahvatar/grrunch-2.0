@@ -229,6 +229,10 @@ export default function RecipeScreen() {
                         // phone screen -- stacks the name block full-width
                         // under the image + price row instead.
                         stackedLayout
+                        // Own unscaled quantity/unit (see IngredientRow's
+                        // quantity prop) -- e.g. "1 package", shown at
+                        // the left of the price row.
+                        quantity={`${ingredient.quantity} ${ingredient.unit}`.trim()}
                       />
                     </View>
                   ))}
