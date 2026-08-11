@@ -39,6 +39,23 @@ const ORIGINAL_PRICE_SOURCE_OPTIONS: { value: OriginalPriceSource; label: string
   { value: 'reference', label: 'Reference (we calculated it)' },
 ];
 
+// Every real multi-item cutout found this session (CARIBBEAN AVOCADOS
+// or OKRA, FREYBE LYONER SAUSAGE... OR MAPLE LEAF..., MCCAIN
+// SUPERFRIES or SPECIALTY FRIES... or POCKETS, PC WHOLE CREMINI or
+// WHITE MUSHROOMS, etc.) names both products joined by the standalone
+// word "or" -- the flyer's own "choose either X or Y at this price"
+// convention. The Duplicate button used to show on every row
+// regardless (there's no way to know from a photo alone), which read
+// as a false claim on the ~90% of rows that are single-item -- Anabelle
+// confirmed the "or"-joined pattern is the actual, only case where
+// duplicating is ever needed, so gate on it instead of showing
+// unconditionally. \bor\b (not a bare substring match) so this doesn't
+// false-positive on "Original", "Organic", "Orville", etc.
+const MULTI_ITEM_NAME_PATTERN = /\bor\b/i;
+function looksLikeMultiItemCutout(itemName: string): boolean {
+  return MULTI_ITEM_NAME_PATTERN.test(itemName);
+}
+
 // Internal-only pricing review screen -- built after finding real
 // pricing bugs in curated_deals this session (a per-lb flyer rate
 // credited as a flat package total; a "2 for $X" multi-buy rate
@@ -423,18 +440,22 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
         <InputField value={itemName} onChangeText={setItemName} placeholder="Item name" />
         <Text style={styles.editStore}>{deal.chain_name}</Text>
 
-        <Pressable
-          style={[styles.duplicateButton, duplicating && styles.saveButtonDisabled]}
-          onPress={handleDuplicate}
-          disabled={duplicating}
-        >
-          {duplicating ? (
-            <ActivityIndicator color={INK} />
-          ) : (
-            <Text style={styles.duplicateButtonText}>Duplicate (if this cutout shows 2 items)</Text>
-          )}
-        </Pressable>
-        {duplicateError && <Text style={styles.saveError}>{duplicateError}</Text>}
+        {looksLikeMultiItemCutout(itemName) && (
+          <>
+            <Pressable
+              style={[styles.duplicateButton, duplicating && styles.saveButtonDisabled]}
+              onPress={handleDuplicate}
+              disabled={duplicating}
+            >
+              {duplicating ? (
+                <ActivityIndicator color={INK} />
+              ) : (
+                <Text style={styles.duplicateButtonText}>Duplicate -- this cutout looks like 2 items</Text>
+              )}
+            </Pressable>
+            {duplicateError && <Text style={styles.saveError}>{duplicateError}</Text>}
+          </>
+        )}
 
         {referencePrice && (
           <View style={styles.referenceCard}>
