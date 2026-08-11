@@ -1,7 +1,7 @@
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon } from 'react-native-heroicons/outline';
 
-import { MIN_DISPLAYED_DISCOUNT_PCT } from '../lib/curatedDeals';
+import { MIN_DISPLAYED_DISCOUNT_PCT, toTitleCase } from '../lib/curatedDeals';
 import type { DealTag } from '../lib/mealData';
 import { ArrowOutwardIcon } from './MaterialSymbols';
 
@@ -98,13 +98,14 @@ export function IngredientRow({
   // always lead with the quantity token). Split the leading token out
   // to show standalone in an ellipse badge on the price row below,
   // rather than repeating it at the front of the name -- the remaining
-  // description is re-capitalized since it no longer opens the
-  // sentence ("package Prime raised..." -> "Package Prime raised...").
+  // description is title-cased (same toTitleCase treatment MealCard.tsx
+  // already applies to flyer-sourced deal names, which come through
+  // however the store printed them, often ALL CAPS or, like here,
+  // lowercase mid-sentence -- "package Prime raised..." ->
+  // "Package Prime Raised...").
   const [dealQuantityBase, ...dealDescriptionWords] = text.split(' ');
   const dealDescriptionRest = dealDescriptionWords.join(' ');
-  const dealDescription = dealDescriptionRest
-    ? dealDescriptionRest.charAt(0).toUpperCase() + dealDescriptionRest.slice(1)
-    : text;
+  const dealDescription = dealDescriptionRest ? toTitleCase(dealDescriptionRest) : text;
   // The badge below folds the servings stepper's batch multiplier
   // directly into this number (rather than showing it as a separate
   // "×2" badge alongside a static "1") -- text itself never reflects
@@ -163,10 +164,15 @@ export function IngredientRow({
         {text}
       </Text>
       {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
-      {showStoreLink && dealTag?.productUrl && (
-        <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
-          <Text style={styles.flyerLink}>See in flyer</Text>
-          <ArrowOutwardIcon size={12} color={INK} />
+      {showStoreLink && dealTag && (
+        <Pressable
+          style={styles.flyerLinkRow}
+          onPress={dealTag.productUrl ? () => openInNewTab(dealTag.productUrl!) : undefined}
+          disabled={!dealTag.productUrl}
+          hitSlop={4}
+        >
+          <Text style={[styles.flyerLink, !dealTag.productUrl && styles.flyerLinkDisabled]}>See in flyer</Text>
+          <ArrowOutwardIcon size={12} color={dealTag.productUrl ? INK : '#999'} />
         </Pressable>
       )}
       {meta && <Text style={styles.itemMeta}>{meta}</Text>}
@@ -186,10 +192,15 @@ export function IngredientRow({
         {dealDescription}
       </Text>
       {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
-      {showStoreLink && dealTag?.productUrl && (
-        <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
-          <Text style={styles.flyerLink}>See in flyer</Text>
-          <ArrowOutwardIcon size={12} color={INK} />
+      {showStoreLink && dealTag && (
+        <Pressable
+          style={styles.flyerLinkRow}
+          onPress={dealTag.productUrl ? () => openInNewTab(dealTag.productUrl!) : undefined}
+          disabled={!dealTag.productUrl}
+          hitSlop={4}
+        >
+          <Text style={[styles.flyerLink, !dealTag.productUrl && styles.flyerLinkDisabled]}>See in flyer</Text>
+          <ArrowOutwardIcon size={12} color={dealTag.productUrl ? INK : '#999'} />
         </Pressable>
       )}
       {meta && <Text style={styles.itemMeta}>{meta}</Text>}
@@ -233,21 +244,18 @@ export function IngredientRow({
   );
 
   // stackedLayout only -- the leading quantity token (dealQuantity,
-  // already multiplier-folded above) in an ellipse badge on the left --
-  // the row's only number badge, no separate ×N multiplier badge here
-  // (unlike priceEl's own multiplierBadge below, for the default row) --
-  // price + original price + discount/fair-price pill grouped tightly
-  // on the right (price sits right before its own tag, not spread out
-  // from it) -- the row itself is justify-content: space-between
-  // between those two sides. Pill shape/colors match the design
-  // reference for this card; wording (still "Up to X% off", not just
-  // "X% off") stays as-is since that's the real discount-estimate
+  // already multiplier-folded above) in an ellipse badge, now up in
+  // the top row (see stackedTopRow below) rather than its own row --
+  // no separate ×N multiplier badge here (unlike priceEl's own
+  // multiplierBadge below, for the default row). Just price + original
+  // price + discount/fair-price pill grouped tightly together (price
+  // sits right before its own tag, not spread out from it), right-
+  // aligned as the row's only content. Pill shape/colors match the
+  // design reference for this card; wording (still "Up to X% off", not
+  // just "X% off") stays as-is since that's the real discount-estimate
   // disclaimer, not just decorative copy.
   const dealPriceRowEl = (
     <View style={styles.dealPriceRow}>
-      <View style={styles.dealQuantityBadge}>
-        <Text style={styles.dealQuantityBadgeText}>{dealQuantity}</Text>
-      </View>
       <View style={styles.dealPriceTagGroup}>
         <View style={styles.dealPriceLeft}>
           {dealTag?.price != null && <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>}
@@ -272,7 +280,11 @@ export function IngredientRow({
   );
 
   // Stacked: image + dealInfoEl (name minus its leading quantity token,
-  // store, link, meta) share the top row, then the price row wraps
+  // store, link, meta) + the quantity ellipse badge all share the top
+  // row now -- badge last, so it lands top-right (stackedTopRow's
+  // alignItems: flex-start keeps it top-aligned, and it's the row's
+  // last fixed-width child after the flex: 1 description soaks up the
+  // space between image and badge). Then the price row wraps
   // underneath. Plain (no border/card of its own) -- these already sit
   // inside the recipe page's single "On Sale This Week" bordered card
   // (ingredientsModalCard), and a border per item on top of that read
@@ -285,6 +297,9 @@ export function IngredientRow({
         <View style={styles.stackedTopRow}>
           {imageEl}
           {dealInfoEl}
+          <View style={styles.dealQuantityBadge}>
+            <Text style={styles.dealQuantityBadgeText}>{dealQuantity}</Text>
+          </View>
         </View>
         {dealPriceRowEl}
       </View>
@@ -316,13 +331,14 @@ const styles = StyleSheet.create({
   // no-nested-cards comment above); just the vertical gap between its
   // two rows (top row, price row).
   dealItemRow: { gap: 10 },
-  // Row 1: image + full description (name, store, link, meta).
+  // Row 1: image + description + quantity badge -- badge is the row's
+  // last child, after the flex: 1 description, so it lands at the
+  // row's right edge; alignItems: flex-start keeps it top-aligned
+  // rather than centered against the taller image/description.
   stackedTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  // Row 2: quantity on the left, price+tag group on the right --
-  // justify-content: space-between between those two sides (not among
-  // all three individually, which would space price away from its own
-  // tag instead of sitting right before it).
-  dealPriceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 6 },
+  // Row 2: just the price+tag group now (quantity badge moved up to
+  // stackedTopRow) -- right-aligned as the row's only content.
+  dealPriceRow: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', rowGap: 6 },
   // Circular/pill outline badge for the bare quantity number -- same
   // white-fill/black-border language as the app's other circular
   // badges (closeButton, stepperButton).
@@ -378,13 +394,18 @@ const styles = StyleSheet.create({
     fontFamily: 'OpenSans_700Bold',
     textDecorationLine: 'underline',
   },
+  // No real flyer link for this deal (dealTag.productUrl empty --
+  // see recipe.tsx/IngredientRow.tsx comments on produce-gap-sourced
+  // deals) -- still shown, not hidden, but muted/no-underline to read
+  // as disabled rather than a dead link.
+  flyerLinkDisabled: { color: '#999', textDecorationLine: 'none' },
   itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
   estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
   itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
   itemPriceValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  itemPriceOriginal: { fontSize: 11, color: '#aaa', textDecorationLine: 'line-through' },
-  itemPriceEstimated: { fontSize: 12, color: '#888' },
+  itemPriceOriginal: { fontSize: 11, color: INK, textDecorationLine: 'line-through' },
+  itemPriceEstimated: { fontSize: 12, color: '#767676' },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },

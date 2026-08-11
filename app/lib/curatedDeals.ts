@@ -14,6 +14,16 @@ export interface Deal {
 
 const UNCATEGORIZED = 'Other';
 
+// Flyer-sourced deal names come through however the store printed them
+// (often ALL CAPS, e.g. "NO NAME® NATURALLY IMPERFECT™ SWEET PEPPERS") --
+// title-cased for display only, so matching against the raw name elsewhere
+// (grocery list, deal attribution) is unaffected. Shared by MealCard.tsx
+// (deal tag chips) and IngredientRow.tsx (recipe page deal item
+// descriptions) -- both need the same treatment for the same reason.
+export function toTitleCase(text: string): string {
+  return text.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+}
+
 // A produce item approved close to (or even slightly below) its own
 // reference price -- e.g. $2.49 vs. a $2.50 reference -- isn't a real
 // markdown, just normal week-to-week price variation. Below this
