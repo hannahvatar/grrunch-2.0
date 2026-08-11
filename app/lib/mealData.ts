@@ -16,6 +16,12 @@ export interface DealTag {
   // "Estimated quantity") rather than stated on the flyer itself -- lets
   // the grocery list flag that the quantity shown is a guess, not a fact.
   quantityEstimated?: boolean;
+  // 'flyer' means originalPrice is a real price the store printed;
+  // 'reference' means it's a StatCan/human-researched comparison price
+  // WE derived, never printed on any flyer -- see
+  // lib/curatedDeals.ts's isReferencePriced()/showsRealDiscount(), which
+  // every render site uses instead of checking this directly.
+  originalPriceSource?: 'flyer' | 'reference';
 }
 
 // An ingredient line, with the matching deal tag attached when that

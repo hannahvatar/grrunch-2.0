@@ -1,7 +1,7 @@
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon } from 'react-native-heroicons/outline';
 
-import { MIN_DISPLAYED_DISCOUNT_PCT, toTitleCase } from '../lib/curatedDeals';
+import { formatComparePriceLabel, isReferencePriced, showsRealDiscount, toTitleCase } from '../lib/curatedDeals';
 import type { DealTag } from '../lib/mealData';
 import { ArrowOutwardIcon } from './MaterialSymbols';
 
@@ -222,7 +222,7 @@ export function IngredientRow({
           <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>
           {dealTag.originalPrice != null &&
             dealTag.originalPrice > dealTag.price &&
-            dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+            showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) && (
               <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
             )}
         </View>
@@ -230,8 +230,11 @@ export function IngredientRow({
       {!dealTag && estimatedPrice && (
         <Text style={styles.itemPriceEstimated}>{`$${estimatedPrice.avgPrice.toFixed(2)} avg.`}</Text>
       )}
+      {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
+        <Text style={styles.itemPriceEstimated}>{formatComparePriceLabel(dealTag.originalPrice)}</Text>
+      )}
       {dealTag &&
-        (dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
+        (showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
           <View style={styles.discountBadge}>
             <Text style={styles.discountBadgeText}>Up to {dealTag.discountPct}% off</Text>
           </View>
@@ -261,12 +264,15 @@ export function IngredientRow({
           {dealTag?.price != null && <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>}
           {dealTag?.originalPrice != null &&
             dealTag.originalPrice > dealTag.price! &&
-            dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+            showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) && (
               <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
             )}
+          {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
+            <Text style={styles.itemPriceEstimated}>{formatComparePriceLabel(dealTag.originalPrice)}</Text>
+          )}
         </View>
         {dealTag &&
-          (dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
+          (showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
             <View style={styles.dealDiscountBadge}>
               <Text style={styles.dealDiscountBadgeText}>Up to {dealTag.discountPct}% off</Text>
             </View>

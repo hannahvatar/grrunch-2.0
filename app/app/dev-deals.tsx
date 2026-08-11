@@ -12,6 +12,7 @@ const INK = '#111';
 type CuratedDeal = Tables<'curated_deals'>;
 type PriceUnit = Database['public']['Enums']['deal_price_unit'];
 type PackageWeightSource = 'label' | 'measured' | 'estimated';
+type OriginalPriceSource = 'flyer' | 'reference';
 
 const PRICE_UNIT_OPTIONS: { value: PriceUnit; label: string }[] = [
   { value: 'package', label: 'Package' },
@@ -25,6 +26,17 @@ const PACKAGE_WEIGHT_SOURCE_OPTIONS: { value: PackageWeightSource; label: string
   { value: 'label', label: 'Label' },
   { value: 'measured', label: 'Measured' },
   { value: 'estimated', label: 'Estimated' },
+];
+
+// See supabase/migrations/20260812000000_curated_deals_original_price_source.sql
+// -- 'flyer' means original_price is a real price the store printed;
+// 'reference' means it's a StatCan/human-researched comparison price WE
+// derived for a price-only produce item, never printed anywhere. The
+// live app never shows a 'reference' one as a strikethrough "was $X" --
+// see app/lib/curatedDeals.ts.
+const ORIGINAL_PRICE_SOURCE_OPTIONS: { value: OriginalPriceSource; label: string }[] = [
+  { value: 'flyer', label: 'Flyer (store printed it)' },
+  { value: 'reference', label: 'Reference (we calculated it)' },
 ];
 
 // Internal-only pricing review screen -- built after finding real
@@ -122,6 +134,14 @@ export default function DevDealsScreen() {
           );
           setSelectedId(null);
         }}
+        onDuplicated={(source, duplicate) => {
+          // Both rows come back with pricing_reviewed_at reset to null
+          // (see duplicate-curated-deal/index.ts) -- update the source
+          // in place, add the new duplicate, then jump straight into
+          // editing the duplicate (the obviously incomplete one).
+          setDeals((prev) => [...prev.map((d) => (d.id === source.id ? source : d)), duplicate]);
+          setSelectedId(duplicate.id);
+        }}
       />
     );
   }
@@ -213,9 +233,11 @@ interface DealEditViewProps {
   deal: CuratedDeal;
   onBack: () => void;
   onSaved: (deal: CuratedDeal) => void;
+  onDuplicated: (source: CuratedDeal, duplicate: CuratedDeal) => void;
 }
 
-function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
+function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps) {
+  const [itemName, setItemName] = useState(deal.item_name);
   const [price, setPrice] = useState(deal.price != null ? String(deal.price) : '');
   const [priceUnknown, setPriceUnknown] = useState(deal.price === null);
   const [originalPrice, setOriginalPrice] = useState(deal.original_price != null ? String(deal.original_price) : '');
@@ -226,6 +248,9 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
     (deal.package_weight_g_source as PackageWeightSource | null) ?? null
   );
   const [quantityEstimated, setQuantityEstimated] = useState(deal.quantity_estimated);
+  const [originalPriceSource, setOriginalPriceSource] = useState<OriginalPriceSource>(
+    deal.original_price_source as OriginalPriceSource
+  );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [prefillChecked, setPrefillChecked] = useState(false);
@@ -291,23 +316,20 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.item_name]);
 
-  function swapPrices() {
-    setPrice(originalPrice);
-    setPriceUnknown(originalPriceUnknown);
-    setOriginalPrice(price);
-    setOriginalPriceUnknown(priceUnknown);
-  }
-
   // Shared by both Save and Reject -- a reject action still saves
   // whatever price/quantity fields were filled in at the same time
   // (see the Edge Function's own comment), so both buttons go through
   // the same validation/body-building, differing only in the trailing
   // `reject` flag.
   function buildBody(): { body: Record<string, unknown> } | { error: string } {
+    const trimmedName = itemName.trim();
     const priceNum = priceUnknown ? null : parseFloat(price);
     const originalPriceNum = originalPriceUnknown ? null : parseFloat(originalPrice);
     const weightNum = packageWeightG.trim() === '' ? null : parseFloat(packageWeightG);
 
+    if (trimmedName === '') {
+      return { error: 'Item name cannot be blank.' };
+    }
     if (priceNum !== null && (Number.isNaN(priceNum) || priceNum < 0)) {
       return { error: 'Price must be blank/unknown or a non-negative number.' };
     }
@@ -321,12 +343,14 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
     return {
       body: {
         deal_id: deal.id,
+        item_name: trimmedName,
         price: priceNum,
         original_price: originalPriceNum,
         price_unit: priceUnit,
         package_weight_g: weightNum,
         package_weight_g_source: weightNum === null ? null : packageWeightSource,
         quantity_estimated: quantityEstimated,
+        original_price_source: originalPriceSource,
       },
     };
   }
@@ -359,6 +383,33 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
   // which immediately excludes it from refresh_recipe_deal_tags().
   const handleReject = () => submit({ reject: true });
 
+  const [duplicating, setDuplicating] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+
+  // For a cutout naming two distinct products sharing one photo/price
+  // (e.g. "BOURSIN CHEESE ... or MARCANGELO CHARCUTERIE ...") -- splits
+  // this row into two via the duplicate-curated-deal Edge Function,
+  // then jumps straight into editing the new copy (the most obviously
+  // incomplete one -- freshly copied, still has the combined name,
+  // needs renaming/re-pricing). The original stays in the list, also
+  // flagged "Not reviewed" again until its own name/price is confirmed.
+  async function handleDuplicate() {
+    setDuplicateError(null);
+    setDuplicating(true);
+    const { data, error: invokeError } = await supabase.functions.invoke<{
+      source?: CuratedDeal;
+      duplicate?: CuratedDeal;
+      error?: string;
+    }>('duplicate-curated-deal', { body: { deal_id: deal.id } });
+    setDuplicating(false);
+
+    if (invokeError || !data?.source || !data?.duplicate) {
+      setDuplicateError(data?.error ?? invokeError?.message ?? 'Duplicate failed.');
+      return;
+    }
+    onDuplicated(data.source, data.duplicate);
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -368,8 +419,22 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
 
         {deal.image_url && <Image source={{ uri: deal.image_url }} style={styles.editPhoto} resizeMode="contain" />}
 
-        <Text style={styles.editName}>{deal.item_name}</Text>
+        <Text style={styles.fieldLabel}>Item name</Text>
+        <InputField value={itemName} onChangeText={setItemName} placeholder="Item name" />
         <Text style={styles.editStore}>{deal.chain_name}</Text>
+
+        <Pressable
+          style={[styles.duplicateButton, duplicating && styles.saveButtonDisabled]}
+          onPress={handleDuplicate}
+          disabled={duplicating}
+        >
+          {duplicating ? (
+            <ActivityIndicator color={INK} />
+          ) : (
+            <Text style={styles.duplicateButtonText}>Duplicate (if this cutout shows 2 items)</Text>
+          )}
+        </Pressable>
+        {duplicateError && <Text style={styles.saveError}>{duplicateError}</Text>}
 
         {referencePrice && (
           <View style={styles.referenceCard}>
@@ -422,9 +487,12 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
           <Text style={styles.filterLabel}>Original price is unknown</Text>
         </Pressable>
 
-        <Pressable style={styles.swapButton} onPress={swapPrices}>
-          <Text style={styles.swapButtonText}>Swap price ↔ original price</Text>
-        </Pressable>
+        <Text style={styles.fieldLabel}>Where did the original price come from?</Text>
+        <SegmentedControl
+          options={ORIGINAL_PRICE_SOURCE_OPTIONS}
+          value={originalPriceSource}
+          onChange={setOriginalPriceSource}
+        />
 
         <Text style={styles.fieldLabel}>What is the price denominated in?</Text>
         <SegmentedControl options={PRICE_UNIT_OPTIONS} value={priceUnit} onChange={setPriceUnit} />
@@ -541,8 +609,20 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 24 },
   backLink: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   editPhoto: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#F2F2F2' },
-  editName: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   editStore: { fontSize: 14, color: '#767676', marginTop: -8 },
+  // A structural action (splits the row in two), so it gets its own
+  // color rather than reusing the INK-outlined convention used
+  // elsewhere on this screen.
+  duplicateButton: {
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderColor: '#3B82F6',
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: '#fff',
+  },
+  duplicateButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#3B82F6' },
   referenceCard: {
     backgroundColor: '#fff',
     borderWidth: 1.5,
@@ -555,16 +635,6 @@ const styles = StyleSheet.create({
   referenceCardPrice: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   referenceCardNote: { fontSize: 12, color: '#767676' },
   fieldLabel: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginTop: 4 },
-  swapButton: {
-    alignSelf: 'flex-start',
-    borderWidth: 1.5,
-    borderColor: INK,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#fff',
-  },
-  swapButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   saveError: { color: '#D0342C', fontSize: 14 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   saveButton: {

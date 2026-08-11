@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
-import { type Deal, fetchAllDeals, fetchDealsByIds, matchItemStore } from '../lib/curatedDeals';
+import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItemStore } from '../lib/curatedDeals';
 import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
@@ -43,6 +43,7 @@ function mapDealToGroceryItem(deal: Deal): GroceryItem {
       originalPrice: deal.originalPrice,
       store: deal.chainName,
       imageUrl: deal.imageUrl ?? undefined,
+      originalPriceSource: deal.originalPriceSource,
     },
   };
 }
@@ -172,7 +173,11 @@ export function GroceryListView() {
   if (storeGroups.has(OTHER_ITEMS)) {
     storeNames.push(OTHER_ITEMS);
   }
-  const itemsWithDeal = items.filter((item) => item.dealTag);
+  // A reference-sourced deal tag never counts as "on sale" here -- its
+  // discountPct isn't a claim the store made (see
+  // lib/curatedDeals.ts's isReferencePriced()), so it shouldn't inflate
+  // dealItemCount or avgSavingsPct below either.
+  const itemsWithDeal = items.filter((item) => item.dealTag && !isReferencePriced(item.dealTag.originalPriceSource));
   const dealItemCount = itemsWithDeal.length;
 
   // Total price: each recipe's own price-per-serving x its servings x how
@@ -196,12 +201,18 @@ export function GroceryListView() {
   const recipesTotalOriginalPrice = selectedMeals.reduce((sum, meal) => {
     const multiplier = multipliers.get(meal.id) ?? 1;
     const dealSavings = meal.dealTags.reduce((s, tag) => {
-      if (tag.price == null || tag.originalPrice == null) return s;
+      if (tag.price == null || tag.originalPrice == null || isReferencePriced(tag.originalPriceSource)) return s;
       return s + Math.max(0, tag.originalPrice - tag.price);
     }, 0);
     return sum + (meal.price * meal.servings + dealSavings) * multiplier;
   }, 0);
-  const dealsTotalOriginalPrice = selectedDeals.reduce((sum, deal) => sum + deal.originalPrice, 0);
+  // A reference-sourced deal's contribution to "before savings" is just
+  // its own real price, not its (unearned) comparison price -- see
+  // isReferencePriced().
+  const dealsTotalOriginalPrice = selectedDeals.reduce(
+    (sum, deal) => sum + (isReferencePriced(deal.originalPriceSource) ? deal.price : deal.originalPrice),
+    0
+  );
   const totalOriginalPrice = recipesTotalOriginalPrice + dealsTotalOriginalPrice;
 
   // Average saving: the mean discount_pct across items actually tied to a

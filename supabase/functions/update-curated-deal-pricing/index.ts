@@ -11,14 +11,32 @@
 // Client contract:
 //   POST {
 //     deal_id: string (uuid),
+//     item_name: string,
 //     price: number | null, original_price: number | null,
 //     price_unit: 'package' | 'each' | 'lb' | 'kg' | '100g',
 //     package_weight_g: number | null,
 //     package_weight_g_source: 'label' | 'measured' | 'estimated' | null,
 //     quantity_estimated: boolean,
+//     original_price_source: 'flyer' | 'reference',
 //     reject?: boolean,
 //   }
 //   -> 200 { deal: CuratedDealRow }
+//
+// original_price_source: 'flyer' means original_price is a real price
+// the store printed; 'reference' means it's a StatCan/human-researched
+// comparison price WE derived (see resolve_produce_gaps() in
+// scripts/sync_weekly_deals.py) -- never printed on any flyer. The live
+// app never shows a 'reference' original_price with the same
+// strikethrough+"N% off" treatment as a 'flyer' one (see
+// app/lib/curatedDeals.ts), so this needs to be reviewable/correctable
+// here same as every other pricing field. See
+// supabase/migrations/20260812000000_curated_deals_original_price_source.sql.
+//
+// item_name is editable here (not just price/quantity/unit) because a
+// single flyer cutout sometimes names two distinct products joined by
+// "or" (e.g. "BOURSIN CHEESE 150/220 g or MARCANGELO CHARCUTERIE
+// 85/175 g") -- see duplicate-curated-deal/index.ts, which splits that
+// into two rows Anabelle then renames individually via this field.
 //
 // price/original_price null means genuinely unknown -- not yet
 // confirmed from the cutout photo (see the column comments in
@@ -66,6 +84,9 @@ const PRICE_UNITS: DealPriceUnit[] = ["package", "each", "lb", "kg", "100g"];
 type PackageWeightSource = "label" | "measured" | "estimated";
 const PACKAGE_WEIGHT_SOURCES: PackageWeightSource[] = ["label", "measured", "estimated"];
 
+type OriginalPriceSource = "flyer" | "reference";
+const ORIGINAL_PRICE_SOURCES: OriginalPriceSource[] = ["flyer", "reference"];
+
 // Minimal, function-local slice of the schema (just the columns this
 // function reads/writes) so it stays deployable on its own, without
 // reaching into the Expo app's types/database.ts across the repo --
@@ -98,9 +119,11 @@ interface Database {
           package_weight_g_source: PackageWeightSource | null;
           quantity_estimated: boolean;
           pricing_reviewed_at: string | null;
+          original_price_source: OriginalPriceSource;
         };
         Insert: never;
         Update: {
+          item_name?: string;
           price?: number | null;
           original_price?: number | null;
           price_unit?: DealPriceUnit;
@@ -108,6 +131,7 @@ interface Database {
           package_weight_g_source?: PackageWeightSource | null;
           quantity_estimated?: boolean;
           pricing_reviewed_at?: string | null;
+          original_price_source?: OriginalPriceSource;
           status?: "pending" | "approved" | "rejected";
           reviewed_by?: string | null;
           reviewed_at?: string | null;
@@ -126,12 +150,14 @@ interface Database {
 
 interface RequestBody {
   deal_id?: unknown;
+  item_name?: unknown;
   price?: unknown;
   original_price?: unknown;
   price_unit?: unknown;
   package_weight_g?: unknown;
   package_weight_g_source?: unknown;
   quantity_estimated?: unknown;
+  original_price_source?: unknown;
   reject?: unknown;
 }
 
@@ -148,11 +174,24 @@ export default {
       return validationError("Request body must be valid JSON.");
     }
 
-    const { deal_id, price, original_price, price_unit, package_weight_g, package_weight_g_source, quantity_estimated, reject } =
-      body;
+    const {
+      deal_id,
+      item_name,
+      price,
+      original_price,
+      price_unit,
+      package_weight_g,
+      package_weight_g_source,
+      quantity_estimated,
+      original_price_source,
+      reject,
+    } = body;
 
     if (typeof deal_id !== "string" || deal_id.length === 0) {
       return validationError("deal_id is required.");
+    }
+    if (typeof item_name !== "string" || item_name.trim().length === 0) {
+      return validationError("item_name must be a non-empty string.");
     }
     // null means genuinely unknown (see the client contract comment
     // above) -- not the same as omitted/undefined, which would leave
@@ -178,6 +217,12 @@ export default {
     }
     if (typeof quantity_estimated !== "boolean") {
       return validationError("quantity_estimated must be a boolean.");
+    }
+    if (
+      typeof original_price_source !== "string" ||
+      !ORIGINAL_PRICE_SOURCES.includes(original_price_source as OriginalPriceSource)
+    ) {
+      return validationError(`original_price_source must be one of: ${ORIGINAL_PRICE_SOURCES.join(", ")}.`);
     }
     if (reject !== undefined && typeof reject !== "boolean") {
       return validationError("reject must be a boolean.");
@@ -205,12 +250,14 @@ export default {
     const { data: updated, error } = await ctx.supabaseAdmin
       .from("curated_deals")
       .update({
+        item_name: item_name.trim(),
         price: price as number | null,
         original_price: original_price as number | null,
         price_unit: price_unit as DealPriceUnit,
         package_weight_g: package_weight_g as number | null,
         package_weight_g_source: package_weight_g_source as PackageWeightSource | null,
         quantity_estimated,
+        original_price_source: original_price_source as OriginalPriceSource,
         pricing_reviewed_at: new Date().toISOString(),
         ...statusUpdate,
       })
@@ -248,12 +295,14 @@ export default {
     --header 'Content-Type: application/json' \
     --data '{
       "deal_id": "00000000-0000-0000-0000-000000000000",
+      "item_name": "Bulacan Sweet Longanisa",
       "price": 5.27,
       "original_price": 5.27,
       "price_unit": "package",
       "package_weight_g": null,
       "package_weight_g_source": null,
-      "quantity_estimated": false
+      "quantity_estimated": false,
+      "original_price_source": "flyer"
     }'
 
 */

@@ -118,6 +118,12 @@ def sync_curated_deals(records):
             "category": f.get("category"),
             "price": f["price"],
             "original_price": f.get("original_price"),
+            # A real "Reg. $X" the store printed on the flyer -- this
+            # whole path (Airtable's "Deals" table) never invents or
+            # backfills original_price, so it's always flyer-sourced
+            # when present. See resolve_produce_gaps() below for the
+            # other, reference-sourced path.
+            "original_price_source": "flyer",
             "product_url": f.get("product_url"),
             "flyer_valid_from": f.get("flyer_valid_from"),
             "flyer_valid_to": f.get("flyer_valid_to"),
@@ -416,6 +422,11 @@ def resolve_produce_gaps():
                 "category": "Produce",
                 "price": f["Price"],
                 "original_price": round(price, 2),
+                # `price` here is a StatCan or human-researched
+                # comparison price (Airtable "Anabelle"/"Reference Price
+                # SC"), never anything printed on a flyer -- see
+                # supabase/migrations/20260812000000_curated_deals_original_price_source.sql.
+                "original_price_source": "reference",
                 "product_url": "",
                 "flyer_valid_from": valid_from,
                 "flyer_valid_to": valid_to,
