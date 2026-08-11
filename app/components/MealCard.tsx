@@ -3,21 +3,13 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CakeIcon, CheckIcon, HeartIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
 
-import { MIN_DISPLAYED_DISCOUNT_PCT } from '../lib/curatedDeals';
+import { MIN_DISPLAYED_DISCOUNT_PCT, toTitleCase } from '../lib/curatedDeals';
 import type { Meal } from '../lib/mealData';
 import { AvocadoBeanIcon, RestaurantIcon } from './MaterialSymbols';
 import { getRecipeImage } from '../lib/recipeImages';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
-
-// Flyer-sourced deal names come through however the store printed them
-// (often ALL CAPS, e.g. "NO NAME® NATURALLY IMPERFECT™ SWEET PEPPERS") --
-// title-cased for display only, so matching against the raw name elsewhere
-// (grocery list, deal attribution) is unaffected.
-function toTitleCase(text: string): string {
-  return text.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
-}
 
 interface MealCardProps {
   meal: Meal;

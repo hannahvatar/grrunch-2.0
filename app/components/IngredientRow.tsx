@@ -1,7 +1,7 @@
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon } from 'react-native-heroicons/outline';
 
-import { MIN_DISPLAYED_DISCOUNT_PCT } from '../lib/curatedDeals';
+import { MIN_DISPLAYED_DISCOUNT_PCT, toTitleCase } from '../lib/curatedDeals';
 import type { DealTag } from '../lib/mealData';
 import { ArrowOutwardIcon } from './MaterialSymbols';
 
@@ -98,13 +98,14 @@ export function IngredientRow({
   // always lead with the quantity token). Split the leading token out
   // to show standalone in an ellipse badge on the price row below,
   // rather than repeating it at the front of the name -- the remaining
-  // description is re-capitalized since it no longer opens the
-  // sentence ("package Prime raised..." -> "Package Prime raised...").
+  // description is title-cased (same toTitleCase treatment MealCard.tsx
+  // already applies to flyer-sourced deal names, which come through
+  // however the store printed them, often ALL CAPS or, like here,
+  // lowercase mid-sentence -- "package Prime raised..." ->
+  // "Package Prime Raised...").
   const [dealQuantityBase, ...dealDescriptionWords] = text.split(' ');
   const dealDescriptionRest = dealDescriptionWords.join(' ');
-  const dealDescription = dealDescriptionRest
-    ? dealDescriptionRest.charAt(0).toUpperCase() + dealDescriptionRest.slice(1)
-    : text;
+  const dealDescription = dealDescriptionRest ? toTitleCase(dealDescriptionRest) : text;
   // The badge below folds the servings stepper's batch multiplier
   // directly into this number (rather than showing it as a separate
   // "×2" badge alongside a static "1") -- text itself never reflects
