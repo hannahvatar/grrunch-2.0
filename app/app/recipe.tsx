@@ -227,12 +227,11 @@ export default function RecipeScreen() {
                         // At this imageSize, a side-by-side row leaves too
                         // little width for the name/store/link text on a
                         // phone screen -- stacks the name block full-width
-                        // under the image + price row instead.
+                        // under the image + price row instead. Also
+                        // splits the leading quantity token off `text`
+                        // into its own ellipse badge on the price row
+                        // (see IngredientRow's dealQuantity/dealDescription).
                         stackedLayout
-                        // Own unscaled quantity/unit (see IngredientRow's
-                        // quantity prop) -- e.g. "1 package", shown at
-                        // the left of the price row.
-                        quantity={`${ingredient.quantity} ${ingredient.unit}`.trim()}
                       />
                     </View>
                   ))}
