@@ -72,11 +72,13 @@ export function isGreatReferenceValue(discountPct: number, source: OriginalPrice
   return isReferencePriced(source) && discountPct >= GREAT_REFERENCE_VALUE_PCT;
 }
 
-// Deliberately "below avg." not "off" -- "off" implies a markdown from
-// a starting price the store set; this is a comparison against an
+// Deliberately "below" not "off" -- "off" implies a markdown from a
+// starting price the store set; this is a comparison against an
 // external average, phrased so it can never be misread as the former.
+// No trailing "avg." (Anabelle's call) -- the badge's own purple color
+// already distinguishes it from a real discount claim.
 export function formatGreatReferenceValueLabel(discountPct: number): string {
-  return `${Math.round(discountPct)}% below avg.`;
+  return `${Math.round(discountPct)}% below`;
 }
 
 // Muted annotation shown in place of a strikethrough original price
