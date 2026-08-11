@@ -241,7 +241,7 @@ export default function RecipeScreen() {
           >
             <View style={styles.innerHeadingRow}>
               <ChefHatIcon size={18} color={INK} />
-              <Text style={styles.innerSectionTitleFirst}>From your pantry</Text>
+              <Text style={[styles.innerSectionTitleFirst, styles.headingRowTextReset]}>From your pantry</Text>
             </View>
             <View style={styles.staplesList}>
               {stapleIngredients.map((ingredient, index) => (
@@ -427,14 +427,23 @@ const styles = StyleSheet.create({
   innerSectionTitleFirst: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
   // Leading-icon row shared by both card headings ("On Sale This Week"
   // and "From your pantry") -- icon sized/colored inline at the call
-  // site (ShoppingModeIcon/ChefHatIcon, size 18, INK).
-  innerHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  // site (ShoppingModeIcon/ChefHatIcon, size 18, INK). marginBottom
+  // lives here (not on the text) so alignItems: center centers the
+  // icon against the text's actual content box -- putting marginBottom
+  // on the text instead skewed its margin box taller on one side only,
+  // throwing off the centering.
+  innerHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  // "From your pantry" only -- cancels innerSectionTitleFirst's own
+  // marginBottom, now carried by innerHeadingRow instead (see above).
+  // Doesn't touch innerSectionTitleFirst itself, which "Instructions"
+  // still uses standalone (no row, needs its own marginBottom).
+  headingRowTextReset: { marginBottom: 0 },
   // "On Sale This Week" only -- its own style rather than a variant of
   // innerSectionTitleFirst, since that style is shared with "From your
   // pantry" and "Instructions", which keep their existing bold-black
   // look. Back to plain case/black/16px after trying small-caps/
   // all-caps/gray -- just the leading icon now, no other differentiator.
-  dealsHeading: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8, color: INK },
+  dealsHeading: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   dealIngredientsList: { gap: 10 },
   // Thin rule between deal items (not before the first) -- items no
   // longer have their own bordered card each (see IngredientRow's
