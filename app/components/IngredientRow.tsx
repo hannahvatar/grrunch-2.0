@@ -67,6 +67,10 @@ interface IngredientRowProps {
   // underneath -- recipe-page deal items only (grocery's 36px
   // thumbnail has plenty of room beside the text as-is).
   stackedLayout?: boolean;
+  // Leading bullet dot instead of an image -- for lists with no
+  // per-item image at all (the recipe page's staple/pantry list),
+  // where a bare name+price row otherwise reads as an unmarked list.
+  bulleted?: boolean;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -86,7 +90,35 @@ export function IngredientRow({
   blurredBackdrop,
   showStoreLink,
   stackedLayout,
+  bulleted,
 }: IngredientRowProps) {
+  // stackedLayout only -- text is always "<quantity> <rest of
+  // description>" for a deal item (e.g. "1 package Prime raised...",
+  // see lib/recipes.ts describeDealPackage/describeQuantityText, which
+  // always lead with the quantity token). Split the leading token out
+  // to show standalone in an ellipse badge on the price row below,
+  // rather than repeating it at the front of the name -- the remaining
+  // description is re-capitalized since it no longer opens the
+  // sentence ("package Prime raised..." -> "Package Prime raised...").
+  const [dealQuantityBase, ...dealDescriptionWords] = text.split(' ');
+  const dealDescriptionRest = dealDescriptionWords.join(' ');
+  const dealDescription = dealDescriptionRest
+    ? dealDescriptionRest.charAt(0).toUpperCase() + dealDescriptionRest.slice(1)
+    : text;
+  // The badge below folds the servings stepper's batch multiplier
+  // directly into this number (rather than showing it as a separate
+  // "×2" badge alongside a static "1") -- text itself never reflects
+  // the multiplier for deal-tagged lines (never fragmented, always
+  // "1 package ..." regardless of batch size -- see
+  // lib/mealScaling.ts scaleIngredientDisplay), so without this the
+  // ellipse would keep reading "1" even after doubling the batch,
+  // sitting right next to a separate badge that DID update -- two
+  // numbers telling two different stories in the same row.
+  const dealQuantityBaseNum = parseFloat(dealQuantityBase);
+  const dealQuantity =
+    !!multiplier && multiplier > 1 && !Number.isNaN(dealQuantityBaseNum)
+      ? String(Math.round(dealQuantityBaseNum * multiplier * 100) / 100)
+      : dealQuantityBase;
   const imageEl = dealTag?.imageUrl && (
     <View
       style={[styles.itemImageBox, { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 }]}
@@ -144,6 +176,29 @@ export function IngredientRow({
     </View>
   );
 
+  // stackedLayout only -- same as infoEl, but the name shows
+  // dealDescription (leading quantity token stripped, since that now
+  // shows on its own in the price row's ellipse badge) instead of the
+  // raw text.
+  const dealInfoEl = (
+    <View style={styles.itemInfo}>
+      <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
+        {dealDescription}
+      </Text>
+      {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
+      {showStoreLink && dealTag?.productUrl && (
+        <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
+          <Text style={styles.flyerLink}>See in flyer</Text>
+          <ArrowOutwardIcon size={12} color={INK} />
+        </Pressable>
+      )}
+      {meta && <Text style={styles.itemMeta}>{meta}</Text>}
+      {dealTag?.quantityEstimated && (
+        <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
+      )}
+    </View>
+  );
+
   const priceEl = (
     <View style={styles.itemRightColumn}>
       {!!multiplier && multiplier > 1 && (
@@ -177,55 +232,59 @@ export function IngredientRow({
     </View>
   );
 
-  // stackedLayout only -- price + original price inline on the left,
-  // discount/fair-price pill on the right, both on one row (rather than
-  // priceEl's stacked-and-right-aligned arrangement, built for sharing
-  // a row with the image instead). Pill shape/colors match the design
+  // stackedLayout only -- the leading quantity token (dealQuantity,
+  // already multiplier-folded above) in an ellipse badge on the left --
+  // the row's only number badge, no separate ×N multiplier badge here
+  // (unlike priceEl's own multiplierBadge below, for the default row) --
+  // price + original price + discount/fair-price pill grouped tightly
+  // on the right (price sits right before its own tag, not spread out
+  // from it) -- the row itself is justify-content: space-between
+  // between those two sides. Pill shape/colors match the design
   // reference for this card; wording (still "Up to X% off", not just
   // "X% off") stays as-is since that's the real discount-estimate
   // disclaimer, not just decorative copy.
   const dealPriceRowEl = (
     <View style={styles.dealPriceRow}>
-      <View style={styles.dealPriceLeft}>
-        {!!multiplier && multiplier > 1 && (
-          <View style={styles.multiplierBadge}>
-            <Text style={styles.multiplierBadgeText}>×{multiplier}</Text>
-          </View>
-        )}
-        {dealTag?.price != null && <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>}
-        {dealTag?.originalPrice != null &&
-          dealTag.originalPrice > dealTag.price! &&
-          dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
-            <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
-          )}
+      <View style={styles.dealQuantityBadge}>
+        <Text style={styles.dealQuantityBadgeText}>{dealQuantity}</Text>
       </View>
-      {dealTag &&
-        (dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
-          <View style={styles.dealDiscountBadge}>
-            <Text style={styles.dealDiscountBadgeText}>Up to {dealTag.discountPct}% off</Text>
-          </View>
-        ) : (
-          <View style={styles.dealFairPriceBadge}>
-            <Text style={styles.dealFairPriceBadgeText}>Fair price</Text>
-          </View>
-        ))}
+      <View style={styles.dealPriceTagGroup}>
+        <View style={styles.dealPriceLeft}>
+          {dealTag?.price != null && <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>}
+          {dealTag?.originalPrice != null &&
+            dealTag.originalPrice > dealTag.price! &&
+            dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+              <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
+            )}
+        </View>
+        {dealTag &&
+          (dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
+            <View style={styles.dealDiscountBadge}>
+              <Text style={styles.dealDiscountBadgeText}>Up to {dealTag.discountPct}% off</Text>
+            </View>
+          ) : (
+            <View style={styles.dealFairPriceBadge}>
+              <Text style={styles.dealFairPriceBadgeText}>Fair price</Text>
+            </View>
+          ))}
+      </View>
     </View>
   );
 
-  // Stacked: image + full description (name, store, link, meta) share
-  // the top row -- same infoEl the default row uses beside its image --
-  // then the price row wraps underneath. Plain (no border/card of its
-  // own) -- these already sit inside the recipe page's single "On Sale
-  // This Week" bordered card (ingredientsModalCard), and a border per
-  // item on top of that read as nested cards. No checkbox in this
-  // mode -- only the recipe page's deal items use stackedLayout, and
-  // the recipe page never passes onToggleCheck.
+  // Stacked: image + dealInfoEl (name minus its leading quantity token,
+  // store, link, meta) share the top row, then the price row wraps
+  // underneath. Plain (no border/card of its own) -- these already sit
+  // inside the recipe page's single "On Sale This Week" bordered card
+  // (ingredientsModalCard), and a border per item on top of that read
+  // as nested cards. No checkbox in this mode -- only the recipe
+  // page's deal items use stackedLayout, and the recipe page never
+  // passes onToggleCheck.
   if (stackedLayout) {
     return (
       <View style={styles.dealItemRow}>
         <View style={styles.stackedTopRow}>
           {imageEl}
-          {infoEl}
+          {dealInfoEl}
         </View>
         {dealPriceRowEl}
       </View>
@@ -243,6 +302,7 @@ export function IngredientRow({
           {checked && <CheckIcon size={12} color="#fff" />}
         </Pressable>
       )}
+      {bulleted && <Text style={styles.bulletMarker}>•</Text>}
       {imageEl}
       {infoEl}
       {priceEl}
@@ -258,9 +318,28 @@ const styles = StyleSheet.create({
   dealItemRow: { gap: 10 },
   // Row 1: image + full description (name, store, link, meta).
   stackedTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  // Row 2: price (+ original, + multiplier) on the left, discount/
-  // fair-price pill on the right, both on one line.
+  // Row 2: quantity on the left, price+tag group on the right --
+  // justify-content: space-between between those two sides (not among
+  // all three individually, which would space price away from its own
+  // tag instead of sitting right before it).
   dealPriceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 6 },
+  // Circular/pill outline badge for the bare quantity number -- same
+  // white-fill/black-border language as the app's other circular
+  // badges (closeButton, stepperButton).
+  dealQuantityBadge: {
+    minWidth: 26,
+    height: 26,
+    paddingHorizontal: 6,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dealQuantityBadgeText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Price (+ original, + multiplier) directly beside its own discount/
+  // fair-price pill -- one tight group, not spread apart.
+  dealPriceTagGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dealPriceLeft: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   checkbox: {
     width: 20,
@@ -272,6 +351,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
+  bulletMarker: { fontSize: 15, color: INK },
   // width/height/borderRadius are overridden inline per imageSize.
   // overflow: 'hidden' clips the absolutely-positioned backdrop/
   // foreground Image pair to the box's rounded corners; backgroundColor
