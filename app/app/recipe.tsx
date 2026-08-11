@@ -185,10 +185,10 @@ export default function RecipeScreen() {
             -- same pattern as the Instructions card below -- under the
             shared "What you'll need" umbrella title, which still covers both
             since the staples group is not on sale. */}
-        <Text style={styles.sectionTitle}>What you'll need</Text>
+        <Text style={styles.needsHeading}>What you'll need</Text>
         {dealIngredients.length > 0 && (
           <View style={styles.ingredientsModalCard}>
-            <Text style={styles.innerSectionTitleFirst}>On Sale This Week</Text>
+            <Text style={styles.dealsHeading}>On Sale This Week</Text>
             <View style={styles.dealIngredientsList}>
               {dealIngredients.map((ingredient, index) => (
                 <IngredientRow
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   headerText: { marginBottom: 16 },
-  title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   subtitle: { fontSize: 14, color: INK },
   closeButton: {
@@ -348,12 +348,13 @@ const styles = StyleSheet.create({
   // baseline-computed bottom exactly (both are 13px text) -- flex-end
   // alone bottom-aligns nutritionRow's box against mealPrice's full box
   // (which extends further down, past its own baseline, to account for
-  // descenders on a 24px font), overshooting past where 13px text
-  // actually belongs. Margin works correctly here because flex-end
-  // (unlike baseline) doesn't recompute position to cancel it out --
-  // verified by remeasuring (getBoundingClientRect) after each change.
+  // descenders on mealPrice's own font size), overshooting past where
+  // 13px text actually belongs. Margin works correctly here because
+  // flex-end (unlike baseline) doesn't recompute position to cancel it
+  // out -- verified by remeasuring (getBoundingClientRect) after each
+  // change, most recently after mealPrice went from 24px to 32px.
   nutritionRow: { flexDirection: 'row', gap: 16, marginBottom: 4 },
-  mealPrice: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  mealPrice: { fontSize: 32, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   perServing: { fontSize: 13, color: INK },
   nutritionItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   nutritionText: { fontSize: 13, color: INK },
@@ -400,6 +401,10 @@ const styles = StyleSheet.create({
   addToListButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   addToListButtonTextActive: { color: '#fff' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
+  // Same as sectionTitle but 20px -- its own style rather than bumping
+  // sectionTitle itself, since sectionTitle is shared with "Optional"
+  // below, which stays at 16px.
+  needsHeading: { fontSize: 20, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   // "Modal treatment": same white/2px-black-border/rounded-corner
   // language as the app's cards and modals elsewhere (MealCard.tsx
   // mealCard, LegalDocumentModal.tsx). Used once per ingredient group
@@ -417,6 +422,22 @@ const styles = StyleSheet.create({
   // A card's own heading needs no top margin -- the card's padding
   // already separates it from the border.
   innerSectionTitleFirst: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
+  // "On Sale This Week" only -- its own style rather than a variant of
+  // innerSectionTitleFirst, since that style is shared with "From your
+  // pantry" and "Instructions", which keep their existing bold-black
+  // look. fontVariant: small-caps (not textTransform: uppercase, which
+  // would erase the case info small-caps needs to differentiate
+  // letter size) for the label-like look; letterSpacing adds a touch
+  // more of that label feel.
+  dealsHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'OpenSans_700Bold',
+    marginBottom: 8,
+    color: '#767676',
+    fontVariant: ['small-caps'],
+    letterSpacing: 0.5,
+  },
   dealIngredientsList: { gap: 10 },
   staplesList: { gap: 10 },
   instructionsCard: {
