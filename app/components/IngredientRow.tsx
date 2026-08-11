@@ -417,7 +417,13 @@ const styles = StyleSheet.create({
   itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
   itemPriceValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   itemPriceOriginal: { fontSize: 11, color: INK, textDecorationLine: 'line-through' },
-  itemPriceEstimated: { fontSize: 12, color: '#767676' },
+  // Explicit fontFamily/fontWeight, not just the latter -- this custom
+  // font doesn't get visually lighter from fontWeight alone (same
+  // reason every fontWeight elsewhere pairs with a matching
+  // fontFamily). Needed here specifically because "est." nests inside
+  // itemPriceValue's OpenSans_800ExtraBold Text and would otherwise
+  // inherit that boldness instead of reading as a muted aside.
+  itemPriceEstimated: { fontSize: 12, color: '#767676', fontFamily: 'OpenSans_400Regular', fontWeight: '400' },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
