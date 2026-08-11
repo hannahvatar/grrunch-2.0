@@ -196,7 +196,9 @@ const styles = StyleSheet.create({
   nutritionItem: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   nutritionText: { fontSize: 13, color: '#888' },
   mealPrice: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  perServing: { fontSize: 13, color: '#888' },
+  // Black, matching recipe.tsx's own perServing convention -- it sits
+  // directly beside the bold price, not a secondary/muted stat.
+  perServing: { fontSize: 13, color: INK },
   minServings: { fontSize: 13, color: '#888' },
   dealTagsRow: { gap: 6 },
   dealTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
