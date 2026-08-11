@@ -201,14 +201,16 @@ export default function RecipeScreen() {
                   // quantity -- see scaleIngredientDisplay.
                   multiplier={batchMultiplier}
                   // Standardized square (see IngredientRow for why a
-                  // fit-to-box version was tried and reverted) -- 120
-                  // is comfortably under every source cutout's own
-                  // ~400px max dimension across all chains, so this
-                  // never upscales past real resolution.
+                  // fit-to-box version was tried and reverted) -- still
+                  // comfortably under every source cutout's own ~400px
+                  // max dimension across all chains, so this never
+                  // upscales past real resolution. Sized down from 120
+                  // to fit the design reference's more compact
+                  // thumbnail alongside a full name/store/link column.
                   // blurredBackdrop fills the letterboxed edges with
                   // the image's own blurred background instead of
                   // bare placeholder grey.
-                  imageSize={120}
+                  imageSize={88}
                   blurredBackdrop
                   // The recipe page has no other store attribution --
                   // shows the store name plus a "See in flyer" link
