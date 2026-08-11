@@ -420,17 +420,14 @@ const styles = StyleSheet.create({
   // "On Sale This Week" only -- its own style rather than a variant of
   // innerSectionTitleFirst, since that style is shared with "From your
   // pantry" and "Instructions", which keep their existing bold-black
-  // look. fontVariant: small-caps (not textTransform: uppercase, which
-  // would erase the case info small-caps needs to differentiate
-  // letter size) for the label-like look; letterSpacing adds a touch
-  // more of that label feel.
+  // look. All caps + letterSpacing for the label-like look.
   dealsHeading: {
     fontSize: 16,
     fontWeight: '700',
     fontFamily: 'OpenSans_700Bold',
     marginBottom: 8,
     color: '#767676',
-    fontVariant: ['small-caps'],
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   dealIngredientsList: { gap: 10 },
