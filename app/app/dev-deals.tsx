@@ -316,13 +316,6 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.item_name]);
 
-  function swapPrices() {
-    setPrice(originalPrice);
-    setPriceUnknown(originalPriceUnknown);
-    setOriginalPrice(price);
-    setOriginalPriceUnknown(priceUnknown);
-  }
-
   // Shared by both Save and Reject -- a reject action still saves
   // whatever price/quantity fields were filled in at the same time
   // (see the Edge Function's own comment), so both buttons go through
@@ -438,7 +431,7 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
           {duplicating ? (
             <ActivityIndicator color={INK} />
           ) : (
-            <Text style={styles.duplicateButtonText}>Duplicate -- this cutout shows 2 items</Text>
+            <Text style={styles.duplicateButtonText}>Duplicate (if this cutout shows 2 items)</Text>
           )}
         </Pressable>
         {duplicateError && <Text style={styles.saveError}>{duplicateError}</Text>}
@@ -492,10 +485,6 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
             {originalPriceUnknown && <CheckIcon size={12} color="#fff" />}
           </View>
           <Text style={styles.filterLabel}>Original price is unknown</Text>
-        </Pressable>
-
-        <Pressable style={styles.swapButton} onPress={swapPrices}>
-          <Text style={styles.swapButtonText}>Swap price ↔ original price</Text>
         </Pressable>
 
         <Text style={styles.fieldLabel}>Where did the original price come from?</Text>
@@ -621,9 +610,9 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   editPhoto: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#F2F2F2' },
   editStore: { fontSize: 14, color: '#767676', marginTop: -8 },
-  // Distinct from swapButton (a plain field fixup) -- this is a
-  // structural action (splits the row in two), so it gets its own
-  // color rather than reusing the INK-outlined convention.
+  // A structural action (splits the row in two), so it gets its own
+  // color rather than reusing the INK-outlined convention used
+  // elsewhere on this screen.
   duplicateButton: {
     alignSelf: 'flex-start',
     borderWidth: 1.5,
@@ -646,16 +635,6 @@ const styles = StyleSheet.create({
   referenceCardPrice: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   referenceCardNote: { fontSize: 12, color: '#767676' },
   fieldLabel: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginTop: 4 },
-  swapButton: {
-    alignSelf: 'flex-start',
-    borderWidth: 1.5,
-    borderColor: INK,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#fff',
-  },
-  swapButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   saveError: { color: '#D0342C', fontSize: 14 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   saveButton: {
