@@ -86,14 +86,10 @@ export default function RecipeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
+      {/* Only the close button stays pinned outside the ScrollView --
+          the title/duration used to sit fixed up here too, but now
+          scroll away with everything else below. */}
       <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>{meal.name}</Text>
-          <View style={styles.subtitleRow}>
-            <ClockIcon size={13} color={INK} />
-            <Text style={styles.subtitle}>{meal.minutes} min</Text>
-          </View>
-        </View>
         <Pressable
           style={styles.closeButton}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/meals'))}
@@ -102,6 +98,13 @@ export default function RecipeScreen() {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>{meal.name}</Text>
+          <View style={styles.subtitleRow}>
+            <ClockIcon size={13} color={INK} />
+            <Text style={styles.subtitle}>{meal.minutes} min</Text>
+          </View>
+        </View>
         {/* Same layout as MealCard's own priceNutritionRow (the Meals
             results page) -- price/cal/protein as plain icon+text, not
             pills, all on one line. Only real difference from MealCard:
@@ -174,70 +177,68 @@ export default function RecipeScreen() {
           </View>
         )}
 
-        {/* Deal items and staples now share one bordered "modal
+        {/* Deal items and staples each get their own bordered "modal
             treatment" container (same white/black-border/rounded-corner
             language as the app's cards/modals elsewhere -- see
-            MealCard.tsx mealCard, LegalDocumentModal.tsx) instead of
-            each having its own separate card. "On Sale This Week" (the
-            page's own former top-level heading) now lives inside it, as
-            just the deal items' own sub-heading -- "You'll need" is the
-            new, more accurate umbrella title, since this one container
-            holds non-sale staples too. */}
-        <Text style={styles.sectionTitle}>You'll need</Text>
-        <View style={styles.ingredientsModalCard}>
-          {dealIngredients.length > 0 && (
-            <>
-              <Text style={styles.innerSectionTitleFirst}>On Sale This Week</Text>
-              <View style={styles.dealIngredientsList}>
-                {dealIngredients.map((ingredient, index) => (
-                  <IngredientRow
-                    key={index}
-                    text={ingredient.text}
-                    dealTag={ingredient.dealTag}
-                    estimatedPrice={ingredient.estimatedPrice}
-                    // Never fragmented, so a doubled batch stays "1
-                    // package ..." with a x2 badge instead of a scaled
-                    // quantity -- see scaleIngredientDisplay.
-                    multiplier={batchMultiplier}
-                    // Standardized square (see IngredientRow for why a
-                    // fit-to-box version was tried and reverted) -- 120
-                    // is comfortably under every source cutout's own
-                    // ~400px max dimension across all chains, so this
-                    // never upscales past real resolution.
-                    // blurredBackdrop fills the letterboxed edges with
-                    // the image's own blurred background instead of
-                    // bare placeholder grey.
-                    imageSize={120}
-                    blurredBackdrop
-                    // The recipe page has no other store attribution --
-                    // shows the store name plus a "See in flyer" link
-                    // out to that store's weekly flyer (curated_deals.
-                    // product_url, threaded through deal_tags).
-                    showStoreLink
-                  />
-                ))}
-              </View>
-            </>
-          )}
-          {stapleIngredients.length > 0 && (
-            <>
-              <Text
-                style={[styles.innerSectionTitle, dealIngredients.length === 0 && styles.innerSectionTitleFirst]}
-              >
-                You'll Also Need
-              </Text>
-              <View style={styles.staplesList}>
-                {stapleIngredients.map((ingredient, index) => (
-                  <IngredientRow
-                    key={index}
-                    text={ingredient.text}
-                    estimatedPrice={ingredient.estimatedPrice}
-                  />
-                ))}
-              </View>
-            </>
-          )}
-        </View>
+            MealCard.tsx mealCard, LegalDocumentModal.tsx), rather than
+            sharing one box. Each card carries its own heading inside it
+            -- same pattern as the Instructions card below -- under the
+            shared "What you'll need" umbrella title, which still covers both
+            since the staples group is not on sale. */}
+        <Text style={styles.sectionTitle}>What you'll need</Text>
+        {dealIngredients.length > 0 && (
+          <View style={styles.ingredientsModalCard}>
+            <Text style={styles.innerSectionTitleFirst}>On Sale This Week</Text>
+            <View style={styles.dealIngredientsList}>
+              {dealIngredients.map((ingredient, index) => (
+                <IngredientRow
+                  key={index}
+                  text={ingredient.text}
+                  dealTag={ingredient.dealTag}
+                  estimatedPrice={ingredient.estimatedPrice}
+                  // Never fragmented, so a doubled batch stays "1
+                  // package ..." with a x2 badge instead of a scaled
+                  // quantity -- see scaleIngredientDisplay.
+                  multiplier={batchMultiplier}
+                  // Standardized square (see IngredientRow for why a
+                  // fit-to-box version was tried and reverted) -- 120
+                  // is comfortably under every source cutout's own
+                  // ~400px max dimension across all chains, so this
+                  // never upscales past real resolution.
+                  // blurredBackdrop fills the letterboxed edges with
+                  // the image's own blurred background instead of
+                  // bare placeholder grey.
+                  imageSize={120}
+                  blurredBackdrop
+                  // The recipe page has no other store attribution --
+                  // shows the store name plus a "See in flyer" link
+                  // out to that store's weekly flyer (curated_deals.
+                  // product_url, threaded through deal_tags).
+                  showStoreLink
+                />
+              ))}
+            </View>
+          </View>
+        )}
+        {stapleIngredients.length > 0 && (
+          <View
+            style={[
+              styles.ingredientsModalCard,
+              dealIngredients.length > 0 && styles.ingredientsModalCardStacked,
+            ]}
+          >
+            <Text style={styles.innerSectionTitleFirst}>From your pantry</Text>
+            <View style={styles.staplesList}>
+              {stapleIngredients.map((ingredient, index) => (
+                <IngredientRow
+                  key={index}
+                  text={ingredient.text}
+                  estimatedPrice={ingredient.estimatedPrice}
+                />
+              ))}
+            </View>
+          </View>
+        )}
 
         <View style={styles.instructionsCard}>
           <Text style={styles.innerSectionTitleFirst}>Instructions</Text>
@@ -282,13 +283,20 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 8,
   },
+  // Just the close button now -- title/duration moved into the
+  // ScrollView below, so this row only needs to hold and right-align
+  // that one pinned element. alignSelf: 'flex-end' shrinks the row down
+  // to the button's own size (rather than stretching full-width, the
+  // row's default) so its white background reads as a small patch
+  // right behind the button, not a white bar across the whole top of
+  // the page.
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignSelf: 'flex-end',
     padding: 20,
+    paddingBottom: 0,
+    backgroundColor: '#fff',
   },
-  headerText: { flex: 1, marginRight: 12 },
+  headerText: { marginBottom: 16 },
   title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   subtitle: { fontSize: 14, color: INK },
@@ -387,9 +395,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   // "Modal treatment": same white/2px-black-border/rounded-corner
   // language as the app's cards and modals elsewhere (MealCard.tsx
-  // mealCard, LegalDocumentModal.tsx) -- one container for both the
-  // deal items and staples sub-sections (see the inner headings below),
-  // instead of each ingredient (or group) having its own separate card.
+  // mealCard, LegalDocumentModal.tsx). Used once per ingredient group
+  // -- the deal items and the staples each get their own box.
   ingredientsModalCard: {
     backgroundColor: '#fff',
     borderWidth: 2,
@@ -397,13 +404,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
   },
-  // First inner heading needs no extra top margin (the card's own
-  // padding already separates it from the border); a second inner
-  // heading (You'll Also Need, when deal items are also present) does,
-  // to separate it from the deal items list above it -- same value as
-  // the page-level sectionTitle's own marginTop.
+  // Only when the staples card follows the deal card: scrollContent's
+  // own 4px gap is too tight to read as two distinct bordered boxes.
+  ingredientsModalCardStacked: { marginTop: 12 },
+  // A card's own heading needs no top margin -- the card's padding
+  // already separates it from the border.
   innerSectionTitleFirst: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
-  innerSectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   dealIngredientsList: { gap: 10 },
   staplesList: { gap: 10 },
   instructionsCard: {
