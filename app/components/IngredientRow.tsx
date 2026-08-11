@@ -214,13 +214,15 @@ export function IngredientRow({
 
   // Stacked: image + full description (name, store, link, meta) share
   // the top row -- same infoEl the default row uses beside its image --
-  // then the price row wraps underneath, its own bordered card per item
-  // (see dealItemCard). No checkbox in this mode -- only the recipe
-  // page's deal items use stackedLayout, and the recipe page never
-  // passes onToggleCheck.
+  // then the price row wraps underneath. Plain (no border/card of its
+  // own) -- these already sit inside the recipe page's single "On Sale
+  // This Week" bordered card (ingredientsModalCard), and a border per
+  // item on top of that read as nested cards. No checkbox in this
+  // mode -- only the recipe page's deal items use stackedLayout, and
+  // the recipe page never passes onToggleCheck.
   if (stackedLayout) {
     return (
-      <View style={styles.dealItemCard}>
+      <View style={styles.dealItemRow}>
         <View style={styles.stackedTopRow}>
           {imageEl}
           {infoEl}
@@ -250,16 +252,10 @@ export function IngredientRow({
 
 const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  // stackedLayout only -- its own bordered/rounded card per item
-  // (design reference showed each deal item boxed separately within
-  // the shared "On Sale This Week" card, not just a plain list row).
-  dealItemCard: {
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-    borderRadius: 20,
-    padding: 14,
-    gap: 10,
-  },
+  // stackedLayout only -- plain, no border of its own (see the
+  // no-nested-cards comment above); just the vertical gap between its
+  // two rows (top row, price row).
+  dealItemRow: { gap: 10 },
   // Row 1: image + full description (name, store, link, meta).
   stackedTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   // Row 2: price (+ original, + multiplier) on the left, discount/
