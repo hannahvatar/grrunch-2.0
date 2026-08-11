@@ -138,7 +138,7 @@ export default function BestDealsScreen() {
                               </View>
                             ) : (
                               <View style={styles.fairPriceBadge}>
-                                <Text style={styles.discountBadgeText}>Fair price</Text>
+                                <Text style={styles.fairPriceBadgeText}>Fair price</Text>
                               </View>
                             )}
                           </View>
@@ -260,15 +260,19 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Peach/orange brand colors -- solid + white text, matching
+  // discountBadge/greatValueBadge's own solid-bg convention on this
+  // rounded-rect badge style.
   fairPriceBadge: {
     position: 'absolute',
     top: 6,
     left: 6,
-    backgroundColor: '#E8B800',
+    backgroundColor: '#FF7A2A',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
+  fairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Purple -- deliberately distinct from discountBadge's blue (a real
   // store markdown) and fairPriceBadge's yellow (a neutral price), so
   // "we compared this and it's genuinely a good price" never reads as
