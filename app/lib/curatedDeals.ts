@@ -67,6 +67,7 @@ export function formatComparePriceLabel(originalPrice: number): string {
   return `compare: $${originalPrice.toFixed(2)} avg.`;
 }
 
+
 // price/original_price became nullable (see
 // supabase/migrations/20260811010000_curated_deals_unknown_price_and_reject.sql
 // -- app/app/dev-deals.tsx lets a reviewer mark either as genuinely

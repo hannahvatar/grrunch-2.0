@@ -219,7 +219,9 @@ export function IngredientRow({
       )}
       {dealTag?.price != null && (
         <View style={styles.itemPriceRow}>
-          <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>
+          <Text style={styles.itemPriceValue}>
+            {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}${dealTag.price.toFixed(2)}
+          </Text>
           {dealTag.originalPrice != null &&
             dealTag.originalPrice > dealTag.price &&
             showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) && (
@@ -261,7 +263,11 @@ export function IngredientRow({
     <View style={styles.dealPriceRow}>
       <View style={styles.dealPriceTagGroup}>
         <View style={styles.dealPriceLeft}>
-          {dealTag?.price != null && <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>}
+          {dealTag?.price != null && (
+            <Text style={styles.itemPriceValue}>
+              {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}${dealTag.price.toFixed(2)}
+            </Text>
+          )}
           {dealTag?.originalPrice != null &&
             dealTag.originalPrice > dealTag.price! &&
             showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) && (
