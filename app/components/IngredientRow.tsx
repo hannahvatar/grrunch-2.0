@@ -143,6 +143,37 @@ export function IngredientRow({
     </View>
   );
 
+  // stackedLayout only -- store name + "See in flyer" link as their own
+  // mini-column (store stacked above link), sitting in the top row
+  // between the image and the price, rather than stacked under the
+  // full-width name below. flex: 1 so it soaks up whatever width is
+  // left between the fixed-size image and the price/badge column.
+  const storeLinkEl = showStoreLink && (dealTag?.store || dealTag?.productUrl) && (
+    <View style={styles.storeLinkColumn}>
+      {dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
+      {dealTag?.productUrl && (
+        <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
+          <Text style={styles.flyerLink}>See in flyer</Text>
+          <ArrowOutwardIcon size={12} color={INK} />
+        </Pressable>
+      )}
+    </View>
+  );
+
+  // stackedLayout only -- just the name/meta/disclaimer, full-width
+  // under the top row (store/link already moved into storeLinkEl above).
+  const nameOnlyEl = (
+    <View style={styles.itemInfoStacked}>
+      <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
+        {text}
+      </Text>
+      {meta && <Text style={styles.itemMeta}>{meta}</Text>}
+      {dealTag?.quantityEstimated && (
+        <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
+      )}
+    </View>
+  );
+
   const priceEl = (
     <View style={styles.itemRightColumn}>
       {!!multiplier && multiplier > 1 && (
@@ -176,20 +207,21 @@ export function IngredientRow({
     </View>
   );
 
-  // Stacked: image + price/badge share a top row (same as a plain row
-  // would put them), then the name/store/link block drops full-width
-  // underneath, instead of squeezed into whatever horizontal sliver is
-  // left beside a 120px image. No checkbox in this mode -- only the
-  // recipe page's deal items use stackedLayout, and the recipe page
-  // never passes onToggleCheck.
+  // Stacked: image, store/link column, and price/badge all share one
+  // top row, then just the name drops full-width underneath -- instead
+  // of squeezed into whatever horizontal sliver is left beside a 120px
+  // image. No checkbox in this mode -- only the recipe page's deal
+  // items use stackedLayout, and the recipe page never passes
+  // onToggleCheck.
   if (stackedLayout) {
     return (
       <View style={styles.itemRowStacked}>
         <View style={styles.stackedTopRow}>
           {imageEl}
+          {storeLinkEl}
           {priceEl}
         </View>
-        {infoEl}
+        {nameOnlyEl}
       </View>
     );
   }
@@ -216,7 +248,12 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // stackedLayout only (see IngredientRowProps.stackedLayout).
   itemRowStacked: { gap: 10 },
-  stackedTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  stackedTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  // Soaks up the width left between the image and the price column --
+  // store name stacked above the flyer link within it (itemStore's own
+  // marginTop and flyerLinkRow's own marginTop already space the two
+  // apart, same as they did stacked under the name pre-stackedLayout).
+  storeLinkColumn: { flex: 1 },
   // Overrides itemInfo's flex: 1 (meant for a row context, growing to
   // fill leftover horizontal space) -- here itemInfo is its own full
   // row underneath the image, not sharing one with it, so it just
