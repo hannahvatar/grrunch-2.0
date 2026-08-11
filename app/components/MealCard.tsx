@@ -3,7 +3,12 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CakeIcon, CheckIcon, HeartIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
 
-import { showsRealDiscount, toTitleCase } from '../lib/curatedDeals';
+import {
+  formatGreatReferenceValueLabel,
+  isGreatReferenceValue,
+  showsRealDiscount,
+  toTitleCase,
+} from '../lib/curatedDeals';
 import type { Meal } from '../lib/mealData';
 import { AvocadoBeanIcon, RestaurantIcon } from './MaterialSymbols';
 import { getRecipeImage } from '../lib/recipeImages';
@@ -79,6 +84,10 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
                   {showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
                     <View style={styles.dealTagBadge}>
                       <Text style={styles.dealTagBadgeText}>{dealTag.discountPct}% off</Text>
+                    </View>
+                  ) : isGreatReferenceValue(dealTag.discountPct, dealTag.originalPriceSource) ? (
+                    <View style={styles.greatValueBadge}>
+                      <Text style={styles.greatValueBadgeText}>{formatGreatReferenceValueLabel(dealTag.discountPct)}</Text>
                     </View>
                   ) : (
                     <View style={styles.fairPriceBadge}>
@@ -195,6 +204,11 @@ const styles = StyleSheet.create({
   dealTagBadge: { backgroundColor: '#96E696', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   dealTagBadgeText: { color: INK, fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   fairPriceBadge: { backgroundColor: '#96E696', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  // Purple -- distinct from dealTagBadge/fairPriceBadge's green here,
+  // so a genuinely-good reference-compared price never reads as either
+  // a real store discount or a merely-neutral price.
+  greatValueBadge: { backgroundColor: '#EDE7FE', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  greatValueBadgeText: { color: '#6B46C1', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   buttonsRow: { flexDirection: 'row', gap: 10 },
   groceryToggleButton: {
     flex: 1,

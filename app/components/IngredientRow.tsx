@@ -1,7 +1,14 @@
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon } from 'react-native-heroicons/outline';
 
-import { formatComparePriceLabel, isReferencePriced, showsRealDiscount, toTitleCase } from '../lib/curatedDeals';
+import {
+  formatComparePriceLabel,
+  formatGreatReferenceValueLabel,
+  isGreatReferenceValue,
+  isReferencePriced,
+  showsRealDiscount,
+  toTitleCase,
+} from '../lib/curatedDeals';
 import type { DealTag } from '../lib/mealData';
 import { ArrowOutwardIcon } from './MaterialSymbols';
 
@@ -238,6 +245,10 @@ export function IngredientRow({
           <View style={styles.discountBadge}>
             <Text style={styles.discountBadgeText}>Up to {dealTag.discountPct}% off</Text>
           </View>
+        ) : isGreatReferenceValue(dealTag.discountPct, dealTag.originalPriceSource) ? (
+          <View style={styles.greatValueBadge}>
+            <Text style={styles.discountBadgeText}>{formatGreatReferenceValueLabel(dealTag.discountPct)}</Text>
+          </View>
         ) : (
           <View style={styles.fairPriceBadge}>
             <Text style={styles.fairPriceBadgeText}>Fair price</Text>
@@ -275,6 +286,10 @@ export function IngredientRow({
           (showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
             <View style={styles.dealDiscountBadge}>
               <Text style={styles.dealDiscountBadgeText}>Up to {dealTag.discountPct}% off</Text>
+            </View>
+          ) : isGreatReferenceValue(dealTag.discountPct, dealTag.originalPriceSource) ? (
+            <View style={styles.dealGreatValueBadge}>
+              <Text style={styles.dealGreatValueBadgeText}>{formatGreatReferenceValueLabel(dealTag.discountPct)}</Text>
             </View>
           ) : (
             <View style={styles.dealFairPriceBadge}>
@@ -416,6 +431,12 @@ const styles = StyleSheet.create({
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   fairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Purple -- distinct from discountBadge's blue (real store markdown)
+  // and fairPriceBadge's yellow (neutral), so a genuinely-good
+  // reference-compared price never reads as either of those claims.
+  // Reuses discountBadgeText (same white/bold/11px) -- only the
+  // background differs.
+  greatValueBadge: { backgroundColor: '#6B46C1', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   // stackedLayout only -- pill-shaped variants (borderRadius: 999) of
   // the badges above, matching the design reference's rounded-capsule
   // shape instead of discountBadge/fairPriceBadge's rounded-rect.
@@ -429,6 +450,13 @@ const styles = StyleSheet.create({
   dealFairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   dealFairPriceBadgeText: {
     color: '#fff',
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+  },
+  dealGreatValueBadge: { backgroundColor: '#EDE7FE', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  dealGreatValueBadgeText: {
+    color: '#6B46C1',
     fontSize: 12,
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',

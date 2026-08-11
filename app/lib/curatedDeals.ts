@@ -57,14 +57,36 @@ export function showsRealDiscount(discountPct: number, source: OriginalPriceSour
   return discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && !isReferencePriced(source);
 }
 
+// A reference-sourced item meaningfully below its own reference price
+// is worth calling out as more than a neutral "Fair price" -- but it
+// must never look like showsRealDiscount()'s "Up to N% off" badge,
+// since the store never claimed this discount, we're the ones
+// comparing. 5% is Anabelle's own threshold for "genuinely a good
+// price" -- kept as its own constant, not aliased to
+// MIN_DISPLAYED_DISCOUNT_PCT, even though they're numerically equal
+// today: they answer different questions (real store markdown vs.
+// good value against a reference) and either could move independently.
+export const GREAT_REFERENCE_VALUE_PCT = 5;
+
+export function isGreatReferenceValue(discountPct: number, source: OriginalPriceSource | null | undefined): boolean {
+  return isReferencePriced(source) && discountPct >= GREAT_REFERENCE_VALUE_PCT;
+}
+
+// Deliberately "below avg." not "off" -- "off" implies a markdown from
+// a starting price the store set; this is a comparison against an
+// external average, phrased so it can never be misread as the former.
+export function formatGreatReferenceValueLabel(discountPct: number): string {
+  return `${Math.round(discountPct)}% below avg.`;
+}
+
 // Muted annotation shown in place of a strikethrough original price
-// when isReferencePriced() -- same tone as IngredientRow's existing
-// itemPriceEstimated ("$X avg.") for a non-deal staple price, plus a
-// "compare:" prefix so the two are never confused: this means "here's
-// what we're comparing this deal's price against," not "here's the
-// typical price for this staple."
+// when isReferencePriced() -- same tone/style as IngredientRow's
+// existing itemPriceEstimated ("$X avg.") for a non-deal staple price.
+// Deliberately no "compare:" prefix (Anabelle's call) -- the muted
+// styling and "avg." suffix already read as a reference number, not a
+// store price, without needing to spell that out.
 export function formatComparePriceLabel(originalPrice: number): string {
-  return `compare: $${originalPrice.toFixed(2)} avg.`;
+  return `$${originalPrice.toFixed(2)} avg.`;
 }
 
 // price/original_price became nullable (see

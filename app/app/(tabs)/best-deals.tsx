@@ -7,7 +7,9 @@ import {
   type Deal,
   fetchAllDeals,
   formatComparePriceLabel,
+  formatGreatReferenceValueLabel,
   groupDealsByCategory,
+  isGreatReferenceValue,
   isReferencePriced,
   showsRealDiscount,
 } from '../../lib/curatedDeals';
@@ -126,6 +128,12 @@ export default function BestDealsScreen() {
                               <View style={styles.discountBadge}>
                                 <Text style={styles.discountBadgeText}>
                                   Up to {Math.round(deal.discountPct)}% off
+                                </Text>
+                              </View>
+                            ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
+                              <View style={styles.greatValueBadge}>
+                                <Text style={styles.discountBadgeText}>
+                                  {formatGreatReferenceValueLabel(deal.discountPct)}
                                 </Text>
                               </View>
                             ) : (
@@ -257,6 +265,19 @@ const styles = StyleSheet.create({
     top: 6,
     left: 6,
     backgroundColor: '#E8B800',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  // Purple -- deliberately distinct from discountBadge's blue (a real
+  // store markdown) and fairPriceBadge's yellow (a neutral price), so
+  // "we compared this and it's genuinely a good price" never reads as
+  // either of those two claims.
+  greatValueBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: '#6B46C1',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
