@@ -22,6 +22,13 @@ export interface DealTag {
   // lib/curatedDeals.ts's isReferencePriced()/showsRealDiscount(), which
   // every render site uses instead of checking this directly.
   originalPriceSource?: 'flyer' | 'reference';
+  // True only when `price` was computed by scaling a per-lb/kg/100g
+  // rate against a GUESSED package weight (package_weight_g_source=
+  // 'estimated' -- see compute_deal_tag_pricing()), not a labeled or
+  // measured one. Distinct from quantityEstimated: this is about
+  // whether the dollar figure itself rests on a real physical weight,
+  // not about how much you'll need to buy.
+  priceEstimated?: boolean;
 }
 
 // An ingredient line, with the matching deal tag attached when that

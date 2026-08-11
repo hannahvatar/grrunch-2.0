@@ -19,6 +19,7 @@ interface RecipeDealTagRow {
   product_url?: string;
   quantity_estimated?: boolean;
   original_price_source?: string;
+  price_estimated?: boolean;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
@@ -35,6 +36,7 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     productUrl: tag.product_url || undefined,
     quantityEstimated: tag.quantity_estimated,
     originalPriceSource: tag.original_price_source as 'flyer' | 'reference' | undefined,
+    priceEstimated: tag.price_estimated,
   };
 }
 
