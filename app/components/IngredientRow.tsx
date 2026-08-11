@@ -59,12 +59,13 @@ interface IngredientRowProps {
   // gap-sourced deals have none -- see DealTag.productUrl) -- never a
   // dead link.
   showStoreLink?: boolean;
-  // At the recipe page's 120px imageSize, a side-by-side row leaves
-  // only a narrow sliver of width for the name/store/link text, which
-  // reads badly on a phone-width screen. Stacks the image + price/
-  // badge on one top row instead, then drops the name/store/link block
-  // full-width underneath -- recipe-page deal items only (grocery's
-  // 36px thumbnail has plenty of room beside the text as-is).
+  // At the recipe page's 120px imageSize, a side-by-side row (image |
+  // name+store+link | price) squeezed the price column in too, leaving
+  // too little width for the rest on a phone screen. Keeps image +
+  // description (name/store/link/meta) on the top row, same pairing as
+  // the default row, and wraps just the price/badge onto its own row
+  // underneath -- recipe-page deal items only (grocery's 36px
+  // thumbnail has plenty of room beside the text as-is).
   stackedLayout?: boolean;
 }
 
@@ -143,39 +144,6 @@ export function IngredientRow({
     </View>
   );
 
-  // stackedLayout only -- store name + "See in flyer" link as their own
-  // mini-column (store stacked above link), wrapped onto the bottom row
-  // alongside the price. flex: 1 so it soaks up whatever width the
-  // price/badge column doesn't need.
-  const storeLinkEl = showStoreLink && (dealTag?.store || dealTag?.productUrl) && (
-    <View style={styles.storeLinkColumn}>
-      {dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
-      {dealTag?.productUrl && (
-        <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
-          <Text style={styles.flyerLink}>See in flyer</Text>
-          <ArrowOutwardIcon size={12} color={INK} />
-        </Pressable>
-      )}
-    </View>
-  );
-
-  // stackedLayout only -- just the name/meta/disclaimer, sharing the
-  // top row with the image (store/link and price wrap to their own row
-  // below -- see storeLinkEl/priceEl usage below). flex: 1, same as
-  // the default row's own itemInfo, to take the width left beside the
-  // image.
-  const nameOnlyEl = (
-    <View style={styles.itemInfo}>
-      <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
-        {text}
-      </Text>
-      {meta && <Text style={styles.itemMeta}>{meta}</Text>}
-      {dealTag?.quantityEstimated && (
-        <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
-      )}
-    </View>
-  );
-
   const priceEl = (
     <View style={styles.itemRightColumn}>
       {!!multiplier && multiplier > 1 && (
@@ -209,22 +177,20 @@ export function IngredientRow({
     </View>
   );
 
-  // Stacked: image + description share the top row (name gets the
-  // width beside the image, like the default row layout does), then
-  // store/link + price wrap onto their own row underneath. No checkbox
-  // in this mode -- only the recipe page's deal items use
-  // stackedLayout, and the recipe page never passes onToggleCheck.
+  // Stacked: image + full description (name, store, link, meta) share
+  // the top row -- same infoEl the default row uses beside its image --
+  // then just the price/badge wraps onto its own row underneath,
+  // right-aligned. No checkbox in this mode -- only the recipe page's
+  // deal items use stackedLayout, and the recipe page never passes
+  // onToggleCheck.
   if (stackedLayout) {
     return (
       <View style={styles.itemRowStacked}>
         <View style={styles.stackedTopRow}>
           {imageEl}
-          {nameOnlyEl}
+          {infoEl}
         </View>
-        <View style={styles.stackedBottomRow}>
-          {storeLinkEl}
-          {priceEl}
-        </View>
+        <View style={styles.stackedBottomRow}>{priceEl}</View>
       </View>
     );
   }
@@ -251,15 +217,13 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // stackedLayout only (see IngredientRowProps.stackedLayout).
   itemRowStacked: { gap: 10 },
-  // Row 1: image + description.
+  // Row 1: image + full description (name, store, link, meta).
   stackedTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  // Row 2: store name/link + price/badge, wrapped underneath.
-  stackedBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
-  // Soaks up the width the price/badge column doesn't need -- store
-  // name stacked above the flyer link within it (itemStore's own
-  // marginTop and flyerLinkRow's own marginTop already space the two
-  // apart).
-  storeLinkColumn: { flex: 1 },
+  // Row 2: just the price/badge, wrapped underneath and right-aligned
+  // (itemRightColumn's own alignItems: flex-end lines it up with
+  // itself; flex-end here pushes that column to the row's own right
+  // edge instead of the row's default flex-start).
+  stackedBottomRow: { flexDirection: 'row', justifyContent: 'flex-end' },
   checkbox: {
     width: 20,
     height: 20,
