@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   // pantry" and "Instructions", which keep their existing bold-black
   // look. Back to plain case/black/16px after trying small-caps/
   // all-caps/gray -- just the leading icon now, no other differentiator.
-  dealsHeading: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8, color: INK },
+  dealsHeading: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8, color: INK },
   dealIngredientsList: { gap: 10 },
   // Thin rule between deal items (not before the first) -- items no
   // longer have their own bordered card each (see IngredientRow's
