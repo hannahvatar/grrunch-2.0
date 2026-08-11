@@ -184,7 +184,11 @@ export default function RecipeScreen() {
             the staples group is not on sale. */}
         <Text style={styles.sectionTitle}>What you'll need</Text>
         {(dealIngredients.length > 0 || stapleIngredients.length > 0) && (
-          <View style={styles.ingredientsModalCard}>
+          <ScrollView
+            style={styles.ingredientsModalCard}
+            contentContainerStyle={styles.ingredientsModalCardContent}
+            nestedScrollEnabled
+          >
             {dealIngredients.length > 0 && (
               <View>
                 <View style={styles.innerHeadingRow}>
@@ -250,20 +254,24 @@ export default function RecipeScreen() {
                 </View>
               </View>
             )}
-          </View>
+          </ScrollView>
         )}
 
         {/* Title sits outside/above the card now (same sectionTitle
             style as "What you'll need"), not inside it -- was an
             innerSectionTitleFirst heading inside instructionsCard. */}
         <Text style={styles.sectionTitle}>Instructions</Text>
-        <View style={styles.instructionsCard}>
+        <ScrollView
+          style={styles.instructionsCard}
+          contentContainerStyle={styles.instructionsCardContent}
+          nestedScrollEnabled
+        >
           {meal.instructions.map((step, index) => (
             <Text key={step} style={styles.listItem}>
               {index + 1}.  {step}
             </Text>
           ))}
-        </View>
+        </ScrollView>
 
         {meal.optionalAdditions.length > 0 && (
           <>
@@ -412,13 +420,20 @@ const styles = StyleSheet.create({
   // language as the app's cards and modals elsewhere (MealCard.tsx
   // mealCard, LegalDocumentModal.tsx). Deal items and staples share
   // one card -- see the two conditionally-rendered sections inside it.
+  // Rendered as a ScrollView (not a plain View) so a long combined
+  // list scrolls within its own bounded height instead of pushing the
+  // rest of the page down indefinitely -- border/background/maxHeight
+  // live here on the ScrollView's own style; padding/gap move to
+  // ingredientsModalCardContent (its contentContainerStyle), the
+  // conventional RN split for a scrollable bordered box.
   ingredientsModalCard: {
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 16,
-    padding: 14,
+    maxHeight: 420,
   },
+  ingredientsModalCardContent: { padding: 14 },
   // Only when the pantry section follows the deal-items section within
   // the shared card: dealIngredientsList's own bottom item has no
   // trailing margin of its own, so without this the two sections'
@@ -458,14 +473,18 @@ const styles = StyleSheet.create({
   // inside the shared "On Sale This Week" card.
   dealDivider: { height: 1, backgroundColor: '#E8E8E8', marginBottom: 10 },
   staplesList: { gap: 10 },
+  // Same ScrollView split as ingredientsModalCard/
+  // ingredientsModalCardContent above -- a long instructions list
+  // scrolls within its own bounded height instead of the whole card
+  // growing indefinitely.
   instructionsCard: {
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 16,
-    padding: 14,
-    gap: 4,
+    maxHeight: 320,
   },
+  instructionsCardContent: { padding: 14, gap: 4 },
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
   // Not a priced ingredient list -- a short paragraph per suggestion,
   // title inline-bolded rather than styled as its own list row, so it
