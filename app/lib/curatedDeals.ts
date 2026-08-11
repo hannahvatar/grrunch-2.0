@@ -31,20 +31,31 @@ export function toTitleCase(text: string): string {
 // discount at all, rather than a misleading "Up to 0% off" badge.
 export const MIN_DISPLAYED_DISCOUNT_PCT = 5;
 
+// price/original_price became nullable (see
+// supabase/migrations/20260811010000_curated_deals_unknown_price_and_reject.sql
+// -- app/app/dev-deals.tsx lets a reviewer mark either as genuinely
+// unknown) -- that Edge Function also downgrades status away from
+// 'approved' whenever either goes null, so the "approved curated_deals
+// are publicly readable" RLS policy (status = 'approved') should never
+// actually hand this client a null-priced row. Still returns null
+// (filtered out below) rather than asserting/coercing a fake number if
+// that invariant is ever wrong, since Deal.price/originalPrice being
+// real numbers is what the rest of the app (Best Deals tab) relies on.
 function mapRowToDeal(row: {
   id: string;
   chain_name: string;
   item_name: string;
   category: string | null;
-  price: number;
-  original_price: number;
+  price: number | null;
+  original_price: number | null;
   // A generated (price/original_price-derived) column -- Postgres doesn't
   // infer NOT NULL for generated columns even though this one always
   // produces a real number given price/original_price are both required.
   discount_pct: number | null;
   product_url: string;
   image_url: string | null;
-}): Deal {
+}): Deal | null {
+  if (row.price == null || row.original_price == null) return null;
   return {
     id: row.id,
     chainName: row.chain_name,
@@ -61,14 +72,14 @@ function mapRowToDeal(row: {
 export async function fetchAllDeals(): Promise<Deal[]> {
   const { data, error } = await supabase.from('curated_deals').select('*');
   if (error) throw error;
-  return (data ?? []).map(mapRowToDeal);
+  return (data ?? []).map(mapRowToDeal).filter((deal): deal is Deal => deal !== null);
 }
 
 export async function fetchDealsByIds(ids: string[]): Promise<Deal[]> {
   if (ids.length === 0) return [];
   const { data, error } = await supabase.from('curated_deals').select('*').in('id', ids);
   if (error) throw error;
-  return (data ?? []).map(mapRowToDeal);
+  return (data ?? []).map(mapRowToDeal).filter((deal): deal is Deal => deal !== null);
 }
 
 export function groupDealsByCategory(deals: Deal[]): Map<string, Deal[]> {
