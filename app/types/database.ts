@@ -53,8 +53,13 @@ export type Database = {
           item_name: string
           keyword_matches: string[]
           original_price: number
+          package_weight_g: number | null
+          package_weight_g_source: string | null
           price: number
+          price_unit: Database["public"]["Enums"]["deal_price_unit"]
+          pricing_reviewed_at: string | null
           product_url: string
+          quantity_estimated: boolean
           reviewed_at: string | null
           reviewed_by: string | null
           status: Database["public"]["Enums"]["deal_status"]
@@ -72,8 +77,13 @@ export type Database = {
           item_name: string
           keyword_matches?: string[]
           original_price: number
+          package_weight_g?: number | null
+          package_weight_g_source?: string | null
           price: number
+          price_unit?: Database["public"]["Enums"]["deal_price_unit"]
+          pricing_reviewed_at?: string | null
           product_url: string
+          quantity_estimated?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["deal_status"]
@@ -91,8 +101,13 @@ export type Database = {
           item_name?: string
           keyword_matches?: string[]
           original_price?: number
+          package_weight_g?: number | null
+          package_weight_g_source?: string | null
           price?: number
+          price_unit?: Database["public"]["Enums"]["deal_price_unit"]
+          pricing_reviewed_at?: string | null
           product_url?: string
+          quantity_estimated?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["deal_status"]
@@ -496,6 +511,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_deal_tag_pricing: {
+        Args: {
+          p_ing_quantity: string
+          p_ing_unit: string
+          p_original_price: number
+          p_package_weight_g: number
+          p_price: number
+          p_price_unit: Database["public"]["Enums"]["deal_price_unit"]
+          p_quantity_estimated: boolean
+        }
+        Returns: {
+          tag_original_price: number
+          tag_price: number
+          tag_quantity_estimated: boolean
+        }[]
+      }
       normalize_words: { Args: { txt: string }; Returns: string[] }
       parse_unit_amount: {
         Args: { quantity: string; unit_text: string }
@@ -543,6 +574,7 @@ export type Database = {
       }
     }
     Enums: {
+      deal_price_unit: "package" | "each" | "lb" | "kg" | "100g"
       deal_status: "pending" | "approved" | "rejected"
       recipe_source: "ai_generated" | "manual"
     }
@@ -678,6 +710,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      deal_price_unit: ["package", "each", "lb", "kg", "100g"],
       deal_status: ["pending", "approved", "rejected"],
       recipe_source: ["ai_generated", "manual"],
     },
