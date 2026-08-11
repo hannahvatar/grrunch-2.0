@@ -441,7 +441,9 @@ const styles = StyleSheet.create({
   itemPriceEstimated: { fontSize: 12, color: '#767676', fontFamily: 'OpenSans_400Regular', fontWeight: '400' },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  // Peach/orange brand colors -- solid + white text, matching
+  // discountBadge/greatValueBadge's own solid-bg convention.
+  fairPriceBadge: { backgroundColor: '#FF7A2A', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   fairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Purple -- distinct from discountBadge's blue (real store markdown)
   // and fairPriceBadge's yellow (neutral), so a genuinely-good
@@ -459,9 +461,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',
   },
-  dealFairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  // Light peach + saturated orange text -- matching
+  // dealDiscountBadge/dealGreatValueBadge's own light-bg-dark-text
+  // convention on this pill badge style.
+  dealFairPriceBadge: { backgroundColor: '#FFEAD4', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   dealFairPriceBadgeText: {
-    color: '#fff',
+    color: '#FF7A2A',
     fontSize: 12,
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',

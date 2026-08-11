@@ -91,7 +91,7 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
                     </View>
                   ) : (
                     <View style={styles.fairPriceBadge}>
-                      <Text style={styles.dealTagBadgeText}>Fair price</Text>
+                      <Text style={styles.fairPriceBadgeText}>Fair price</Text>
                     </View>
                   )}
                   <Text style={styles.dealTagName} numberOfLines={1}>
@@ -203,7 +203,15 @@ const styles = StyleSheet.create({
   dealTagName: { color: '#888', fontSize: 13, flex: 1 },
   dealTagBadge: { backgroundColor: '#96E696', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
   dealTagBadgeText: { color: INK, fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  fairPriceBadge: { backgroundColor: '#96E696', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  // Light peach + saturated orange text -- distinct from
+  // dealTagBadge's green (reserved for a real store discount; Fair
+  // price sharing that color was a pre-existing inconsistency with
+  // every other screen's badge, now unified as this instead). Needs
+  // its own text style (not dealTagBadgeText's black) to pair with
+  // the orange, matching dealFairPriceBadge's light-bg-dark-text
+  // convention on the equivalent pill badge in IngredientRow.tsx.
+  fairPriceBadge: { backgroundColor: '#FFEAD4', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  fairPriceBadgeText: { color: '#FF7A2A', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Purple -- distinct from dealTagBadge/fairPriceBadge's green here,
   // so a genuinely-good reference-compared price never reads as either
   // a real store discount or a merely-neutral price.
