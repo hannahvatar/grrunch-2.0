@@ -257,6 +257,40 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.item_name]);
 
+  // Read-only decision aid, not an auto-fill: when the flyer doesn't
+  // give a clear original/regular price to compare against, look up
+  // whether this item's name matches a StatCan/produce/staple
+  // reference price (find_reference_price() RPC -- same word-subset
+  // matching convention refresh_recipe_deal_tags() already uses for
+  // staple ingredients) and show it so the reviewer can judge deal vs.
+  // fair price vs. reject herself. Only ever finds a match for items
+  // whose name contains a generic staple/produce term -- most branded/
+  // packaged goods genuinely have nothing to compare against, and
+  // that's expected, not a bug (see the migration's own comment).
+  const [referencePrice, setReferencePrice] = useState<{ source: string; matchedName: string; price: number; unit: string } | null>(
+    null
+  );
+  const [referencePriceChecked, setReferencePriceChecked] = useState(false);
+  useEffect(() => {
+    // Promise.resolve(): same PromiseLike-vs-Promise gap noted on
+    // loadDeals above -- the query builder has no .finally() until
+    // awaited/wrapped.
+    Promise.resolve(supabase.rpc('find_reference_price', { p_item_name: deal.item_name }))
+      .then(({ data }) => {
+        const match = data?.[0];
+        if (match) {
+          setReferencePrice({
+            source: match.source,
+            matchedName: match.matched_name,
+            price: match.result_price,
+            unit: match.result_unit,
+          });
+        }
+      })
+      .finally(() => setReferencePriceChecked(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deal.item_name]);
+
   function swapPrices() {
     setPrice(originalPrice);
     setPriceUnknown(originalPriceUnknown);
@@ -336,6 +370,27 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
 
         <Text style={styles.editName}>{deal.item_name}</Text>
         <Text style={styles.editStore}>{deal.chain_name}</Text>
+
+        {referencePrice && (
+          <View style={styles.referenceCard}>
+            <Text style={styles.referenceCardTitle}>
+              Reference price found ({referencePrice.source}): {referencePrice.matchedName}
+            </Text>
+            <Text style={styles.referenceCardPrice}>
+              ${referencePrice.price.toFixed(2)} / {referencePrice.unit}
+            </Text>
+            <Text style={styles.referenceCardNote}>
+              Informational only -- not filled in for you. Use it to judge whether this is a real deal, a fair
+              price, or worth rejecting.
+            </Text>
+          </View>
+        )}
+        {referencePriceChecked && !referencePrice && (
+          <Text style={styles.referenceCardNote}>
+            No StatCan/produce/staple reference match for this item -- common for branded/packaged goods,
+            those tables don't cover most of them.
+          </Text>
+        )}
 
         <Text style={styles.fieldLabel}>Price</Text>
         <InputField
@@ -488,6 +543,17 @@ const styles = StyleSheet.create({
   editPhoto: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#F2F2F2' },
   editName: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   editStore: { fontSize: 14, color: '#767676', marginTop: -8 },
+  referenceCard: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#96E696',
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  referenceCardTitle: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  referenceCardPrice: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  referenceCardNote: { fontSize: 12, color: '#767676' },
   fieldLabel: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginTop: 4 },
   swapButton: {
     alignSelf: 'flex-start',

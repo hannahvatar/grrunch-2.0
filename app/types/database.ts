@@ -527,6 +527,15 @@ export type Database = {
           tag_quantity_estimated: boolean
         }[]
       }
+      find_reference_price: {
+        Args: { p_item_name: string }
+        Returns: {
+          matched_name: string
+          result_price: number
+          result_unit: string
+          source: string
+        }[]
+      }
       normalize_words: { Args: { txt: string }; Returns: string[] }
       parse_unit_amount: {
         Args: { quantity: string; unit_text: string }
