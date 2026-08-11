@@ -163,10 +163,15 @@ export function IngredientRow({
         {text}
       </Text>
       {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
-      {showStoreLink && dealTag?.productUrl && (
-        <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
-          <Text style={styles.flyerLink}>See in flyer</Text>
-          <ArrowOutwardIcon size={12} color={INK} />
+      {showStoreLink && dealTag && (
+        <Pressable
+          style={styles.flyerLinkRow}
+          onPress={dealTag.productUrl ? () => openInNewTab(dealTag.productUrl!) : undefined}
+          disabled={!dealTag.productUrl}
+          hitSlop={4}
+        >
+          <Text style={[styles.flyerLink, !dealTag.productUrl && styles.flyerLinkDisabled]}>See in flyer</Text>
+          <ArrowOutwardIcon size={12} color={dealTag.productUrl ? INK : '#999'} />
         </Pressable>
       )}
       {meta && <Text style={styles.itemMeta}>{meta}</Text>}
@@ -186,10 +191,15 @@ export function IngredientRow({
         {dealDescription}
       </Text>
       {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
-      {showStoreLink && dealTag?.productUrl && (
-        <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
-          <Text style={styles.flyerLink}>See in flyer</Text>
-          <ArrowOutwardIcon size={12} color={INK} />
+      {showStoreLink && dealTag && (
+        <Pressable
+          style={styles.flyerLinkRow}
+          onPress={dealTag.productUrl ? () => openInNewTab(dealTag.productUrl!) : undefined}
+          disabled={!dealTag.productUrl}
+          hitSlop={4}
+        >
+          <Text style={[styles.flyerLink, !dealTag.productUrl && styles.flyerLinkDisabled]}>See in flyer</Text>
+          <ArrowOutwardIcon size={12} color={dealTag.productUrl ? INK : '#999'} />
         </Pressable>
       )}
       {meta && <Text style={styles.itemMeta}>{meta}</Text>}
@@ -383,13 +393,18 @@ const styles = StyleSheet.create({
     fontFamily: 'OpenSans_700Bold',
     textDecorationLine: 'underline',
   },
+  // No real flyer link for this deal (dealTag.productUrl empty --
+  // see recipe.tsx/IngredientRow.tsx comments on produce-gap-sourced
+  // deals) -- still shown, not hidden, but muted/no-underline to read
+  // as disabled rather than a dead link.
+  flyerLinkDisabled: { color: '#999', textDecorationLine: 'none' },
   itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
   estimatedDisclaimer: { fontSize: 11, color: '#B8860B', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
   itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
   itemPriceValue: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  itemPriceOriginal: { fontSize: 11, color: '#aaa', textDecorationLine: 'line-through' },
-  itemPriceEstimated: { fontSize: 12, color: '#888' },
+  itemPriceOriginal: { fontSize: 11, color: INK, textDecorationLine: 'line-through' },
+  itemPriceEstimated: { fontSize: 12, color: '#767676' },
   discountBadge: { backgroundColor: '#2C5FD6', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   fairPriceBadge: { backgroundColor: '#E8B800', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
