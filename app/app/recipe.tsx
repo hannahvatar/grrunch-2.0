@@ -422,9 +422,9 @@ const styles = StyleSheet.create({
   // pantry" and "Instructions", which keep their existing bold-black
   // look. All caps + letterSpacing for the label-like look.
   dealsHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'OpenSans_700Bold',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'OpenSans_600SemiBold',
     marginBottom: 8,
     color: '#767676',
     textTransform: 'uppercase',
