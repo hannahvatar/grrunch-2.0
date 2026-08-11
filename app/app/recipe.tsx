@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
-import { AvocadoBeanIcon, RestaurantIcon } from '../components/MaterialSymbols';
+import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
 import type { Meal } from '../lib/mealData';
 import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
 import { fetchRecipeById } from '../lib/recipes';
@@ -188,41 +188,46 @@ export default function RecipeScreen() {
         <Text style={styles.sectionTitle}>What you'll need</Text>
         {dealIngredients.length > 0 && (
           <View style={styles.ingredientsModalCard}>
-            <Text style={styles.dealsHeading}>On Sale This Week</Text>
+            <View style={styles.innerHeadingRow}>
+              <ShoppingModeIcon size={18} color={INK} />
+              <Text style={styles.dealsHeading}>On Sale This Week</Text>
+            </View>
             <View style={styles.dealIngredientsList}>
               {dealIngredients.map((ingredient, index) => (
-                <IngredientRow
-                  key={index}
-                  text={ingredient.text}
-                  dealTag={ingredient.dealTag}
-                  estimatedPrice={ingredient.estimatedPrice}
-                  // Never fragmented, so a doubled batch stays "1
-                  // package ..." with a x2 badge instead of a scaled
-                  // quantity -- see scaleIngredientDisplay.
-                  multiplier={batchMultiplier}
-                  // Standardized square (see IngredientRow for why a
-                  // fit-to-box version was tried and reverted) -- still
-                  // comfortably under every source cutout's own ~400px
-                  // max dimension across all chains, so this never
-                  // upscales past real resolution. Sized down from 120
-                  // to fit the design reference's more compact
-                  // thumbnail alongside a full name/store/link column.
-                  // blurredBackdrop fills the letterboxed edges with
-                  // the image's own blurred background instead of
-                  // bare placeholder grey.
-                  imageSize={88}
-                  blurredBackdrop
-                  // The recipe page has no other store attribution --
-                  // shows the store name plus a "See in flyer" link
-                  // out to that store's weekly flyer (curated_deals.
-                  // product_url, threaded through deal_tags).
-                  showStoreLink
-                  // At this imageSize, a side-by-side row leaves too
-                  // little width for the name/store/link text on a
-                  // phone screen -- stacks the name block full-width
-                  // under the image + price row instead.
-                  stackedLayout
-                />
+                <View key={index}>
+                  {index > 0 && <View style={styles.dealDivider} />}
+                  <IngredientRow
+                    text={ingredient.text}
+                    dealTag={ingredient.dealTag}
+                    estimatedPrice={ingredient.estimatedPrice}
+                    // Never fragmented, so a doubled batch stays "1
+                    // package ..." with a x2 badge instead of a scaled
+                    // quantity -- see scaleIngredientDisplay.
+                    multiplier={batchMultiplier}
+                    // Standardized square (see IngredientRow for why a
+                    // fit-to-box version was tried and reverted) -- still
+                    // comfortably under every source cutout's own ~400px
+                    // max dimension across all chains, so this never
+                    // upscales past real resolution. Sized down from 120
+                    // to fit the design reference's more compact
+                    // thumbnail alongside a full name/store/link column.
+                    // blurredBackdrop fills the letterboxed edges with
+                    // the image's own blurred background instead of
+                    // bare placeholder grey.
+                    imageSize={88}
+                    blurredBackdrop
+                    // The recipe page has no other store attribution --
+                    // shows the store name plus a "See in flyer" link
+                    // out to that store's weekly flyer (curated_deals.
+                    // product_url, threaded through deal_tags).
+                    showStoreLink
+                    // At this imageSize, a side-by-side row leaves too
+                    // little width for the name/store/link text on a
+                    // phone screen -- stacks the name block full-width
+                    // under the image + price row instead.
+                    stackedLayout
+                  />
+                </View>
               ))}
             </View>
           </View>
@@ -234,7 +239,10 @@ export default function RecipeScreen() {
               dealIngredients.length > 0 && styles.ingredientsModalCardStacked,
             ]}
           >
-            <Text style={styles.innerSectionTitleFirst}>From your pantry</Text>
+            <View style={styles.innerHeadingRow}>
+              <ChefHatIcon size={18} color={INK} />
+              <Text style={styles.innerSectionTitleFirst}>From your pantry</Text>
+            </View>
             <View style={styles.staplesList}>
               {stapleIngredients.map((ingredient, index) => (
                 <IngredientRow
@@ -417,20 +425,22 @@ const styles = StyleSheet.create({
   // A card's own heading needs no top margin -- the card's padding
   // already separates it from the border.
   innerSectionTitleFirst: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
+  // Leading-icon row shared by both card headings ("On Sale This Week"
+  // and "From your pantry") -- icon sized/colored inline at the call
+  // site (ShoppingModeIcon/ChefHatIcon, size 18, INK).
+  innerHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   // "On Sale This Week" only -- its own style rather than a variant of
   // innerSectionTitleFirst, since that style is shared with "From your
   // pantry" and "Instructions", which keep their existing bold-black
-  // look. All caps + letterSpacing for the label-like look.
-  dealsHeading: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'OpenSans_600SemiBold',
-    marginBottom: 8,
-    color: '#767676',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+  // look. Back to plain case/black/16px after trying small-caps/
+  // all-caps/gray -- just the leading icon now, no other differentiator.
+  dealsHeading: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8, color: INK },
   dealIngredientsList: { gap: 10 },
+  // Thin rule between deal items (not before the first) -- items no
+  // longer have their own bordered card each (see IngredientRow's
+  // dealItemRow), so this is the only visual separation between them
+  // inside the shared "On Sale This Week" card.
+  dealDivider: { height: 1, backgroundColor: '#E8E8E8', marginBottom: 10 },
   staplesList: { gap: 10 },
   instructionsCard: {
     backgroundColor: '#fff',
