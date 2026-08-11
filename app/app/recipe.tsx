@@ -215,6 +215,11 @@ export default function RecipeScreen() {
                   // out to that store's weekly flyer (curated_deals.
                   // product_url, threaded through deal_tags).
                   showStoreLink
+                  // At this imageSize, a side-by-side row leaves too
+                  // little width for the name/store/link text on a
+                  // phone screen -- stacks the name block full-width
+                  // under the image + price row instead.
+                  stackedLayout
                 />
               ))}
             </View>

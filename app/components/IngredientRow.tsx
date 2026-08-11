@@ -59,6 +59,13 @@ interface IngredientRowProps {
   // gap-sourced deals have none -- see DealTag.productUrl) -- never a
   // dead link.
   showStoreLink?: boolean;
+  // At the recipe page's 120px imageSize, a side-by-side row leaves
+  // only a narrow sliver of width for the name/store/link text, which
+  // reads badly on a phone-width screen. Stacks the image + price/
+  // badge on one top row instead, then drops the name/store/link block
+  // full-width underneath -- recipe-page deal items only (grocery's
+  // 36px thumbnail has plenty of room beside the text as-is).
+  stackedLayout?: boolean;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -77,7 +84,116 @@ export function IngredientRow({
   imageSize = 36,
   blurredBackdrop,
   showStoreLink,
+  stackedLayout,
 }: IngredientRowProps) {
+  const imageEl = dealTag?.imageUrl && (
+    <View
+      style={[styles.itemImageBox, { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 }]}
+    >
+      {blurredBackdrop && (
+        <Image
+          source={{ uri: dealTag.imageUrl }}
+          // Zoomed + blurred copy of the same image, filling the
+          // whole box -- always matches its own real background
+          // color/pattern exactly, whatever that is, since it's
+          // literally the same source image rather than a guessed
+          // or separately-sampled color.
+          resizeMode="cover"
+          blurRadius={Math.round(imageSize / 6)}
+          style={StyleSheet.absoluteFillObject}
+        />
+      )}
+      <Image
+        source={{ uri: dealTag.imageUrl }}
+        // Sharp copy on top, shown in full -- flyer cutouts are
+        // never square (real source ratios across our own recipes'
+        // deals range 0.47 to 3.36), so 'contain' avoids cropping
+        // any of it off, unlike RN's own 'cover' default.
+        //
+        // Inset a fixed margin off every edge (blurredBackdrop
+        // only) rather than filling the whole box: an image that
+        // happens to already be ~square (e.g. Bulacan Sweet
+        // Longanisa, 400x399) would otherwise fill it edge-to-edge
+        // under 'contain' with zero gap left for the backdrop to
+        // show through, even though the backdrop layer is still
+        // there. The inset guarantees a visible blurred border on
+        // every image regardless of its own aspect ratio.
+        resizeMode="contain"
+        style={blurredBackdrop ? styles.itemImageInset : StyleSheet.absoluteFillObject}
+      />
+    </View>
+  );
+
+  const infoEl = (
+    <View style={[styles.itemInfo, stackedLayout && styles.itemInfoStacked]}>
+      <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
+        {text}
+      </Text>
+      {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
+      {showStoreLink && dealTag?.productUrl && (
+        <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
+          <Text style={styles.flyerLink}>See in flyer</Text>
+          <ArrowOutwardIcon size={12} color={INK} />
+        </Pressable>
+      )}
+      {meta && <Text style={styles.itemMeta}>{meta}</Text>}
+      {dealTag?.quantityEstimated && (
+        <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
+      )}
+    </View>
+  );
+
+  const priceEl = (
+    <View style={styles.itemRightColumn}>
+      {!!multiplier && multiplier > 1 && (
+        <View style={styles.multiplierBadge}>
+          <Text style={styles.multiplierBadgeText}>×{multiplier}</Text>
+        </View>
+      )}
+      {dealTag?.price != null && (
+        <View style={styles.itemPriceRow}>
+          <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>
+          {dealTag.originalPrice != null &&
+            dealTag.originalPrice > dealTag.price &&
+            dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
+              <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
+            )}
+        </View>
+      )}
+      {!dealTag && estimatedPrice && (
+        <Text style={styles.itemPriceEstimated}>{`$${estimatedPrice.avgPrice.toFixed(2)} avg.`}</Text>
+      )}
+      {dealTag &&
+        (dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountBadgeText}>Up to {dealTag.discountPct}% off</Text>
+          </View>
+        ) : (
+          <View style={styles.fairPriceBadge}>
+            <Text style={styles.fairPriceBadgeText}>Fair price</Text>
+          </View>
+        ))}
+    </View>
+  );
+
+  // Stacked: image + price/badge share a top row (same as a plain row
+  // would put them), then the name/store/link block drops full-width
+  // underneath, instead of squeezed into whatever horizontal sliver is
+  // left beside a 120px image. No checkbox in this mode -- only the
+  // recipe page's deal items use stackedLayout, and the recipe page
+  // never passes onToggleCheck.
+  if (stackedLayout) {
+    return (
+      <View style={styles.itemRowStacked}>
+        <View style={styles.stackedTopRow}>
+          {imageEl}
+          {priceEl}
+        </View>
+        {infoEl}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.itemRow}>
       {onToggleCheck && (
@@ -89,98 +205,23 @@ export function IngredientRow({
           {checked && <CheckIcon size={12} color="#fff" />}
         </Pressable>
       )}
-      {dealTag?.imageUrl && (
-        <View
-          style={[
-            styles.itemImageBox,
-            { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 },
-          ]}
-        >
-          {blurredBackdrop && (
-            <Image
-              source={{ uri: dealTag.imageUrl }}
-              // Zoomed + blurred copy of the same image, filling the
-              // whole box -- always matches its own real background
-              // color/pattern exactly, whatever that is, since it's
-              // literally the same source image rather than a guessed
-              // or separately-sampled color.
-              resizeMode="cover"
-              blurRadius={Math.round(imageSize / 6)}
-              style={StyleSheet.absoluteFillObject}
-            />
-          )}
-          <Image
-            source={{ uri: dealTag.imageUrl }}
-            // Sharp copy on top, shown in full -- flyer cutouts are
-            // never square (real source ratios across our own recipes'
-            // deals range 0.47 to 3.36), so 'contain' avoids cropping
-            // any of it off, unlike RN's own 'cover' default.
-            //
-            // Inset a fixed margin off every edge (blurredBackdrop
-            // only) rather than filling the whole box: an image that
-            // happens to already be ~square (e.g. Bulacan Sweet
-            // Longanisa, 400x399) would otherwise fill it edge-to-edge
-            // under 'contain' with zero gap left for the backdrop to
-            // show through, even though the backdrop layer is still
-            // there. The inset guarantees a visible blurred border on
-            // every image regardless of its own aspect ratio.
-            resizeMode="contain"
-            style={blurredBackdrop ? styles.itemImageInset : StyleSheet.absoluteFillObject}
-          />
-        </View>
-      )}
-      <View style={styles.itemInfo}>
-        <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
-          {text}
-        </Text>
-        {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
-        {showStoreLink && dealTag?.productUrl && (
-          <Pressable style={styles.flyerLinkRow} onPress={() => openInNewTab(dealTag.productUrl!)} hitSlop={4}>
-            <Text style={styles.flyerLink}>See in flyer</Text>
-            <ArrowOutwardIcon size={12} color={INK} />
-          </Pressable>
-        )}
-        {meta && <Text style={styles.itemMeta}>{meta}</Text>}
-        {dealTag?.quantityEstimated && (
-          <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
-        )}
-      </View>
-      <View style={styles.itemRightColumn}>
-        {!!multiplier && multiplier > 1 && (
-          <View style={styles.multiplierBadge}>
-            <Text style={styles.multiplierBadgeText}>×{multiplier}</Text>
-          </View>
-        )}
-        {dealTag?.price != null && (
-          <View style={styles.itemPriceRow}>
-            <Text style={styles.itemPriceValue}>${dealTag.price.toFixed(2)}</Text>
-            {dealTag.originalPrice != null &&
-              dealTag.originalPrice > dealTag.price &&
-              dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && (
-                <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
-              )}
-          </View>
-        )}
-        {!dealTag && estimatedPrice && (
-          <Text style={styles.itemPriceEstimated}>{`$${estimatedPrice.avgPrice.toFixed(2)} avg.`}</Text>
-        )}
-        {dealTag &&
-          (dealTag.discountPct >= MIN_DISPLAYED_DISCOUNT_PCT ? (
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountBadgeText}>Up to {dealTag.discountPct}% off</Text>
-            </View>
-          ) : (
-            <View style={styles.fairPriceBadge}>
-              <Text style={styles.fairPriceBadgeText}>Fair price</Text>
-            </View>
-          ))}
-      </View>
+      {imageEl}
+      {infoEl}
+      {priceEl}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // stackedLayout only (see IngredientRowProps.stackedLayout).
+  itemRowStacked: { gap: 10 },
+  stackedTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  // Overrides itemInfo's flex: 1 (meant for a row context, growing to
+  // fill leftover horizontal space) -- here itemInfo is its own full
+  // row underneath the image, not sharing one with it, so it just
+  // needs its default full-width stretch, not flex growth.
+  itemInfoStacked: { flex: 0 },
   checkbox: {
     width: 20,
     height: 20,
