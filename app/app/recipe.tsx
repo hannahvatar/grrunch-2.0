@@ -185,72 +185,71 @@ export default function RecipeScreen() {
             shared "What you'll need" umbrella title, which still covers both
             since the staples group is not on sale. */}
         <Text style={styles.sectionTitle}>What you'll need</Text>
-        {dealIngredients.length > 0 && (
+        {(dealIngredients.length > 0 || stapleIngredients.length > 0) && (
           <View style={styles.ingredientsModalCard}>
-            <View style={styles.innerHeadingRow}>
-              <ShoppingModeIcon size={18} color={INK} />
-              <Text style={styles.dealsHeading}>On Sale This Week</Text>
-            </View>
-            <View style={styles.dealIngredientsList}>
-              {dealIngredients.map((ingredient, index) => (
-                <View key={index}>
-                  {index > 0 && <View style={styles.dealDivider} />}
-                  <IngredientRow
-                    text={ingredient.text}
-                    dealTag={ingredient.dealTag}
-                    estimatedPrice={ingredient.estimatedPrice}
-                    // Never fragmented, so a doubled batch stays "1
-                    // package ..." with a x2 badge instead of a scaled
-                    // quantity -- see scaleIngredientDisplay.
-                    multiplier={batchMultiplier}
-                    // Standardized square (see IngredientRow for why a
-                    // fit-to-box version was tried and reverted) -- still
-                    // comfortably under every source cutout's own ~400px
-                    // max dimension across all chains, so this never
-                    // upscales past real resolution. Sized down from 120
-                    // to fit the design reference's more compact
-                    // thumbnail alongside a full name/store/link column.
-                    // blurredBackdrop fills the letterboxed edges with
-                    // the image's own blurred background instead of
-                    // bare placeholder grey.
-                    imageSize={88}
-                    blurredBackdrop
-                    // The recipe page has no other store attribution --
-                    // shows the store name plus a "See in flyer" link
-                    // out to that store's weekly flyer (curated_deals.
-                    // product_url, threaded through deal_tags).
-                    showStoreLink
-                    // At this imageSize, a side-by-side row leaves too
-                    // little width for the name/store/link text on a
-                    // phone screen -- stacks the name block full-width
-                    // under the image + price row instead.
-                    stackedLayout
-                  />
+            {dealIngredients.length > 0 && (
+              <View>
+                <View style={styles.innerHeadingRow}>
+                  <ShoppingModeIcon size={18} color={INK} />
+                  <Text style={styles.dealsHeading}>On Sale This Week</Text>
                 </View>
-              ))}
-            </View>
-          </View>
-        )}
-        {stapleIngredients.length > 0 && (
-          <View
-            style={[
-              styles.ingredientsModalCard,
-              dealIngredients.length > 0 && styles.ingredientsModalCardStacked,
-            ]}
-          >
-            <View style={styles.innerHeadingRow}>
-              <ChefHatIcon size={18} color={INK} />
-              <Text style={[styles.innerSectionTitleFirst, styles.headingRowTextReset]}>From your pantry</Text>
-            </View>
-            <View style={styles.staplesList}>
-              {stapleIngredients.map((ingredient, index) => (
-                <IngredientRow
-                  key={index}
-                  text={ingredient.text}
-                  estimatedPrice={ingredient.estimatedPrice}
-                />
-              ))}
-            </View>
+                <View style={styles.dealIngredientsList}>
+                  {dealIngredients.map((ingredient, index) => (
+                    <View key={index}>
+                      {index > 0 && <View style={styles.dealDivider} />}
+                      <IngredientRow
+                        text={ingredient.text}
+                        dealTag={ingredient.dealTag}
+                        estimatedPrice={ingredient.estimatedPrice}
+                        // Never fragmented, so a doubled batch stays "1
+                        // package ..." with a x2 badge instead of a scaled
+                        // quantity -- see scaleIngredientDisplay.
+                        multiplier={batchMultiplier}
+                        // Standardized square (see IngredientRow for why a
+                        // fit-to-box version was tried and reverted) -- still
+                        // comfortably under every source cutout's own ~400px
+                        // max dimension across all chains, so this never
+                        // upscales past real resolution. Sized down from 120
+                        // to fit the design reference's more compact
+                        // thumbnail alongside a full name/store/link column.
+                        // blurredBackdrop fills the letterboxed edges with
+                        // the image's own blurred background instead of
+                        // bare placeholder grey.
+                        imageSize={88}
+                        blurredBackdrop
+                        // The recipe page has no other store attribution --
+                        // shows the store name plus a "See in flyer" link
+                        // out to that store's weekly flyer (curated_deals.
+                        // product_url, threaded through deal_tags).
+                        showStoreLink
+                        // At this imageSize, a side-by-side row leaves too
+                        // little width for the name/store/link text on a
+                        // phone screen -- stacks the name block full-width
+                        // under the image + price row instead.
+                        stackedLayout
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+            {stapleIngredients.length > 0 && (
+              <View style={dealIngredients.length > 0 && styles.pantrySectionStacked}>
+                <View style={styles.innerHeadingRow}>
+                  <ChefHatIcon size={18} color={INK} />
+                  <Text style={[styles.innerSectionTitleFirst, styles.headingRowTextReset]}>From your pantry</Text>
+                </View>
+                <View style={styles.staplesList}>
+                  {stapleIngredients.map((ingredient, index) => (
+                    <IngredientRow
+                      key={index}
+                      text={ingredient.text}
+                      estimatedPrice={ingredient.estimatedPrice}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
         )}
 
@@ -303,11 +302,9 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: INK },
   // Floats over the ScrollView (position: absolute, sibling of it
   // rather than a row above it) and stays fixed on screen as content
-  // scrolls underneath -- no opaque container/bar behind it. The
-  // circle itself is a translucent white (matching MealCard's own
-  // floating saveButton, which sits the same way over a photo) so the
-  // icon stays legible against whatever scrolls behind it, without
-  // reading as a solid background patch.
+  // scrolls underneath -- no opaque container/bar behind it. No fill
+  // either now -- just the bordered circle outline over whatever
+  // scrolls behind it.
   closeButton: {
     position: 'absolute',
     top: 20,
@@ -316,7 +313,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#ffffffcc',
     borderWidth: 1.5,
     borderColor: INK,
     alignItems: 'center',
@@ -409,8 +405,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
   // "Modal treatment": same white/2px-black-border/rounded-corner
   // language as the app's cards and modals elsewhere (MealCard.tsx
-  // mealCard, LegalDocumentModal.tsx). Used once per ingredient group
-  // -- the deal items and the staples each get their own box.
+  // mealCard, LegalDocumentModal.tsx). Deal items and staples share
+  // one card -- see the two conditionally-rendered sections inside it.
   ingredientsModalCard: {
     backgroundColor: '#fff',
     borderWidth: 2,
@@ -418,9 +414,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
   },
-  // Only when the staples card follows the deal card: scrollContent's
-  // own 4px gap is too tight to read as two distinct bordered boxes.
-  ingredientsModalCardStacked: { marginTop: 12 },
+  // Only when the pantry section follows the deal-items section within
+  // the shared card: dealIngredientsList's own bottom item has no
+  // trailing margin of its own, so without this the two sections'
+  // headings would sit right on top of each other.
+  pantrySectionStacked: { marginTop: 16 },
   // A card's own heading needs no top margin -- the card's padding
   // already separates it from the border.
   innerSectionTitleFirst: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
