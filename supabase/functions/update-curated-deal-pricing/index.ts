@@ -11,13 +11,38 @@
 // Client contract:
 //   POST {
 //     deal_id: string (uuid),
-//     price: number, original_price: number,
+//     price: number | null, original_price: number | null,
 //     price_unit: 'package' | 'each' | 'lb' | 'kg' | '100g',
 //     package_weight_g: number | null,
 //     package_weight_g_source: 'label' | 'measured' | 'estimated' | null,
 //     quantity_estimated: boolean,
+//     reject?: boolean,
 //   }
 //   -> 200 { deal: CuratedDealRow }
+//
+// price/original_price null means genuinely unknown -- not yet
+// confirmed from the cutout photo (see the column comments in
+// 20260811010000_curated_deals_unknown_price_and_reject.sql). A
+// null-priced deal is simply never tagged onto a recipe until
+// resolved (compute_deal_tag_pricing() treats it the same as an
+// unscalable weight) -- AND, if the row was 'approved', this also
+// downgrades status to 'pending' (unless reject below already sets it
+// to 'rejected'). Without that downgrade, a null-priced-but-still-
+// 'approved' row would keep passing the "approved curated_deals are
+// publicly readable" RLS policy and could reach lib/curatedDeals.ts's
+// fetchAllDeals()/fetchDealsByIds() (the Best Deals tab), which assume
+// a real number -- an unknown price means "not ready to show a
+// shopper," same as a rejected one.
+//
+// reject: true sets status='rejected' (plus reviewed_by/reviewed_at,
+// the same fields the separate Airtable approve/reject workflow uses)
+// -- for a deal that, on closer look at its cutout, turns out not to
+// be a real/good deal at all. Whatever price/quantity fields were also
+// filled in are saved at the same time, nothing entered is lost.
+// status='rejected' already excludes the row from
+// refresh_recipe_deal_tags() (both passes only ever select
+// status='approved'), so rejecting immediately stops it being tagged
+// onto any recipe, same as the price-unknown case above.
 //
 // Update-only, always scoped by id -- never insert/upsert/delete, and
 // never touches any table besides curated_deals (plus the
@@ -55,8 +80,8 @@ interface Database {
           chain_name: string;
           item_name: string;
           category: string | null;
-          price: number;
-          original_price: number;
+          price: number | null;
+          original_price: number | null;
           discount_pct: number | null;
           product_url: string;
           flyer_valid_from: string;
@@ -76,13 +101,16 @@ interface Database {
         };
         Insert: never;
         Update: {
-          price?: number;
-          original_price?: number;
+          price?: number | null;
+          original_price?: number | null;
           price_unit?: DealPriceUnit;
           package_weight_g?: number | null;
           package_weight_g_source?: PackageWeightSource | null;
           quantity_estimated?: boolean;
           pricing_reviewed_at?: string | null;
+          status?: "pending" | "approved" | "rejected";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
         };
         Relationships: [];
       };
@@ -104,6 +132,7 @@ interface RequestBody {
   package_weight_g?: unknown;
   package_weight_g_source?: unknown;
   quantity_estimated?: unknown;
+  reject?: unknown;
 }
 
 function validationError(message: string) {
@@ -119,16 +148,20 @@ export default {
       return validationError("Request body must be valid JSON.");
     }
 
-    const { deal_id, price, original_price, price_unit, package_weight_g, package_weight_g_source, quantity_estimated } = body;
+    const { deal_id, price, original_price, price_unit, package_weight_g, package_weight_g_source, quantity_estimated, reject } =
+      body;
 
     if (typeof deal_id !== "string" || deal_id.length === 0) {
       return validationError("deal_id is required.");
     }
-    if (typeof price !== "number" || price < 0) {
-      return validationError("price must be a non-negative number.");
+    // null means genuinely unknown (see the client contract comment
+    // above) -- not the same as omitted/undefined, which would leave
+    // the column untouched instead.
+    if (price !== null && (typeof price !== "number" || price < 0)) {
+      return validationError("price must be null or a non-negative number.");
     }
-    if (typeof original_price !== "number" || original_price < 0) {
-      return validationError("original_price must be a non-negative number.");
+    if (original_price !== null && (typeof original_price !== "number" || original_price < 0)) {
+      return validationError("original_price must be null or a non-negative number.");
     }
     if (typeof price_unit !== "string" || !PRICE_UNITS.includes(price_unit as DealPriceUnit)) {
       return validationError(`price_unit must be one of: ${PRICE_UNITS.join(", ")}.`);
@@ -146,6 +179,22 @@ export default {
     if (typeof quantity_estimated !== "boolean") {
       return validationError("quantity_estimated must be a boolean.");
     }
+    if (reject !== undefined && typeof reject !== "boolean") {
+      return validationError("reject must be a boolean.");
+    }
+
+    // A genuinely unknown price/original_price means this deal isn't
+    // ready to show a shopper -- downgrade it off 'approved' so it
+    // stops passing the "approved curated_deals are publicly readable"
+    // RLS policy (see the comment at the top of this file). reject
+    // takes priority when both apply (rejecting is a stronger, final
+    // signal than "pricing incomplete").
+    const statusUpdate =
+      reject === true
+        ? { status: "rejected" as const, reviewed_by: "dev-deals-screen", reviewed_at: new Date().toISOString() }
+        : price === null || original_price === null
+          ? { status: "pending" as const }
+          : {};
 
     // ctx.supabaseAdmin bypasses RLS -- needed since curated_deals only
     // grants public SELECT (scoped to status='approved'), never INSERT/
@@ -156,13 +205,14 @@ export default {
     const { data: updated, error } = await ctx.supabaseAdmin
       .from("curated_deals")
       .update({
-        price,
-        original_price,
+        price: price as number | null,
+        original_price: original_price as number | null,
         price_unit: price_unit as DealPriceUnit,
         package_weight_g: package_weight_g as number | null,
         package_weight_g_source: package_weight_g_source as PackageWeightSource | null,
         quantity_estimated,
         pricing_reviewed_at: new Date().toISOString(),
+        ...statusUpdate,
       })
       .eq("id", deal_id)
       .select()

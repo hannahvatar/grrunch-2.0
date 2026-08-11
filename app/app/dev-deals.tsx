@@ -111,7 +111,15 @@ export default function DevDealsScreen() {
         deal={selectedDeal}
         onBack={() => setSelectedId(null)}
         onSaved={(updated) => {
-          setDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+          // A rejected deal is no longer 'approved' -- drop it from
+          // this list entirely (it was only ever fetched
+          // status='approved') rather than leaving a stale rejected
+          // row visible until the next full reload.
+          setDeals((prev) =>
+            updated.status === 'approved'
+              ? prev.map((d) => (d.id === updated.id ? updated : d))
+              : prev.filter((d) => d.id !== updated.id)
+          );
           setSelectedId(null);
         }}
       />
@@ -177,7 +185,10 @@ export default function DevDealsScreen() {
               <Text style={styles.dealRowStore}>{deal.chain_name}</Text>
               <View style={styles.dealRowPriceLine}>
                 <Text style={styles.dealRowPrice}>
-                  ${deal.price.toFixed(2)} <Text style={styles.dealRowOriginal}>${deal.original_price.toFixed(2)}</Text>
+                  {deal.price != null ? `$${deal.price.toFixed(2)}` : 'Unknown'}{' '}
+                  <Text style={styles.dealRowOriginal}>
+                    {deal.original_price != null ? `$${deal.original_price.toFixed(2)}` : 'Unknown'}
+                  </Text>
                 </Text>
                 <View style={styles.unitBadge}>
                   <Text style={styles.unitBadgeText}>{deal.price_unit}</Text>
@@ -205,8 +216,10 @@ interface DealEditViewProps {
 }
 
 function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
-  const [price, setPrice] = useState(String(deal.price));
-  const [originalPrice, setOriginalPrice] = useState(String(deal.original_price));
+  const [price, setPrice] = useState(deal.price != null ? String(deal.price) : '');
+  const [priceUnknown, setPriceUnknown] = useState(deal.price === null);
+  const [originalPrice, setOriginalPrice] = useState(deal.original_price != null ? String(deal.original_price) : '');
+  const [originalPriceUnknown, setOriginalPriceUnknown] = useState(deal.original_price === null);
   const [priceUnit, setPriceUnit] = useState<PriceUnit>(deal.price_unit);
   const [packageWeightG, setPackageWeightG] = useState(deal.package_weight_g != null ? String(deal.package_weight_g) : '');
   const [packageWeightSource, setPackageWeightSource] = useState<PackageWeightSource | null>(
@@ -246,42 +259,56 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
 
   function swapPrices() {
     setPrice(originalPrice);
+    setPriceUnknown(originalPriceUnknown);
     setOriginalPrice(price);
+    setOriginalPriceUnknown(priceUnknown);
   }
 
-  async function handleSave() {
-    setSaveError(null);
-    const priceNum = parseFloat(price);
-    const originalPriceNum = parseFloat(originalPrice);
+  // Shared by both Save and Reject -- a reject action still saves
+  // whatever price/quantity fields were filled in at the same time
+  // (see the Edge Function's own comment), so both buttons go through
+  // the same validation/body-building, differing only in the trailing
+  // `reject` flag.
+  function buildBody(): { body: Record<string, unknown> } | { error: string } {
+    const priceNum = priceUnknown ? null : parseFloat(price);
+    const originalPriceNum = originalPriceUnknown ? null : parseFloat(originalPrice);
     const weightNum = packageWeightG.trim() === '' ? null : parseFloat(packageWeightG);
 
-    if (Number.isNaN(priceNum) || priceNum < 0) {
-      setSaveError('Price must be a non-negative number.');
-      return;
+    if (priceNum !== null && (Number.isNaN(priceNum) || priceNum < 0)) {
+      return { error: 'Price must be blank/unknown or a non-negative number.' };
     }
-    if (Number.isNaN(originalPriceNum) || originalPriceNum < 0) {
-      setSaveError('Original price must be a non-negative number.');
-      return;
+    if (originalPriceNum !== null && (Number.isNaN(originalPriceNum) || originalPriceNum < 0)) {
+      return { error: 'Original price must be blank/unknown or a non-negative number.' };
     }
     if (weightNum !== null && (Number.isNaN(weightNum) || weightNum <= 0)) {
-      setSaveError('Package weight must be blank or a positive number.');
+      return { error: 'Package weight must be blank or a positive number.' };
+    }
+
+    return {
+      body: {
+        deal_id: deal.id,
+        price: priceNum,
+        original_price: originalPriceNum,
+        price_unit: priceUnit,
+        package_weight_g: weightNum,
+        package_weight_g_source: weightNum === null ? null : packageWeightSource,
+        quantity_estimated: quantityEstimated,
+      },
+    };
+  }
+
+  async function submit(extra: Record<string, unknown>) {
+    setSaveError(null);
+    const built = buildBody();
+    if ('error' in built) {
+      setSaveError(built.error);
       return;
     }
 
     setSaving(true);
     const { data, error: invokeError } = await supabase.functions.invoke<{ deal?: CuratedDeal; error?: string }>(
       'update-curated-deal-pricing',
-      {
-        body: {
-          deal_id: deal.id,
-          price: priceNum,
-          original_price: originalPriceNum,
-          price_unit: priceUnit,
-          package_weight_g: weightNum,
-          package_weight_g_source: weightNum === null ? null : packageWeightSource,
-          quantity_estimated: quantityEstimated,
-        },
-      }
+      { body: { ...built.body, ...extra } }
     );
     setSaving(false);
 
@@ -291,6 +318,12 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
     }
     onSaved(data.deal);
   }
+
+  const handleSave = () => submit({});
+  // "Not a good deal, or any [other reason]" -- a general-purpose
+  // reject, no reason required. Sets status='rejected' server-side,
+  // which immediately excludes it from refresh_recipe_deal_tags().
+  const handleReject = () => submit({ reject: true });
 
   return (
     <View style={styles.container}>
@@ -305,10 +338,34 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
         <Text style={styles.editStore}>{deal.chain_name}</Text>
 
         <Text style={styles.fieldLabel}>Price</Text>
-        <InputField value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0.00" />
+        <InputField
+          value={priceUnknown ? '' : price}
+          onChangeText={setPrice}
+          keyboardType="decimal-pad"
+          placeholder={priceUnknown ? 'Unknown' : '0.00'}
+          disabled={priceUnknown}
+        />
+        <Pressable style={styles.filterRow} onPress={() => setPriceUnknown((v) => !v)}>
+          <View style={[styles.checkbox, priceUnknown && styles.checkboxChecked]}>
+            {priceUnknown && <CheckIcon size={12} color="#fff" />}
+          </View>
+          <Text style={styles.filterLabel}>Price is unknown</Text>
+        </Pressable>
 
         <Text style={styles.fieldLabel}>Original price</Text>
-        <InputField value={originalPrice} onChangeText={setOriginalPrice} keyboardType="decimal-pad" placeholder="0.00" />
+        <InputField
+          value={originalPriceUnknown ? '' : originalPrice}
+          onChangeText={setOriginalPrice}
+          keyboardType="decimal-pad"
+          placeholder={originalPriceUnknown ? 'Unknown' : '0.00'}
+          disabled={originalPriceUnknown}
+        />
+        <Pressable style={styles.filterRow} onPress={() => setOriginalPriceUnknown((v) => !v)}>
+          <View style={[styles.checkbox, originalPriceUnknown && styles.checkboxChecked]}>
+            {originalPriceUnknown && <CheckIcon size={12} color="#fff" />}
+          </View>
+          <Text style={styles.filterLabel}>Original price is unknown</Text>
+        </Pressable>
 
         <Pressable style={styles.swapButton} onPress={swapPrices}>
           <Text style={styles.swapButtonText}>Swap price ↔ original price</Text>
@@ -348,9 +405,22 @@ function DealEditView({ deal, onBack, onSaved }: DealEditViewProps) {
 
         {saveError && <Text style={styles.saveError}>{saveError}</Text>}
 
-        <Pressable style={[styles.saveButton, saving && styles.saveButtonDisabled]} onPress={handleSave} disabled={saving}>
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Save</Text>}
-        </Pressable>
+        <View style={styles.actionRow}>
+          <Pressable
+            style={[styles.rejectButton, saving && styles.saveButtonDisabled]}
+            onPress={handleReject}
+            disabled={saving}
+          >
+            <Text style={styles.rejectButtonText}>Reject</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Save</Text>}
+          </Pressable>
+        </View>
       </ScrollView>
     </View>
   );
@@ -430,14 +500,29 @@ const styles = StyleSheet.create({
   },
   swapButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   saveError: { color: '#D0342C', fontSize: 14 },
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   saveButton: {
+    flex: 1,
     backgroundColor: INK,
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
   },
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // "Not a good deal, or any other reason" -- a general-purpose reject,
+  // no reason required. Outlined (not filled) so it doesn't read as
+  // the row's primary action -- Save still is.
+  rejectButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#D0342C',
+    borderRadius: 999,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectButtonText: { color: '#D0342C', fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });

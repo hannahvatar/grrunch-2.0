@@ -52,10 +52,10 @@ export type Database = {
           image_url: string | null
           item_name: string
           keyword_matches: string[]
-          original_price: number
+          original_price: number | null
           package_weight_g: number | null
           package_weight_g_source: string | null
-          price: number
+          price: number | null
           price_unit: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at: string | null
           product_url: string
@@ -76,10 +76,10 @@ export type Database = {
           image_url?: string | null
           item_name: string
           keyword_matches?: string[]
-          original_price: number
+          original_price?: number | null
           package_weight_g?: number | null
           package_weight_g_source?: string | null
-          price: number
+          price?: number | null
           price_unit?: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at?: string | null
           product_url: string
@@ -100,10 +100,10 @@ export type Database = {
           image_url?: string | null
           item_name?: string
           keyword_matches?: string[]
-          original_price?: number
+          original_price?: number | null
           package_weight_g?: number | null
           package_weight_g_source?: string | null
-          price?: number
+          price?: number | null
           price_unit?: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at?: string | null
           product_url?: string
