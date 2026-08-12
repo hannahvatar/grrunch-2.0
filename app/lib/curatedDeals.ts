@@ -159,13 +159,17 @@ export function groupDealsByCategory(deals: Deal[]): Map<string, Deal[]> {
 }
 
 const STOPWORDS = new Set(['with', 'from', 'each', 'selected', 'variety', 'varieties', 'fresh', 'frozen']);
+// See 20260812110000_keep_short_words.sql -- narrow allowlist of
+// <=3-char words proven to cause a real wrong match once dropped
+// (e.g. "Sesame oil" -> bare "sesame" -> matches "Sesame seeds").
+const KEEP_SHORT_WORDS = new Set(['soy', 'oil']);
 
 function normalizeWords(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .split(/\s+/)
-    .filter((word) => word.length > 3 && !STOPWORDS.has(word));
+    .filter((word) => (word.length > 3 || KEEP_SHORT_WORDS.has(word)) && !STOPWORDS.has(word));
 }
 
 // Finds which store carries an ingredient this week, for grocery-list
