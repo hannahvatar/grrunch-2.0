@@ -14,12 +14,12 @@ export default function TabsLayout() {
         options={{ title: 'Meals', tabBarIcon: ({ color }) => <CakeIcon size={22} color={color} /> }}
       />
       <Tabs.Screen
-        name="grocery"
-        options={{ title: 'Grocery', tabBarIcon: ({ color }) => <ShoppingBagIcon size={22} color={color} /> }}
+        name="best-deals"
+        options={{ title: 'Weekly Deals', tabBarIcon: ({ color }) => <TagIcon size={22} color={color} /> }}
       />
       <Tabs.Screen
-        name="best-deals"
-        options={{ title: 'Best Deals', tabBarIcon: ({ color }) => <TagIcon size={22} color={color} /> }}
+        name="grocery"
+        options={{ title: 'My list', tabBarIcon: ({ color }) => <ShoppingBagIcon size={22} color={color} /> }}
       />
       <Tabs.Screen
         name="profile"
