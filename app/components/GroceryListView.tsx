@@ -519,7 +519,8 @@ const styles = StyleSheet.create({
   // space the button doesn't need (flexShrink so it wraps instead of
   // pushing the button off-row), button itself never shrinks.
   quantityNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  quantityNote: { flex: 1, flexShrink: 1, fontSize: 12, color: '#767676', lineHeight: 17 },
+  // INK, not muted -- Anabelle's explicit call (was #767676).
+  quantityNote: { flex: 1, flexShrink: 1, fontSize: 12, color: INK, lineHeight: 17 },
   // Same tertiary treatment as editButton/removeMealButton (white fill,
   // INK border) but a pill (borderRadius: 999) rather than a circle,
   // since this one has a text label, not just an icon.
