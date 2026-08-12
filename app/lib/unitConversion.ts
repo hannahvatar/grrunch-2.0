@@ -43,6 +43,9 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // midpoint. See staple_densities table (Supabase) for the
   // server-side twin of this entry -- keep both in sync.
   'grated parmesan': 90,
+  // ~21 g/cup for loosely packed fresh basil leaves -- see
+  // 20260812070000_basil_density.sql for the server-side twin.
+  basil: 21,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -141,6 +144,26 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
   const qty = parseQuantity(quantity);
   let t = (unitText ?? '').trim().toLowerCase();
   let num: number;
+
+  // Parenthetical weight/volume hint, e.g. "block (200g)" -> 200, 'g' --
+  // mirrors supabase/migrations/20260812060000_parenthetical_weight_hint.sql
+  // exactly. Checked before anything else -- when present it's always the
+  // real, specific figure, regardless of what word it's attached to
+  // ("block" itself isn't a recognized unit and would otherwise fall all
+  // the way to the 'each' catch-all with amount=1, un-scalable against a
+  // gram-denominated reference -- confirmed silently zeroing both this
+  // recipe's per-ingredient "$X avg." display AND its server-side price
+  // until this fix, for Feta cheese/Firm tofu's "block (Ng)" units).
+  const parenMatch = t.match(/\(\s*([\d.]+)\s*(kilograms?|kg|grams?|gr|g|litres?|liters?|l|millilitres?|milliliters?|ml)\s*\)/);
+  if (parenMatch) {
+    const parenNum = parseFloat(parenMatch[1]);
+    const parenUnit = parenMatch[2];
+    const parenQty = Number.isNaN(qty) ? 1 : qty;
+    if (/^(kilograms?|kg)$/.test(parenUnit)) return { amount: parenQty * parenNum * 1000, baseUnit: 'g' };
+    if (/^(litres?|liters?|l)$/.test(parenUnit)) return { amount: parenQty * parenNum * 1000, baseUnit: 'ml' };
+    if (/^(millilitres?|milliliters?|ml)$/.test(parenUnit)) return { amount: parenQty * parenNum, baseUnit: 'ml' };
+    return { amount: parenQty * parenNum, baseUnit: 'g' };
+  }
 
   if (t.startsWith('per ')) {
     t = t.slice(4);
