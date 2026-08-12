@@ -49,6 +49,12 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // ~96 g/cup for grated ginger -- see 20260812090000_ginger_density.sql
   // for the server-side twin.
   ginger: 96,
+  // ~100 g/cup for ground black pepper -- see
+  // 20260812130000_black_pepper_density.sql for the server-side twin.
+  'black pepper': 100,
+  // ~145 g/cup for frozen peas -- see
+  // 20260812140000_frozen_peas_density.sql for the server-side twin.
+  'frozen peas': 145,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -220,6 +226,9 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // One pack is 85g -- see 20260812100000_ramen_avg_weight.sql for the
   // server-side twin.
   'instant ramen noodles': 85,
+  // One box is 225g -- see 20260812120000_kraft_dinner_avg_weight.sql
+  // for the server-side twin.
+  'kraft dinner': 225,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns

@@ -73,6 +73,25 @@ export interface OptionalAddition {
   description: string;
 }
 
+// A standalone prep technique linked from one of this recipe's own
+// ingredients (e.g. "Pork belly" links to a basic crispy pork belly
+// method) -- rendered as its own section at the bottom of the recipe
+// page, with the matching ingredient in "What you'll need" acting as a
+// jump link to it. Lives in a shared `sub_recipes` table (see
+// lib/subRecipes.ts), matched by ingredient name -- authored once,
+// reusable by any future recipe naming a matching ingredient, same
+// name-matching philosophy as every other reference table in this app.
+// Purely informational: `ingredients` here are plain strings, never
+// priced/matched against anything, completely separate from the main
+// recipe's own priced `ingredients` array above.
+export interface SubRecipe {
+  title: string;
+  matchIngredientName: string;
+  description: string;
+  ingredients: string[];
+  instructions: string[];
+}
+
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the
 // screens that render it (Meals tab, recipe.tsx, Profile's saved recipes).
 export interface Meal {
@@ -87,4 +106,8 @@ export interface Meal {
   ingredients: IngredientLine[];
   instructions: string[];
   optionalAdditions: OptionalAddition[];
+  // Only the sub-recipes actually relevant to THIS meal's own
+  // ingredients (cross-referenced by name in lib/recipes.ts) -- not
+  // every sub-recipe in the shared table.
+  subRecipes: SubRecipe[];
 }

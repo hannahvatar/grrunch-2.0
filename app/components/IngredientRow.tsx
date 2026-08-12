@@ -27,7 +27,6 @@ import {
   isGreatReferenceValue,
   isReferencePriced,
   showsRealDiscount,
-  toTitleCase,
 } from '../lib/curatedDeals';
 import type { DealTag } from '../lib/mealData';
 import { ArrowOutwardIcon } from './MaterialSymbols';
@@ -114,6 +113,16 @@ interface IngredientRowProps {
   // it for this specific item -- it doesn't know or care how the
   // resulting edit gets applied.
   onEditQuantity?: () => void;
+  // Recipe-page-only -- when this ingredient's name matches a
+  // sub-recipe's matchIngredientName (see recipe.tsx), the substring of
+  // the (already-lowercased) display text equal to linkedText renders
+  // as an underlined, pressable jump link to that sub-recipe's section
+  // instead of plain text. Case-insensitive match against `text`;
+  // rendered substring keeps the row's own lowercase styling. Ignored
+  // for stackedLayout/deal rows -- only ever passed alongside bulleted
+  // staple rows in practice (see recipe.tsx).
+  linkedText?: string;
+  onLinkedTextPress?: () => void;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -136,21 +145,24 @@ export function IngredientRow({
   bulleted,
   onRemove,
   onEditQuantity,
+  linkedText,
+  onLinkedTextPress,
 }: IngredientRowProps) {
   // stackedLayout only -- text is always "<quantity> <rest of
   // description>" for a deal item (e.g. "1 package Prime raised...",
   // see lib/recipes.ts describeDealPackage/describeQuantityText, which
   // always lead with the quantity token). Split the leading token out
   // to show standalone in an ellipse badge on the price row below,
-  // rather than repeating it at the front of the name -- the remaining
-  // description is title-cased (same toTitleCase treatment MealCard.tsx
-  // already applies to flyer-sourced deal names, which come through
-  // however the store printed them, often ALL CAPS or, like here,
-  // lowercase mid-sentence -- "package Prime raised..." ->
-  // "Package Prime Raised...").
+  // rather than repeating it at the front of the name.
   const [dealQuantityBase, ...dealDescriptionWords] = text.split(' ');
   const dealDescriptionRest = dealDescriptionWords.join(' ');
-  const dealDescription = dealDescriptionRest ? toTitleCase(dealDescriptionRest) : text;
+  // Ingredient list reads lowercase throughout (Anabelle's call) --
+  // was title-cased here specifically (same toTitleCase treatment
+  // MealCard.tsx still applies to flyer-sourced deal names elsewhere,
+  // which come through however the store printed them, often ALL CAPS
+  // or lowercase mid-sentence) but that's no longer the house style
+  // for this list specifically.
+  const dealDescription = (dealDescriptionRest || text).toLowerCase();
   // The badge below folds the servings stepper's batch multiplier
   // directly into this number (rather than showing it as a separate
   // "×2" badge alongside a static "1") -- text itself never reflects
@@ -204,10 +216,32 @@ export function IngredientRow({
     </View>
   );
 
+  // Splits the lowercased name around linkedText (case-insensitive) and
+  // renders the matched substring as its own pressable, underlined
+  // nested Text -- standard RN inline-pressable-text pattern. Falls
+  // back to a single plain Text when there's no linkedText, or it
+  // isn't actually present in this row's name (e.g. every OTHER
+  // ingredient on the page, which never receives linkedText's matching
+  // sub-recipe at all -- see recipe.tsx).
+  const lowerText = text.toLowerCase();
+  const linkIndex = linkedText ? lowerText.indexOf(linkedText.toLowerCase()) : -1;
+  const itemNameContent =
+    linkIndex >= 0 && linkedText ? (
+      <>
+        {lowerText.slice(0, linkIndex)}
+        <Text style={styles.itemNameLink} onPress={onLinkedTextPress}>
+          {lowerText.slice(linkIndex, linkIndex + linkedText.length)}
+        </Text>
+        {lowerText.slice(linkIndex + linkedText.length)}
+      </>
+    ) : (
+      lowerText
+    );
+
   const infoEl = (
     <View style={styles.itemInfo}>
       <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
-        {text}
+        {itemNameContent}
       </Text>
       {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
       {showStoreLink && dealTag && (
@@ -528,6 +562,10 @@ const styles = StyleSheet.create({
   // its own conditional variant the way the shared itemName Text does.
   itemNameDeal: { fontSize: 16 },
   itemNameChecked: { textDecorationLine: 'line-through', color: '#aaa' },
+  // Recipe-page-only -- an ingredient name naming a sub-recipe (e.g.
+  // "pork belly" -> Basic Crispy Pork Belly), rendered inline within
+  // itemName as a jump link to that section at the bottom of the page.
+  itemNameLink: { textDecorationLine: 'underline' },
   itemStore: { fontSize: 12, color: '#767676', marginTop: 2 },
   flyerLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
   flyerLink: {

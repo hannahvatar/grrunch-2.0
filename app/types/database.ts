@@ -479,6 +479,36 @@ export type Database = {
         }
         Relationships: []
       }
+      sub_recipes: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          ingredients: Json
+          instructions: Json
+          match_ingredient_name: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          ingredients?: Json
+          instructions?: Json
+          match_ingredient_name: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          ingredients?: Json
+          instructions?: Json
+          match_ingredient_name?: string
+          title?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string

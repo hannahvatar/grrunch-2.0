@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
@@ -29,6 +29,18 @@ export default function RecipeScreen() {
   // different recipe is opened, so a stale override from a previous
   // recipe never lingers.
   const [servingsOverride, setServingsOverride] = useState<number | null>(null);
+  // Sub-recipe jump links (e.g. "pork belly" -> Basic Crispy Pork Belly)
+  // -- offsets captured per-section via onLayout as they render at the
+  // bottom of the page, keyed by title since that's already unique
+  // (sub_recipes.match_ingredient_name is a unique column, so titles
+  // never collide either). scrollViewRef targets the page's own outer
+  // ScrollView, the same one everything else on this screen lives in.
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [subRecipeOffsets, setSubRecipeOffsets] = useState<Record<string, number>>({});
+  function scrollToSubRecipe(title: string) {
+    const y = subRecipeOffsets[title];
+    if (y !== undefined) scrollViewRef.current?.scrollTo({ y, animated: true });
+  }
 
   useEffect(() => {
     if (!id) {
@@ -96,7 +108,7 @@ export default function RecipeScreen() {
       >
         <XMarkIcon size={18} color={INK} />
       </Pressable>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerText}>
           <Text style={styles.title}>{meal.name}</Text>
           <View style={styles.subtitleRow}>
@@ -246,14 +258,25 @@ export default function RecipeScreen() {
                   <Text style={[styles.innerSectionTitleFirst, styles.headingRowTextReset]}>From your pantry</Text>
                 </View>
                 <View style={styles.staplesList}>
-                  {stapleIngredients.map((ingredient, index) => (
-                    <IngredientRow
-                      key={index}
-                      text={ingredient.text}
-                      estimatedPrice={ingredient.estimatedPrice}
-                      bulleted
-                    />
-                  ))}
+                  {stapleIngredients.map((ingredient, index) => {
+                    // At most one match -- match_ingredient_name is
+                    // unique in the sub_recipes table (see lib/
+                    // subRecipes.ts / the migration), so an ingredient
+                    // can never ambiguously link to two sections.
+                    const subRecipe = meal.subRecipes.find(
+                      (sr) => sr.matchIngredientName.toLowerCase() === ingredient.name.toLowerCase()
+                    );
+                    return (
+                      <IngredientRow
+                        key={index}
+                        text={ingredient.text}
+                        estimatedPrice={ingredient.estimatedPrice}
+                        bulleted
+                        linkedText={subRecipe ? ingredient.name : undefined}
+                        onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
+                      />
+                    );
+                  })}
                 </View>
               </View>
             )}
@@ -288,6 +311,43 @@ export default function RecipeScreen() {
             </View>
           </>
         )}
+
+        {/* Standalone prep techniques linked from an ingredient above
+            (see the "pork belly" example this was built for) -- one
+            section per relevant sub-recipe, at the very bottom of the
+            page. onLayout captures each section's own Y offset within
+            the ScrollView the moment it renders, so scrollToSubRecipe
+            (triggered by tapping the linked ingredient) has something
+            to scroll to; no offset is known until then, so the jump
+            link is a no-op on the very first render frame only. */}
+        {meal.subRecipes.map((subRecipe) => (
+          <View
+            key={subRecipe.title}
+            style={styles.subRecipeCard}
+            onLayout={(e) =>
+              setSubRecipeOffsets((prev) => ({ ...prev, [subRecipe.title]: e.nativeEvent.layout.y }))
+            }
+          >
+            <Text style={styles.subRecipeTitle}>{subRecipe.title}</Text>
+            <Text style={styles.subRecipeDescription}>{subRecipe.description}</Text>
+            <Text style={styles.innerSectionTitleFirst}>Ingredients</Text>
+            <View style={styles.staplesList}>
+              {subRecipe.ingredients.map((ingredientText, index) => (
+                <Text key={index} style={styles.subRecipeBullet}>
+                  •  {ingredientText}
+                </Text>
+              ))}
+            </View>
+            <Text style={[styles.innerSectionTitleFirst, styles.subRecipeInstructionsHeading]}>Instructions</Text>
+            <View style={styles.subRecipeInstructionsList}>
+              {subRecipe.instructions.map((step, index) => (
+                <Text key={index} style={styles.listItem}>
+                  {index + 1}.  {step}
+                </Text>
+              ))}
+            </View>
+          </View>
+        ))}
       </ScrollView>
     </View>
   );
@@ -492,5 +552,33 @@ const styles = StyleSheet.create({
   // reads as "here's an idea" rather than "here's what to buy."
   optionalList: { gap: 12 },
   optionalText: { fontSize: 15, lineHeight: 24, color: '#333' },
+  // Sub-recipe sections (e.g. "Basic Crispy Pork Belly") at the very
+  // bottom of the page, jump-linked from a matching ingredient above --
+  // title, description, ingredients, and instructions all share ONE
+  // white "modal treatment" card (Anabelle's call), same border/radius
+  // language as ingredientsModalCard/instructionsCard elsewhere on this
+  // page, rather than the title/description sitting outside it. marginTop
+  // (not a separate outer sectionTitle) is what spaces this card from
+  // whatever section precedes it.
+  subRecipeCard: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 16,
+  },
+  subRecipeTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
+  subRecipeDescription: { fontSize: 15, lineHeight: 22, color: '#333', marginBottom: 12 },
+  subRecipeBullet: { fontSize: 15, color: '#333' },
+  // "Instructions" heading repeats within a sub-recipe section (also
+  // used once already, above, for the main recipe's own) -- extra top
+  // margin so it doesn't sit flush against the ingredients list right
+  // above it.
+  subRecipeInstructionsHeading: { marginTop: 12 },
+  // Plain list now (was its own nested bordered/scrollable card) --
+  // sitting inside subRecipeCard already, so a 2nd nested white/
+  // bordered box on top of that would read as double-carded.
+  subRecipeInstructionsList: { gap: 4 },
   notFound: { padding: 24, fontSize: 15, color: '#888' },
 });
