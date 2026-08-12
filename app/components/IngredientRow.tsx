@@ -1,5 +1,25 @@
+import type { ReactNode } from 'react';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckIcon } from 'react-native-heroicons/outline';
+import { PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
+// @deprecated (upstream) in favor of the Reanimated-based rewrite --
+// still fully functional in gesture-handler 2.28 (no reanimated
+// dependency needed, confirmed), just flagged for a future migration
+// once react-native-reanimated is already in this project for some
+// other reason. Not worth adding a second new native dependency (plus
+// its own babel plugin/config changes, a much bigger blast radius)
+// just to pre-empt a deprecation warning.
+//
+// GesturePressable (aliased) is gesture-handler's OWN Pressable, not
+// react-native's -- needed specifically for the Remove button nested
+// inside Swipeable below. Confirmed live: a plain react-native
+// Pressable there never fires onPress on web (the tap gets consumed
+// by gesture-handler's own pointer-capture on the Swipeable ancestor
+// before it reaches an ordinary RN Pressable's touch responder) --
+// gesture-handler's own Pressable is built to integrate with that
+// responder system correctly. Every other Pressable in this file
+// stays the plain react-native one; only content living inside
+// Swipeable needs this.
+import { Swipeable, Pressable as GesturePressable } from 'react-native-gesture-handler';
 
 import {
   formatComparePriceLabel,
@@ -78,6 +98,22 @@ interface IngredientRowProps {
   // per-item image at all (the recipe page's staple/pantry list),
   // where a bare name+price row otherwise reads as an unmarked list.
   bulleted?: boolean;
+  // Grocery-only, like checked/onToggleCheck above -- the recipe page
+  // never passes these, so it stays view-only.
+  //
+  // Swipe-left-to-remove (Anabelle's call, replacing an earlier
+  // trailing X icon) -- wraps the whole row in Swipeable when present,
+  // revealing a red Remove action; onRemove owns actually dropping the
+  // item from whatever list state holds it (see GroceryListView.tsx's
+  // removedKeys), this component only ever asks, never assumes.
+  onRemove?: () => void;
+  // Pencil icon next to the item's quantity, opening a shared bottom
+  // sheet (GroceryListView.tsx owns the sheet itself, one instance for
+  // the whole screen rather than one per row) with a stepper + numeric
+  // keyboard input. This component only ever asks the parent to open
+  // it for this specific item -- it doesn't know or care how the
+  // resulting edit gets applied.
+  onEditQuantity?: () => void;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -98,6 +134,8 @@ export function IngredientRow({
   showStoreLink,
   stackedLayout,
   bulleted,
+  onRemove,
+  onEditQuantity,
 }: IngredientRowProps) {
   // stackedLayout only -- text is always "<quantity> <rest of
   // description>" for a deal item (e.g. "1 package Prime raised...",
@@ -127,6 +165,7 @@ export function IngredientRow({
     !!multiplier && multiplier > 1 && !Number.isNaN(dealQuantityBaseNum)
       ? String(Math.round(dealQuantityBaseNum * multiplier * 100) / 100)
       : dealQuantityBase;
+
   const imageEl = dealTag?.imageUrl && (
     <View
       style={[styles.itemImageBox, { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 }]}
@@ -307,8 +346,8 @@ export function IngredientRow({
   );
 
   // Stacked: image + dealInfoEl (name minus its leading quantity token,
-  // store, link, meta) + the quantity ellipse badge all share the top
-  // row now -- badge last, so it lands top-right (stackedTopRow's
+  // store, link, meta) + the quantity badge all share the top row now
+  // -- badge last, so it lands top-right (stackedTopRow's
   // alignItems: flex-start keeps it top-aligned, and it's the row's
   // last fixed-width child after the flex: 1 description soaks up the
   // space between image and badge). Then the price row wraps
@@ -317,51 +356,89 @@ export function IngredientRow({
   // Sale This Week" card, or the Grocery list's per-store card), and a
   // border per item on top of that would read as nested cards.
   //
-  // Checkbox is optional here (same onToggleCheck-gated pattern as the
-  // default layout below) -- the recipe page never passes it (view-
-  // only), but the Grocery list does when it adopts this same visual
-  // treatment for its own deal-tagged rows, since checking off a
-  // purchased item is core to what that screen is for.
+  // No checkbox control (see the content-building block below for why)
+  // -- the recipe page never passed onToggleCheck anyway (view-only),
+  // and the Grocery list now toggles checked by tapping the item's own
+  // info block instead.
+  // Grocery-only -- shows next to the quantity in either layout,
+  // opens GroceryListView's single shared bottom sheet for this item.
+  // Styled as a tertiary icon button (light grey fill, rounded square)
+  // -- Anabelle's call, was a bare icon with just padding before -- and
+  // INK (was muted #999) to actually read as a real, tappable control
+  // rather than decoration.
+  const editButtonEl = onEditQuantity && (
+    <Pressable style={styles.editButton} onPress={onEditQuantity} hitSlop={8}>
+      <PencilIcon size={13} color={INK} />
+    </Pressable>
+  );
+
+  // No checkbox control anymore (Anabelle's call) -- the tap-to-check
+  // gesture moves to the info block itself instead, wrapped in a
+  // Pressable when onToggleCheck is passed (recipe.tsx never passes
+  // it, so its rows stay fully static/non-pressable, same as before).
+  // The strikethrough (itemNameChecked) already reads off `checked`
+  // regardless of what triggers it, so nothing about that changes.
+  let content: ReactNode;
   if (stackedLayout) {
-    return (
+    content = (
       <View style={styles.dealItemRow}>
         <View style={styles.stackedTopRow}>
-          {onToggleCheck && (
-            <Pressable
-              style={[styles.checkbox, checked && styles.checkboxChecked]}
-              onPress={onToggleCheck}
-              hitSlop={8}
-            >
-              {checked && <CheckIcon size={12} color="#fff" />}
-            </Pressable>
-          )}
           {imageEl}
-          {dealInfoEl}
+          {onToggleCheck ? (
+            <Pressable style={styles.itemInfo} onPress={onToggleCheck}>
+              {dealInfoEl}
+            </Pressable>
+          ) : (
+            dealInfoEl
+          )}
           <View style={styles.dealQuantityBadge}>
             <Text style={styles.dealQuantityBadgeText}>{dealQuantity}</Text>
           </View>
+          {editButtonEl}
         </View>
         {dealPriceRowEl}
       </View>
     );
+  } else {
+    content = (
+      <View style={styles.itemRow}>
+        {bulleted && <Text style={styles.bulletMarker}>•</Text>}
+        {imageEl}
+        {onToggleCheck ? (
+          <Pressable style={styles.itemInfo} onPress={onToggleCheck}>
+            {infoEl}
+          </Pressable>
+        ) : (
+          infoEl
+        )}
+        {editButtonEl}
+        {priceEl}
+      </View>
+    );
   }
 
+  // Grocery-only -- swipe-left-to-remove (Swipeable is a no-op wrapper
+  // when onRemove isn't passed, so recipe.tsx's rows are never
+  // swipeable at all). renderRightActions reveals a red "Remove" panel
+  // as the row is dragged; tapping IT (not the drag itself) actually
+  // calls onRemove -- a full swipe just reveals the action rather than
+  // instant-deleting on overswipe, so an accidental far swipe can't
+  // silently drop an item.
+  if (!onRemove) {
+    return content;
+  }
   return (
-    <View style={styles.itemRow}>
-      {onToggleCheck && (
-        <Pressable
-          style={[styles.checkbox, checked && styles.checkboxChecked]}
-          onPress={onToggleCheck}
-          hitSlop={8}
-        >
-          {checked && <CheckIcon size={12} color="#fff" />}
-        </Pressable>
+    <Swipeable
+      renderRightActions={() => (
+        <GesturePressable style={styles.removeAction} onPress={onRemove}>
+          <TrashIcon size={18} color="#fff" />
+          <Text style={styles.removeActionText}>Remove</Text>
+        </GesturePressable>
       )}
-      {bulleted && <Text style={styles.bulletMarker}>•</Text>}
-      {imageEl}
-      {infoEl}
-      {priceEl}
-    </View>
+      overshootRight={false}
+    >
+      {content}
+    </Swipeable>
   );
 }
 
@@ -379,34 +456,60 @@ const styles = StyleSheet.create({
   // Row 2: just the price+tag group now (quantity badge moved up to
   // stackedTopRow) -- right-aligned as the row's only content.
   dealPriceRow: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', rowGap: 6 },
-  // Circular/pill outline badge for the bare quantity number -- same
-  // white-fill/black-border language as the app's other circular
-  // badges (closeButton, stepperButton).
+  // Rounded-rectangle outline badge for the bare quantity number --
+  // was a full circle/pill (borderRadius: 13 against a 26px box);
+  // Anabelle's call to make it read as a rectangle instead. Border and
+  // number both muted #767676 (was INK) -- reads as secondary data next
+  // to the INK-stroke editButton beside it, which stays black since
+  // that one's an actual actionable control, not a data display.
   dealQuantityBadge: {
     minWidth: 26,
     height: 26,
     paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#767676',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dealQuantityBadgeText: { fontSize: 13, fontWeight: '400', fontFamily: 'OpenSans_400Regular', color: '#767676' },
+  // Grocery-only -- pencil, sits right next to the quantity in either
+  // layout (stackedTopRow's badge, or the default row's trailing edge
+  // before price). White fill, solid black stroke, fully rounded (an
+  // ellipse/circle at this square size) -- matches the DS's own
+  // "native-hollow-btn" component shape (Anabelle's final call, after a
+  // brief detour through a rounded-square version).
+  editButton: {
+    width: 26,
+    height: 26,
     borderRadius: 13,
+    backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dealQuantityBadgeText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Grocery-only -- the panel revealed by Swipeable's renderRightActions
+  // on a left swipe. Solid red (a genuinely destructive action, unlike
+  // every other muted/INK control on this screen), fills the full
+  // height of whatever row it's attached to (flex: 1 -- Swipeable
+  // renders this alongside the row's own height, not a fixed one).
+  removeAction: {
+    flex: 1,
+    backgroundColor: '#DC2626',
+    borderRadius: 12,
+    marginLeft: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  removeActionText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // Price (+ original, + multiplier) directly beside its own discount/
   // fair-price pill -- one tight group, not spread apart.
   dealPriceTagGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dealPriceLeft: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
   bulletMarker: { fontSize: 15, color: INK },
   // width/height/borderRadius are overridden inline per imageSize.
   // overflow: 'hidden' clips the absolutely-positioned backdrop/

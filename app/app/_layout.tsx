@@ -10,6 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Text, TextInput } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SupportBubble } from '../components/SupportBubble';
@@ -81,6 +82,12 @@ export default function RootLayout() {
   }
 
   return (
+    // Required by react-native-gesture-handler (GroceryListView's
+    // swipe-to-remove uses its Swipeable component) -- without this
+    // root wrapper, gesture handlers anywhere in the tree silently
+    // don't work. Outermost, above SafeAreaProvider, per the library's
+    // own setup docs.
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <AuthProvider>
         <SubscriptionProvider>
@@ -131,5 +138,6 @@ export default function RootLayout() {
       </AuthProvider>
       <StatusBar style="auto" />
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

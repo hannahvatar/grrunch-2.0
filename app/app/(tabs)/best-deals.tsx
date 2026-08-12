@@ -76,7 +76,7 @@ export default function BestDealsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Best Deals</Text>
+        <Text style={styles.title}>Weekly Deals</Text>
         <Text style={styles.subtitle}>
           {deals.length} deal{deals.length === 1 ? '' : 's'} this week · {categories.length} categor
           {categories.length === 1 ? 'y' : 'ies'}
