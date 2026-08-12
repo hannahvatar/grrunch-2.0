@@ -1,3 +1,4 @@
+import { isReferencePriced } from './curatedDeals';
 import type { IngredientLine, Meal } from './mealData';
 import { describeQuantityText } from './unitConversion';
 
@@ -29,7 +30,26 @@ export function sortMealsByName(meals: Meal[]): Meal[] {
   return [...meals].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export type MealSortMode = 'price' | 'alphabetical';
+// A recipe's own average REAL savings % across its deal-tagged
+// ingredients -- "real" meaning a genuine store markdown, not a
+// reference-sourced comparison price (see isReferencePriced();
+// GroceryListView.tsx's avgSavingsPct uses the same exclusion for the
+// same reason: a reference tag's discountPct is a comparison WE made,
+// never a claim the store printed, so it shouldn't count toward "how
+// good a deal is this recipe"). A recipe with no real deal tags at all
+// sorts to the bottom (0%), same as it already reads on the card itself
+// (no discount badge shown).
+function avgRealSavingsPct(meal: Meal): number {
+  const real = meal.dealTags.filter((tag) => !isReferencePriced(tag.originalPriceSource));
+  if (real.length === 0) return 0;
+  return real.reduce((sum, tag) => sum + tag.discountPct, 0) / real.length;
+}
+
+export function sortMealsByBestDeal(meals: Meal[]): Meal[] {
+  return [...meals].sort((a, b) => avgRealSavingsPct(b) - avgRealSavingsPct(a));
+}
+
+export type MealSortMode = 'cheapest' | 'bestDeal';
 
 // Rebuilds a single ingredient's display text for a whole-batch
 // multiplier -- shared by the recipe page's servings stepper

@@ -6,15 +6,22 @@ import { CheckIcon, ChevronDownIcon, LockClosedIcon } from 'react-native-heroico
 import { AccountBanner } from '../../components/AccountBanner';
 import { MealCard } from '../../components/MealCard';
 import type { Meal } from '../../lib/mealData';
-import { type MealSortMode, sortMealsByName, sortMealsByPrice } from '../../lib/mealScaling';
+import { type MealSortMode, sortMealsByBestDeal, sortMealsByPrice } from '../../lib/mealScaling';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedMeals } from '../../lib/selectedMeals';
 import { useSubscription } from '../../lib/subscription';
 
+// "Best Deals" = highest average real savings % across a recipe's own
+// deal-tagged ingredients (sortMealsByBestDeal); "Cheapest" = lowest
+// price/serving first (sortMealsByPrice, unchanged from this dropdown's
+// original single "Best deal" option -- just renamed to what it
+// actually does, since "best deal" was ambiguous between "cheapest"
+// and "biggest markdown"). Replaces the previous price/alphabetical
+// pair -- Anabelle's call, both new options are savings/cost framed.
 const SORT_OPTIONS: { mode: MealSortMode; label: string }[] = [
-  { mode: 'price', label: 'Best deal' },
-  { mode: 'alphabetical', label: 'A to Z' },
+  { mode: 'bestDeal', label: 'Best Deals' },
+  { mode: 'cheapest', label: 'Cheapest' },
 ];
 
 // GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx/stores.tsx's palette.
@@ -49,7 +56,7 @@ const FREE_MEAL_LIMIT = 3;
 // again, since the app's whole value prop is deal-driven meal planning.
 function eligibleMeals(allMeals: Meal[], sortMode: MealSortMode): Meal[] {
   const withDeals = allMeals.filter((m) => m.dealTags.length > 0);
-  return sortMode === 'alphabetical' ? sortMealsByName(withDeals) : sortMealsByPrice(withDeals);
+  return sortMode === 'bestDeal' ? sortMealsByBestDeal(withDeals) : sortMealsByPrice(withDeals);
 }
 
 export default function MealsScreen() {
@@ -59,7 +66,9 @@ export default function MealsScreen() {
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortMode, setSortMode] = useState<MealSortMode>('price');
+  // Default unchanged from before this dropdown's options were renamed
+  // -- was 'price' (now 'cheapest').
+  const [sortMode, setSortMode] = useState<MealSortMode>('cheapest');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   function handleToggleSaved(mealId: string) {
