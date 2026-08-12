@@ -313,15 +313,28 @@ export function IngredientRow({
   // last fixed-width child after the flex: 1 description soaks up the
   // space between image and badge). Then the price row wraps
   // underneath. Plain (no border/card of its own) -- these already sit
-  // inside the recipe page's single "On Sale This Week" bordered card
-  // (ingredientsModalCard), and a border per item on top of that read
-  // as nested cards. No checkbox in this mode -- only the recipe
-  // page's deal items use stackedLayout, and the recipe page never
-  // passes onToggleCheck.
+  // inside a bordered card either way (the recipe page's single "On
+  // Sale This Week" card, or the Grocery list's per-store card), and a
+  // border per item on top of that would read as nested cards.
+  //
+  // Checkbox is optional here (same onToggleCheck-gated pattern as the
+  // default layout below) -- the recipe page never passes it (view-
+  // only), but the Grocery list does when it adopts this same visual
+  // treatment for its own deal-tagged rows, since checking off a
+  // purchased item is core to what that screen is for.
   if (stackedLayout) {
     return (
       <View style={styles.dealItemRow}>
         <View style={styles.stackedTopRow}>
+          {onToggleCheck && (
+            <Pressable
+              style={[styles.checkbox, checked && styles.checkboxChecked]}
+              onPress={onToggleCheck}
+              hitSlop={8}
+            >
+              {checked && <CheckIcon size={12} color="#fff" />}
+            </Pressable>
+          )}
           {imageEl}
           {dealInfoEl}
           <View style={styles.dealQuantityBadge}>

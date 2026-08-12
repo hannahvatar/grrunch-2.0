@@ -68,6 +68,16 @@ SERVICE_ROLE = env("SUPABASE_SERVICE_ROLE_KEY")
 GAPS_TABLE = "Produce Reference Gaps"
 STAPLE_GAPS_TABLE = "Staple Reference Gaps"
 
+# Anabelle's call (2026-08-12): T&T Supermarket's flyer pricing was an 86%
+# rejection rate in review ("the way they display their prices cannot
+# really give me insight if its legit or not") -- dropped as a source
+# entirely for now, not a permanent decision. Deliberately a simple,
+# reversible skip here (not a deeper Airtable-side change) so re-adding
+# T&T later is just removing a name from this set. All 6 previously-
+# approved T&T rows were rejected by hand the same day; this only stops
+# NEW T&T rows from being approved in future weekly syncs.
+EXCLUDED_CHAINS = {"T&T Supermarket"}
+
 # Mirrors normalize_words() in the Postgres function and lib/staplePrices.ts
 # -- same rule everywhere: lowercase, strip punctuation, drop short/generic
 # words, then a subset match rather than exact-string equality.
@@ -103,7 +113,9 @@ def fetch_airtable_records():
 def sync_curated_deals(records):
     usable = [
         r for r in records
-        if r["fields"].get("Select") == "Approved" and r["fields"].get("status") in ("recipes", "deals", "both")
+        if r["fields"].get("Select") == "Approved"
+        and r["fields"].get("status") in ("recipes", "deals", "both")
+        and r["fields"].get("chain_name") not in EXCLUDED_CHAINS
     ]
     print(f"{len(usable)} approved+classified rows out of {len(records)} total")
 
