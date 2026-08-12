@@ -282,7 +282,7 @@ export default function RecipeScreen() {
             <View style={styles.optionalList}>
               {meal.optionalAdditions.map((addition) => (
                 <Text key={addition.title} style={styles.optionalText}>
-                  {addition.title}. {addition.description}
+                  {addition.description}
                 </Text>
               ))}
             </View>
