@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
-import type { DealTag, IngredientLine, Meal, OptionalAddition } from './mealData';
+import type { DealTag, IngredientLine, Meal, OptionalAddition, SubRecipe } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
+import { fetchSubRecipes } from './subRecipes';
 import { describeDealPackage, describeQuantityText } from './unitConversion';
 
 interface RecipeIngredient {
@@ -121,9 +122,13 @@ function mapRowToMeal(
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
-  staplePrices: StaplePrice[]
+  staplePrices: StaplePrice[],
+  subRecipes: SubRecipe[]
 ): Meal {
   const dealTags = ((row.deal_tags as RecipeDealTagRow[]) ?? []).map(mapDealTag);
+  const ingredientNames = new Set(
+    (row.ingredients as RecipeIngredient[]).map((ingredient) => ingredient.name.toLowerCase())
+  );
   return {
     id: row.id,
     name: row.name,
@@ -140,39 +145,46 @@ function mapRowToMeal(
     ),
     instructions: row.instructions as string[],
     optionalAdditions: (row.optional_additions as OptionalAddition[]) ?? [],
+    // Only the sub-recipes this meal's own ingredients actually name --
+    // see lib/subRecipes.ts, matched by ingredient name against the
+    // shared table, not embedded per-recipe.
+    subRecipes: subRecipes.filter((sr) => ingredientNames.has(sr.matchIngredientName.toLowerCase())),
   };
 }
 
 export async function fetchAllRecipes(): Promise<Meal[]> {
-  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices, subRecipes] = await Promise.all([
     supabase.from('recipes').select('*'),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
+    fetchSubRecipes(),
   ]);
   if (error) throw error;
-  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices));
+  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices, subRecipes));
 }
 
 export async function fetchRecipeById(id: string): Promise<Meal | null> {
-  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices, subRecipes] = await Promise.all([
     supabase.from('recipes').select('*').eq('id', id).maybeSingle(),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
+    fetchSubRecipes(),
   ]);
   if (error) throw error;
-  return data ? mapRowToMeal(data, statcanPrices, producePrices, staplePrices) : null;
+  return data ? mapRowToMeal(data, statcanPrices, producePrices, staplePrices, subRecipes) : null;
 }
 
 export async function fetchRecipesByIds(ids: string[]): Promise<Meal[]> {
   if (ids.length === 0) return [];
-  const [{ data, error }, statcanPrices, producePrices, staplePrices] = await Promise.all([
+  const [{ data, error }, statcanPrices, producePrices, staplePrices, subRecipes] = await Promise.all([
     supabase.from('recipes').select('*').in('id', ids),
     fetchStatcanPrices(),
     fetchProducePrices(),
     fetchStaplePrices(),
+    fetchSubRecipes(),
   ]);
   if (error) throw error;
-  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices));
+  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices, subRecipes));
 }
