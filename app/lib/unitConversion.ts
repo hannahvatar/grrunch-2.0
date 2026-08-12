@@ -38,6 +38,11 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // it, olive oil (measured in mL in every recipe using it) silently
   // contributed 0 to both price and nutrition, in 6 of 9 recipes.
   'olive oil': 217.7,
+  // ~90 g/cup for standard grated parmesan -- varies with grate
+  // fineness (78-100g/cup across sources), 90 is the commonly-cited
+  // midpoint. See staple_densities table (Supabase) for the
+  // server-side twin of this entry -- keep both in sync.
+  'grated parmesan': 90,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -164,6 +169,17 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
   return { amount: num, baseUnit: 'each' };
 }
 
+// Average grams for one whole/each unit of a countable staple (e.g. one
+// large egg ~= 50g) -- bridges an "each"-based recipe quantity ("2 whole
+// Eggs") to a gram-denominated reference (a per-gram price, or
+// nutrition's fixed "100 g" basis), the each<->g counterpart to
+// STAPLE_DENSITIES_G_PER_CUP's ml<->g cup bridge. See staple_avg_weights
+// table (Supabase) for the server-side twin -- keep both in sync.
+export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
+  eggs: 50,
+  'egg yolks': 17,
+};
+
 // Scales a reference price to the recipe's actual quantity. Returns
 // undefined (rather than a guessed number) when the two sides are
 // incompatible units and no density entry bridges them -- an unscaled
@@ -186,6 +202,15 @@ export function scaleReferencePrice(
   }
 
   const ingWords = normalizeWords(ingredientName);
+
+  for (const [avgWeightName, gramsEach] of Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH)) {
+    const avgWeightWords = normalizeWords(avgWeightName);
+    if (avgWeightWords.length > 0 && avgWeightWords.every((w) => ingWords.includes(w))) {
+      if (recipeUa.baseUnit === 'each' && refUa.baseUnit === 'g') {
+        return round4(refPrice * ((recipeUa.amount * gramsEach) / refUa.amount));
+      }
+    }
+  }
 
   let cookedRatio = 1;
   for (const [yieldName, ratio] of Object.entries(STAPLE_COOKED_YIELD_RATIO)) {

@@ -299,6 +299,24 @@ export type Database = {
           },
         ]
       }
+      staple_avg_weights: {
+        Row: {
+          grams_each: number
+          id: string
+          ingredient_name: string
+        }
+        Insert: {
+          grams_each: number
+          id?: string
+          ingredient_name: string
+        }
+        Update: {
+          grams_each?: number
+          id?: string
+          ingredient_name?: string
+        }
+        Relationships: []
+      }
       staple_cooked_yield: {
         Row: {
           cooked_per_dry_ratio: number
@@ -464,20 +482,29 @@ export type Database = {
       subscriptions: {
         Row: {
           created_at: string
+          expires_at: string | null
+          product_id: string | null
           status: string
-          trial_ends_at: string
+          trial_ends_at: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          expires_at?: string | null
+          product_id?: string | null
           status?: string
-          trial_ends_at: string
+          trial_ends_at?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          expires_at?: string | null
+          product_id?: string | null
           status?: string
-          trial_ends_at?: string
+          trial_ends_at?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -514,22 +541,41 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      compute_deal_tag_pricing: {
-        Args: {
-          p_ing_quantity: string
-          p_ing_unit: string
-          p_original_price: number
-          p_package_weight_g: number
-          p_price: number
-          p_price_unit: Database["public"]["Enums"]["deal_price_unit"]
-          p_quantity_estimated: boolean
-        }
-        Returns: {
-          tag_original_price: number
-          tag_price: number
-          tag_quantity_estimated: boolean
-        }[]
-      }
+      compute_deal_tag_pricing:
+        | {
+            Args: {
+              p_ing_quantity: string
+              p_ing_unit: string
+              p_original_price: number
+              p_package_weight_g: number
+              p_package_weight_g_source: string
+              p_price: number
+              p_price_unit: Database["public"]["Enums"]["deal_price_unit"]
+              p_quantity_estimated: boolean
+            }
+            Returns: {
+              tag_original_price: number
+              tag_price: number
+              tag_price_estimated: boolean
+              tag_quantity_estimated: boolean
+            }[]
+          }
+        | {
+            Args: {
+              p_ing_quantity: string
+              p_ing_unit: string
+              p_original_price: number
+              p_package_weight_g: number
+              p_price: number
+              p_price_unit: Database["public"]["Enums"]["deal_price_unit"]
+              p_quantity_estimated: boolean
+            }
+            Returns: {
+              tag_original_price: number
+              tag_price: number
+              tag_quantity_estimated: boolean
+            }[]
+          }
       find_reference_price: {
         Args: { p_item_name: string }
         Returns: {
