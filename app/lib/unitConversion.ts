@@ -46,6 +46,9 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // ~21 g/cup for loosely packed fresh basil leaves -- see
   // 20260812070000_basil_density.sql for the server-side twin.
   basil: 21,
+  // ~96 g/cup for grated ginger -- see 20260812090000_ginger_density.sql
+  // for the server-side twin.
+  ginger: 96,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -58,13 +61,21 @@ export const STAPLE_COOKED_YIELD_RATIO: Record<string, number> = {
 };
 
 const STOPWORDS = new Set(['with', 'from', 'each', 'selected', 'variety', 'varieties', 'fresh', 'frozen']);
+// Kept even though <=3 characters -- both proven to cause a real wrong
+// match once dropped (e.g. "Sesame oil" collapsing to bare "sesame"
+// then matching "Sesame seeds"; "Soy sauce" collapsing to bare "sauce"
+// then matching "Hot sauce"). See 20260812110000_keep_short_words.sql
+// for the server-side twin and the full story -- deliberately a narrow
+// allowlist of specific words already proven to collide, not a blanket
+// length-threshold change.
+const KEEP_SHORT_WORDS = new Set(['soy', 'oil']);
 
 function normalizeWords(text: string): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .split(/\s+/)
-    .filter((word) => word.length > 3 && !STOPWORDS.has(word));
+    .filter((word) => (word.length > 3 || KEEP_SHORT_WORDS.has(word)) && !STOPWORDS.has(word));
 }
 
 // Parses a quantity+unit into a normalized (amount, base_unit) pair.
@@ -189,6 +200,11 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
   // the same unit, pricing 3 cloves as 3 whole bulbs (10x+ too much).
   // ~10 cloves/bulb is a standard estimate.
   if (/clove/.test(t)) return { amount: num / 10, baseUnit: 'each' };
+  // A green onion stalk is a sub-unit of the whole bunch reference
+  // prices are denominated in -- same reasoning as clove/bulb above.
+  // ~8 stalks/bunch is a standard estimate. See 20260812080000_stalk_unit.sql
+  // for the server-side twin.
+  if (/stalk/.test(t)) return { amount: num / 8, baseUnit: 'each' };
   return { amount: num, baseUnit: 'each' };
 }
 
@@ -201,6 +217,9 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
 export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   eggs: 50,
   'egg yolks': 17,
+  // One pack is 85g -- see 20260812100000_ramen_avg_weight.sql for the
+  // server-side twin.
+  'instant ramen noodles': 85,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
