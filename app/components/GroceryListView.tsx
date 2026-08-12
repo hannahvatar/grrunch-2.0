@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItemStore } from '../lib/curatedDeals';
 import { IngredientRow } from './IngredientRow';
@@ -10,6 +10,17 @@ import { scaleIngredientDisplay } from '../lib/mealScaling';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
+
+// Same visual language as the recipe page (app/recipe.tsx) -- peach
+// background, bold 2px-black-border white "modal treatment" cards, INK
+// text throughout instead of grey secondary text. Pulled over directly
+// (Anabelle's request) since the two screens share the same ingredient
+// rows (IngredientRow) but had drifted to two different card/border/
+// color languages -- this screen was plainer (white bg, thin #eee
+// borders) while the recipe page had since been polished. No ACCENT
+// constant here (unlike recipe.tsx) -- this screen has no equivalent
+// primary-action button to apply it to.
+const INK = '#111';
 
 const OTHER_ITEMS = 'Other items';
 
@@ -153,7 +164,17 @@ export function GroceryListView() {
         text: scaled.groceryText ?? scaled.text,
         source: meal.name,
         dealTag: ingredient.dealTag,
-        estimatedPrice: ingredient.estimatedPrice,
+        // ingredient.estimatedPrice is computed once against the recipe's
+        // BASE (1x) stored quantity (see matchReferencePrice in
+        // lib/staplePrices.ts) and never itself knows about this list's
+        // batch multiplier -- unlike scaled.groceryText above, which
+        // already reflects it. Multiply here so the displayed "$X avg."
+        // actually matches the (already-scaled) quantity text sitting
+        // right next to it, instead of silently staying frozen at the
+        // 1x amount while everything around it doubles.
+        estimatedPrice: ingredient.estimatedPrice
+          ? { ...ingredient.estimatedPrice, avgPrice: ingredient.estimatedPrice.avgPrice * multiplier }
+          : undefined,
         // Only a real match against this week's flyers earns a store --
         // never guessed from "well you're already buying other stuff at
         // Store X for this recipe." A true pantry staple with no flyer
@@ -175,73 +196,25 @@ export function GroceryListView() {
   }
   // A reference-sourced deal tag never counts as "on sale" here -- its
   // discountPct isn't a claim the store made (see
-  // lib/curatedDeals.ts's isReferencePriced()), so it shouldn't inflate
-  // dealItemCount or avgSavingsPct below either.
+  // lib/curatedDeals.ts's isReferencePriced()).
   const itemsWithDeal = items.filter((item) => item.dealTag && !isReferencePriced(item.dealTag.originalPriceSource));
   const dealItemCount = itemsWithDeal.length;
 
-  // Total price: each recipe's own price-per-serving x its servings x how
-  // many times it's being made, plus each standalone deal's real price --
-  // never a fabricated per-ingredient split, since recipes don't have
-  // itemized ingredient prices.
-  const recipesTotalPrice = selectedMeals.reduce((sum, meal) => {
-    const multiplier = multipliers.get(meal.id) ?? 1;
-    return sum + meal.price * meal.servings * multiplier;
-  }, 0);
-  const dealsTotalPrice = selectedDeals.reduce((sum, deal) => sum + deal.price, 0);
-  const totalPrice = recipesTotalPrice + dealsTotalPrice;
-
-  // Regular (pre-discount) total: a recipe's own price already bakes in
-  // each deal-tagged ingredient's discounted price, so recompute what the
-  // recipe would cost without those specific discounts by adding back
-  // each tag's real (original_price - price), then the standalone deals'
-  // real original_price on top. deal_tags carries a real original_price
-  // per tagged ingredient (see refresh_recipe_deal_tags), so this is an
-  // actual number, not an invented markup.
-  const recipesTotalOriginalPrice = selectedMeals.reduce((sum, meal) => {
-    const multiplier = multipliers.get(meal.id) ?? 1;
-    const dealSavings = meal.dealTags.reduce((s, tag) => {
-      if (tag.price == null || tag.originalPrice == null || isReferencePriced(tag.originalPriceSource)) return s;
-      return s + Math.max(0, tag.originalPrice - tag.price);
-    }, 0);
-    return sum + (meal.price * meal.servings + dealSavings) * multiplier;
-  }, 0);
-  // A reference-sourced deal's contribution to "before savings" is just
-  // its own real price, not its (unearned) comparison price -- see
-  // isReferencePriced().
-  const dealsTotalOriginalPrice = selectedDeals.reduce(
-    (sum, deal) => sum + (isReferencePriced(deal.originalPriceSource) ? deal.price : deal.originalPrice),
-    0
-  );
-  const totalOriginalPrice = recipesTotalOriginalPrice + dealsTotalOriginalPrice;
-
-  // Average saving: the mean discount_pct across items actually tied to a
-  // real flyer deal.
-  const avgSavingsPct =
-    itemsWithDeal.length > 0
-      ? itemsWithDeal.reduce((sum, item) => sum + (item.dealTag?.discountPct ?? 0), 0) /
-        itemsWithDeal.length
-      : 0;
-
-  // Average of each selected recipe's own price-per-serving -- a simple
-  // mean across recipes, not weighted by servings (that's the Meals
-  // tab's "avg. $X / serving", which is total$/totalServings instead).
-  const avgRecipeCostPerServing =
-    selectedMeals.length > 0
-      ? selectedMeals.reduce((sum, meal) => sum + meal.price, 0) / selectedMeals.length
-      : 0;
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Grocery list</Text>
-        <Text style={styles.subtitle}>
-          {items.length} item{items.length === 1 ? '' : 's'} · {dealItemCount} on sale ·{' '}
-          {storeNames.filter((s) => s !== OTHER_ITEMS).length} store
-          {storeNames.filter((s) => s !== OTHER_ITEMS).length === 1 ? '' : 's'}
-        </Text>
-      </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Scrolls away with the rest of the content now, matching
+            recipe.tsx's own headerText (also the first thing inside its
+            ScrollView, not a fixed sibling above it) -- was previously a
+            fixed header sitting outside the ScrollView entirely. */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Grocery list</Text>
+          <Text style={styles.subtitle}>
+            {items.length} item{items.length === 1 ? '' : 's'} · {dealItemCount} on sale ·{' '}
+            {storeNames.filter((s) => s !== OTHER_ITEMS).length} store
+            {storeNames.filter((s) => s !== OTHER_ITEMS).length === 1 ? '' : 's'}
+          </Text>
+        </View>
         {selectedMeals.length === 0 && selectedDeals.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
@@ -252,7 +225,7 @@ export function GroceryListView() {
 
         {selectedMeals.length > 0 && (
           <View style={styles.selectedSection}>
-            <Text style={styles.selectedSectionTitle}>Selected recipes</Text>
+            <Text style={styles.selectedSectionTitle}>Selected Meals</Text>
             {selectedMeals.map((meal) => {
               const multiplier = multipliers.get(meal.id) ?? 1;
               const totalServings = meal.servings * multiplier;
@@ -297,8 +270,11 @@ export function GroceryListView() {
         )}
 
         {storeNames.map((store) => (
-          <View key={store} style={styles.storeSection}>
-            <Text style={styles.storeName}>{store}</Text>
+          <View key={store} style={styles.storeCard}>
+            <View style={styles.storeHeadingRow}>
+              <MapPinIcon size={18} color={INK} />
+              <Text style={styles.storeName}>{store}</Text>
+            </View>
             {storeGroups.get(store)!.map((item) => (
               <IngredientRow
                 key={item.key}
@@ -309,93 +285,99 @@ export function GroceryListView() {
                 checked={checked.has(item.key)}
                 onToggleCheck={() => toggleChecked(item.key)}
                 multiplier={item.multiplier}
+                // Deal-tagged rows only -- same blurred-backdrop/
+                // stacked treatment as the recipe page's own "On Sale
+                // This Week" deal items (Anabelle's ask), so a deal
+                // item reads the same wherever it shows up -- image at
+                // half that page's 88px (this list has more rows
+                // competing for vertical space than one recipe's own
+                // ingredient card does). Staple ("Other items") rows
+                // keep the plain default layout -- stackedLayout's
+                // price row only ever renders a dealTag's price/
+                // badges, so applying it to a non-deal row would
+                // silently drop its "$X avg." estimate entirely. No
+                // showStoreLink here even for deal rows -- unlike the
+                // recipe page, this screen already groups by store as
+                // its own section heading, so repeating the store name
+                // per-row would be redundant (see IngredientRow's own
+                // showStoreLink prop comment).
+                imageSize={item.dealTag ? 44 : undefined}
+                blurredBackdrop={!!item.dealTag}
+                stackedLayout={!!item.dealTag}
               />
             ))}
           </View>
         ))}
-
-        {items.length > 0 && (
-          <View style={styles.totalSection}>
-            <View style={styles.totalCard}>
-              <View style={styles.totalTextBlock}>
-                <Text style={styles.totalLabel}>Total</Text>
-                {totalOriginalPrice > totalPrice && (
-                  <Text style={styles.regularPriceLine}>
-                    Total before savings:{' '}
-                    <Text style={styles.regularPriceStrike}>${totalOriginalPrice.toFixed(2)}</Text>
-                  </Text>
-                )}
-                {dealItemCount > 0 && (
-                  <Text style={styles.totalSublabel}>
-                    Avg. {Math.round(avgSavingsPct)}% off on {dealItemCount} deal item
-                    {dealItemCount === 1 ? '' : 's'}
-                  </Text>
-                )}
-                {selectedMeals.length > 0 && (
-                  <Text style={styles.totalSublabel}>
-                    Avg. ${avgRecipeCostPerServing.toFixed(2)} / serving across recipes
-                  </Text>
-                )}
-              </View>
-              <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { padding: 20, paddingTop: 60 },
-  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  subtitle: { fontSize: 13, color: '#888', marginTop: 2 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 20 },
-  emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
-  emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
+  // Matches recipe.tsx's own container -- this screen is a peer of the
+  // recipe modal/Meals tab, not a separate white sheet.
+  container: { flex: 1, backgroundColor: '#FFEAD4' },
+  // No horizontal/bottom padding of its own anymore -- scrollContent's
+  // own paddingHorizontal and gap (between it and the next child) cover
+  // that now that header lives inside the ScrollView. paddingTop alone
+  // remains, for clearance below the screen's top edge/notch.
+  header: { paddingTop: 60 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  subtitle: { fontSize: 13, color: INK, marginTop: 2 },
+  // paddingBottom is generous (not the usual ~40) so the last store
+  // card's own right-aligned price never lands under SupportBubble -- a
+  // fixed floating chat button rendered globally in _layout.tsx at
+  // right:20/bottom:96 (52px tall), which otherwise sits directly on top
+  // of this screen's last/bottom-most content when scrolled all the way
+  // down (originally confirmed against the since-removed Total card;
+  // the same risk applies to whichever card is now genuinely last).
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 140, gap: 20 },
+  emptyState: { backgroundColor: '#fff', borderWidth: 2, borderColor: INK, borderRadius: 16, padding: 20 },
+  emptyStateText: { color: INK, fontSize: 14, textAlign: 'center' },
   selectedSection: { gap: 10 },
-  selectedSectionTitle: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  selectedSectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // "Modal treatment" card -- same white/2px-black-border/16px-radius
+  // language as recipe.tsx's ingredientsModalCard/instructionsCard.
   selectedRow: {
     gap: 10,
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 16,
+    padding: 14,
   },
   selectedRowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectedRowInfo: { flex: 1 },
-  selectedRowName: { fontSize: 14, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
-  selectedRowMeta: { fontSize: 12, color: '#999', marginTop: 2 },
+  selectedRowName: { fontSize: 14, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
+  selectedRowMeta: { fontSize: 12, color: INK, marginTop: 2 },
   stepperRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // Bold INK-bordered circle, matching recipe.tsx's own servings
+  // stepper (was a thin #ddd/1px border, the plainer pre-pull look).
   stepperButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderWidth: 1.5,
+    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepperButtonDisabled: { opacity: 0.35 },
-  stepperValue: { fontSize: 13, color: '#666', fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
-  storeSection: { gap: 10 },
-  storeName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  totalSection: { gap: 6 },
-  regularPriceLine: { fontSize: 13, color: '#999', marginTop: 2 },
-  regularPriceStrike: { textDecorationLine: 'line-through' },
-  totalCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 14,
-    padding: 16,
+  stepperValue: { fontSize: 13, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // Each store group gets its own "modal treatment" card (same
+  // language as recipe.tsx's ingredientsModalCard) with an icon-led
+  // heading (MapPinIcon -- same icon location.tsx uses for "Find deals
+  // near you", reused here so a store name reads the same way
+  // wherever it shows up) instead of the previous plain bold-text-only
+  // label on a bare background.
+  storeCard: {
+    gap: 10,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 16,
+    padding: 14,
   },
-  totalTextBlock: { flex: 1, marginRight: 12 },
-  totalLabel: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  totalSublabel: { fontSize: 13, color: '#888', marginTop: 2 },
-  totalValue: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  storeHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  storeName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
 });
