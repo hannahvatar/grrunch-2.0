@@ -325,8 +325,18 @@ export default function RecipeScreen() {
               <Text style={styles.optionalHeading}>Optional</Text>
             </View>
             <View style={styles.optionalList}>
-              {meal.optionalAdditions.map((addition) => (
-                <Text key={addition.title} style={styles.optionalText}>
+              {meal.optionalAdditions.map((addition, index) => (
+                <Text key={addition.title || index} style={styles.optionalText}>
+                  {/* A blank title (Anabelle's call for some additions --
+                      description-only, no label) skips the title Text and
+                      its trailing spacer entirely, instead of leaving a
+                      stray leading gap before the description. */}
+                  {addition.title ? (
+                    <>
+                      <Text style={styles.optionalTitle}>{addition.title}</Text>
+                      {'  '}
+                    </>
+                  ) : null}
                   {addition.description}
                 </Text>
               ))}
@@ -643,6 +653,10 @@ const styles = StyleSheet.create({
   // reads as "here's an idea" rather than "here's what to buy."
   optionalList: { gap: 12 },
   optionalText: { fontSize: 15, lineHeight: 24, color: '#333' },
+  // Plain weight now (Anabelle's call) -- title still leads the
+  // description inline, just no longer bolded/visually distinguished
+  // from it.
+  optionalTitle: { color: INK },
   // Sub-recipe sections (e.g. "Basic Crispy Pork Belly") at the very
   // bottom of the page, jump-linked from a matching ingredient above --
   // "Companion Recipe" eyebrow label sits outside/above a dashed-border
