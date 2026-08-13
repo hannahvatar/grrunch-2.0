@@ -24,6 +24,11 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // card's 1402/824) -- no crop needed/applied, uncropped as uploaded.
   'Sizzling Pork Skewers': require('../assets/sizzling-pork-skewers.jpeg'),
   'Hot Dog Hash': require('../assets/hot-dog-hash.jpeg'),
+  // Cropped tighter around the bowl (Anabelle's call: "emphasis the
+  // plate but make sure sriracha is visible") -- original backed up
+  // before cropping per the standing rule. 1266x744, matching the
+  // card's ~1.7:1 target almost exactly.
+  'Honey Garlic Chicken Noodle Toss': require('../assets/honey-garlic-chicken-noodles-toss.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
