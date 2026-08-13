@@ -229,6 +229,9 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // One box is 225g -- see 20260812120000_kraft_dinner_avg_weight.sql
   // for the server-side twin.
   'kraft dinner': 225,
+  // One pack is 400g -- see the staple_avg_weights row added alongside
+  // Honey Garlic Chicken's rice-noodle swap for the server-side twin.
+  'rice noodles': 400,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -259,6 +262,18 @@ export function scaleReferencePrice(
     if (avgWeightWords.length > 0 && avgWeightWords.every((w) => ingWords.includes(w))) {
       if (recipeUa.baseUnit === 'each' && refUa.baseUnit === 'g') {
         return round4(refPrice * ((recipeUa.amount * gramsEach) / refUa.amount));
+      }
+      // Reverse direction -- a recipe now stating a countable staple in
+      // grams (e.g. "600 g Rice noodles") against a per-pack reference
+      // price ("$3.00/pack"). Previously only the each-recipe/gram-
+      // reference direction above was handled, so a gram-denominated
+      // recipe quantity against an each-denominated reference (any
+      // "pack"/"box"/"each" unit that doesn't parse to a recognized
+      // weight/volume) silently fell through to undefined -- no "$X
+      // avg." shown at all, confirmed on Rice noodles once its
+      // checked_by was flipped to human_verified.
+      if (recipeUa.baseUnit === 'g' && refUa.baseUnit === 'each') {
+        return round4(refPrice * (recipeUa.amount / (refUa.amount * gramsEach)));
       }
     }
   }
