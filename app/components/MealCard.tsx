@@ -145,18 +145,25 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
   },
+  // Doubled from 180 (Anabelle's call -- recipes are the star, and this
+  // app only ever surfaces ~a dozen a week, so there's room to give
+  // each one a bigger photo).
   mealImagePlaceholder: {
-    height: 180,
+    height: 360,
     backgroundColor: '#F2F2F2',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  // Matches the pre-cropped card photo's own aspect ratio (see
-  // lib/recipeImages.ts) so the full width of that crop shows with no
-  // further side-cropping, instead of the fixed height above forcing a
-  // narrower "cover" crop.
-  mealImagePlaceholderPhoto: { height: 'auto', aspectRatio: 1402 / 412 },
+  // Half the old ratio (1402/412 -> 1402/824), doubling the rendered
+  // height at the same card width -- matches mealImagePlaceholder's own
+  // doubled height above so a photo and the icon placeholder occupy the
+  // same space. Existing pre-cropped photos (see lib/recipeImages.ts)
+  // were framed for the OLD wide-banner ratio, so `cover` now crops
+  // them tighter/more zoomed-in than before, not stretched -- worth a
+  // fresh, taller re-crop from source next time one's touched, rather
+  // than relying on auto-crop.
+  mealImagePlaceholderPhoto: { height: 'auto', aspectRatio: 1402 / 824 },
   mealImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   saveButton: {
     position: 'absolute',
@@ -191,7 +198,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
-  priceBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  // flexWrap: wrap -- was a plain nowrap row, which never actually wraps
+  // to a second line no matter how narrow the card is; on a real device
+  // (different font metrics than the web preview this was eyeballed
+  // against) that meant "$X.XX / serving • min. servings N" could
+  // overflow past the card's own width and get silently clipped by
+  // mealCard's overflow: hidden instead of wrapping -- exactly the
+  // "gets cutoff" Anabelle reported. rowGap covers the vertical gap
+  // between lines once it does wrap (gap alone only covers horizontal
+  // spacing within a line).
+  priceBlock: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, rowGap: 2 },
   nutritionRow: { flexDirection: 'row', gap: 16 },
   nutritionItem: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   nutritionText: { fontSize: 13, color: '#888' },
