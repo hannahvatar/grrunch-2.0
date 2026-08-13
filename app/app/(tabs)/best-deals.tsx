@@ -13,6 +13,7 @@ import {
   isReferencePriced,
   showsRealDiscount,
 } from '../../lib/curatedDeals';
+import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSubscription } from '../../lib/subscription';
 
@@ -125,7 +126,7 @@ export default function BestDealsScreen() {
                     const isAdded = selectedDealIds.has(deal.id);
                     return (
                       <View key={deal.id} style={styles.dealCard}>
-                        <Pressable onPress={() => Linking.openURL(deal.productUrl)}>
+                        <Pressable style={styles.dealCardTop} onPress={() => Linking.openURL(deal.productUrl)}>
                           <View style={styles.dealImageWrap}>
                             {deal.imageUrl ? (
                               <Image source={{ uri: deal.imageUrl }} style={styles.dealImage} />
@@ -152,25 +153,43 @@ export default function BestDealsScreen() {
                               </View>
                             )}
                           </View>
-                          <Text style={styles.dealName} numberOfLines={2}>
-                            {deal.itemName}
-                          </Text>
-                          <Text style={styles.dealChain} numberOfLines={1}>
-                            {deal.chainName}
-                          </Text>
-                          <View style={styles.priceRow}>
-                            <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
-                            {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
-                              <Text style={styles.dealOriginalPrice}>
-                                ${deal.originalPrice.toFixed(2)}
+                          <View style={styles.dealInfo}>
+                            {/* No numberOfLines -- the full item name always
+                                shows, never truncated with an ellipsis. */}
+                            <Text style={styles.dealName}>{deal.itemName}</Text>
+                            <Text style={styles.dealChain} numberOfLines={1}>
+                              {deal.chainName}
+                            </Text>
+                            {/* Same "See in flyer" affordance as
+                                IngredientRow's showStoreLink -- muted/
+                                no-underline when there's no real flyer
+                                link to give (produce-gap-sourced deals),
+                                same as there, rather than a dead link. */}
+                            <Pressable
+                              style={styles.flyerLinkRow}
+                              onPress={deal.productUrl ? () => Linking.openURL(deal.productUrl) : undefined}
+                              disabled={!deal.productUrl}
+                              hitSlop={4}
+                            >
+                              <Text style={[styles.flyerLink, !deal.productUrl && styles.flyerLinkDisabled]}>
+                                See in flyer
+                              </Text>
+                              <ArrowOutwardIcon size={12} color={deal.productUrl ? INK : '#999'} />
+                            </Pressable>
+                            <View style={styles.priceRow}>
+                              <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
+                              {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
+                                <Text style={styles.dealOriginalPrice}>
+                                  ${deal.originalPrice.toFixed(2)}
+                                </Text>
+                              )}
+                            </View>
+                            {isReferencePriced(deal.originalPriceSource) && (
+                              <Text style={styles.dealCompareAnnotation}>
+                                {formatComparePriceLabel(deal.originalPrice)}
                               </Text>
                             )}
                           </View>
-                          {isReferencePriced(deal.originalPriceSource) && (
-                            <Text style={styles.dealCompareAnnotation}>
-                              {formatComparePriceLabel(deal.originalPrice)}
-                            </Text>
-                          )}
                         </Pressable>
                         <Pressable
                           style={[styles.addButton, isAdded && styles.addButtonActive]}
@@ -264,22 +283,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   categoryCount: { fontSize: 13, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  // "Modal treatment" card -- was a thin #eee-border/14px-radius box.
+  // Plain vertical stack now (Anabelle's call) -- was a 2-col wrapped
+  // grid (width: '47%' cards); each deal card is now its own full-width
+  // horizontal row instead.
+  dealsGrid: { gap: 12 },
+  // "Modal treatment" card, full width -- was a half-width grid item
+  // with the image stacked on top of the text.
   dealCard: {
-    width: '47%',
+    width: '100%',
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 16,
     padding: 10,
-    gap: 4,
+    gap: 10,
   },
-  // Same INK-border convention as meals.tsx's own grid-adjacent unlock
-  // card (1px, not the 2px "modal treatment" cards use -- this one has
-  // no white fill of its own, transparent against the page).
+  // Image left, name/store/price column right -- same horizontal-row
+  // shape as IngredientRow's own default (non-stacked) layout.
+  dealCardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  dealInfo: { flex: 1, gap: 2 },
+  // Same INK-border convention as meals.tsx's own unlock card (1px,
+  // not the 2px "modal treatment" cards use -- this one has no white
+  // fill of its own, transparent against the page). Full width now,
+  // matching dealCard above.
   unlockCard: {
-    width: '47%',
+    width: '100%',
     borderWidth: 1,
     borderColor: INK,
     borderRadius: 14,
@@ -297,7 +325,9 @@ const styles = StyleSheet.create({
   },
   unlockSubtitle: { fontSize: 11, color: '#767676', textAlign: 'center' },
   dealImageWrap: { position: 'relative' },
-  dealImage: { width: '100%', height: 90, borderRadius: 10, backgroundColor: '#F2F2F2' },
+  // Fixed square now (was width: '100%' of a stacked card) -- sits to
+  // the left of the info column in the new horizontal row.
+  dealImage: { width: 88, height: 88, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   // Solid-bg/white-text overlay badges -- already matched
   // IngredientRow.tsx's own non-stacked discountBadge/fairPriceBadge/
@@ -337,15 +367,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  dealName: {
-    fontSize: 13,
+  // No marginTop/minHeight now (were sized for the old stacked
+  // layout, image-above-text) -- dealName sits beside the image now,
+  // in dealInfo's own flex column.
+  dealName: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  dealChain: { fontSize: 11, color: '#767676' },
+  // Same "See in flyer" convention as IngredientRow's own
+  // flyerLinkRow/flyerLink/flyerLinkDisabled -- identical values, so
+  // this affordance reads the same wherever it shows up in the app.
+  flyerLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  flyerLink: {
+    fontSize: 12,
+    color: INK,
     fontWeight: '700',
     fontFamily: 'OpenSans_700Bold',
-    color: INK,
-    marginTop: 4,
-    minHeight: 34,
+    textDecorationLine: 'underline',
   },
-  dealChain: { fontSize: 11, color: '#767676' },
+  flyerLinkDisabled: { color: '#999', textDecorationLine: 'none' },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },
   // 16px, matching IngredientRow's own itemPriceValue -- was 15px.
   dealPrice: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
