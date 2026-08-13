@@ -2,7 +2,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
-  BookOpenIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ClockIcon,
@@ -358,7 +357,6 @@ export default function RecipeScreen() {
               }
             >
               <View style={styles.companionEyebrowRow}>
-                <BookOpenIcon size={14} color="#A9835F" />
                 <Text style={styles.companionEyebrowText}>Companion Recipe</Text>
               </View>
               <View style={styles.subRecipeCard}>
@@ -648,29 +646,34 @@ const styles = StyleSheet.create({
   // Sub-recipe sections (e.g. "Basic Crispy Pork Belly") at the very
   // bottom of the page, jump-linked from a matching ingredient above --
   // "Companion Recipe" eyebrow label sits outside/above a dashed-border
-  // tinted card (Anabelle's call, with a design reference), distinct
-  // from every other "modal treatment" card on this page (solid
-  // border, white fill) so this reads as its own kind of content --
-  // borrowed rather than authored fresh for this one recipe.
+  // card (Anabelle's call, with a design reference). Eyebrow styled
+  // identically to the Optional card's own heading (same size/weight/
+  // color/letter-spacing) so the two callouts read as a matched pair;
+  // card itself now black-bordered/white-filled like every other
+  // "modal treatment" card on this page, dashed being the only
+  // remaining thing that sets it apart (borrowed content, not authored
+  // fresh for this recipe).
   companionEyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, marginBottom: 8 },
   companionEyebrowText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',
-    color: '#A9835F',
+    color: INK,
     letterSpacing: 1,
   },
   subRecipeCard: {
-    backgroundColor: '#F5E3D0',
+    backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderColor: '#D9BFA0',
+    borderColor: INK,
     borderStyle: 'dashed',
     borderRadius: 20,
     padding: 20,
   },
   subRecipeHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   subRecipeHeaderText: { flex: 1 },
-  subRecipeTitle: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // Same size/weight as this page's own "Instructions" sectionTitle
+  // (Anabelle's call) -- was a larger 20px/800-weight standalone title.
+  subRecipeTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   subRecipeDescription: { fontSize: 14, lineHeight: 21, color: '#767676', marginTop: 6 },
   // Circular white expand/collapse control, matching the closeButton's
   // own white-fill/no-border convention elsewhere on this page.
