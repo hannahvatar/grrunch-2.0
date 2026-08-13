@@ -1,7 +1,15 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import {
+  BookOpenIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ClockIcon,
+  MinusIcon,
+  PlusIcon,
+  XMarkIcon,
+} from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
@@ -40,6 +48,17 @@ export default function RecipeScreen() {
   function scrollToSubRecipe(title: string) {
     const y = subRecipeOffsets[title];
     if (y !== undefined) scrollViewRef.current?.scrollTo({ y, animated: true });
+  }
+  // Companion recipe cards default open (a key never explicitly set to
+  // false reads as expanded) -- tapping the linked ingredient should
+  // reveal the full technique immediately, not a collapsed teaser; the
+  // chevron just lets you collapse it back down afterward.
+  const [expandedSubRecipes, setExpandedSubRecipes] = useState<Record<string, boolean>>({});
+  function isSubRecipeExpanded(title: string) {
+    return expandedSubRecipes[title] !== false;
+  }
+  function toggleSubRecipe(title: string) {
+    setExpandedSubRecipes((prev) => ({ ...prev, [title]: !isSubRecipeExpanded(title) }));
   }
 
   useEffect(() => {
@@ -196,11 +215,7 @@ export default function RecipeScreen() {
             the staples group is not on sale. */}
         <Text style={styles.sectionTitle}>What you'll need</Text>
         {(dealIngredients.length > 0 || stapleIngredients.length > 0) && (
-          <ScrollView
-            style={styles.ingredientsModalCard}
-            contentContainerStyle={styles.ingredientsModalCardContent}
-            nestedScrollEnabled
-          >
+          <View style={styles.ingredientsModalCard}>
             {dealIngredients.length > 0 && (
               <View>
                 <View style={styles.innerHeadingRow}>
@@ -280,28 +295,36 @@ export default function RecipeScreen() {
                 </View>
               </View>
             )}
-          </ScrollView>
+          </View>
         )}
 
-        {/* Title sits outside/above the card now (same sectionTitle
-            style as "What you'll need"), not inside it -- was an
-            innerSectionTitleFirst heading inside instructionsCard. */}
+        {/* Title sits outside/above the list (same sectionTitle style
+            as "What you'll need"). Anabelle's call: each step is its
+            own numbered white card (ACCENT circle badge + text) rather
+            than plain numbered lines inside one shared bordered card --
+            no bounding maxHeight/nested scroll needed anymore either,
+            since the steps just flow with the page's own scroll now. */}
         <Text style={styles.sectionTitle}>Instructions</Text>
-        <ScrollView
-          style={styles.instructionsCard}
-          contentContainerStyle={styles.instructionsCardContent}
-          nestedScrollEnabled
-        >
+        <View style={styles.instructionStepsList}>
           {meal.instructions.map((step, index) => (
-            <Text key={step} style={styles.listItem}>
-              {index + 1}.  {step}
-            </Text>
+            <View key={step} style={styles.instructionStepCard}>
+              <View style={styles.instructionStepBadge}>
+                <Text style={styles.instructionStepBadgeText}>{index + 1}</Text>
+              </View>
+              <Text style={styles.instructionStepText}>{step}</Text>
+            </View>
           ))}
-        </ScrollView>
+        </View>
 
+        {/* Own bordered/tinted card now (Anabelle's call, with a design
+            reference) -- label replaces the plain "Optional" sectionTitle
+            used elsewhere on this page, so this reads as a distinct
+            callout rather than another list section. */}
         {meal.optionalAdditions.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Optional</Text>
+          <View style={styles.optionalCard}>
+            <View style={styles.optionalHeadingRow}>
+              <Text style={styles.optionalHeading}>Optional</Text>
+            </View>
             <View style={styles.optionalList}>
               {meal.optionalAdditions.map((addition) => (
                 <Text key={addition.title} style={styles.optionalText}>
@@ -309,45 +332,81 @@ export default function RecipeScreen() {
                 </Text>
               ))}
             </View>
-          </>
+          </View>
         )}
 
         {/* Standalone prep techniques linked from an ingredient above
             (see the "pork belly" example this was built for) -- one
             section per relevant sub-recipe, at the very bottom of the
-            page. onLayout captures each section's own Y offset within
-            the ScrollView the moment it renders, so scrollToSubRecipe
-            (triggered by tapping the linked ingredient) has something
-            to scroll to; no offset is known until then, so the jump
-            link is a no-op on the very first render frame only. */}
-        {meal.subRecipes.map((subRecipe) => (
-          <View
-            key={subRecipe.title}
-            style={styles.subRecipeCard}
-            onLayout={(e) =>
-              setSubRecipeOffsets((prev) => ({ ...prev, [subRecipe.title]: e.nativeEvent.layout.y }))
-            }
-          >
-            <Text style={styles.subRecipeTitle}>{subRecipe.title}</Text>
-            <Text style={styles.subRecipeDescription}>{subRecipe.description}</Text>
-            <Text style={styles.innerSectionTitleFirst}>Ingredients</Text>
-            <View style={styles.staplesList}>
-              {subRecipe.ingredients.map((ingredientText, index) => (
-                <Text key={index} style={styles.subRecipeBullet}>
-                  •  {ingredientText}
-                </Text>
-              ))}
+            page. onLayout (on the outer wrapper, so the eyebrow label
+            scrolls into view too, not just the card) captures each
+            section's own Y offset the moment it renders, so
+            scrollToSubRecipe (triggered by tapping the linked
+            ingredient) has something to scroll to; no offset is known
+            until then, so the jump link is a no-op on the very first
+            render frame only. Collapsible (Anabelle's call, with a
+            design reference) -- defaults open so the jump link still
+            lands on visible content; the chevron just lets you tuck it
+            away afterward. */}
+        {meal.subRecipes.map((subRecipe) => {
+          const expanded = isSubRecipeExpanded(subRecipe.title);
+          return (
+            <View
+              key={subRecipe.title}
+              onLayout={(e) =>
+                setSubRecipeOffsets((prev) => ({ ...prev, [subRecipe.title]: e.nativeEvent.layout.y }))
+              }
+            >
+              <View style={styles.companionEyebrowRow}>
+                <BookOpenIcon size={14} color="#A9835F" />
+                <Text style={styles.companionEyebrowText}>Companion Recipe</Text>
+              </View>
+              <View style={styles.subRecipeCard}>
+                <View style={styles.subRecipeHeaderRow}>
+                  <View style={styles.subRecipeHeaderText}>
+                    <Text style={styles.subRecipeTitle}>{subRecipe.title}</Text>
+                    <Text style={styles.subRecipeDescription}>{subRecipe.description}</Text>
+                  </View>
+                  <Pressable
+                    style={styles.subRecipeToggleButton}
+                    onPress={() => toggleSubRecipe(subRecipe.title)}
+                    hitSlop={8}
+                  >
+                    {expanded ? (
+                      <ChevronUpIcon size={18} color={INK} />
+                    ) : (
+                      <ChevronDownIcon size={18} color={INK} />
+                    )}
+                  </Pressable>
+                </View>
+                {expanded && (
+                  <>
+                    <View style={styles.subRecipeDivider} />
+                    <Text style={styles.subRecipeSectionLabel}>Ingredients</Text>
+                    <View style={styles.staplesList}>
+                      {subRecipe.ingredients.map((ingredientText, index) => (
+                        <Text key={index} style={styles.subRecipeBullet}>
+                          •  {ingredientText}
+                        </Text>
+                      ))}
+                    </View>
+                    <Text style={[styles.subRecipeSectionLabel, styles.subRecipeInstructionsHeading]}>
+                      Instructions
+                    </Text>
+                    <View style={styles.subRecipeInstructionsList}>
+                      {subRecipe.instructions.map((step, index) => (
+                        <View key={index} style={styles.subRecipeInstructionRow}>
+                          <Text style={styles.subRecipeInstructionNumber}>{index + 1}.</Text>
+                          <Text style={styles.subRecipeInstructionText}>{step}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </View>
             </View>
-            <Text style={[styles.innerSectionTitleFirst, styles.subRecipeInstructionsHeading]}>Instructions</Text>
-            <View style={styles.subRecipeInstructionsList}>
-              {subRecipe.instructions.map((step, index) => (
-                <Text key={index} style={styles.listItem}>
-                  {index + 1}.  {step}
-                </Text>
-              ))}
-            </View>
-          </View>
-        ))}
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -481,20 +540,17 @@ const styles = StyleSheet.create({
   // language as the app's cards and modals elsewhere (MealCard.tsx
   // mealCard, LegalDocumentModal.tsx). Deal items and staples share
   // one card -- see the two conditionally-rendered sections inside it.
-  // Rendered as a ScrollView (not a plain View) so a long combined
-  // list scrolls within its own bounded height instead of pushing the
-  // rest of the page down indefinitely -- border/background/maxHeight
-  // live here on the ScrollView's own style; padding/gap move to
-  // ingredientsModalCardContent (its contentContainerStyle), the
-  // conventional RN split for a scrollable bordered box.
+  // Plain View now (was a ScrollView with its own maxHeight) -- a long
+  // combined list just flows with the page's own scroll instead of
+  // scrolling within its own bounded height (Anabelle's call, same
+  // change already made to Instructions).
   ingredientsModalCard: {
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 16,
-    maxHeight: 420,
+    padding: 14,
   },
-  ingredientsModalCardContent: { padding: 14 },
   // Only when the pantry section follows the deal-items section within
   // the shared card: dealIngredientsList's own bottom item has no
   // trailing margin of its own, so without this the two sections'
@@ -534,19 +590,56 @@ const styles = StyleSheet.create({
   // inside the shared "On Sale This Week" card.
   dealDivider: { height: 1, backgroundColor: '#E8E8E8', marginBottom: 10 },
   staplesList: { gap: 10 },
-  // Same ScrollView split as ingredientsModalCard/
-  // ingredientsModalCardContent above -- a long instructions list
-  // scrolls within its own bounded height instead of the whole card
-  // growing indefinitely.
-  instructionsCard: {
+  // Instructions -- one numbered white card per step (Anabelle's call,
+  // replacing a single shared bordered card of plain numbered lines).
+  // No border and no shadow (unlike every other "modal treatment" card
+  // on this page) -- just the white card's own contrast against the
+  // peach page background, per Anabelle's call to drop the shadow.
+  instructionStepsList: { gap: 12 },
+  instructionStepCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
     backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 16,
-    maxHeight: 320,
+    borderRadius: 20,
+    padding: 16,
   },
-  instructionsCardContent: { padding: 14, gap: 4 },
+  // ACCENT-filled circle, same orange as "Add to my list" -- reads as
+  // the step's own number tag, not a generic bullet.
+  instructionStepBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instructionStepBadgeText: { fontSize: 15, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  instructionStepText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#333' },
+  // Sub-recipe Instructions only now (main recipe's own switched to
+  // instructionStepCard above).
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
+  // Callout card (Anabelle's call, with a design reference) -- no fill,
+  // just an outline in the app's fair-price/badge orange (#FF7A2A) to
+  // read as its own card against the page's peach background; a plain
+  // white "modal treatment" card (this page's usual convention) would
+  // have read as just another priced section, which this deliberately
+  // isn't.
+  optionalCard: {
+    borderWidth: 1.5,
+    borderColor: '#FF7A2A',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 16,
+  },
+  optionalHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  optionalHeading: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    color: INK,
+    letterSpacing: 1,
+  },
   // Not a priced ingredient list -- a short paragraph per suggestion,
   // title inline-bolded rather than styled as its own list row, so it
   // reads as "here's an idea" rather than "here's what to buy."
@@ -554,31 +647,62 @@ const styles = StyleSheet.create({
   optionalText: { fontSize: 15, lineHeight: 24, color: '#333' },
   // Sub-recipe sections (e.g. "Basic Crispy Pork Belly") at the very
   // bottom of the page, jump-linked from a matching ingredient above --
-  // title, description, ingredients, and instructions all share ONE
-  // white "modal treatment" card (Anabelle's call), same border/radius
-  // language as ingredientsModalCard/instructionsCard elsewhere on this
-  // page, rather than the title/description sitting outside it. marginTop
-  // (not a separate outer sectionTitle) is what spaces this card from
-  // whatever section precedes it.
-  subRecipeCard: {
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 16,
+  // "Companion Recipe" eyebrow label sits outside/above a dashed-border
+  // tinted card (Anabelle's call, with a design reference), distinct
+  // from every other "modal treatment" card on this page (solid
+  // border, white fill) so this reads as its own kind of content --
+  // borrowed rather than authored fresh for this one recipe.
+  companionEyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, marginBottom: 8 },
+  companionEyebrowText: {
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    color: '#A9835F',
+    letterSpacing: 1,
   },
-  subRecipeTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginBottom: 8 },
-  subRecipeDescription: { fontSize: 15, lineHeight: 22, color: '#333', marginBottom: 12 },
+  subRecipeCard: {
+    backgroundColor: '#F5E3D0',
+    borderWidth: 1.5,
+    borderColor: '#D9BFA0',
+    borderStyle: 'dashed',
+    borderRadius: 20,
+    padding: 20,
+  },
+  subRecipeHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  subRecipeHeaderText: { flex: 1 },
+  subRecipeTitle: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  subRecipeDescription: { fontSize: 14, lineHeight: 21, color: '#767676', marginTop: 6 },
+  // Circular white expand/collapse control, matching the closeButton's
+  // own white-fill/no-border convention elsewhere on this page.
+  subRecipeToggleButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subRecipeDivider: { height: 1, backgroundColor: '#E2CBAE', marginVertical: 16 },
+  subRecipeSectionLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    color: '#A9835F',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
   subRecipeBullet: { fontSize: 15, color: '#333' },
-  // "Instructions" heading repeats within a sub-recipe section (also
-  // used once already, above, for the main recipe's own) -- extra top
-  // margin so it doesn't sit flush against the ingredients list right
-  // above it.
-  subRecipeInstructionsHeading: { marginTop: 12 },
-  // Plain list now (was its own nested bordered/scrollable card) --
-  // sitting inside subRecipeCard already, so a 2nd nested white/
-  // bordered box on top of that would read as double-carded.
-  subRecipeInstructionsList: { gap: 4 },
+  // "Instructions" label repeats within a sub-recipe section -- extra
+  // top margin so it doesn't sit flush against the ingredients list
+  // right above it.
+  subRecipeInstructionsHeading: { marginTop: 16 },
+  subRecipeInstructionsList: { gap: 12 },
+  // Plain "N." rather than instructionStepCard's circle badge (that
+  // style is this page's own recipe; this section is deliberately
+  // visually distinct, being borrowed content) -- minWidth keeps
+  // double-digit steps from shifting the text column.
+  subRecipeInstructionRow: { flexDirection: 'row', gap: 10 },
+  subRecipeInstructionNumber: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, minWidth: 20 },
+  subRecipeInstructionText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#333' },
   notFound: { padding: 24, fontSize: 15, color: '#888' },
 });
