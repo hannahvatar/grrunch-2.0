@@ -29,6 +29,9 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // before cropping per the standing rule. 1266x744, matching the
   // card's ~1.7:1 target almost exactly.
   'Honey Garlic Chicken Noodle Toss': require('../assets/honey-garlic-chicken-noodles-toss.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Instant Noodles Forever — The Pork One': require('../assets/instant-noodles-forever-pork.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
