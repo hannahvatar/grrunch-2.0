@@ -12,6 +12,11 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // card's short aspect ratio -- see grilled-chicken-souvlaki-kabobs-with-lemon-rice.png
   // for the untouched original.
   'Grilled Chicken Souvlaki Kabobs with Lemon Rice': require('../assets/grilled-chicken-souvlaki-kabobs-with-lemon-rice-card.jpg'),
+  // Uploaded already at ~3.4:1 (1904x560), matching the card's own
+  // aspectRatio (1402/412 -- see MealCard.tsx) almost exactly -- no
+  // separate pre-cropped variant needed, unlike the Souvlaki photo
+  // above.
+  'Boursin-Me-Up Chicken & Mushroom Rice': require('../assets/boursin-me-up-chicken-mushroom-rice.png'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
