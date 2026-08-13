@@ -32,6 +32,11 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Instant Noodles Forever — The Pork One': require('../assets/instant-noodles-forever-pork.jpeg'),
+  // Cropped tighter from the left (Anabelle's call: "so we dont see as
+  // much of the arms" -- the source shot is held up by two tattooed
+  // arms) -- original backed up before cropping per the standing rule.
+  // 1080x634, matching the card's ~1.7:1 target.
+  'Kraft Dinner alla Carbonara': require('../assets/kraft-dinner-alla-carbonara.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
