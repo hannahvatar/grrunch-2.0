@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ArrowPathIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
@@ -26,6 +26,23 @@ const ACCENT = '#FFA955';
 
 const OTHER_ITEMS = 'Other items';
 
+// Deal items are keyed `deal-${id}` (see mapDealToGroceryItem), recipe
+// ingredients `${meal.id}-${index}` (see recipeItems below) -- this is
+// the one reliable way to tell the two apart from a bare
+// quantityOverrides key, since meal.id is a UUID that can never
+// collide with the literal "deal-" prefix.
+function isDealItemKey(key: string): boolean {
+  return key.startsWith('deal-');
+}
+
+// Hand-typed items (see customItems below) are keyed `custom-${id}` --
+// same reasoning as isDealItemKey: a custom item has no "original"
+// recipe-computed quantity either (it's always just whatever the
+// shopper typed), so it's excluded from the bulk Reset the same way.
+function isCustomItemKey(key: string): boolean {
+  return key.startsWith('custom-');
+}
+
 interface GroceryItem {
   key: string;
   text: string;
@@ -40,6 +57,17 @@ interface GroceryItem {
   // with no flyer presence stays in "Other items" rather than implying a
   // store we have no data for.
   store?: string;
+}
+
+// A shopper-typed item, added via the "Add item" sheet -- see
+// customItems/mapCustomItemToGroceryItem below. id is a simple session-
+// local counter (see nextCustomItemId), not a UUID -- there's no
+// backing record anywhere to key against, this only ever needs to be
+// unique within this screen's own lifetime.
+interface CustomItem {
+  id: string;
+  name: string;
+  quantity: string;
 }
 
 function mapDealToGroceryItem(deal: Deal): GroceryItem {
@@ -64,6 +92,22 @@ function mapDealToGroceryItem(deal: Deal): GroceryItem {
       imageUrl: deal.imageUrl ?? undefined,
       originalPriceSource: deal.originalPriceSource,
     },
+  };
+}
+
+// A shopper-typed item (see the "Add item" sheet below) -- no dealTag,
+// no store match of any kind, so groupByStore's own `item.store ??
+// OTHER_ITEMS` fallback always lands it in "Other items" for free,
+// same as any other store-less staple. Leading quantity token is the
+// shopper's own typed amount (defaults to "1", see commitAddItem) --
+// same convention as mapDealToGroceryItem's "1 " prefix, for the same
+// reason (IngredientRow's quantity badge needs a real leading token to
+// split on).
+function mapCustomItemToGroceryItem(item: CustomItem): GroceryItem {
+  return {
+    key: `custom-${item.id}`,
+    text: `${item.quantity} ${item.name}`,
+    source: 'Added by you',
   };
 }
 
@@ -126,6 +170,16 @@ export function GroceryListView() {
   // live value while the sheet is open.
   const [editingItem, setEditingItem] = useState<GroceryItem | null>(null);
   const [sheetQuantityDraft, setSheetQuantityDraft] = useState('');
+  // Shopper-typed items, added via the "Add item" sheet below -- always
+  // land in "Other items" (see mapCustomItemToGroceryItem), same
+  // session-only lifetime as every other piece of state on this screen.
+  const [customItems, setCustomItems] = useState<CustomItem[]>([]);
+  const [addItemSheetOpen, setAddItemSheetOpen] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState('1');
+  // Plain counter, not a UUID -- CustomItem.id only ever needs to be
+  // unique within this screen's own session (see the CustomItem type).
+  const nextCustomItemId = useRef(0);
 
   useEffect(() => {
     if (selectedIds.size === 0) {
@@ -195,9 +249,22 @@ export function GroceryListView() {
 
   // Bulk version of the above -- the top-of-screen note's own "Reset"
   // button, for clearing every manual edit at once rather than one item
-  // at a time via each row's own sheet.
+  // at a time via each row's own sheet. Recipe items only (Anabelle's
+  // call) -- a standalone Best Deal item, or a hand-typed custom item,
+  // has no "original" recipe-computed quantity to reset back to in the
+  // first place (its own quantity is always just a shopper-typed
+  // number -- see mapDealToGroceryItem's "1 " prefix / commitAddItem),
+  // so this bulk action -- and its own enabled/disabled state below --
+  // only ever look at recipe-sourced keys (`${meal.id}-${index}`),
+  // never `deal-${id}`/`custom-${id}` ones.
   function resetAllQuantityOverrides() {
-    setQuantityOverrides(new Map());
+    setQuantityOverrides((prev) => {
+      const next = new Map(prev);
+      for (const key of next.keys()) {
+        if (!isDealItemKey(key) && !isCustomItemKey(key)) next.delete(key);
+      }
+      return next;
+    });
   }
 
   function resolveDisplayText(item: GroceryItem): string {
@@ -219,6 +286,43 @@ export function GroceryListView() {
   function closeQuantityEditor() {
     setEditingItem(null);
     setSheetQuantityDraft('');
+  }
+
+  function openAddItemSheet() {
+    setNewItemName('');
+    setNewItemQuantity('1');
+    setAddItemSheetOpen(true);
+  }
+
+  function closeAddItemSheet() {
+    setAddItemSheetOpen(false);
+    setNewItemName('');
+    setNewItemQuantity('1');
+  }
+
+  // Blank/whitespace-only name is a no-op -- just closes the sheet,
+  // same "don't add nothing" guard commitQuantityEditor already uses
+  // for an empty quantity. A blank/non-numeric quantity falls back to
+  // "1" rather than blocking the add entirely -- the name is the only
+  // field that actually matters here.
+  function commitAddItem() {
+    const trimmedName = newItemName.trim();
+    if (trimmedName) {
+      const trimmedQuantity = newItemQuantity.trim();
+      const quantity = trimmedQuantity && !Number.isNaN(parseFloat(trimmedQuantity)) ? trimmedQuantity : '1';
+      const id = String(nextCustomItemId.current++);
+      setCustomItems((prev) => [...prev, { id, name: trimmedName, quantity }]);
+    }
+    closeAddItemSheet();
+  }
+
+  // Same stepper +/- pattern as adjustSheetQuantity below, targeting
+  // the "Add item" sheet's own quantity field instead.
+  function adjustNewItemQuantity(delta: number) {
+    const current = parseFloat(newItemQuantity);
+    if (Number.isNaN(current)) return;
+    const next = Math.max(1, Math.round((current + delta) * 100) / 100);
+    setNewItemQuantity(String(next));
   }
 
   // Reconstructs the full text string with just its leading token
@@ -295,10 +399,13 @@ export function GroceryListView() {
     });
   });
   const dealItems: GroceryItem[] = selectedDeals.map(mapDealToGroceryItem);
+  const customGroceryItems: GroceryItem[] = customItems.map(mapCustomItemToGroceryItem);
   // Removed items drop out here, before grouping/counting -- so "N
   // items"/"N stores" in the header, and which store cards even show
   // up, all reflect what's actually left on the list.
-  const items: GroceryItem[] = [...recipeItems, ...dealItems].filter((item) => !removedKeys.has(item.key));
+  const items: GroceryItem[] = [...recipeItems, ...dealItems, ...customGroceryItems].filter(
+    (item) => !removedKeys.has(item.key)
+  );
   const storeGroups = groupByStore(items);
   const storeNames = Array.from(storeGroups.keys())
     .filter((store) => store !== OTHER_ITEMS)
@@ -311,6 +418,13 @@ export function GroceryListView() {
   // lib/curatedDeals.ts's isReferencePriced()).
   const itemsWithDeal = items.filter((item) => item.dealTag && !isReferencePriced(item.dealTag.originalPriceSource));
   const dealItemCount = itemsWithDeal.length;
+  // Drives the bulk "Reset" button's enabled state -- recipe overrides
+  // only (see resetAllQuantityOverrides/isDealItemKey/isCustomItemKey),
+  // so editing a standalone Best Deal or custom item's quantity never
+  // enables a button that wouldn't actually reset it anyway.
+  const hasRecipeQuantityOverrides = Array.from(quantityOverrides.keys()).some(
+    (key) => !isDealItemKey(key) && !isCustomItemKey(key)
+  );
 
   return (
     <View style={styles.container}>
@@ -339,11 +453,12 @@ export function GroceryListView() {
                 instead once there's nothing to reset, same as the
                 servings stepper's own disabled minus button. Same
                 tertiary treatment (white fill, INK border) as
-                IngredientRow's editButton/removeMealButton above. */}
+                IngredientRow's editButton/removeMealButton above.
+                Recipe items only -- see hasRecipeQuantityOverrides. */}
             <Pressable
-              style={[styles.resetAllButton, quantityOverrides.size === 0 && styles.resetAllButtonDisabled]}
+              style={[styles.resetAllButton, !hasRecipeQuantityOverrides && styles.resetAllButtonDisabled]}
               onPress={resetAllQuantityOverrides}
-              disabled={quantityOverrides.size === 0}
+              disabled={!hasRecipeQuantityOverrides}
               hitSlop={8}
             >
               <Text style={styles.resetAllButtonText}>Reset</Text>
@@ -351,10 +466,16 @@ export function GroceryListView() {
             </Pressable>
           </View>
         )}
-        {selectedMeals.length === 0 && selectedDeals.length === 0 && (
+        {/* items.length, not just the recipe/deal sources -- a custom
+            item (see customItems) is a real, non-empty list on its
+            own; this used to only check selectedMeals/selectedDeals,
+            so adding just a custom item left this showing "Nothing
+            here yet" right above the item that was, in fact, there. */}
+        {items.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
-              Nothing here yet. Add recipes from Meals or deals from Weekly Deals to build your list.
+              Nothing here yet. Add recipes from Meals, deals from Weekly Deals, or your own item to
+              build your list.
             </Text>
           </View>
         )}
@@ -456,6 +577,16 @@ export function GroceryListView() {
             ))}
           </View>
         ))}
+
+        {/* Always rendered, regardless of whether the list is empty --
+            this is how a shopper populates "Other items" in the first
+            place, not gated behind that section already existing (see
+            mapCustomItemToGroceryItem: a new item always lands there
+            since it never has a store match). */}
+        <Pressable style={styles.addItemButton} onPress={openAddItemSheet}>
+          <PlusIcon size={16} color={INK} />
+          <Text style={styles.addItemButtonText}>Add item</Text>
+        </Pressable>
       </ScrollView>
 
       {/* Single shared bottom sheet for quantity editing -- one
@@ -503,6 +634,55 @@ export function GroceryListView() {
                 <Text style={styles.sheetResetButtonText}>Reset to original quantity</Text>
               </Pressable>
             )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* "Add item" sheet -- same transparent-Modal bottom-sheet
+          pattern as the quantity editor above, its own instance since
+          the two are never open at the same time and have unrelated
+          fields (free text here vs. a numeric stepper there). */}
+      <Modal visible={addItemSheetOpen} transparent animationType="slide" onRequestClose={closeAddItemSheet}>
+        <Pressable style={styles.sheetBackdrop} onPress={closeAddItemSheet}>
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Add item</Text>
+            <TextInput
+              style={styles.addItemInput}
+              value={newItemName}
+              onChangeText={setNewItemName}
+              placeholder="e.g. Flour, Milk"
+              placeholderTextColor="#999"
+              autoFocus
+              autoCapitalize="sentences"
+              returnKeyType="done"
+              onSubmitEditing={commitAddItem}
+            />
+            <View style={styles.addItemQuantityRow}>
+              <Text style={styles.addItemQuantityLabel}>Quantity</Text>
+              <View style={styles.sheetStepperRow}>
+                <Pressable style={styles.sheetStepperButton} onPress={() => adjustNewItemQuantity(-1)} hitSlop={8}>
+                  <MinusIcon size={18} color={INK} />
+                </Pressable>
+                <TextInput
+                  style={[styles.sheetQuantityInput, styles.addItemQuantityInput]}
+                  value={newItemQuantity}
+                  onChangeText={setNewItemQuantity}
+                  keyboardType="numeric"
+                  selectTextOnFocus
+                />
+                <Pressable style={styles.sheetStepperButton} onPress={() => adjustNewItemQuantity(1)} hitSlop={8}>
+                  <PlusIcon size={18} color={INK} />
+                </Pressable>
+              </View>
+            </View>
+            <Pressable
+              style={[styles.sheetDoneButton, !newItemName.trim() && styles.sheetDoneButtonDisabled]}
+              onPress={commitAddItem}
+              disabled={!newItemName.trim()}
+            >
+              <Text style={styles.sheetDoneButtonText}>Add</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -623,6 +803,22 @@ const styles = StyleSheet.create({
   },
   storeHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   storeName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Opens the "Add item" sheet -- always visible at the bottom of the
+  // list (not gated behind "Other items" already existing), dashed
+  // border reads as an "add new" affordance distinct from every solid-
+  // border "modal treatment" card above it.
+  addItemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderStyle: 'dashed',
+    borderRadius: 16,
+    paddingVertical: 14,
+  },
+  addItemButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Standard transparent-Modal bottom sheet: full-screen backdrop
   // (tap to dismiss) with the sheet itself pinned to the bottom via
   // justifyContent. The inner Pressable's onPress stopPropagation stops
@@ -676,6 +872,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sheetDoneButtonText: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Same 0.35 opacity convention as stepperButtonDisabled/
+  // resetAllButtonDisabled above -- "Add" sheet only, disabled while
+  // the typed name is empty/whitespace-only.
+  sheetDoneButtonDisabled: { opacity: 0.35 },
+  // "Add item" sheet's free-text field -- same border/radius language
+  // as sheetQuantityInput, left-aligned and a normal (not numeric)
+  // keyboard since this is a name, not an amount.
+  addItemInput: {
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'OpenSans_600SemiBold',
+    color: INK,
+  },
+  // "Add item" sheet's quantity row -- label + the same
+  // sheetStepperRow/sheetStepperButton/sheetQuantityInput stepper the
+  // quantity-edit sheet above already uses, reused verbatim rather
+  // than a second bespoke stepper style.
+  addItemQuantityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  addItemQuantityLabel: { fontSize: 14, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
+  // Explicit width -- sheetQuantityInput's own minWidth:70 alone isn't
+  // enough here: on web, a bare TextInput with no width falls back to
+  // the browser's own default intrinsic input width (much wider than
+  // 70), which overflowed this row (shared with the "Quantity" label,
+  // unlike the quantity-edit sheet's own centered-alone stepper).
+  addItemQuantityInput: { width: 70 },
   // Plain text link, not a bordered button -- this is a secondary/
   // undo-style action sitting right below the sheet's one real primary
   // action (Done), so it deliberately doesn't compete visually with it.
