@@ -16,6 +16,14 @@ import {
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSubscription } from '../../lib/subscription';
 
+// GRRUNCH DS -- matches meals.tsx/recipe.tsx/GroceryListView.tsx's own
+// peach background + white/2px-INK-border "modal treatment" card
+// language, pulled over onto this screen (previously still on an
+// earlier, plainer white-bg/thin-grey-border look that had drifted
+// from the rest of the app).
+const ACCENT = '#FFA955';
+const INK = '#111';
+
 // Free tier sees only the first 3 items in each category -- Grrunch Plus
 // (30-day free trial, then $5.99/mo) unlocks the rest. A single "Unlock N
 // more deals" tile stands in for however many are left, naming the real
@@ -102,9 +110,9 @@ export default function BestDealsScreen() {
                 <View style={styles.categoryHeaderRight}>
                   <Text style={styles.categoryCount}>{categoryDeals.length}</Text>
                   {isExpanded ? (
-                    <ChevronDownIcon size={16} color="#999" />
+                    <ChevronDownIcon size={16} color={INK} />
                   ) : (
-                    <ChevronRightIcon size={16} color="#999" />
+                    <ChevronRightIcon size={16} color={INK} />
                   )}
                 </View>
               </Pressable>
@@ -186,7 +194,7 @@ export default function BestDealsScreen() {
                         })
                       }
                     >
-                      <LockClosedIcon size={20} color="#111" />
+                      <LockClosedIcon size={20} color={INK} />
                       <Text style={styles.unlockTitle}>
                         Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
                       </Text>
@@ -204,52 +212,85 @@ export default function BestDealsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  // Matches meals.tsx/GroceryListView.tsx's own peach background --
+  // was plain/transparent (defaulting to white), the biggest single
+  // mismatch against the rest of the app.
+  container: { flex: 1, backgroundColor: '#FFEAD4' },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  errorText: { fontSize: 14, color: '#888', textAlign: 'center', paddingHorizontal: 24 },
-  scrollContent: { padding: 20, paddingTop: 60, gap: 20 },
-  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  subtitle: { fontSize: 13, color: '#888', marginTop: -12 },
-  emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
-  emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
+  errorText: { fontSize: 14, color: '#767676', textAlign: 'center', paddingHorizontal: 24 },
+  // paddingBottom generous (not the old plain 20/via shorthand `padding`)
+  // so the last category's own content never lands under SupportBubble --
+  // same fixed floating chat button/clearance issue GroceryListView.tsx
+  // already fixed for its own last card.
+  scrollContent: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 140, gap: 20 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  subtitle: { fontSize: 13, color: INK, marginTop: -12 },
+  // "Modal treatment" -- same white/2px-INK-border/16px-radius language
+  // as every other card on the Meals/Grocery/Recipe screens (was flat
+  // #F2F2F2 grey box with no border).
+  emptyState: { backgroundColor: '#fff', borderWidth: 2, borderColor: INK, borderRadius: 16, padding: 20 },
+  emptyStateText: { color: INK, fontSize: 14, textAlign: 'center' },
   categorySection: { gap: 10 },
+  // "Modal treatment" header, matching recipe.tsx's own card-with-
+  // heading-row convention -- was a thin #eee-border/12px-radius box,
+  // visually unrelated to any other card on the app.
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  categoryTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // 700/Bold, not 800/ExtraBold -- matches this app's established
+  // section-heading weight (recipe.tsx's sectionTitle, GroceryListView's
+  // storeName/selectedSectionTitle), not the page-title weight.
+  categoryTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   categoryHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  categoryCount: { fontSize: 13, color: '#999', fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
+  categoryCount: { fontSize: 13, color: '#767676', fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
   dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  // "Modal treatment" card -- was a thin #eee-border/14px-radius box.
   dealCard: {
     width: '47%',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 16,
     padding: 10,
     gap: 4,
   },
+  // Same INK-border convention as meals.tsx's own grid-adjacent unlock
+  // card (1px, not the 2px "modal treatment" cards use -- this one has
+  // no white fill of its own, transparent against the page).
   unlockCard: {
     width: '47%',
     borderWidth: 1,
-    borderColor: '#111',
+    borderColor: INK,
     borderRadius: 14,
     padding: 14,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
-  unlockTitle: { fontSize: 13, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', textAlign: 'center' },
-  unlockSubtitle: { fontSize: 11, color: '#888', textAlign: 'center' },
+  unlockTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    color: INK,
+    textAlign: 'center',
+  },
+  unlockSubtitle: { fontSize: 11, color: '#767676', textAlign: 'center' },
   dealImageWrap: { position: 'relative' },
   dealImage: { width: '100%', height: 90, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  // Solid-bg/white-text overlay badges -- already matched
+  // IngredientRow.tsx's own non-stacked discountBadge/fairPriceBadge/
+  // greatValueBadge colors exactly (needed for contrast against an
+  // arbitrary flyer photo, unlike the light-pill variant used for
+  // inline badges elsewhere), left as-is.
   discountBadge: {
     position: 'absolute',
     top: 6,
@@ -260,9 +301,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  // Peach/orange brand colors -- solid + white text, matching
-  // discountBadge/greatValueBadge's own solid-bg convention on this
-  // rounded-rect badge style.
   fairPriceBadge: {
     position: 'absolute',
     top: 6,
@@ -286,27 +324,43 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  dealName: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 4, minHeight: 34 },
-  dealChain: { fontSize: 11, color: '#999' },
+  dealName: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'OpenSans_700Bold',
+    color: INK,
+    marginTop: 4,
+    minHeight: 34,
+  },
+  dealChain: { fontSize: 11, color: '#767676' },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },
-  dealPrice: { fontSize: 15, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  dealOriginalPrice: { fontSize: 12, color: '#aaa', textDecorationLine: 'line-through' },
+  // 16px, matching IngredientRow's own itemPriceValue -- was 15px.
+  dealPrice: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // INK strikethrough at 11px, matching IngredientRow's own
+  // itemPriceOriginal exactly -- was a muted #aaa grey at 12px.
+  dealOriginalPrice: { fontSize: 11, color: INK, textDecorationLine: 'line-through' },
   // Matches IngredientRow.tsx's itemPriceEstimated deliberately -- same
   // "not a confirmed store fact" muted tone, reused here for a
   // reference-sourced original price instead of a non-deal staple avg.
   dealCompareAnnotation: { fontSize: 12, color: '#767676' },
+  // ACCENT-filled pill, matching recipe.tsx's addToListButton/MealCard's
+  // groceryToggleButton convention exactly (same active-state flip to
+  // INK fill + white text) -- was an unfilled thin-border button, the
+  // one outstanding primary-action control on this screen that hadn't
+  // picked up the app's own brand-accent treatment.
   addButton: {
     marginTop: 8,
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 4,
-    borderWidth: 1,
-    borderColor: '#111',
-    borderRadius: 8,
+    backgroundColor: ACCENT,
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
     paddingVertical: 8,
     alignItems: 'center',
   },
-  addButtonActive: { backgroundColor: '#111' },
-  addButtonText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#111' },
+  addButtonActive: { backgroundColor: INK },
+  addButtonText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   addButtonTextActive: { color: '#fff' },
 });
