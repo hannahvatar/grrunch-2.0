@@ -45,7 +45,14 @@ interface GroceryItem {
 function mapDealToGroceryItem(deal: Deal): GroceryItem {
   return {
     key: `deal-${deal.id}`,
-    text: deal.itemName,
+    // Leading "1 " token is required, not decorative -- IngredientRow's
+    // stackedLayout (used below via `stackedLayout={!!item.dealTag}`)
+    // always splits `text` on its first space to derive the quantity
+    // badge, same convention every recipe-sourced ingredient's own text
+    // already follows (e.g. "1 package ..."). Without it, deal.itemName's
+    // own first word (e.g. "Small" in "Small Bar Cakes") got treated as
+    // the quantity and silently clipped off the displayed name.
+    text: `1 ${deal.itemName}`,
     source: 'Best Deal',
     store: deal.chainName,
     dealTag: {
