@@ -1,7 +1,14 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon, TagIcon } from 'react-native-heroicons/outline';
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  LockClosedIcon,
+  PlusIcon,
+  TagIcon,
+} from 'react-native-heroicons/outline';
 
 import {
   type Deal,
@@ -186,7 +193,7 @@ export default function BestDealsScreen() {
                               </View>
                             ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
                               <View style={styles.dealGreatValueBadge}>
-                                <Text style={styles.dealBadgeText}>
+                                <Text style={styles.dealGreatValueBadgeText}>
                                   {formatGreatReferenceValueLabel(deal.discountPct)}
                                 </Text>
                               </View>
@@ -197,14 +204,21 @@ export default function BestDealsScreen() {
                             )}
                           </View>
                         </Pressable>
+                        {/* Icon-only primary button, top-right corner of the
+                            card (Anabelle's call) -- was a full text button
+                            ("+ Add to grocery list") below the content.
+                            Same ACCENT/INK-fill active-state flip as
+                            before, just a circular Plus/Check icon now. */}
                         <Pressable
-                          style={[styles.addButton, isAdded && styles.addButtonActive]}
+                          style={[styles.addIconButton, isAdded && styles.addIconButtonActive]}
                           onPress={() => toggleDealSelected(deal.id)}
+                          hitSlop={6}
                         >
-                          {isAdded && <CheckIcon size={12} color="#fff" />}
-                          <Text style={[styles.addButtonText, isAdded && styles.addButtonTextActive]}>
-                            {isAdded ? 'Added' : 'Add to my list'}
-                          </Text>
+                          {isAdded ? (
+                            <CheckIcon size={16} color="#fff" />
+                          ) : (
+                            <PlusIcon size={16} color={INK} />
+                          )}
                         </Pressable>
                       </View>
                     );
@@ -295,8 +309,11 @@ const styles = StyleSheet.create({
   dealsGrid: { gap: 12 },
   // "Modal treatment" card, full width -- was a half-width grid item
   // with the image stacked on top of the text.
+  // position: relative -- anchors the icon-only Add button (absolute)
+  // to this card's own top-right corner.
   dealCard: {
     width: '100%',
+    position: 'relative',
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,
@@ -307,7 +324,10 @@ const styles = StyleSheet.create({
   // Image left, name/store/price column right -- same horizontal-row
   // shape as IngredientRow's own default (non-stacked) layout.
   dealCardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  dealInfo: { flex: 1, gap: 2 },
+  // paddingRight reserves room for the top-right icon-only Add button
+  // (absolute, doesn't take up flex space on its own) -- otherwise an
+  // untruncated long item name could wrap right underneath it.
+  dealInfo: { flex: 1, gap: 2, paddingRight: 36 },
   // Same INK-border convention as meals.tsx's own unlock card (1px,
   // not the 2px "modal treatment" cards use -- this one has no white
   // fill of its own, transparent against the page). Full width now,
@@ -335,42 +355,45 @@ const styles = StyleSheet.create({
   // the left of the info column in the new horizontal row.
   dealImage: { width: 88, height: 88, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  // Solid-bg/white-text badges, inline now beside the price (was an
-  // absolute overlay on the image, cramped/wrapping awkwardly on the
-  // smaller 88px horizontal-row image) -- same colors as
-  // IngredientRow.tsx's own non-stacked discountBadge/fairPriceBadge/
-  // greatValueBadge, self-sizing (alignSelf: flex-start) rather than
-  // stretching to the info column's full width.
+  // Pill badges, inline beside the price (was an absolute overlay on
+  // the image, cramped/wrapping awkwardly on the smaller 88px
+  // horizontal-row image) -- matches MealCard.tsx's own dealTagBadge/
+  // fairPriceBadge/greatValueBadge exactly (light-bg/colored-text
+  // pills), not IngredientRow's solid-bg/white-text rounded-rect --
+  // this app's own Meals tab is the more relevant precedent for a
+  // recipe/deal card's badge, so this now matches that instead.
   dealBadge: {
     alignSelf: 'flex-start',
     marginTop: 4,
-    backgroundColor: '#2C5FD6',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: '#96E696',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  dealBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  dealBadgeText: { color: INK, fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Peach/orange -- distinct from dealBadge's green (a real store
+  // discount), matching MealCard's fairPriceBadge exactly.
   dealFairPriceBadge: {
     alignSelf: 'flex-start',
     marginTop: 4,
-    backgroundColor: '#FF7A2A',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: '#FFEAD4',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  dealFairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  // Purple -- deliberately distinct from dealBadge's blue (a real store
-  // markdown) and dealFairPriceBadge's orange (a neutral price), so
-  // "we compared this and it's genuinely a good price" never reads as
-  // either of those two claims.
+  dealFairPriceBadgeText: { color: '#FF7A2A', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Purple -- deliberately distinct from dealBadge's green (a real
+  // store discount) and dealFairPriceBadge's peach (a neutral price),
+  // matching MealCard's greatValueBadge exactly.
   dealGreatValueBadge: {
     alignSelf: 'flex-start',
     marginTop: 4,
-    backgroundColor: '#6B46C1',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: '#EDE7FE',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
+  dealGreatValueBadgeText: { color: '#6B46C1', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // No marginTop/minHeight now (were sized for the old stacked
   // layout, image-above-text) -- dealName sits beside the image now,
   // in dealInfo's own flex column.
@@ -401,27 +424,23 @@ const styles = StyleSheet.create({
   // ACCENT-filled pill, matching recipe.tsx's addToListButton/MealCard's
   // groceryToggleButton convention exactly (same active-state flip to
   // INK fill + white text) -- was an unfilled thin-border button, the
-  // one outstanding primary-action control on this screen that hadn't
-  // picked up the app's own brand-accent treatment.
-  // alignSelf: flex-start -- was stretching full width (dealCard's
-  // default column cross-axis stretch); sized to its own content now,
-  // matching the compact pill sizing of e.g. GroceryListView's
-  // resetAllButton rather than a full-width primary action.
-  addButton: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 4,
+  // Icon-only primary button (Anabelle's call), pinned to the card's
+  // own top-right corner -- was a full-width text button
+  // ("+ Add to grocery list") below the content, then a compact text
+  // pill. Same ACCENT/INK-fill active-state flip as those had, just a
+  // circular Plus/Check icon now instead of a text label.
+  addIconButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: ACCENT,
     borderWidth: 1.5,
     borderColor: INK,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  addButtonActive: { backgroundColor: INK },
-  addButtonText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  addButtonTextActive: { color: '#fff' },
+  addIconButtonActive: { backgroundColor: INK },
 });
