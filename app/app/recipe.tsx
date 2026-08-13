@@ -645,7 +645,10 @@ const styles = StyleSheet.create({
   // reads as "here's an idea" rather than "here's what to buy."
   optionalList: { gap: 12 },
   optionalText: { fontSize: 15, lineHeight: 24, color: '#333' },
-  optionalTitle: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Plain weight now (Anabelle's call) -- title still leads the
+  // description inline, just no longer bolded/visually distinguished
+  // from it.
+  optionalTitle: { color: INK },
   // Sub-recipe sections (e.g. "Basic Crispy Pork Belly") at the very
   // bottom of the page, jump-linked from a matching ingredient above --
   // "Companion Recipe" eyebrow label sits outside/above a dashed-border
