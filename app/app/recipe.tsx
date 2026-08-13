@@ -327,6 +327,8 @@ export default function RecipeScreen() {
             <View style={styles.optionalList}>
               {meal.optionalAdditions.map((addition) => (
                 <Text key={addition.title} style={styles.optionalText}>
+                  <Text style={styles.optionalTitle}>{addition.title}</Text>
+                  {'  '}
                   {addition.description}
                 </Text>
               ))}
@@ -643,6 +645,7 @@ const styles = StyleSheet.create({
   // reads as "here's an idea" rather than "here's what to buy."
   optionalList: { gap: 12 },
   optionalText: { fontSize: 15, lineHeight: 24, color: '#333' },
+  optionalTitle: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Sub-recipe sections (e.g. "Basic Crispy Pork Belly") at the very
   // bottom of the page, jump-linked from a matching ingredient above --
   // "Companion Recipe" eyebrow label sits outside/above a dashed-border
