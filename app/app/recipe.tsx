@@ -538,11 +538,9 @@ const styles = StyleSheet.create({
   staplesList: { gap: 10 },
   // Instructions -- one numbered white card per step (Anabelle's call,
   // replacing a single shared bordered card of plain numbered lines).
-  // No border (unlike every other "modal treatment" card on this page)
-  // -- a soft shadow reads the card off the peach page background
-  // instead, matching the design reference exactly; same
-  // shadowColor/Offset/Opacity/Radius + elevation pairing already
-  // established by SupportBubble.tsx for a cross-platform soft shadow.
+  // No border and no shadow (unlike every other "modal treatment" card
+  // on this page) -- just the white card's own contrast against the
+  // peach page background, per Anabelle's call to drop the shadow.
   instructionStepsList: { gap: 12 },
   instructionStepCard: {
     flexDirection: 'row',
@@ -551,11 +549,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
   // ACCENT-filled circle, same orange as "Add to my list" -- reads as
   // the step's own number tag, not a generic bullet.
