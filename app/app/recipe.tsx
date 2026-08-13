@@ -283,21 +283,23 @@ export default function RecipeScreen() {
           </ScrollView>
         )}
 
-        {/* Title sits outside/above the card now (same sectionTitle
-            style as "What you'll need"), not inside it -- was an
-            innerSectionTitleFirst heading inside instructionsCard. */}
+        {/* Title sits outside/above the list (same sectionTitle style
+            as "What you'll need"). Anabelle's call: each step is its
+            own numbered white card (ACCENT circle badge + text) rather
+            than plain numbered lines inside one shared bordered card --
+            no bounding maxHeight/nested scroll needed anymore either,
+            since the steps just flow with the page's own scroll now. */}
         <Text style={styles.sectionTitle}>Instructions</Text>
-        <ScrollView
-          style={styles.instructionsCard}
-          contentContainerStyle={styles.instructionsCardContent}
-          nestedScrollEnabled
-        >
+        <View style={styles.instructionStepsList}>
           {meal.instructions.map((step, index) => (
-            <Text key={step} style={styles.listItem}>
-              {index + 1}.  {step}
-            </Text>
+            <View key={step} style={styles.instructionStepCard}>
+              <View style={styles.instructionStepBadge}>
+                <Text style={styles.instructionStepBadgeText}>{index + 1}</Text>
+              </View>
+              <Text style={styles.instructionStepText}>{step}</Text>
+            </View>
           ))}
-        </ScrollView>
+        </View>
 
         {meal.optionalAdditions.length > 0 && (
           <>
@@ -534,18 +536,41 @@ const styles = StyleSheet.create({
   // inside the shared "On Sale This Week" card.
   dealDivider: { height: 1, backgroundColor: '#E8E8E8', marginBottom: 10 },
   staplesList: { gap: 10 },
-  // Same ScrollView split as ingredientsModalCard/
-  // ingredientsModalCardContent above -- a long instructions list
-  // scrolls within its own bounded height instead of the whole card
-  // growing indefinitely.
-  instructionsCard: {
+  // Instructions -- one numbered white card per step (Anabelle's call,
+  // replacing a single shared bordered card of plain numbered lines).
+  // No border (unlike every other "modal treatment" card on this page)
+  // -- a soft shadow reads the card off the peach page background
+  // instead, matching the design reference exactly; same
+  // shadowColor/Offset/Opacity/Radius + elevation pairing already
+  // established by SupportBubble.tsx for a cross-platform soft shadow.
+  instructionStepsList: { gap: 12 },
+  instructionStepCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
     backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 16,
-    maxHeight: 320,
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  instructionsCardContent: { padding: 14, gap: 4 },
+  // ACCENT-filled circle, same orange as "Add to my list" -- reads as
+  // the step's own number tag, not a generic bullet.
+  instructionStepBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instructionStepBadgeText: { fontSize: 15, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  instructionStepText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#333' },
+  // Sub-recipe Instructions only now (main recipe's own switched to
+  // instructionStepCard above).
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
   // Not a priced ingredient list -- a short paragraph per suggestion,
   // title inline-bolded rather than styled as its own list row, so it
