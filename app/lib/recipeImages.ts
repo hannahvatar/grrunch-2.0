@@ -20,6 +20,9 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // (1402/824 -- see MealCard.tsx) almost exactly -- cropped tighter
   // around the bowl itself per the same preference as above.
   'Boursin-Me-Up Chicken & Mushroom Rice': require('../assets/boursin-me-up-chicken-mushroom-rice.png'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784 vs the
+  // card's 1402/824) -- no crop needed/applied, uncropped as uploaded.
+  'Sizzling Pork Skewers': require('../assets/sizzling-pork-skewers.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
