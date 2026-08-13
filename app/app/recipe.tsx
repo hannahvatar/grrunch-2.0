@@ -573,16 +573,15 @@ const styles = StyleSheet.create({
   // Sub-recipe Instructions only now (main recipe's own switched to
   // instructionStepCard above).
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
-  // Callout card (Anabelle's call, with a design reference) -- a warm
-  // tint just barely lighter than the page's own peach background
-  // (#FFEAD4), plus a soft ACCENT-toned border, is what actually reads
-  // as its own card against that background; a plain white "modal
-  // treatment" card (this page's usual convention) would have read as
-  // just another priced section, which this deliberately isn't.
+  // Callout card (Anabelle's call, with a design reference) -- no fill,
+  // just an outline in the app's fair-price/badge orange (#FF7A2A) to
+  // read as its own card against the page's peach background; a plain
+  // white "modal treatment" card (this page's usual convention) would
+  // have read as just another priced section, which this deliberately
+  // isn't.
   optionalCard: {
-    backgroundColor: '#FDEEDD',
     borderWidth: 1.5,
-    borderColor: '#F0C293',
+    borderColor: '#FF7A2A',
     borderRadius: 20,
     padding: 20,
     marginTop: 16,
