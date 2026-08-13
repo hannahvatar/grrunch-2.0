@@ -108,7 +108,9 @@ export default function BestDealsScreen() {
               <Pressable style={styles.categoryHeader} onPress={() => toggleCategory(category)}>
                 <Text style={styles.categoryTitle}>{category}</Text>
                 <View style={styles.categoryHeaderRight}>
-                  <Text style={styles.categoryCount}>{categoryDeals.length}</Text>
+                  <View style={styles.categoryCountBadge}>
+                    <Text style={styles.categoryCount}>{categoryDeals.length}</Text>
+                  </View>
                   {isExpanded ? (
                     <ChevronDownIcon size={16} color={INK} />
                   ) : (
@@ -250,7 +252,18 @@ const styles = StyleSheet.create({
   // storeName/selectedSectionTitle), not the page-title weight.
   categoryTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   categoryHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  categoryCount: { fontSize: 13, color: '#767676', fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
+  // ACCENT-filled pill, matching the brand-accent badges used elsewhere
+  // (e.g. sheetDoneButton) -- was plain muted-grey text with no badge.
+  categoryCountBadge: {
+    backgroundColor: ACCENT,
+    borderRadius: 999,
+    minWidth: 24,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryCount: { fontSize: 13, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   // "Modal treatment" card -- was a thin #eee-border/14px-radius box.
   dealCard: {
