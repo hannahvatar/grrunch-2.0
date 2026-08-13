@@ -135,23 +135,6 @@ export default function BestDealsScreen() {
                                 <TagIcon size={24} color="#ccc" />
                               </View>
                             )}
-                            {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
-                              <View style={styles.discountBadge}>
-                                <Text style={styles.discountBadgeText}>
-                                  Up to {Math.round(deal.discountPct)}% off
-                                </Text>
-                              </View>
-                            ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
-                              <View style={styles.greatValueBadge}>
-                                <Text style={styles.discountBadgeText}>
-                                  {formatGreatReferenceValueLabel(deal.discountPct)}
-                                </Text>
-                              </View>
-                            ) : (
-                              <View style={styles.fairPriceBadge}>
-                                <Text style={styles.fairPriceBadgeText}>Fair price</Text>
-                              </View>
-                            )}
                           </View>
                           <View style={styles.dealInfo}>
                             {/* No numberOfLines -- the full item name always
@@ -189,6 +172,29 @@ export default function BestDealsScreen() {
                                 {formatComparePriceLabel(deal.originalPrice)}
                               </Text>
                             )}
+                            {/* Moved off the image overlay (was cramped/
+                                wrapping awkwardly on the smaller 88px
+                                horizontal-row image) -- same three-way
+                                discount/great-value/fair-price badge, now
+                                inline beside the price like IngredientRow's
+                                own default (non-stacked) priceEl. */}
+                            {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
+                              <View style={styles.dealBadge}>
+                                <Text style={styles.dealBadgeText}>
+                                  Up to {Math.round(deal.discountPct)}% off
+                                </Text>
+                              </View>
+                            ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
+                              <View style={styles.dealGreatValueBadge}>
+                                <Text style={styles.dealBadgeText}>
+                                  {formatGreatReferenceValueLabel(deal.discountPct)}
+                                </Text>
+                              </View>
+                            ) : (
+                              <View style={styles.dealFairPriceBadge}>
+                                <Text style={styles.dealFairPriceBadgeText}>Fair price</Text>
+                              </View>
+                            )}
                           </View>
                         </Pressable>
                         <Pressable
@@ -197,7 +203,7 @@ export default function BestDealsScreen() {
                         >
                           {isAdded && <CheckIcon size={12} color="#fff" />}
                           <Text style={[styles.addButtonText, isAdded && styles.addButtonTextActive]}>
-                            {isAdded ? 'Added' : '+ Add to grocery list'}
+                            {isAdded ? 'Added' : 'Add to my list'}
                           </Text>
                         </Pressable>
                       </View>
@@ -329,39 +335,37 @@ const styles = StyleSheet.create({
   // the left of the info column in the new horizontal row.
   dealImage: { width: 88, height: 88, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  // Solid-bg/white-text overlay badges -- already matched
+  // Solid-bg/white-text badges, inline now beside the price (was an
+  // absolute overlay on the image, cramped/wrapping awkwardly on the
+  // smaller 88px horizontal-row image) -- same colors as
   // IngredientRow.tsx's own non-stacked discountBadge/fairPriceBadge/
-  // greatValueBadge colors exactly (needed for contrast against an
-  // arbitrary flyer photo, unlike the light-pill variant used for
-  // inline badges elsewhere), left as-is.
-  discountBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
+  // greatValueBadge, self-sizing (alignSelf: flex-start) rather than
+  // stretching to the info column's full width.
+  dealBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
     backgroundColor: '#2C5FD6',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  discountBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  fairPriceBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
+  dealBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  dealFairPriceBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
     backgroundColor: '#FF7A2A',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  fairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  // Purple -- deliberately distinct from discountBadge's blue (a real
-  // store markdown) and fairPriceBadge's yellow (a neutral price), so
+  dealFairPriceBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Purple -- deliberately distinct from dealBadge's blue (a real store
+  // markdown) and dealFairPriceBadge's orange (a neutral price), so
   // "we compared this and it's genuinely a good price" never reads as
   // either of those two claims.
-  greatValueBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
+  dealGreatValueBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
     backgroundColor: '#6B46C1',
     borderRadius: 6,
     paddingHorizontal: 6,
@@ -399,7 +403,12 @@ const styles = StyleSheet.create({
   // INK fill + white text) -- was an unfilled thin-border button, the
   // one outstanding primary-action control on this screen that hadn't
   // picked up the app's own brand-accent treatment.
+  // alignSelf: flex-start -- was stretching full width (dealCard's
+  // default column cross-axis stretch); sized to its own content now,
+  // matching the compact pill sizing of e.g. GroceryListView's
+  // resetAllButton rather than a full-width primary action.
   addButton: {
+    alignSelf: 'flex-start',
     marginTop: 8,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -409,6 +418,7 @@ const styles = StyleSheet.create({
     borderColor: INK,
     borderRadius: 999,
     paddingVertical: 8,
+    paddingHorizontal: 14,
     alignItems: 'center',
   },
   addButtonActive: { backgroundColor: INK },
