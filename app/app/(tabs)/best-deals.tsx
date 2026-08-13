@@ -96,116 +96,127 @@ export default function BestDealsScreen() {
           </View>
         )}
 
-        {categories.map((category) => {
-          const categoryDeals = groups.get(category)!;
-          const visibleDeals = isSubscribed
-            ? categoryDeals
-            : categoryDeals.slice(0, FREE_DEALS_PER_CATEGORY);
-          const lockedDealCount = categoryDeals.length - visibleDeals.length;
-          const isExpanded = expandedCategories.has(category);
-          return (
-            <View key={category} style={styles.categorySection}>
-              <Pressable style={styles.categoryHeader} onPress={() => toggleCategory(category)}>
-                <Text style={styles.categoryTitle}>{category}</Text>
-                <View style={styles.categoryHeaderRight}>
-                  <Text style={styles.categoryCount}>{categoryDeals.length}</Text>
-                  {isExpanded ? (
-                    <ChevronDownIcon size={16} color={INK} />
-                  ) : (
-                    <ChevronRightIcon size={16} color={INK} />
-                  )}
-                </View>
-              </Pressable>
+        {/* One shared "modal treatment" card for every category (Anabelle's
+            call) -- was each category its own separate white-bordered
+            card, stacked with a gap between them. A thin divider (not
+            each row's own border) now separates categories, same
+            convention as recipe.tsx's dealDivider/sectionDivider inside
+            its own single "What you'll need" card. */}
+        {categories.length > 0 && (
+          <View style={styles.categoriesCard}>
+            {categories.map((category, index) => {
+              const categoryDeals = groups.get(category)!;
+              const visibleDeals = isSubscribed
+                ? categoryDeals
+                : categoryDeals.slice(0, FREE_DEALS_PER_CATEGORY);
+              const lockedDealCount = categoryDeals.length - visibleDeals.length;
+              const isExpanded = expandedCategories.has(category);
+              return (
+                <View key={category}>
+                  {index > 0 && <View style={styles.categoryDivider} />}
+                  <Pressable style={styles.categoryHeader} onPress={() => toggleCategory(category)}>
+                    <Text style={styles.categoryTitle}>{category}</Text>
+                    <View style={styles.categoryHeaderRight}>
+                      <Text style={styles.categoryCount}>{categoryDeals.length}</Text>
+                      {isExpanded ? (
+                        <ChevronDownIcon size={16} color={INK} />
+                      ) : (
+                        <ChevronRightIcon size={16} color={INK} />
+                      )}
+                    </View>
+                  </Pressable>
 
-              {isExpanded && (
-                <View style={styles.dealsGrid}>
-                  {visibleDeals.map((deal) => {
-                    const isAdded = selectedDealIds.has(deal.id);
-                    return (
-                      <View key={deal.id} style={styles.dealCard}>
-                        <Pressable onPress={() => Linking.openURL(deal.productUrl)}>
-                          <View style={styles.dealImageWrap}>
-                            {deal.imageUrl ? (
-                              <Image source={{ uri: deal.imageUrl }} style={styles.dealImage} />
-                            ) : (
-                              <View style={[styles.dealImage, styles.dealImagePlaceholder]}>
-                                <TagIcon size={24} color="#ccc" />
+                  {isExpanded && (
+                    <View style={styles.dealsGrid}>
+                      {visibleDeals.map((deal) => {
+                        const isAdded = selectedDealIds.has(deal.id);
+                        return (
+                          <View key={deal.id} style={styles.dealCard}>
+                            <Pressable onPress={() => Linking.openURL(deal.productUrl)}>
+                              <View style={styles.dealImageWrap}>
+                                {deal.imageUrl ? (
+                                  <Image source={{ uri: deal.imageUrl }} style={styles.dealImage} />
+                                ) : (
+                                  <View style={[styles.dealImage, styles.dealImagePlaceholder]}>
+                                    <TagIcon size={24} color="#ccc" />
+                                  </View>
+                                )}
+                                {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
+                                  <View style={styles.discountBadge}>
+                                    <Text style={styles.discountBadgeText}>
+                                      Up to {Math.round(deal.discountPct)}% off
+                                    </Text>
+                                  </View>
+                                ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
+                                  <View style={styles.greatValueBadge}>
+                                    <Text style={styles.discountBadgeText}>
+                                      {formatGreatReferenceValueLabel(deal.discountPct)}
+                                    </Text>
+                                  </View>
+                                ) : (
+                                  <View style={styles.fairPriceBadge}>
+                                    <Text style={styles.fairPriceBadgeText}>Fair price</Text>
+                                  </View>
+                                )}
                               </View>
-                            )}
-                            {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
-                              <View style={styles.discountBadge}>
-                                <Text style={styles.discountBadgeText}>
-                                  Up to {Math.round(deal.discountPct)}% off
-                                </Text>
-                              </View>
-                            ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
-                              <View style={styles.greatValueBadge}>
-                                <Text style={styles.discountBadgeText}>
-                                  {formatGreatReferenceValueLabel(deal.discountPct)}
-                                </Text>
-                              </View>
-                            ) : (
-                              <View style={styles.fairPriceBadge}>
-                                <Text style={styles.fairPriceBadgeText}>Fair price</Text>
-                              </View>
-                            )}
-                          </View>
-                          <Text style={styles.dealName} numberOfLines={2}>
-                            {deal.itemName}
-                          </Text>
-                          <Text style={styles.dealChain} numberOfLines={1}>
-                            {deal.chainName}
-                          </Text>
-                          <View style={styles.priceRow}>
-                            <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
-                            {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
-                              <Text style={styles.dealOriginalPrice}>
-                                ${deal.originalPrice.toFixed(2)}
+                              <Text style={styles.dealName} numberOfLines={2}>
+                                {deal.itemName}
                               </Text>
-                            )}
+                              <Text style={styles.dealChain} numberOfLines={1}>
+                                {deal.chainName}
+                              </Text>
+                              <View style={styles.priceRow}>
+                                <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
+                                {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
+                                  <Text style={styles.dealOriginalPrice}>
+                                    ${deal.originalPrice.toFixed(2)}
+                                  </Text>
+                                )}
+                              </View>
+                              {isReferencePriced(deal.originalPriceSource) && (
+                                <Text style={styles.dealCompareAnnotation}>
+                                  {formatComparePriceLabel(deal.originalPrice)}
+                                </Text>
+                              )}
+                            </Pressable>
+                            <Pressable
+                              style={[styles.addButton, isAdded && styles.addButtonActive]}
+                              onPress={() => toggleDealSelected(deal.id)}
+                            >
+                              {isAdded && <CheckIcon size={12} color="#fff" />}
+                              <Text style={[styles.addButtonText, isAdded && styles.addButtonTextActive]}>
+                                {isAdded ? 'Added' : '+ Add to grocery list'}
+                              </Text>
+                            </Pressable>
                           </View>
-                          {isReferencePriced(deal.originalPriceSource) && (
-                            <Text style={styles.dealCompareAnnotation}>
-                              {formatComparePriceLabel(deal.originalPrice)}
-                            </Text>
-                          )}
-                        </Pressable>
+                        );
+                      })}
+                      {lockedDealCount > 0 && (
                         <Pressable
-                          style={[styles.addButton, isAdded && styles.addButtonActive]}
-                          onPress={() => toggleDealSelected(deal.id)}
+                          style={styles.unlockCard}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/upgrade',
+                              params: {
+                                reason: `see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`,
+                              },
+                            })
+                          }
                         >
-                          {isAdded && <CheckIcon size={12} color="#fff" />}
-                          <Text style={[styles.addButtonText, isAdded && styles.addButtonTextActive]}>
-                            {isAdded ? 'Added' : '+ Add to grocery list'}
+                          <LockClosedIcon size={20} color={INK} />
+                          <Text style={styles.unlockTitle}>
+                            Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
                           </Text>
+                          <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo</Text>
                         </Pressable>
-                      </View>
-                    );
-                  })}
-                  {lockedDealCount > 0 && (
-                    <Pressable
-                      style={styles.unlockCard}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/upgrade',
-                          params: {
-                            reason: `see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`,
-                          },
-                        })
-                      }
-                    >
-                      <LockClosedIcon size={20} color={INK} />
-                      <Text style={styles.unlockTitle}>
-                        Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
-                      </Text>
-                      <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo</Text>
-                    </Pressable>
+                      )}
+                    </View>
                   )}
                 </View>
-              )}
-            </View>
-          );
-        })}
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -230,20 +241,30 @@ const styles = StyleSheet.create({
   // #F2F2F2 grey box with no border).
   emptyState: { backgroundColor: '#fff', borderWidth: 2, borderColor: INK, borderRadius: 16, padding: 20 },
   emptyStateText: { color: INK, fontSize: 14, textAlign: 'center' },
-  categorySection: { gap: 10 },
-  // "Modal treatment" header, matching recipe.tsx's own card-with-
-  // heading-row convention -- was a thin #eee-border/12px-radius box,
-  // visually unrelated to any other card on the app.
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  // One shared "modal treatment" card for every category (Anabelle's
+  // call) -- was each category its own separate white-bordered card.
+  // Same white/2px-INK-border/16px-radius/14px-padding language as
+  // every other card on this screen, just holding every category row
+  // instead of one deal grid directly.
+  categoriesCard: {
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    padding: 14,
+  },
+  // Separates category rows within the shared card -- same #E8E8E8
+  // thin-rule convention as recipe.tsx's sectionDivider/dealDivider.
+  // Not rendered before the first category (see index > 0 check).
+  categoryDivider: { height: 1, backgroundColor: '#E8E8E8', marginVertical: 14 },
+  // Plain row now (no border/bg/radius of its own -- that lives on the
+  // shared categoriesCard above), just the tap target for expand/
+  // collapse.
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
   },
   // 700/Bold, not 800/ExtraBold -- matches this app's established
   // section-heading weight (recipe.tsx's sectionTitle, GroceryListView's
@@ -251,7 +272,10 @@ const styles = StyleSheet.create({
   categoryTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   categoryHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   categoryCount: { fontSize: 13, color: '#767676', fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
-  dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  // marginTop separates the grid from its own category row above --
+  // previously implicit via categorySection's own gap, now needed
+  // explicitly since categoryHeader no longer sits in a gapped wrapper.
+  dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14 },
   // "Modal treatment" card -- was a thin #eee-border/14px-radius box.
   dealCard: {
     width: '47%',
