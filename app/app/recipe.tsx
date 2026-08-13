@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ClockIcon, MinusIcon, PlusIcon, SparklesIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ClockIcon, MinusIcon, PlusIcon, StarIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
@@ -309,7 +309,7 @@ export default function RecipeScreen() {
         {meal.optionalAdditions.length > 0 && (
           <View style={styles.optionalCard}>
             <View style={styles.optionalHeadingRow}>
-              <SparklesIcon size={16} color={ACCENT} />
+              <StarIcon size={16} color={ACCENT} />
               <Text style={styles.optionalHeading}>OPTIONAL</Text>
             </View>
             <View style={styles.optionalList}>
