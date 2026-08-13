@@ -325,10 +325,18 @@ export default function RecipeScreen() {
               <Text style={styles.optionalHeading}>Optional</Text>
             </View>
             <View style={styles.optionalList}>
-              {meal.optionalAdditions.map((addition) => (
-                <Text key={addition.title} style={styles.optionalText}>
-                  <Text style={styles.optionalTitle}>{addition.title}</Text>
-                  {'  '}
+              {meal.optionalAdditions.map((addition, index) => (
+                <Text key={addition.title || index} style={styles.optionalText}>
+                  {/* A blank title (Anabelle's call for some additions --
+                      description-only, no label) skips the title Text and
+                      its trailing spacer entirely, instead of leaving a
+                      stray leading gap before the description. */}
+                  {addition.title ? (
+                    <>
+                      <Text style={styles.optionalTitle}>{addition.title}</Text>
+                      {'  '}
+                    </>
+                  ) : null}
                   {addition.description}
                 </Text>
               ))}
