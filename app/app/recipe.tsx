@@ -371,9 +371,9 @@ export default function RecipeScreen() {
                     hitSlop={8}
                   >
                     {expanded ? (
-                      <ChevronUpIcon size={18} color={INK} />
+                      <ChevronUpIcon size={14} color={INK} />
                     ) : (
-                      <ChevronDownIcon size={18} color={INK} />
+                      <ChevronDownIcon size={14} color={INK} />
                     )}
                   </Pressable>
                 </View>
@@ -674,23 +674,30 @@ const styles = StyleSheet.create({
   // Same size/weight as this page's own "Instructions" sectionTitle
   // (Anabelle's call) -- was a larger 20px/800-weight standalone title.
   subRecipeTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  subRecipeDescription: { fontSize: 14, lineHeight: 21, color: '#767676', marginTop: 6 },
-  // Circular white expand/collapse control, matching the closeButton's
-  // own white-fill/no-border convention elsewhere on this page.
+  subRecipeDescription: { fontSize: 14, lineHeight: 21, color: INK, marginTop: 6 },
+  // Tertiary icon button -- same white-fill/1.5px-INK-border/full-circle
+  // convention as IngredientRow's editButton/GroceryListView's
+  // removeMealButton (26x26, borderRadius 13), not a bare borderless
+  // circle.
   subRecipeToggleButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  subRecipeDivider: { height: 1, backgroundColor: '#E2CBAE', marginVertical: 16 },
+  // Same muted grey as the dividers in "What you'll need" above
+  // (sectionDivider/dealDivider) -- was a tan tone matching the card's
+  // old peach fill, now stale since the card is white.
+  subRecipeDivider: { height: 1, backgroundColor: '#E8E8E8', marginVertical: 16 },
   subRecipeSectionLabel: {
     fontSize: 12,
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',
-    color: '#A9835F',
+    color: INK,
     letterSpacing: 1,
     marginBottom: 10,
   },
