@@ -32,10 +32,10 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Instant Noodles Forever — The Pork One': require('../assets/instant-noodles-forever-pork.jpeg'),
-  // Cropped tighter from the left (Anabelle's call: "so we dont see as
-  // much of the arms" -- the source shot is held up by two tattooed
-  // arms) -- original backed up before cropping per the standing rule.
-  // 1080x634, matching the card's ~1.7:1 target.
+  // Replaced with a "-rev" shot Anabelle provided -- no arms at all
+  // this time (the earlier version needed an arm-crop; this one sidesteps
+  // it entirely), also shows the Kraft Dinner box + seasoning packet.
+  // Uncropped, already at ~1.7:1 (1344x784).
   'Kraft Dinner alla Carbonara': require('../assets/kraft-dinner-alla-carbonara.jpeg'),
 };
 
