@@ -44,6 +44,12 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Breakfast for Dinner — Froot Loops French Toasts': require('../assets/breakfast-for-dinner-froot-loops-french-toasts.jpeg'),
+  // Cropped 20% in, leaning toward the right side (Anabelle's call) --
+  // keeps the fork/napkin and the plate's three dipping sauces fully
+  // in frame while trimming the drinks column on the left. Original
+  // backed up before cropping per the standing rule. 1075x627,
+  // matching the card's ~1.7:1 target.
+  'BBQ Ribs ’n’ Cauli Nuggets': require('../assets/bbq-ribs-n-cauli-nuggets.jpeg'),
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Crack a Tin — Sardine Spaghetti': require('../assets/crack-a-tin-sardine-spaghetti.jpeg'),
