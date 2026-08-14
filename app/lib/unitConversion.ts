@@ -89,14 +89,40 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // Second staples batch (Anabelle's own list: Diana sauce, Montreal
   // steak spice, Bull's-Eye, Frank's RedHot, Sriracha, HP sauce,
   // Tabasco, soup/gravy/seasoning mixes, Habitant Pea Soup, Everything
-  // bagel seasoning). Only the two loose spice/seasoning blends need a
-  // density bridge here -- every liquid condiment (Diana, Bull's-Eye,
-  // Frank's, Sriracha, HP, Tabasco) was priced in mL directly, so a
-  // recipe stating mL/tbsp/tsp already bridges with no density entry
-  // needed; the canned/boxed/packeted items (soups, gravy mix, taco/
-  // chili seasoning) are bought and used whole, same reasoning.
+  // bagel seasoning). Only the two loose spice/seasoning blends got a
+  // density bridge at the time -- see the correction below, this
+  // reasoning turned out to be wrong for the liquid condiments too.
   'montreal steak spice': 140,
   'everything bagel seasoning': 150,
+  // Recipe-generation-pipeline round (Burger & Fries, Chinese Eggplant
+  // with Ground Beef, Pepperoni Pizza Pasta Skillet) -- both are new
+  // staples with no density bridge yet. See the staple_densities table
+  // (Supabase) for the server-side twins.
+  cornstarch: 120,
+  oregano: 33,
+  // CORRECTION to the second-batch comment above: "a liquid condiment
+  // priced in mL already bridges with no density entry needed" was
+  // wrong. That's true for PRICE (recipe mL vs. reference mL match
+  // directly), but nutrition always scales against a fixed 100 g basis
+  // -- an mL-measured ingredient needs this same density bridge to
+  // reach it, or it silently contributes 0 calories despite having
+  // real reviewed nutrition. Found here because Ketchup, used by name
+  // in "Napolitan (Japanese Ketchup Spaghetti)", was doing exactly
+  // that -- its calories jumped 573 -> 604 the moment this bridge was
+  // added, with no ingredient change to that recipe at all. Soy sauce
+  // and Sesame oil (already used in Honey Garlic Chicken Noodle Toss)
+  // had the same gap. Added here for every mL-measured condiment this
+  // recipe-gen round actually uses; the rest of the second batch
+  // (Diana sauce, Bull's-Eye, Frank's, Sriracha, HP, Tabasco) likely
+  // has the same gap but is out of scope for this fix.
+  ketchup: 270,
+  'dijon mustard': 250,
+  'soy sauce': 255,
+  'sesame oil': 218,
+  // French Fry Sandwich -- Pickles' reference is gram-denominated (400 g,
+  // fixed for the Big Mac's slice convention), so a volume-measured "1
+  // tbsp, finely chopped" quantity needs this same mL<->g bridge.
+  pickles: 240,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -236,8 +262,18 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
   if (/gram|\bgr\b|\bg\b/.test(t)) return { amount: num, baseUnit: 'g' };
   if (/pound|\blb\b|\blbs\b/.test(t)) return { amount: num * 453.592, baseUnit: 'g' };
   if (/ounce|\boz\b/.test(t)) return { amount: num * 28.3495, baseUnit: 'g' };
-  if (/litre|liter|\bl\b/.test(t)) return { amount: num * 1000, baseUnit: 'ml' };
+  // millilitre MUST be checked before litre -- "millilitre" contains
+  // "litre" as a substring (same relationship as kilogram/gram above,
+  // which is correctly ordered specific-first). Found via a real,
+  // confirmed bug: StatCan's "Mayonnaise" reference is priced "890
+  // millilitres" (spelled out, not "890 mL") -- with litre checked
+  // first, that string matched the litre branch and got treated as
+  // 890 LITRES (*1000 -> 890,000 mL), a 1000x error that silently
+  // rendered "$0.00 avg." for any recipe using it. 13 other rows
+  // across staple_reference_prices/statcan_reference_prices use the
+  // same spelled-out "NNN millilitres" unit and had the identical bug.
   if (/millilitre|milliliter|\bml\b/.test(t)) return { amount: num, baseUnit: 'ml' };
+  if (/litre|liter|\bl\b/.test(t)) return { amount: num * 1000, baseUnit: 'ml' };
   if (/tablespoon|\btbsp\b/.test(t)) return { amount: num * 14.7868, baseUnit: 'ml' };
   if (/teaspoon|\btsp\b/.test(t)) return { amount: num * 4.92892, baseUnit: 'ml' };
   if (/cup/.test(t)) return { amount: num * 236.588, baseUnit: 'ml' };
@@ -284,6 +320,42 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   naan: 90, // one piece
   pita: 60, // one pocket
   tortillas: 45, // one large flour tortilla
+  // Recipe-generation-pipeline round -- package/each-based ingredients
+  // (Backyard Burger & Fries, Pepperoni Pizza Pasta Skillet) needed the
+  // same each<->gram bridge as Kraft Dinner/White bread/Rice noodles
+  // above, or their nutrition (always scaled against a fixed 100 g
+  // basis) silently comes back 0 despite a real price/deal match. See
+  // the staple_avg_weights table (Supabase) for the server-side twins.
+  // Real flyer data (Compliments Traditional Beef Burgers box reads
+  // "8 x 113g (4 oz) / NET 907g") -- corrects an earlier 678g/6-pack
+  // guess made before Anabelle asked and the real flyer image was
+  // checked. Backyard Burger & Fries moved to 8 servings (1 whole
+  // package, 1 patty/serving) off the back of this correction --
+  // the old 4-serving/half-package version was overpaying per serving
+  // anyway, since a "package"-priced deal always charges its flat
+  // price regardless of the recipe's stated fraction.
+  'beef patties': 907,
+  // Real BC package size for Kraft Singles (24-slice, 500g box);
+  // 500/24 ~= 21g/slice.
+  'kraft singles': 21,
+  fries: 650, // matches McCain Superfries' 454-800g flyer range
+  'hamburger buns': 43,
+  'cheddar cheese slices': 340, // ~16-slice pack
+  lettuce: 540, // average iceberg head
+  // Redefined from 350 (a whole jar) to 12 (one slice) -- Anabelle's
+  // house convention is to count pickles by the slice per serving, not
+  // fragment a jar. See the staple_avg_weights row for the server-side
+  // twin.
+  pickles: 12,
+  pepperoni: 900, // matches Roma Pepperoni's 900g flyer size
+  // Matches the 150g/onion figure already used by STAPLE_UNIT_WEIGHTS_G
+  // for grocery-list display -- Anabelle's house convention is to count
+  // onions by the whole/half/quarter, not by weight. See the
+  // staple_avg_weights row for the server-side twin.
+  onion: 150,
+  // French Fry Sandwich -- matches the recipe's own "(60 g each)" figure.
+  // See the staple_avg_weights row for the server-side twin.
+  'whole-wheat ciabatta rolls': 60,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
