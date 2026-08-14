@@ -16,10 +16,11 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // assets stay on disk (grilled-chicken-souvlaki-kabobs-with-lemon-rice*)
   // but are no longer referenced anywhere.
   'Souvlaki Street Bowl with a Kick': require('../assets/souvlaki-street-bowl.jpeg'),
-  // Uploaded already at ~1.7:1, matching the card's own aspectRatio
-  // (1402/824 -- see MealCard.tsx) almost exactly -- cropped tighter
-  // around the bowl itself per the same preference as above.
-  'Boursin-Me-Up Chicken & Mushroom Rice': require('../assets/boursin-me-up-chicken-mushroom-rice.png'),
+  // Replaced with a new shot showing the Boursin package itself
+  // (Anabelle's call) -- uncropped, already at ~1.7:1 (1344x784). The
+  // old tighter-cropped plate-only version stays on disk
+  // (boursin-me-up-chicken-mushroom-rice.png) but is no longer referenced.
+  'Boursin-Me-Up Chicken & Mushroom Rice': require('../assets/boursin-me-up-chicken-mushroom-rice-w-pack.jpeg'),
   // Uploaded already close to the card's ~1.7:1 target (1344x784 vs the
   // card's 1402/824) -- no crop needed/applied, uncropped as uploaded.
   'Sizzling Pork Skewers': require('../assets/sizzling-pork-skewers.jpeg'),
