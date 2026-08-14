@@ -89,12 +89,9 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // Second staples batch (Anabelle's own list: Diana sauce, Montreal
   // steak spice, Bull's-Eye, Frank's RedHot, Sriracha, HP sauce,
   // Tabasco, soup/gravy/seasoning mixes, Habitant Pea Soup, Everything
-  // bagel seasoning). Only the two loose spice/seasoning blends need a
-  // density bridge here -- every liquid condiment (Diana, Bull's-Eye,
-  // Frank's, Sriracha, HP, Tabasco) was priced in mL directly, so a
-  // recipe stating mL/tbsp/tsp already bridges with no density entry
-  // needed; the canned/boxed/packeted items (soups, gravy mix, taco/
-  // chili seasoning) are bought and used whole, same reasoning.
+  // bagel seasoning). Only the two loose spice/seasoning blends got a
+  // density bridge at the time -- see the correction below, this
+  // reasoning turned out to be wrong for the liquid condiments too.
   'montreal steak spice': 140,
   'everything bagel seasoning': 150,
   // Recipe-generation-pipeline round (Burger & Fries, Chinese Eggplant
@@ -103,6 +100,25 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // (Supabase) for the server-side twins.
   cornstarch: 120,
   oregano: 33,
+  // CORRECTION to the second-batch comment above: "a liquid condiment
+  // priced in mL already bridges with no density entry needed" was
+  // wrong. That's true for PRICE (recipe mL vs. reference mL match
+  // directly), but nutrition always scales against a fixed 100 g basis
+  // -- an mL-measured ingredient needs this same density bridge to
+  // reach it, or it silently contributes 0 calories despite having
+  // real reviewed nutrition. Found here because Ketchup, used by name
+  // in "Napolitan (Japanese Ketchup Spaghetti)", was doing exactly
+  // that -- its calories jumped 573 -> 604 the moment this bridge was
+  // added, with no ingredient change to that recipe at all. Soy sauce
+  // and Sesame oil (already used in Honey Garlic Chicken Noodle Toss)
+  // had the same gap. Added here for every mL-measured condiment this
+  // recipe-gen round actually uses; the rest of the second batch
+  // (Diana sauce, Bull's-Eye, Frank's, Sriracha, HP, Tabasco) likely
+  // has the same gap but is out of scope for this fix.
+  ketchup: 270,
+  'dijon mustard': 250,
+  'soy sauce': 255,
+  'sesame oil': 218,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -290,6 +306,19 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   naan: 90, // one piece
   pita: 60, // one pocket
   tortillas: 45, // one large flour tortilla
+  // Recipe-generation-pipeline round -- package/each-based ingredients
+  // (Backyard Burger & Fries, Pepperoni Pizza Pasta Skillet) needed the
+  // same each<->gram bridge as Kraft Dinner/White bread/Rice noodles
+  // above, or their nutrition (always scaled against a fixed 100 g
+  // basis) silently comes back 0 despite a real price/deal match. See
+  // the staple_avg_weights table (Supabase) for the server-side twins.
+  'beef patties': 678, // 6-pack, ~113g/patty
+  fries: 650, // matches McCain Superfries' 454-800g flyer range
+  'hamburger buns': 43,
+  'cheddar cheese slices': 340, // ~16-slice pack
+  lettuce: 540, // average iceberg head
+  pickles: 350, // drained weight, standard jar
+  pepperoni: 900, // matches Roma Pepperoni's 900g flyer size
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
