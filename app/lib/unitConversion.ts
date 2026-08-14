@@ -338,8 +338,17 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   'hamburger buns': 43,
   'cheddar cheese slices': 340, // ~16-slice pack
   lettuce: 540, // average iceberg head
-  pickles: 350, // drained weight, standard jar
+  // Redefined from 350 (a whole jar) to 12 (one slice) -- Anabelle's
+  // house convention is to count pickles by the slice per serving, not
+  // fragment a jar. See the staple_avg_weights row for the server-side
+  // twin.
+  pickles: 12,
   pepperoni: 900, // matches Roma Pepperoni's 900g flyer size
+  // Matches the 150g/onion figure already used by STAPLE_UNIT_WEIGHTS_G
+  // for grocery-list display -- Anabelle's house convention is to count
+  // onions by the whole/half/quarter, not by weight. See the
+  // staple_avg_weights row for the server-side twin.
+  onion: 150,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
