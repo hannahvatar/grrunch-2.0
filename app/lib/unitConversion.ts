@@ -119,6 +119,10 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   'dijon mustard': 250,
   'soy sauce': 255,
   'sesame oil': 218,
+  // French Fry Sandwich -- Pickles' reference is gram-denominated (400 g,
+  // fixed for the Big Mac's slice convention), so a volume-measured "1
+  // tbsp, finely chopped" quantity needs this same mL<->g bridge.
+  pickles: 240,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -349,6 +353,9 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // onions by the whole/half/quarter, not by weight. See the
   // staple_avg_weights row for the server-side twin.
   onion: 150,
+  // French Fry Sandwich -- matches the recipe's own "(60 g each)" figure.
+  // See the staple_avg_weights row for the server-side twin.
+  'whole-wheat ciabatta rolls': 60,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
