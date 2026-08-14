@@ -86,6 +86,17 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   'cottage cheese': 225,
   'cheez whiz': 240,
   yogurt: 245,
+  // Second staples batch (Anabelle's own list: Diana sauce, Montreal
+  // steak spice, Bull's-Eye, Frank's RedHot, Sriracha, HP sauce,
+  // Tabasco, soup/gravy/seasoning mixes, Habitant Pea Soup, Everything
+  // bagel seasoning). Only the two loose spice/seasoning blends need a
+  // density bridge here -- every liquid condiment (Diana, Bull's-Eye,
+  // Frank's, Sriracha, HP, Tabasco) was priced in mL directly, so a
+  // recipe stating mL/tbsp/tsp already bridges with no density entry
+  // needed; the canned/boxed/packeted items (soups, gravy mix, taco/
+  // chili seasoning) are bought and used whole, same reasoning.
+  'montreal steak spice': 140,
+  'everything bagel seasoning': 150,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
