@@ -277,6 +277,13 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // ~30g per slice, standard sandwich bread -- see the staple_avg_weights
   // row added alongside Froot Loops French Toast for the server-side twin.
   'white bread': 30,
+  // Flatbreads/wraps added for the recipe-generation-pipeline round --
+  // see the staple_avg_weights rows added alongside them for the
+  // server-side twins.
+  'pizza crust': 200, // one 12" pre-baked crust
+  naan: 90, // one piece
+  pita: 60, // one pocket
+  tortillas: 45, // one large flour tortilla
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
