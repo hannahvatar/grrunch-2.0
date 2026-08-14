@@ -97,6 +97,12 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // chili seasoning) are bought and used whole, same reasoning.
   'montreal steak spice': 140,
   'everything bagel seasoning': 150,
+  // Recipe-generation-pipeline round (Burger & Fries, Chinese Eggplant
+  // with Ground Beef, Pepperoni Pizza Pasta Skillet) -- both are new
+  // staples with no density bridge yet. See the staple_densities table
+  // (Supabase) for the server-side twins.
+  cornstarch: 120,
+  oregano: 33,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
