@@ -38,6 +38,9 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // it entirely), also shows the Kraft Dinner box + seasoning packet.
   // Uncropped, already at ~1.7:1 (1344x784).
   'Kraft Dinner alla Carbonara': require('../assets/kraft-dinner-alla-carbonara.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Napolitan (Japanese Ketchup Spaghetti) ナポリタン': require('../assets/napolitan-japanese-ketchup-spaghetti.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
