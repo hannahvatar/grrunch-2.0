@@ -75,6 +75,17 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // Napolitan. Found while rewriting BBQ Ribs 'n' Cauli Nuggets'
   // cauliflower nugget method to use it.
   'vegetable oil': 218,
+  // Proactive staple additions (Anabelle: "before generating new
+  // recipes, I want to add more staples") -- Peanut butter and Yogurt
+  // already had real prices but no nutrition; Cream cheese, Cottage
+  // cheese, and Cheez Whiz were missing entirely. All four added here
+  // as a preemptive density bridge (no recipe uses them yet), so a
+  // future recipe measuring any of these by volume doesn't silently
+  // zero out the same way Milk/Vegetable oil did.
+  'cream cheese': 232,
+  'cottage cheese': 225,
+  'cheez whiz': 240,
+  yogurt: 245,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
