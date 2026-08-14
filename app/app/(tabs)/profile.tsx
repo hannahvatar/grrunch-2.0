@@ -5,14 +5,17 @@ import { Cog6ToothIcon } from 'react-native-heroicons/outline';
 import { HeartIcon } from 'react-native-heroicons/solid';
 
 import { AccountBanner } from '../../components/AccountBanner';
+import { SubRecipeCard } from '../../components/SubRecipeCard';
 import { UpgradeCta } from '../../components/UpgradeCta';
-import type { Meal } from '../../lib/mealData';
+import type { Meal, SubRecipe } from '../../lib/mealData';
 import { fetchRecipesByIds } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedStores } from '../../lib/selectedStores';
+import { fetchSubRecipes } from '../../lib/subRecipes';
 import { useSubscription } from '../../lib/subscription';
 
-// Not yet detailed in the wireframes beyond Saved recipes — placeholder tab.
+// Not yet fully detailed in the wireframes -- Saved recipes and
+// Companion recipes are the only sections built out so far.
 // Grocery list access lives in its own tab (app/(tabs)/grocery.tsx).
 export default function ProfileScreen() {
   const { savedIds, toggleSaved } = useSavedRecipes();
@@ -28,6 +31,33 @@ export default function ProfileScreen() {
       .catch(() => setSavedMeals([]))
       .finally(() => setLoading(false));
   }, [savedIds]);
+
+  // Companion recipes -- member-only browse of the full shared
+  // sub_recipes table (Anabelle: "make a section in the profile...
+  // where users [member only] can access all the companion recipes"),
+  // distinct from a single recipe page's jump-linked companion section
+  // (app/recipe.tsx), which only ever shows the one relevant to that
+  // meal's own ingredients. Defaults each card collapsed -- unlike
+  // recipe.tsx's default-open (a jump-link lands you on the one you
+  // came for), this is a browse-all list that would otherwise dump
+  // every technique's full ingredients/instructions on screen at once.
+  const [subRecipes, setSubRecipes] = useState<SubRecipe[]>([]);
+  const [subRecipesLoading, setSubRecipesLoading] = useState(true);
+  const [expandedSubRecipes, setExpandedSubRecipes] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    fetchSubRecipes()
+      .then(setSubRecipes)
+      .catch(() => setSubRecipes([]))
+      .finally(() => setSubRecipesLoading(false));
+  }, []);
+
+  function isSubRecipeExpanded(title: string) {
+    return expandedSubRecipes[title] === true;
+  }
+  function toggleSubRecipe(title: string) {
+    setExpandedSubRecipes((prev) => ({ ...prev, [title]: !isSubRecipeExpanded(title) }));
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -96,6 +126,28 @@ export default function ProfileScreen() {
           </View>
         ))
       )}
+
+      <Text style={styles.sectionTitle}>Companion recipes</Text>
+      {!isSubscribed ? (
+        <UpgradeCta reason="browse companion recipes" />
+      ) : subRecipesLoading ? (
+        <ActivityIndicator size="small" color="#111" style={styles.loadingIndicator} />
+      ) : subRecipes.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No companion recipes yet.</Text>
+        </View>
+      ) : (
+        <View style={styles.subRecipesList}>
+          {subRecipes.map((subRecipe) => (
+            <SubRecipeCard
+              key={subRecipe.title}
+              subRecipe={subRecipe}
+              expanded={isSubRecipeExpanded(subRecipe.title)}
+              onToggle={() => toggleSubRecipe(subRecipe.title)}
+            />
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -144,4 +196,5 @@ const styles = StyleSheet.create({
   savedInfo: { flex: 1 },
   savedName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
+  subRecipesList: { gap: 12 },
 });

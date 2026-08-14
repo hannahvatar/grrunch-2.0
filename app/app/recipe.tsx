@@ -1,17 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  ClockIcon,
-  MinusIcon,
-  PlusIcon,
-  XMarkIcon,
-} from 'react-native-heroicons/outline';
+import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
+import { SubRecipeCard } from '../components/SubRecipeCard';
 import type { Meal } from '../lib/mealData';
 import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
 import { fetchRecipeById } from '../lib/recipes';
@@ -372,64 +366,23 @@ export default function RecipeScreen() {
             design reference) -- defaults open so the jump link still
             lands on visible content; the chevron just lets you tuck it
             away afterward. */}
-        {meal.subRecipes.map((subRecipe) => {
-          const expanded = isSubRecipeExpanded(subRecipe.title);
-          return (
-            <View
-              key={subRecipe.title}
-              onLayout={(e) =>
-                setSubRecipeOffsets((prev) => ({ ...prev, [subRecipe.title]: e.nativeEvent.layout.y }))
-              }
-            >
-              <View style={styles.companionEyebrowRow}>
-                <Text style={styles.companionEyebrowText}>Companion Recipe</Text>
-              </View>
-              <View style={styles.subRecipeCard}>
-                <View style={styles.subRecipeHeaderRow}>
-                  <View style={styles.subRecipeHeaderText}>
-                    <Text style={styles.subRecipeTitle}>{subRecipe.title}</Text>
-                    <Text style={styles.subRecipeDescription}>{subRecipe.description}</Text>
-                  </View>
-                  <Pressable
-                    style={styles.subRecipeToggleButton}
-                    onPress={() => toggleSubRecipe(subRecipe.title)}
-                    hitSlop={8}
-                  >
-                    {expanded ? (
-                      <ChevronUpIcon size={14} color={INK} />
-                    ) : (
-                      <ChevronDownIcon size={14} color={INK} />
-                    )}
-                  </Pressable>
-                </View>
-                {expanded && (
-                  <>
-                    <View style={styles.subRecipeDivider} />
-                    <Text style={styles.subRecipeSectionLabel}>Ingredients</Text>
-                    <View style={styles.staplesList}>
-                      {subRecipe.ingredients.map((ingredientText, index) => (
-                        <Text key={index} style={styles.subRecipeBullet}>
-                          •  {ingredientText}
-                        </Text>
-                      ))}
-                    </View>
-                    <Text style={[styles.subRecipeSectionLabel, styles.subRecipeInstructionsHeading]}>
-                      Instructions
-                    </Text>
-                    <View style={styles.subRecipeInstructionsList}>
-                      {subRecipe.instructions.map((step, index) => (
-                        <View key={index} style={styles.subRecipeInstructionRow}>
-                          <Text style={styles.subRecipeInstructionNumber}>{index + 1}.</Text>
-                          <Text style={styles.subRecipeInstructionText}>{step}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </>
-                )}
-              </View>
+        {meal.subRecipes.map((subRecipe) => (
+          <View
+            key={subRecipe.title}
+            onLayout={(e) =>
+              setSubRecipeOffsets((prev) => ({ ...prev, [subRecipe.title]: e.nativeEvent.layout.y }))
+            }
+          >
+            <View style={styles.companionEyebrowRow}>
+              <Text style={styles.companionEyebrowText}>Companion Recipe</Text>
             </View>
-          );
-        })}
+            <SubRecipeCard
+              subRecipe={subRecipe}
+              expanded={isSubRecipeExpanded(subRecipe.title)}
+              onToggle={() => toggleSubRecipe(subRecipe.title)}
+            />
+          </View>
+        ))}
       </ScrollView>
     </View>
   );
@@ -690,58 +643,5 @@ const styles = StyleSheet.create({
     color: INK,
     letterSpacing: 1,
   },
-  subRecipeCard: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: INK,
-    borderStyle: 'dashed',
-    borderRadius: 20,
-    padding: 20,
-  },
-  subRecipeHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  subRecipeHeaderText: { flex: 1 },
-  // Same size/weight as this page's own "Instructions" sectionTitle
-  // (Anabelle's call) -- was a larger 20px/800-weight standalone title.
-  subRecipeTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  subRecipeDescription: { fontSize: 14, lineHeight: 21, color: INK, marginTop: 6 },
-  // Tertiary icon button -- same white-fill/1.5px-INK-border/full-circle
-  // convention as IngredientRow's editButton/GroceryListView's
-  // removeMealButton (26x26, borderRadius 13), not a bare borderless
-  // circle.
-  subRecipeToggleButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: INK,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Same muted grey as the dividers in "What you'll need" above
-  // (sectionDivider/dealDivider) -- was a tan tone matching the card's
-  // old peach fill, now stale since the card is white.
-  subRecipeDivider: { height: 1, backgroundColor: '#E8E8E8', marginVertical: 16 },
-  subRecipeSectionLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    fontFamily: 'OpenSans_800ExtraBold',
-    color: INK,
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
-  subRecipeBullet: { fontSize: 15, color: '#333' },
-  // "Instructions" label repeats within a sub-recipe section -- extra
-  // top margin so it doesn't sit flush against the ingredients list
-  // right above it.
-  subRecipeInstructionsHeading: { marginTop: 16 },
-  subRecipeInstructionsList: { gap: 12 },
-  // Plain "N." rather than instructionStepCard's circle badge (that
-  // style is this page's own recipe; this section is deliberately
-  // visually distinct, being borrowed content) -- minWidth keeps
-  // double-digit steps from shifting the text column.
-  subRecipeInstructionRow: { flexDirection: 'row', gap: 10 },
-  subRecipeInstructionNumber: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, minWidth: 20 },
-  subRecipeInstructionText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#333' },
   notFound: { padding: 24, fontSize: 15, color: '#888' },
 });
