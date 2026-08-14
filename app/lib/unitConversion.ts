@@ -62,6 +62,13 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // found while adding Froot Loops French Toast. See the staple_densities
   // table (Supabase) for the server-side twin.
   milk: 244,
+  // ~128 g/cup for garlic powder -- added as a proper staple (real price
+  // + nutrition + density) alongside Paprika below, per Anabelle's ask,
+  // while building Pork Back Ribs' cauliflower nugget rewrite. See the
+  // staple_densities table (Supabase) for the server-side twin.
+  'garlic powder': 128,
+  // ~100 g/cup for ground paprika, same figure as ground black pepper.
+  'paprika': 100,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
