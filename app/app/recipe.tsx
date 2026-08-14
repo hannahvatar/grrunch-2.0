@@ -222,13 +222,27 @@ export default function RecipeScreen() {
                   <Text style={styles.dealsHeading}>On Sale This Week</Text>
                 </View>
                 <View style={styles.dealIngredientsList}>
-                  {dealIngredients.map((ingredient, index) => (
+                  {dealIngredients.map((ingredient, index) => {
+                    // Same jump-link lookup as the pantry list below --
+                    // a deal-tagged ingredient (e.g. Cauliflower on sale
+                    // this week) can just as easily match a sub-recipe as
+                    // a pantry-priced one; this branch just never wired
+                    // it up. Found live on "BBQ Ribs 'n' Cauli Nuggets"
+                    // once Cauliflower Rice was added as a companion --
+                    // the section rendered, but "cauliflower" here had no
+                    // link to it since it happened to be deal-tagged.
+                    const subRecipe = meal.subRecipes.find(
+                      (sr) => sr.matchIngredientName.toLowerCase() === ingredient.name.toLowerCase()
+                    );
+                    return (
                     <View key={index}>
                       {index > 0 && <View style={styles.dealDivider} />}
                       <IngredientRow
                         text={ingredient.text}
                         dealTag={ingredient.dealTag}
                         estimatedPrice={ingredient.estimatedPrice}
+                        linkedText={subRecipe ? ingredient.name : undefined}
+                        onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
                         // Never fragmented, so a doubled batch stays "1
                         // package ..." with a x2 badge instead of a scaled
                         // quantity -- see scaleIngredientDisplay.
@@ -260,7 +274,8 @@ export default function RecipeScreen() {
                         stackedLayout
                       />
                     </View>
-                  ))}
+                    );
+                  })}
                 </View>
               </View>
             )}
