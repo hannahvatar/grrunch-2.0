@@ -41,6 +41,9 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Napolitan (Japanese Ketchup Spaghetti) ナポリタン': require('../assets/napolitan-japanese-ketchup-spaghetti.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Breakfast for Dinner — Froot Loops French Toasts': require('../assets/breakfast-for-dinner-froot-loops-french-toasts.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
