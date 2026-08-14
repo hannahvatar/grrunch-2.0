@@ -239,6 +239,9 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // One pack is 400g -- see the staple_avg_weights row added alongside
   // Honey Garlic Chicken's rice-noodle swap for the server-side twin.
   'rice noodles': 400,
+  // ~30g per slice, standard sandwich bread -- see the staple_avg_weights
+  // row added alongside Froot Loops French Toast for the server-side twin.
+  'white bread': 30,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
