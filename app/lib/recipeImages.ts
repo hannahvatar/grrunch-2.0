@@ -56,6 +56,9 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Smoking Hot Sweet Potato & Kale Skillet': require('../assets/smoking-hot-sweet-potato-kale-skillet.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'TikTok Baked Feta Pasta (with a tofu twist)': require('../assets/tiktok-baked-feta-pasta-tofu.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
