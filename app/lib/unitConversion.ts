@@ -353,9 +353,15 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // onions by the whole/half/quarter, not by weight. See the
   // staple_avg_weights row for the server-side twin.
   onion: 150,
-  // French Fry Sandwich -- matches the recipe's own "(60 g each)" figure.
-  // See the staple_avg_weights row for the server-side twin.
+  // French Fry Sandwich -- original ingredient name before Anabelle asked
+  // for "your favourite sandwich bread" instead; left in place (unused
+  // but harmless) alongside its server-side staple_reference_prices twin,
+  // same policy as any other superseded-but-real reference row.
   'whole-wheat ciabatta rolls': 60,
+  // French Fry Sandwich's current bread ingredient name. Found missing
+  // here (server-side staple_avg_weights had it, this client mirror
+  // didn't) when the recipe's bread line showed no price at all.
+  'sandwich bread': 60,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns

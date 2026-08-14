@@ -29,6 +29,13 @@ export interface DealTag {
   // whether the dollar figure itself rests on a real physical weight,
   // not about how much you'll need to buy.
   priceEstimated?: boolean;
+  // True when this deal has been explicitly opted into proportional
+  // (weight-fragmented) pricing -- see curated_deals.fragment_by_weight
+  // and compute_deal_tag_pricing()'s own migration comment. Lets the
+  // client show a real "use exactly this much" quantity instead of the
+  // generic "buy 1 whole package" text (see IngredientLine.useQuantityText)
+  // only for the deals where that's actually true.
+  fragmentByWeight?: boolean;
 }
 
 // An ingredient line, with the matching deal tag attached when that
@@ -59,6 +66,15 @@ export interface IngredientLine {
   // scaleIngredientDisplay) without re-running staple price matching.
   quantity: string;
   unit: string;
+  // Only set for a dealTag.fragmentByWeight ingredient -- e.g. "Use
+  // 217 g". `text` still shows the generic "1 package X" (you're still
+  // buying a whole package off the shelf, deal price never fragments --
+  // see describeDealPackage), but that alone no longer tells you how
+  // much of it THIS recipe actually needs, now that the badge price
+  // doesn't reflect a partial-package cost either. Rendered as a small
+  // annotation under the deal card. Anabelle, after the badge/
+  // contribution split: "users now dont know what quantity to use."
+  useQuantityText?: string;
 }
 
 // A serving suggestion shown at the bottom of the recipe page -- e.g.
