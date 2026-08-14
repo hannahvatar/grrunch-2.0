@@ -258,8 +258,18 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
   if (/gram|\bgr\b|\bg\b/.test(t)) return { amount: num, baseUnit: 'g' };
   if (/pound|\blb\b|\blbs\b/.test(t)) return { amount: num * 453.592, baseUnit: 'g' };
   if (/ounce|\boz\b/.test(t)) return { amount: num * 28.3495, baseUnit: 'g' };
-  if (/litre|liter|\bl\b/.test(t)) return { amount: num * 1000, baseUnit: 'ml' };
+  // millilitre MUST be checked before litre -- "millilitre" contains
+  // "litre" as a substring (same relationship as kilogram/gram above,
+  // which is correctly ordered specific-first). Found via a real,
+  // confirmed bug: StatCan's "Mayonnaise" reference is priced "890
+  // millilitres" (spelled out, not "890 mL") -- with litre checked
+  // first, that string matched the litre branch and got treated as
+  // 890 LITRES (*1000 -> 890,000 mL), a 1000x error that silently
+  // rendered "$0.00 avg." for any recipe using it. 13 other rows
+  // across staple_reference_prices/statcan_reference_prices use the
+  // same spelled-out "NNN millilitres" unit and had the identical bug.
   if (/millilitre|milliliter|\bml\b/.test(t)) return { amount: num, baseUnit: 'ml' };
+  if (/litre|liter|\bl\b/.test(t)) return { amount: num * 1000, baseUnit: 'ml' };
   if (/tablespoon|\btbsp\b/.test(t)) return { amount: num * 14.7868, baseUnit: 'ml' };
   if (/teaspoon|\btsp\b/.test(t)) return { amount: num * 4.92892, baseUnit: 'ml' };
   if (/cup/.test(t)) return { amount: num * 236.588, baseUnit: 'ml' };
