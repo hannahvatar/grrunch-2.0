@@ -55,6 +55,13 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // ~145 g/cup for frozen peas -- see
   // 20260812140000_frozen_peas_density.sql for the server-side twin.
   'frozen peas': 145,
+  // 244 g/cup, standard 2% milk density (~1.03 g/mL) -- same bug class
+  // as olive oil above: Milk is always measured in mL/tbsp across
+  // recipes, and with no density bridge it silently contributed $0/0
+  // calories in every recipe using it (Kraft Dinner, Napolitan) until
+  // found while adding Froot Loops French Toast. See the staple_densities
+  // table (Supabase) for the server-side twin.
+  milk: 244,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -232,6 +239,9 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // One pack is 400g -- see the staple_avg_weights row added alongside
   // Honey Garlic Chicken's rice-noodle swap for the server-side twin.
   'rice noodles': 400,
+  // ~30g per slice, standard sandwich bread -- see the staple_avg_weights
+  // row added alongside Froot Loops French Toast for the server-side twin.
+  'white bread': 30,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
