@@ -74,7 +74,7 @@ function mapIngredient(
     // the whole thing), and stating a bare gram number alongside it
     // would wrongly imply you could buy less.
     const useQuantityText = dealTag?.fragmentByWeight
-      ? `Use ${ingredient.quantity} ${ingredient.unit}`.trim()
+      ? `Recipe servings use ${ingredient.quantity} ${ingredient.unit === 'g' ? 'gr' : ingredient.unit}`.trim()
       : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText: text,

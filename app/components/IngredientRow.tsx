@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
   // as disabled rather than a dead link.
   flyerLinkDisabled: { color: '#999', textDecorationLine: 'none' },
   itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
-  useQuantityText: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginTop: 2 },
+  useQuantityText: { fontSize: 12, fontWeight: '400', fontFamily: 'OpenSans_400Regular', color: INK, marginTop: 2 },
   estimatedDisclaimer: { fontSize: 11, color: '#767676', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
   itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
