@@ -312,7 +312,18 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // above, or their nutrition (always scaled against a fixed 100 g
   // basis) silently comes back 0 despite a real price/deal match. See
   // the staple_avg_weights table (Supabase) for the server-side twins.
-  'beef patties': 678, // 6-pack, ~113g/patty
+  // Real flyer data (Compliments Traditional Beef Burgers box reads
+  // "8 x 113g (4 oz) / NET 907g") -- corrects an earlier 678g/6-pack
+  // guess made before Anabelle asked and the real flyer image was
+  // checked. Backyard Burger & Fries moved to 8 servings (1 whole
+  // package, 1 patty/serving) off the back of this correction --
+  // the old 4-serving/half-package version was overpaying per serving
+  // anyway, since a "package"-priced deal always charges its flat
+  // price regardless of the recipe's stated fraction.
+  'beef patties': 907,
+  // Real BC package size for Kraft Singles (24-slice, 500g box);
+  // 500/24 ~= 21g/slice.
+  'kraft singles': 21,
   fries: 650, // matches McCain Superfries' 454-800g flyer range
   'hamburger buns': 43,
   'cheddar cheese slices': 340, // ~16-slice pack
