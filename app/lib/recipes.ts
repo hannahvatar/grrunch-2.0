@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import type { DealTag, IngredientLine, Meal, OptionalAddition, SubRecipe } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
 import { fetchSubRecipes } from './subRecipes';
-import { describeDealPackage, describeQuantityText } from './unitConversion';
+import { describeDealPackage, describeQuantityText, describeUseQuantityText } from './unitConversion';
 
 interface RecipeIngredient {
   name: string;
@@ -74,7 +74,7 @@ function mapIngredient(
     // the whole thing), and stating a bare gram number alongside it
     // would wrongly imply you could buy less.
     const useQuantityText = dealTag?.fragmentByWeight
-      ? `Recipe uses ${ingredient.quantity} ${ingredient.unit} of the package`.trim()
+      ? describeUseQuantityText(ingredient.quantity, ingredient.unit)
       : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText: text,

@@ -522,6 +522,26 @@ export function describeDealPackage(
   return '1 package';
 }
 
+// "Recipe uses 250 g of the package" -- only for a deal explicitly opted
+// into fragmentation (DealTag.fragmentByWeight), since only those have a
+// price that actually reflects less than the whole package (see
+// describeDealPackage above). Factored out here, same reason as
+// describeQuantityText: mapIngredient() (lib/recipes.ts) builds it once
+// at the recipe's natural (1x) quantity, and scaleIngredientDisplay
+// (lib/mealScaling.ts) needs to rebuild the SAME sentence at a scaled
+// multiplier when the servings stepper changes -- found missing here
+// (Anabelle: "I am bumping the sandwich fries recipes to 4 servings and
+// the sentence still says 250 gr") because scaleIngredientDisplay only
+// ever rebuilt `text`/`groceryText`, never this.
+export function describeUseQuantityText(
+  quantity: string | undefined,
+  unit: string | undefined,
+  multiplier = 1
+): string {
+  const scaledQuantity = scaleQuantityString(quantity, multiplier);
+  return `Recipe uses ${scaledQuantity} ${unit} of the package`.trim();
+}
+
 // Staples conventionally bought and measured as whole discrete items (a
 // whole onion, half an onion) rather than by weight -- lets a recipe's
 // gram quantity (needed for accurate pricing, same reasoning as
