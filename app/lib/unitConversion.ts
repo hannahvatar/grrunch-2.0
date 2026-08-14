@@ -75,6 +75,28 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // Napolitan. Found while rewriting BBQ Ribs 'n' Cauli Nuggets'
   // cauliflower nugget method to use it.
   'vegetable oil': 218,
+  // Proactive staple additions (Anabelle: "before generating new
+  // recipes, I want to add more staples") -- Peanut butter and Yogurt
+  // already had real prices but no nutrition; Cream cheese, Cottage
+  // cheese, and Cheez Whiz were missing entirely. All four added here
+  // as a preemptive density bridge (no recipe uses them yet), so a
+  // future recipe measuring any of these by volume doesn't silently
+  // zero out the same way Milk/Vegetable oil did.
+  'cream cheese': 232,
+  'cottage cheese': 225,
+  'cheez whiz': 240,
+  yogurt: 245,
+  // Second staples batch (Anabelle's own list: Diana sauce, Montreal
+  // steak spice, Bull's-Eye, Frank's RedHot, Sriracha, HP sauce,
+  // Tabasco, soup/gravy/seasoning mixes, Habitant Pea Soup, Everything
+  // bagel seasoning). Only the two loose spice/seasoning blends need a
+  // density bridge here -- every liquid condiment (Diana, Bull's-Eye,
+  // Frank's, Sriracha, HP, Tabasco) was priced in mL directly, so a
+  // recipe stating mL/tbsp/tsp already bridges with no density entry
+  // needed; the canned/boxed/packeted items (soups, gravy mix, taco/
+  // chili seasoning) are bought and used whole, same reasoning.
+  'montreal steak spice': 140,
+  'everything bagel seasoning': 150,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
