@@ -18,6 +18,7 @@ import {
   groupDealsByCategory,
   isGreatReferenceValue,
   isReferencePriced,
+  selectVisibleDeals,
   showsRealDiscount,
 } from '../../lib/curatedDeals';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
@@ -32,9 +33,12 @@ import { useSubscription } from '../../lib/subscription';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Free tier sees only the first 3 items in each category -- Grrunch Plus
-// (30-day free trial, then $5.99/mo) unlocks the rest. A single "Unlock N
-// more deals" tile stands in for however many are left, naming the real
+// Free tier sees the biggest-savings 3 non-recipe-linked items in each
+// category (see selectVisibleDeals) -- Grrunch Plus (30-day free trial,
+// then $5.99/mo) unlocks the rest. A deal used by any recipe is exempt
+// from this cap entirely, always shown regardless of how many others
+// are already visible. A single "Unlock N more deals" tile stands in
+// for however many non-recipe-linked deals are left, naming the real
 // count rather than a generic upsell.
 const FREE_DEALS_PER_CATEGORY = 3;
 
@@ -106,10 +110,11 @@ export default function BestDealsScreen() {
 
         {categories.map((category) => {
           const categoryDeals = groups.get(category)!;
-          const visibleDeals = isSubscribed
-            ? categoryDeals
-            : categoryDeals.slice(0, FREE_DEALS_PER_CATEGORY);
-          const lockedDealCount = categoryDeals.length - visibleDeals.length;
+          const { visibleDeals, lockedDealCount } = selectVisibleDeals(
+            categoryDeals,
+            isSubscribed,
+            FREE_DEALS_PER_CATEGORY
+          );
           const isExpanded = expandedCategories.has(category);
           return (
             <View key={category} style={styles.categorySection}>
