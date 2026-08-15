@@ -362,6 +362,11 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // here (server-side staple_avg_weights had it, this client mirror
   // didn't) when the recipe's bread line showed no price at all.
   'sandwich bread': 60,
+  // Pepperoni Pizza Pasta Skillet -- matches the recipe's own "3 green
+  // bell peppers" count convention, same as onion above. Real average
+  // weight of one green bell pepper. See the staple_avg_weights row for
+  // the server-side twin.
+  'green bell pepper': 160,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
