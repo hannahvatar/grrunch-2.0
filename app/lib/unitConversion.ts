@@ -362,11 +362,24 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // here (server-side staple_avg_weights had it, this client mirror
   // didn't) when the recipe's bread line showed no price at all.
   'sandwich bread': 60,
-  // Pepperoni Pizza Pasta Skillet -- matches the recipe's own "3 green
-  // bell peppers" count convention, same as onion above. Real average
-  // weight of one green bell pepper. See the staple_avg_weights row for
-  // the server-side twin.
+  // Pizza Party Pasta -- original ingredient name before Anabelle asked
+  // for "Sweet or Bell Peppers" instead; left in place (unused but
+  // harmless) alongside its server-side staple_reference_prices twin,
+  // same policy as any other superseded-but-real reference row.
   'green bell pepper': 160,
+  // Pizza Party Pasta's current name -- matches the recipe's own "3
+  // Sweet or Bell Peppers" count convention, same as onion above. Real
+  // average weight of one pepper. Deliberately keyed on the FULL "sweet
+  // or bell peppers" phrase, not bare "sweet peppers" -- that broader
+  // key also word-matched Souvlaki Street Bowl's unrelated "NO NAME
+  // NATURALLY IMPERFECT SWEET PEPPERS, 2.5 LB" deal ingredient (a whole
+  // 2.5lb BAG, not a single pepper), silently mis-scaling its nutrition
+  // down to "1 pepper" (160g) instead of the real ~1134g bag -- a
+  // genuine regression caught live (Souvlaki's calories dropped
+  // 362->313 the moment the broader key was added). Requiring "bell"
+  // too avoids the collision, since Souvlaki's flyer text has no "bell"
+  // in it. See the staple_avg_weights row for the server-side twin.
+  'sweet or bell peppers': 160,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
