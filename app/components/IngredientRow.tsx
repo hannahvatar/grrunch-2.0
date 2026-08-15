@@ -123,6 +123,13 @@ interface IngredientRowProps {
   // staple rows in practice (see recipe.tsx).
   linkedText?: string;
   onLinkedTextPress?: () => void;
+  // "Use 217 g" -- only set for a dealTag.fragmentByWeight ingredient
+  // (see lib/recipes.ts mapIngredient), since only those have a price
+  // that actually reflects less than the whole package. Rendered as a
+  // small annotation under the store/flyer-link line, same tone as
+  // estimatedDisclaimer below. Anabelle: "users now dont know what
+  // quantity to use" once the badge stopped showing a fragmented price.
+  useQuantityText?: string;
 }
 
 // One ingredient's display -- shared verbatim by the Grocery list and the
@@ -147,6 +154,7 @@ export function IngredientRow({
   onEditQuantity,
   linkedText,
   onLinkedTextPress,
+  useQuantityText,
 }: IngredientRowProps) {
   // stackedLayout only -- text is always "<quantity> <rest of
   // description>" for a deal item (e.g. "1 package Prime raised...",
@@ -256,6 +264,7 @@ export function IngredientRow({
         </Pressable>
       )}
       {meta && <Text style={styles.itemMeta}>{meta}</Text>}
+      {useQuantityText && <Text style={styles.useQuantityText}>{useQuantityText}</Text>}
       {dealTag?.quantityEstimated && (
         <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
       )}
@@ -284,6 +293,7 @@ export function IngredientRow({
         </Pressable>
       )}
       {meta && <Text style={styles.itemMeta}>{meta}</Text>}
+      {useQuantityText && <Text style={styles.useQuantityText}>{useQuantityText}</Text>}
       {dealTag?.quantityEstimated && (
         <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
       )}
@@ -581,6 +591,7 @@ const styles = StyleSheet.create({
   // as disabled rather than a dead link.
   flyerLinkDisabled: { color: '#999', textDecorationLine: 'none' },
   itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
+  useQuantityText: { fontSize: 12, fontWeight: '400', fontFamily: 'OpenSans_400Regular', color: INK, marginTop: 2 },
   estimatedDisclaimer: { fontSize: 11, color: '#767676', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
   itemPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },

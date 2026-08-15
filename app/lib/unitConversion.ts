@@ -353,9 +353,15 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // onions by the whole/half/quarter, not by weight. See the
   // staple_avg_weights row for the server-side twin.
   onion: 150,
-  // French Fry Sandwich -- matches the recipe's own "(60 g each)" figure.
-  // See the staple_avg_weights row for the server-side twin.
+  // French Fry Sandwich -- original ingredient name before Anabelle asked
+  // for "your favourite sandwich bread" instead; left in place (unused
+  // but harmless) alongside its server-side staple_reference_prices twin,
+  // same policy as any other superseded-but-real reference row.
   'whole-wheat ciabatta rolls': 60,
+  // French Fry Sandwich's current bread ingredient name. Found missing
+  // here (server-side staple_avg_weights had it, this client mirror
+  // didn't) when the recipe's bread line showed no price at all.
+  'sandwich bread': 60,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -514,6 +520,26 @@ export function describeDealPackage(
   const ua = parseUnitAmount(recipeQuantity, recipeUnit);
   if (Number.isNaN(ua.amount) || ua.baseUnit === 'each') return undefined;
   return '1 package';
+}
+
+// "Recipe uses 250 g of the package" -- only for a deal explicitly opted
+// into fragmentation (DealTag.fragmentByWeight), since only those have a
+// price that actually reflects less than the whole package (see
+// describeDealPackage above). Factored out here, same reason as
+// describeQuantityText: mapIngredient() (lib/recipes.ts) builds it once
+// at the recipe's natural (1x) quantity, and scaleIngredientDisplay
+// (lib/mealScaling.ts) needs to rebuild the SAME sentence at a scaled
+// multiplier when the servings stepper changes -- found missing here
+// (Anabelle: "I am bumping the sandwich fries recipes to 4 servings and
+// the sentence still says 250 gr") because scaleIngredientDisplay only
+// ever rebuilt `text`/`groceryText`, never this.
+export function describeUseQuantityText(
+  quantity: string | undefined,
+  unit: string | undefined,
+  multiplier = 1
+): string {
+  const scaledQuantity = scaleQuantityString(quantity, multiplier);
+  return `Recipe uses ${scaledQuantity} ${unit} of the package`.trim();
 }
 
 // Staples conventionally bought and measured as whole discrete items (a

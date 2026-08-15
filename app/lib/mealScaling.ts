@@ -1,6 +1,6 @@
 import { isReferencePriced } from './curatedDeals';
 import type { IngredientLine, Meal } from './mealData';
-import { describeQuantityText } from './unitConversion';
+import { describeQuantityText, describeUseQuantityText } from './unitConversion';
 
 // There's no per-user calorie/protein target anymore (see git history /
 // the archive/calorie-protein-plan-targets and archive/dynamic-meal-
@@ -75,8 +75,23 @@ export type MealSortMode = 'cheapest' | 'bestDeal';
 export function scaleIngredientDisplay(
   ingredient: IngredientLine,
   multiplier: number
-): { text: string; groceryText?: string } {
-  if (ingredient.dealTag || multiplier === 1) {
+): { text: string; groceryText?: string; useQuantityText?: string } {
+  if (ingredient.dealTag) {
+    // text/groceryText never scale for a deal item (see comment above),
+    // but useQuantityText ("Recipe uses 250 g of the package") is a real
+    // amount that DOES grow with batch size for a fragmenting deal --
+    // rebuilt at the new multiplier same as any other staple quantity,
+    // just via its own dedicated builder instead of describeQuantityText.
+    // Found missing here (Anabelle, after bumping French Fry Sandwich to
+    // 4 servings: "the sentence still says 250 gr") -- this function
+    // only ever rebuilt text/groceryText, never useQuantityText, so it
+    // stayed stuck at the recipe's original 1x amount forever.
+    const useQuantityText = ingredient.dealTag.fragmentByWeight
+      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, multiplier)
+      : ingredient.useQuantityText;
+    return { text: ingredient.text, groceryText: ingredient.groceryText, useQuantityText };
+  }
+  if (multiplier === 1) {
     return { text: ingredient.text, groceryText: ingredient.groceryText };
   }
   return describeQuantityText(ingredient.name, ingredient.quantity, ingredient.unit, multiplier);

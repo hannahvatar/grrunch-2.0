@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import type { DealTag, IngredientLine, Meal, OptionalAddition, SubRecipe } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
 import { fetchSubRecipes } from './subRecipes';
-import { describeDealPackage, describeQuantityText } from './unitConversion';
+import { describeDealPackage, describeQuantityText, describeUseQuantityText } from './unitConversion';
 
 interface RecipeIngredient {
   name: string;
@@ -21,6 +21,7 @@ interface RecipeDealTagRow {
   quantity_estimated?: boolean;
   original_price_source?: string;
   price_estimated?: boolean;
+  fragment_by_weight?: boolean;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
@@ -38,6 +39,7 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     quantityEstimated: tag.quantity_estimated,
     originalPriceSource: tag.original_price_source as 'flyer' | 'reference' | undefined,
     priceEstimated: tag.price_estimated,
+    fragmentByWeight: tag.fragment_by_weight,
   };
 }
 
@@ -65,9 +67,18 @@ function mapIngredient(
   const dealPackage = dealTag ? describeDealPackage(ingredient.quantity, ingredient.unit) : undefined;
   if (dealPackage) {
     const text = `${dealPackage} ${ingredient.name}`;
+    // Only a deal explicitly opted into fragmentation (see
+    // DealTag.fragmentByWeight) has a price that actually reflects
+    // less than the whole package -- for every other deal, "1 package"
+    // above is already the complete, honest instruction (buy and use
+    // the whole thing), and stating a bare gram number alongside it
+    // would wrongly imply you could buy less.
+    const useQuantityText = dealTag?.fragmentByWeight
+      ? describeUseQuantityText(ingredient.quantity, ingredient.unit)
+      : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText: text,
-      quantity: ingredient.quantity, unit: ingredient.unit,
+      quantity: ingredient.quantity, unit: ingredient.unit, useQuantityText,
     };
   }
   const { text, groceryText } = describeQuantityText(ingredient.name, ingredient.quantity, ingredient.unit);

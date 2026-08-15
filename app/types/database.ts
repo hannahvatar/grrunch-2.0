@@ -48,6 +48,7 @@ export type Database = {
           discount_pct: number | null
           flyer_valid_from: string
           flyer_valid_to: string
+          fragment_by_weight: boolean
           id: string
           image_url: string | null
           item_name: string
@@ -64,6 +65,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: Database["public"]["Enums"]["deal_status"]
+          used_in_recipe: boolean
         }
         Insert: {
           airtable_record_id?: string | null
@@ -73,6 +75,7 @@ export type Database = {
           discount_pct?: number | null
           flyer_valid_from: string
           flyer_valid_to: string
+          fragment_by_weight?: boolean
           id?: string
           image_url?: string | null
           item_name: string
@@ -89,6 +92,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["deal_status"]
+          used_in_recipe?: boolean
         }
         Update: {
           airtable_record_id?: string | null
@@ -98,6 +102,7 @@ export type Database = {
           discount_pct?: number | null
           flyer_valid_from?: string
           flyer_valid_to?: string
+          fragment_by_weight?: boolean
           id?: string
           image_url?: string | null
           item_name?: string
@@ -114,6 +119,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["deal_status"]
+          used_in_recipe?: boolean
         }
         Relationships: []
       }
@@ -572,6 +578,26 @@ export type Database = {
     }
     Functions: {
       compute_deal_tag_pricing:
+        | {
+            Args: {
+              p_fragment_by_weight: boolean
+              p_ing_quantity: string
+              p_ing_unit: string
+              p_original_price: number
+              p_package_weight_g: number
+              p_package_weight_g_source: string
+              p_price: number
+              p_price_unit: Database["public"]["Enums"]["deal_price_unit"]
+              p_quantity_estimated: boolean
+            }
+            Returns: {
+              tag_contribution: number
+              tag_original_price: number
+              tag_price: number
+              tag_price_estimated: boolean
+              tag_quantity_estimated: boolean
+            }[]
+          }
         | {
             Args: {
               p_ing_quantity: string

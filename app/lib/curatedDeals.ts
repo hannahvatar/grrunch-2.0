@@ -17,6 +17,15 @@ export interface Deal {
   productUrl: string;
   imageUrl: string | null;
   originalPriceSource: OriginalPriceSource;
+  // True when this deal matches at least one recipe ingredient (see
+  // curated_deals.used_in_recipe, computed server-side by
+  // refresh_recipe_deal_tags() -- never re-derived client-side, since a
+  // keyword-fallback match's recipe ingredient name doesn't necessarily
+  // equal the deal's own item_name as a string). Lets Weekly Deals
+  // exempt a recipe-linked deal from the free-tier per-category cap --
+  // Anabelle: "all deals items should also appear in the weekly deals
+  // section" (it's core to actually making that recipe, not an upsell).
+  usedInRecipe: boolean;
 }
 
 const UNCATEGORIZED = 'Other';
@@ -116,6 +125,7 @@ function mapRowToDeal(row: {
   product_url: string;
   image_url: string | null;
   original_price_source: string;
+  used_in_recipe: boolean | null;
 }): Deal | null {
   if (row.price == null || row.original_price == null) return null;
   return {
@@ -129,6 +139,7 @@ function mapRowToDeal(row: {
     productUrl: row.product_url,
     imageUrl: row.image_url,
     originalPriceSource: row.original_price_source as OriginalPriceSource,
+    usedInRecipe: row.used_in_recipe ?? false,
   };
 }
 
@@ -156,6 +167,43 @@ export function groupDealsByCategory(deals: Deal[]): Map<string, Deal[]> {
     }
   }
   return groups;
+}
+
+// Ranks a real, store-printed discount above a reference-sourced
+// comparison at the same discountPct -- matches the badge hierarchy
+// already shown (showsRealDiscount's green badge outranks
+// isGreatReferenceValue's purple one), so "most savings" sorts the same
+// way the page visually communicates savings.
+function bySavingsDesc(a: Deal, b: Deal): number {
+  const aReal = showsRealDiscount(a.discountPct, a.originalPriceSource);
+  const bReal = showsRealDiscount(b.discountPct, b.originalPriceSource);
+  if (aReal !== bReal) return aReal ? -1 : 1;
+  return b.discountPct - a.discountPct;
+}
+
+// A deal used by any recipe is exempt from the free-tier cap entirely
+// (Anabelle: "all deals items should also appear in the weekly deals
+// section" -- it's core to actually making that recipe, not an upsell
+// surface) -- always included, on top of whichever non-recipe-linked
+// deals the free tier's per-category limit allows through. Those
+// remaining slots go to the biggest real savings first (Anabelle:
+// "the three that show on the free tier should be the most saving"),
+// not whatever order the deals happened to load in.
+export function selectVisibleDeals(
+  categoryDeals: Deal[],
+  isSubscribed: boolean,
+  freeLimit: number
+): { visibleDeals: Deal[]; lockedDealCount: number } {
+  if (isSubscribed) {
+    return { visibleDeals: categoryDeals, lockedDealCount: 0 };
+  }
+  const recipeLinked = categoryDeals.filter((deal) => deal.usedInRecipe);
+  const others = categoryDeals.filter((deal) => !deal.usedInRecipe).sort(bySavingsDesc);
+  const visibleOthers = others.slice(0, freeLimit);
+  return {
+    visibleDeals: [...recipeLinked, ...visibleOthers],
+    lockedDealCount: others.length - visibleOthers.length,
+  };
 }
 
 const STOPWORDS = new Set(['with', 'from', 'each', 'selected', 'variety', 'varieties', 'fresh', 'frozen']);

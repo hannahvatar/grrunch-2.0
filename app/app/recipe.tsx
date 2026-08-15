@@ -237,6 +237,7 @@ export default function RecipeScreen() {
                         estimatedPrice={ingredient.estimatedPrice}
                         linkedText={subRecipe ? ingredient.name : undefined}
                         onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
+                        useQuantityText={ingredient.useQuantityText}
                         // Never fragmented, so a doubled batch stays "1
                         // package ..." with a x2 badge instead of a scaled
                         // quantity -- see scaleIngredientDisplay.
@@ -297,6 +298,7 @@ export default function RecipeScreen() {
                         bulleted
                         linkedText={subRecipe ? ingredient.name : undefined}
                         onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
+                        useQuantityText={ingredient.useQuantityText}
                       />
                     );
                   })}
