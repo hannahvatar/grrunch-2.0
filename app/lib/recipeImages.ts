@@ -65,6 +65,9 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Fry Me a Sandwich': require('../assets/french-fries-sandwich.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Eggplant Got Beef': require('../assets/eggplant-got-beef.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
