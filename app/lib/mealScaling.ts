@@ -91,7 +91,7 @@ export function scaleIngredientDisplay(
     // the real package weight, at which point the line should disappear.
     const scaledQuantity = scaleQuantityString(ingredient.quantity, multiplier);
     const useQuantityText = shouldShowUseQuantityText(scaledQuantity, ingredient.unit, ingredient.dealTag.packageWeightG)
-      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, multiplier)
+      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name, multiplier)
       : undefined;
     return { text: ingredient.text, groceryText: ingredient.groceryText, useQuantityText };
   }

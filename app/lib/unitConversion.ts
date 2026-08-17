@@ -578,11 +578,42 @@ export function shouldShowUseQuantityText(
 // bumping the sandwich fries recipes to 4 servings and the sentence
 // still says 250 gr") because scaleIngredientDisplay only ever rebuilt
 // `text`/`groceryText`, never this.
+//
+// Friendly singular/plural label for a deal item that's really bought
+// and thought of as whole discrete units (a pogo, a burger patty) even
+// though its quantity is stored in grams for pricing -- Anabelle: "users
+// dont understand pogo per gram. They understand 1 pogo, 1 pogos."
+// Keyed the same way as the matching STAPLE_AVG_WEIGHT_G_PER_EACH entry
+// (bare "pogo", not the full ingredient name) so the two stay paired.
+// Deliberately small, same policy as STAPLE_UNIT_WEIGHTS_G -- only a
+// deal item genuinely sold/used as discrete whole pieces needs one; a
+// deal item genuinely measured by weight (e.g. McCain fries) should
+// keep reading in grams, not be forced into a fake "1.2 servings"-style
+// count.
+const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }> = {
+  pogo: { singular: 'pogo', plural: 'pogos' },
+};
+
 export function describeUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,
+  ingredientName: string,
   multiplier = 1
 ): string {
+  const ua = parseUnitAmount(quantity, unit);
+  if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g') {
+    const ingWords = normalizeWords(ingredientName);
+    const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+      const words = normalizeWords(name);
+      return words.length > 0 && words.every((w) => ingWords.includes(w));
+    });
+    const label = bridgeEntry && DEAL_ITEM_UNIT_LABELS[bridgeEntry[0]];
+    if (bridgeEntry && label) {
+      const [, gramsEach] = bridgeEntry;
+      const count = Math.round((ua.amount * multiplier) / gramsEach);
+      return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
+    }
+  }
   const scaledQuantity = scaleQuantityString(quantity, multiplier);
   return `Recipe uses ${scaledQuantity} ${unit} of the package`.trim();
 }

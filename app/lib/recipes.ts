@@ -74,7 +74,7 @@ function mapIngredient(
     // whether the price itself is fragmented (see
     // shouldShowUseQuantityText's own comment).
     const useQuantityText = shouldShowUseQuantityText(ingredient.quantity, ingredient.unit, dealTag?.packageWeightG)
-      ? describeUseQuantityText(ingredient.quantity, ingredient.unit)
+      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name)
       : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText: text,
