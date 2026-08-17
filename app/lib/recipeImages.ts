@@ -75,10 +75,10 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // before cropping per the standing rule (kielbasa-gone-krauty-original.jpeg).
   // 1075x627, matching the card's ~1.7:1 target.
   'Kielbasa Gone Krauty': require('../assets/kielbasa-gone-krauty.jpeg'),
-  // Cropped 20% in, centered (Anabelle's call: zoomed out 10% from an
-  // initial 30% crop) -- original backed up before cropping per the
-  // standing rule (k-pogo-original.jpeg). 1075x627, matching the
-  // card's ~1.7:1 target.
+  // Shifted right (Anabelle's call: "move it to the left side so the
+  // doritos are cropped") to crop the Doritos bag out of frame entirely
+  // -- original backed up before cropping per the standing rule
+  // (k-pogo-original.jpeg). 850x496, matching the card's ~1.7:1 target.
   'K-Pogo (TikTok Korean Corn Dog)': require('../assets/k-pogo.jpeg'),
 };
 
