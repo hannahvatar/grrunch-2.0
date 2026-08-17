@@ -181,11 +181,14 @@ function mapRowToMeal(
     ),
     instructions: row.instructions as string[],
     optionalAdditions,
-    // The sub-recipes this meal's own ingredients name (exact match) OR
-    // its Optional callout prose mentions (substring match) -- see
-    // lib/subRecipes.ts, matched against the shared table, not embedded
-    // per-recipe.
+    // The sub-recipes this meal's own ingredients name (exact match),
+    // its Optional callout prose mentions (substring match), OR that
+    // are directly attached via recipe_id (no text mention needed at
+    // all -- see lib/subRecipes.ts / 20260817040000_sub_recipe_direct_link.sql,
+    // Anabelle: "add back the companion recipe AND DONT MENTION IT
+    // ANYWHERE IN THIS RECIPE").
     subRecipes: subRecipes.filter((sr) => {
+      if (sr.recipeId) return sr.recipeId === row.id;
       const key = sr.matchIngredientName.toLowerCase();
       return ingredientNames.has(key) || optionalText.includes(key);
     }),

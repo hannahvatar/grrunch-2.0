@@ -114,6 +114,13 @@ export interface SubRecipe {
   description: string;
   ingredients: string[];
   instructions: string[];
+  // Optional direct attachment to exactly one recipe (sub_recipes.
+  // recipe_id) -- shown on that recipe's page regardless of any
+  // ingredient-name or Optional-text match. undefined (the common
+  // case) keeps the original text-matching behavior, for a reusable
+  // technique like "Basic Crispy Pork Belly" meant to auto-attach to
+  // any recipe naming the matching ingredient, not just one.
+  recipeId?: string;
 }
 
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the
