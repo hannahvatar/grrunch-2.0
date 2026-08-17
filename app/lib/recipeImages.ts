@@ -71,6 +71,10 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1376x768) --
   // no crop needed/applied, uncropped as uploaded.
   'Pizza Party Pasta': require('../assets/pizza-party-pastas.jpeg'),
+  // Cropped 20% in, centered (Anabelle's call) -- original backed up
+  // before cropping per the standing rule (kielbasa-gone-krauty-original.jpeg).
+  // 1075x627, matching the card's ~1.7:1 target.
+  'Kielbasa Gone Krauty': require('../assets/kielbasa-gone-krauty.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
