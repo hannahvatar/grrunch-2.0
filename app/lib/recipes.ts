@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import type { DealTag, IngredientLine, Meal, OptionalAddition, SubRecipe } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
 import { fetchSubRecipes } from './subRecipes';
-import { describeDealPackage, describeQuantityText, describeUseQuantityText } from './unitConversion';
+import { describeDealPackage, describeQuantityText, describeUseQuantityText, shouldShowUseQuantityText } from './unitConversion';
 
 interface RecipeIngredient {
   name: string;
@@ -69,13 +69,11 @@ function mapIngredient(
   const dealPackage = dealTag ? describeDealPackage(ingredient.quantity, ingredient.unit) : undefined;
   if (dealPackage) {
     const text = `${dealPackage} ${ingredient.name}`;
-    // Only a deal explicitly opted into fragmentation (see
-    // DealTag.fragmentByWeight) has a price that actually reflects
-    // less than the whole package -- for every other deal, "1 package"
-    // above is already the complete, honest instruction (buy and use
-    // the whole thing), and stating a bare gram number alongside it
-    // would wrongly imply you could buy less.
-    const useQuantityText = dealTag?.fragmentByWeight
+    // Shown whenever we know the real package weight AND this recipe
+    // genuinely uses less than the whole thing -- independent of
+    // whether the price itself is fragmented (see
+    // shouldShowUseQuantityText's own comment).
+    const useQuantityText = shouldShowUseQuantityText(ingredient.quantity, ingredient.unit, dealTag?.packageWeightG)
       ? describeUseQuantityText(ingredient.quantity, ingredient.unit)
       : undefined;
     return {

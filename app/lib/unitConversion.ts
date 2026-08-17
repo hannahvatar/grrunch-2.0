@@ -547,17 +547,37 @@ export function describeDealPackage(
   return '1 package';
 }
 
-// "Recipe uses 250 g of the package" -- only for a deal explicitly opted
-// into fragmentation (DealTag.fragmentByWeight), since only those have a
-// price that actually reflects less than the whole package (see
-// describeDealPackage above). Factored out here, same reason as
-// describeQuantityText: mapIngredient() (lib/recipes.ts) builds it once
-// at the recipe's natural (1x) quantity, and scaleIngredientDisplay
-// (lib/mealScaling.ts) needs to rebuild the SAME sentence at a scaled
-// multiplier when the servings stepper changes -- found missing here
-// (Anabelle: "I am bumping the sandwich fries recipes to 4 servings and
-// the sentence still says 250 gr") because scaleIngredientDisplay only
-// ever rebuilt `text`/`groceryText`, never this.
+// Whether to show the "Recipe uses X g of the package" line at all --
+// deliberately DECOUPLED from DealTag.fragmentByWeight (Anabelle: the
+// Tostitos deal in K-Pogo should show its own "Recipe uses 60 g of the
+// package" line too, even though only the Pogo deal is actually
+// fragmented for pricing). fragmentByWeight controls whether the
+// PRICE reflects less than the whole package; this controls whether the
+// DISPLAY tells you how much of it you'll actually use -- two separate
+// questions, both true for Pogo, only the second true for Tostitos.
+// Only shown when we know the deal's real package_weight_g (never a
+// guess) and the recipe's own quantity is gram-based and genuinely
+// less than the full package -- a recipe using the whole package needs
+// no such line ("1 package" already says it all).
+export function shouldShowUseQuantityText(
+  quantity: string | undefined,
+  unit: string | undefined,
+  packageWeightG: number | undefined
+): boolean {
+  if (!packageWeightG) return false;
+  const ua = parseUnitAmount(quantity, unit);
+  return ua.baseUnit === 'g' && !Number.isNaN(ua.amount) && ua.amount < packageWeightG;
+}
+
+// "Recipe uses 250 g of the package" -- shown per shouldShowUseQuantityText
+// above. Factored out here, same reason as describeQuantityText:
+// mapIngredient() (lib/recipes.ts) builds it once at the recipe's
+// natural (1x) quantity, and scaleIngredientDisplay (lib/mealScaling.ts)
+// needs to rebuild the SAME sentence at a scaled multiplier when the
+// servings stepper changes -- found missing here (Anabelle: "I am
+// bumping the sandwich fries recipes to 4 servings and the sentence
+// still says 250 gr") because scaleIngredientDisplay only ever rebuilt
+// `text`/`groceryText`, never this.
 export function describeUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,

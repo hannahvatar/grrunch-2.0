@@ -1,6 +1,6 @@
 import { isReferencePriced } from './curatedDeals';
 import type { IngredientLine, Meal } from './mealData';
-import { describeQuantityText, describeUseQuantityText } from './unitConversion';
+import { describeQuantityText, describeUseQuantityText, scaleQuantityString, shouldShowUseQuantityText } from './unitConversion';
 
 // There's no per-user calorie/protein target anymore (see git history /
 // the archive/calorie-protein-plan-targets and archive/dynamic-meal-
@@ -79,16 +79,20 @@ export function scaleIngredientDisplay(
   if (ingredient.dealTag) {
     // text/groceryText never scale for a deal item (see comment above),
     // but useQuantityText ("Recipe uses 250 g of the package") is a real
-    // amount that DOES grow with batch size for a fragmenting deal --
-    // rebuilt at the new multiplier same as any other staple quantity,
-    // just via its own dedicated builder instead of describeQuantityText.
-    // Found missing here (Anabelle, after bumping French Fry Sandwich to
-    // 4 servings: "the sentence still says 250 gr") -- this function
-    // only ever rebuilt text/groceryText, never useQuantityText, so it
-    // stayed stuck at the recipe's original 1x amount forever.
-    const useQuantityText = ingredient.dealTag.fragmentByWeight
+    // amount that DOES grow with batch size -- rebuilt at the new
+    // multiplier same as any other staple quantity, just via its own
+    // dedicated builder instead of describeQuantityText. Found missing
+    // here (Anabelle, after bumping French Fry Sandwich to 4 servings:
+    // "the sentence still says 250 gr") -- this function only ever
+    // rebuilt text/groceryText, never useQuantityText, so it stayed
+    // stuck at the recipe's original 1x amount forever. Gate is
+    // recomputed at the SCALED quantity too (not just whether it showed
+    // at 1x), since scaling up could push a partial-package amount past
+    // the real package weight, at which point the line should disappear.
+    const scaledQuantity = scaleQuantityString(ingredient.quantity, multiplier);
+    const useQuantityText = shouldShowUseQuantityText(scaledQuantity, ingredient.unit, ingredient.dealTag.packageWeightG)
       ? describeUseQuantityText(ingredient.quantity, ingredient.unit, multiplier)
-      : ingredient.useQuantityText;
+      : undefined;
     return { text: ingredient.text, groceryText: ingredient.groceryText, useQuantityText };
   }
   if (multiplier === 1) {
