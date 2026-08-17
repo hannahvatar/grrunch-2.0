@@ -380,6 +380,13 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // too avoids the collision, since Souvlaki's flyer text has no "bell"
   // in it. See the staple_avg_weights row for the server-side twin.
   'sweet or bell peppers': 160,
+  // K-Pogo (TikTok Korean Corn Dog) -- Anabelle's own general estimate
+  // (not a verified label weight; the deal's package_weight_g_source is
+  // flagged 'estimated' to match), 66g per pogo x 20 = 1320g box. See
+  // the staple_avg_weights row for the server-side twin, keyed the same
+  // way (bare "pogo", not the full "Pogo Original 20-pack" ingredient
+  // name, so it survives the ingredient being renamed to "Pogo pups").
+  pogo: 66,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns

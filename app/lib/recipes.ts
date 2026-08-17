@@ -22,6 +22,7 @@ interface RecipeDealTagRow {
   original_price_source?: string;
   price_estimated?: boolean;
   fragment_by_weight?: boolean;
+  package_weight_g?: number;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
@@ -40,6 +41,7 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     originalPriceSource: tag.original_price_source as 'flyer' | 'reference' | undefined,
     priceEstimated: tag.price_estimated,
     fragmentByWeight: tag.fragment_by_weight,
+    packageWeightG: tag.package_weight_g,
   };
 }
 
