@@ -36,6 +36,14 @@ export interface DealTag {
   // generic "buy 1 whole package" text (see IngredientLine.useQuantityText)
   // only for the deals where that's actually true.
   fragmentByWeight?: boolean;
+  // The deal's real known package weight in grams (curated_deals.
+  // package_weight_g), or undefined when genuinely unknown/bulk. Lets
+  // describeDealPackage() redo the same avg-weight-bridge package-count
+  // math server-side pricing already does (see compute_deal_tag_pricing),
+  // so an each-count ingredient (e.g. "4 Pogo pups" from a 20-pack) can
+  // show the real "1 package" instead of misreading the raw count as a
+  // package multiplier.
+  packageWeightG?: number;
 }
 
 // An ingredient line, with the matching deal tag attached when that

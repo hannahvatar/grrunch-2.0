@@ -336,21 +336,47 @@ export default function RecipeScreen() {
               <Text style={styles.optionalHeading}>Optional</Text>
             </View>
             <View style={styles.optionalList}>
-              {meal.optionalAdditions.map((addition, index) => (
-                <Text key={addition.title || index} style={styles.optionalText}>
-                  {/* A blank title (Anabelle's call for some additions --
-                      description-only, no label) skips the title Text and
-                      its trailing spacer entirely, instead of leaving a
-                      stray leading gap before the description. */}
-                  {addition.title ? (
+              {meal.optionalAdditions.map((addition, index) => {
+                // Same jump-link mechanism as an ingredient row's
+                // linkedText (IngredientRow.tsx) -- a companion recipe
+                // mentioned only in this prose, not in the ingredient
+                // list itself (see lib/recipes.ts's mapRowToMeal,
+                // optionalText matching), still gets a tappable link to
+                // its section instead of just naming it inertly.
+                const subRecipe = meal.subRecipes.find((sr) =>
+                  addition.description.toLowerCase().includes(sr.matchIngredientName.toLowerCase())
+                );
+                const linkIndex = subRecipe
+                  ? addition.description.toLowerCase().indexOf(subRecipe.matchIngredientName.toLowerCase())
+                  : -1;
+                const descriptionContent =
+                  subRecipe && linkIndex >= 0 ? (
                     <>
-                      <Text style={styles.optionalTitle}>{addition.title}</Text>
-                      {'  '}
+                      {addition.description.slice(0, linkIndex)}
+                      <Text style={styles.optionalLink} onPress={() => scrollToSubRecipe(subRecipe.title)}>
+                        {addition.description.slice(linkIndex, linkIndex + subRecipe.matchIngredientName.length)}
+                      </Text>
+                      {addition.description.slice(linkIndex + subRecipe.matchIngredientName.length)}
                     </>
-                  ) : null}
-                  {addition.description}
-                </Text>
-              ))}
+                  ) : (
+                    addition.description
+                  );
+                return (
+                  <Text key={addition.title || index} style={styles.optionalText}>
+                    {/* A blank title (Anabelle's call for some additions --
+                        description-only, no label) skips the title Text and
+                        its trailing spacer entirely, instead of leaving a
+                        stray leading gap before the description. */}
+                    {addition.title ? (
+                      <>
+                        <Text style={styles.optionalTitle}>{addition.title}</Text>
+                        {'  '}
+                      </>
+                    ) : null}
+                    {descriptionContent}
+                  </Text>
+                );
+              })}
             </View>
           </View>
         )}
@@ -627,6 +653,10 @@ const styles = StyleSheet.create({
   // description inline, just no longer bolded/visually distinguished
   // from it.
   optionalTitle: { color: INK },
+  // Same treatment as IngredientRow's itemNameLink -- underlined,
+  // otherwise inherits optionalText's own size/color so it reads as
+  // part of the sentence, not a separate button.
+  optionalLink: { textDecorationLine: 'underline' },
   // Sub-recipe sections (e.g. "Basic Crispy Pork Belly") at the very
   // bottom of the page, jump-linked from a matching ingredient above --
   // "Companion Recipe" eyebrow label sits outside/above a dashed-border

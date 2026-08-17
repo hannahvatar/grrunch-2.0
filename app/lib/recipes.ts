@@ -2,12 +2,21 @@ import { supabase } from './supabase';
 import type { DealTag, IngredientLine, Meal, OptionalAddition, SubRecipe } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
 import { fetchSubRecipes } from './subRecipes';
-import { describeDealPackage, describeQuantityText, describeUseQuantityText } from './unitConversion';
+import { describeDealPackage, describeQuantityText, describeUseQuantityText, shouldShowUseQuantityText } from './unitConversion';
 
 interface RecipeIngredient {
   name: string;
   quantity: string;
   unit: string;
+  // Optional override, read ONLY for the staple-fallback "$X avg."
+  // price estimate -- never nutrition, never deal-tag matching. Lets a
+  // plain staple's real purchase cost differ from what's actually
+  // consumed (e.g. deep-frying oil: buy 500 mL to submerge the food,
+  // credit nutrition on the ~30 mL actually eaten). See
+  // 20260817020000_staple_price_quantity_override.sql for the
+  // server-side twin (recipes.price itself).
+  price_quantity?: string;
+  price_unit?: string;
 }
 
 interface RecipeDealTagRow {
@@ -22,6 +31,7 @@ interface RecipeDealTagRow {
   original_price_source?: string;
   price_estimated?: boolean;
   fragment_by_weight?: boolean;
+  package_weight_g?: number;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
@@ -40,6 +50,7 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     originalPriceSource: tag.original_price_source as 'flyer' | 'reference' | undefined,
     priceEstimated: tag.price_estimated,
     fragmentByWeight: tag.fragment_by_weight,
+    packageWeightG: tag.package_weight_g,
   };
 }
 
@@ -67,14 +78,12 @@ function mapIngredient(
   const dealPackage = dealTag ? describeDealPackage(ingredient.quantity, ingredient.unit) : undefined;
   if (dealPackage) {
     const text = `${dealPackage} ${ingredient.name}`;
-    // Only a deal explicitly opted into fragmentation (see
-    // DealTag.fragmentByWeight) has a price that actually reflects
-    // less than the whole package -- for every other deal, "1 package"
-    // above is already the complete, honest instruction (buy and use
-    // the whole thing), and stating a bare gram number alongside it
-    // would wrongly imply you could buy less.
-    const useQuantityText = dealTag?.fragmentByWeight
-      ? describeUseQuantityText(ingredient.quantity, ingredient.unit)
+    // Shown whenever we know the real package weight AND this recipe
+    // genuinely uses less than the whole thing -- independent of
+    // whether the price itself is fragmented (see
+    // shouldShowUseQuantityText's own comment).
+    const useQuantityText = shouldShowUseQuantityText(ingredient.quantity, ingredient.unit, dealTag?.packageWeightG)
+      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name)
       : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText: text,
@@ -88,8 +97,13 @@ function mapIngredient(
       quantity: ingredient.quantity, unit: ingredient.unit,
     };
   }
+  // price_quantity/price_unit override the "$X avg." estimate only --
+  // falls back to the real quantity/unit when absent (every ingredient
+  // except the ones that explicitly opt in, e.g. deep-frying oil).
   const match = matchReferencePrice(
-    ingredient.name, ingredient.quantity, ingredient.unit,
+    ingredient.name,
+    ingredient.price_quantity ?? ingredient.quantity,
+    ingredient.price_unit ?? ingredient.unit,
     statcanPrices, producePrices, staplePrices
   );
   return {
@@ -140,6 +154,17 @@ function mapRowToMeal(
   const ingredientNames = new Set(
     (row.ingredients as RecipeIngredient[]).map((ingredient) => ingredient.name.toLowerCase())
   );
+  const optionalAdditions = (row.optional_additions as OptionalAddition[]) ?? [];
+  // A sub-recipe mentioned only in an Optional callout's prose (e.g.
+  // "...a side of Sesame Slaw...") -- not every companion needs its own
+  // ingredient-list line (Anabelle: pulled the "to taste Quick Sesame
+  // Slaw" pantry bullet since it read like a real ingredient when it's
+  // really just a suggested side). match_ingredient_name doubles as the
+  // substring recipe.tsx looks for to render the inline jump-link, so
+  // it's kept short/natural ("Sesame Slaw", not the sub-recipe's own
+  // longer title "Quick Sesame Slaw") -- see the matching check in
+  // recipe.tsx's Optional section render.
+  const optionalText = optionalAdditions.map((a) => `${a.title} ${a.description}`).join(' ').toLowerCase();
   return {
     id: row.id,
     name: row.name,
@@ -155,11 +180,15 @@ function mapRowToMeal(
       )
     ),
     instructions: row.instructions as string[],
-    optionalAdditions: (row.optional_additions as OptionalAddition[]) ?? [],
-    // Only the sub-recipes this meal's own ingredients actually name --
-    // see lib/subRecipes.ts, matched by ingredient name against the
-    // shared table, not embedded per-recipe.
-    subRecipes: subRecipes.filter((sr) => ingredientNames.has(sr.matchIngredientName.toLowerCase())),
+    optionalAdditions,
+    // The sub-recipes this meal's own ingredients name (exact match) OR
+    // its Optional callout prose mentions (substring match) -- see
+    // lib/subRecipes.ts, matched against the shared table, not embedded
+    // per-recipe.
+    subRecipes: subRecipes.filter((sr) => {
+      const key = sr.matchIngredientName.toLowerCase();
+      return ingredientNames.has(key) || optionalText.includes(key);
+    }),
   };
 }
 

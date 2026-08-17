@@ -362,6 +362,31 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // here (server-side staple_avg_weights had it, this client mirror
   // didn't) when the recipe's bread line showed no price at all.
   'sandwich bread': 60,
+  // Pizza Party Pasta -- original ingredient name before Anabelle asked
+  // for "Sweet or Bell Peppers" instead; left in place (unused but
+  // harmless) alongside its server-side staple_reference_prices twin,
+  // same policy as any other superseded-but-real reference row.
+  'green bell pepper': 160,
+  // Pizza Party Pasta's current name -- matches the recipe's own "3
+  // Sweet or Bell Peppers" count convention, same as onion above. Real
+  // average weight of one pepper. Deliberately keyed on the FULL "sweet
+  // or bell peppers" phrase, not bare "sweet peppers" -- that broader
+  // key also word-matched Souvlaki Street Bowl's unrelated "NO NAME
+  // NATURALLY IMPERFECT SWEET PEPPERS, 2.5 LB" deal ingredient (a whole
+  // 2.5lb BAG, not a single pepper), silently mis-scaling its nutrition
+  // down to "1 pepper" (160g) instead of the real ~1134g bag -- a
+  // genuine regression caught live (Souvlaki's calories dropped
+  // 362->313 the moment the broader key was added). Requiring "bell"
+  // too avoids the collision, since Souvlaki's flyer text has no "bell"
+  // in it. See the staple_avg_weights row for the server-side twin.
+  'sweet or bell peppers': 160,
+  // K-Pogo (TikTok Korean Corn Dog) -- Anabelle's own general estimate
+  // (not a verified label weight; the deal's package_weight_g_source is
+  // flagged 'estimated' to match), 66g per pogo x 20 = 1320g box. See
+  // the staple_avg_weights row for the server-side twin, keyed the same
+  // way (bare "pogo", not the full "Pogo Original 20-pack" ingredient
+  // name, so it survives the ingredient being renamed to "Pogo pups").
+  pogo: 66,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -522,22 +547,73 @@ export function describeDealPackage(
   return '1 package';
 }
 
-// "Recipe uses 250 g of the package" -- only for a deal explicitly opted
-// into fragmentation (DealTag.fragmentByWeight), since only those have a
-// price that actually reflects less than the whole package (see
-// describeDealPackage above). Factored out here, same reason as
-// describeQuantityText: mapIngredient() (lib/recipes.ts) builds it once
-// at the recipe's natural (1x) quantity, and scaleIngredientDisplay
-// (lib/mealScaling.ts) needs to rebuild the SAME sentence at a scaled
-// multiplier when the servings stepper changes -- found missing here
-// (Anabelle: "I am bumping the sandwich fries recipes to 4 servings and
-// the sentence still says 250 gr") because scaleIngredientDisplay only
-// ever rebuilt `text`/`groceryText`, never this.
+// Whether to show the "Recipe uses X g of the package" line at all --
+// deliberately DECOUPLED from DealTag.fragmentByWeight (Anabelle: the
+// Tostitos deal in K-Pogo should show its own "Recipe uses 60 g of the
+// package" line too, even though only the Pogo deal is actually
+// fragmented for pricing). fragmentByWeight controls whether the
+// PRICE reflects less than the whole package; this controls whether the
+// DISPLAY tells you how much of it you'll actually use -- two separate
+// questions, both true for Pogo, only the second true for Tostitos.
+// Only shown when we know the deal's real package_weight_g (never a
+// guess) and the recipe's own quantity is gram-based and genuinely
+// less than the full package -- a recipe using the whole package needs
+// no such line ("1 package" already says it all).
+export function shouldShowUseQuantityText(
+  quantity: string | undefined,
+  unit: string | undefined,
+  packageWeightG: number | undefined
+): boolean {
+  if (!packageWeightG) return false;
+  const ua = parseUnitAmount(quantity, unit);
+  return ua.baseUnit === 'g' && !Number.isNaN(ua.amount) && ua.amount < packageWeightG;
+}
+
+// "Recipe uses 250 g of the package" -- shown per shouldShowUseQuantityText
+// above. Factored out here, same reason as describeQuantityText:
+// mapIngredient() (lib/recipes.ts) builds it once at the recipe's
+// natural (1x) quantity, and scaleIngredientDisplay (lib/mealScaling.ts)
+// needs to rebuild the SAME sentence at a scaled multiplier when the
+// servings stepper changes -- found missing here (Anabelle: "I am
+// bumping the sandwich fries recipes to 4 servings and the sentence
+// still says 250 gr") because scaleIngredientDisplay only ever rebuilt
+// `text`/`groceryText`, never this.
+//
+// Friendly singular/plural label for a deal item that's really bought
+// and thought of as whole discrete units (a pogo, a burger patty) even
+// though its quantity is stored in grams for pricing -- Anabelle: "users
+// dont understand pogo per gram. They understand 1 pogo, 1 pogos."
+// Keyed the same way as the matching STAPLE_AVG_WEIGHT_G_PER_EACH entry
+// (bare "pogo", not the full ingredient name) so the two stay paired.
+// Deliberately small, same policy as STAPLE_UNIT_WEIGHTS_G -- only a
+// deal item genuinely sold/used as discrete whole pieces needs one; a
+// deal item genuinely measured by weight (e.g. McCain fries) should
+// keep reading in grams, not be forced into a fake "1.2 servings"-style
+// count.
+const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }> = {
+  pogo: { singular: 'pogo', plural: 'pogos' },
+};
+
 export function describeUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,
+  ingredientName: string,
   multiplier = 1
 ): string {
+  const ua = parseUnitAmount(quantity, unit);
+  if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g') {
+    const ingWords = normalizeWords(ingredientName);
+    const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+      const words = normalizeWords(name);
+      return words.length > 0 && words.every((w) => ingWords.includes(w));
+    });
+    const label = bridgeEntry && DEAL_ITEM_UNIT_LABELS[bridgeEntry[0]];
+    if (bridgeEntry && label) {
+      const [, gramsEach] = bridgeEntry;
+      const count = Math.round((ua.amount * multiplier) / gramsEach);
+      return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
+    }
+  }
   const scaledQuantity = scaleQuantityString(quantity, multiplier);
   return `Recipe uses ${scaledQuantity} ${unit} of the package`.trim();
 }
