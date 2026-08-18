@@ -8,10 +8,11 @@ export interface StaplePrice {
 }
 
 const STOPWORDS = new Set(['with', 'from', 'each', 'selected', 'variety', 'varieties', 'fresh', 'frozen']);
-// See 20260812110000_keep_short_words.sql -- narrow allowlist of
-// <=3-char words proven to cause a real wrong match once dropped
-// (e.g. "Sesame oil" -> bare "sesame" -> matches "Sesame seeds").
-const KEEP_SHORT_WORDS = new Set(['soy', 'oil']);
+// See 20260812110000_keep_short_words.sql / 20260818000000_keep_red_short_word.sql
+// -- narrow allowlist of <=3-char words proven to cause a real wrong
+// match once dropped (e.g. "Sesame oil" -> bare "sesame" -> matches
+// "Sesame seeds"; "Red onions" -> bare "onions" -> matches plain "Onions").
+const KEEP_SHORT_WORDS = new Set(['soy', 'oil', 'red']);
 
 // Mirrors the Postgres normalize_words() function used by
 // refresh_recipe_deal_tags (see supabase/migrations/20260730000000_auto_refresh_deal_tags.sql)

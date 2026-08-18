@@ -75,7 +75,7 @@ export type MealSortMode = 'cheapest' | 'bestDeal';
 export function scaleIngredientDisplay(
   ingredient: IngredientLine,
   multiplier: number
-): { text: string; groceryText?: string; useQuantityText?: string } {
+): { text: string; groceryText?: string; useQuantityText?: string; dealDisplayText?: string } {
   if (ingredient.dealTag) {
     // text/groceryText never scale for a deal item (see comment above),
     // but useQuantityText ("Recipe uses 250 g of the package") is a real
@@ -96,9 +96,20 @@ export function scaleIngredientDisplay(
       ingredient.dealTag.packageWeightG,
       ingredient.name
     )
-      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name, multiplier)
+      ? describeUseQuantityText(
+          ingredient.quantity,
+          ingredient.unit,
+          ingredient.name,
+          multiplier,
+          ingredient.dealTag.packageWeightG
+        )
       : undefined;
-    return { text: ingredient.text, groceryText: ingredient.groceryText, useQuantityText };
+    return {
+      text: ingredient.text,
+      groceryText: ingredient.groceryText,
+      useQuantityText,
+      dealDisplayText: ingredient.dealDisplayText,
+    };
   }
   if (multiplier === 1) {
     return { text: ingredient.text, groceryText: ingredient.groceryText };

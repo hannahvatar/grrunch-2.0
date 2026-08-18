@@ -93,6 +93,15 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // (bean-there-corn-that-original.jpeg). 1210x706, matching the
   // card's ~1.7:1 target.
   'Chicken, Beans & Corny Things': require('../assets/bean-there-corn-that.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Berry Good Watermelon Salad': require('../assets/berry-good-watermelon-salad.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Kraft Singles Mac ’n’ Mingle': require('../assets/kraft-singles-mac-n-mingle.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'The Great Pepper Roast': require('../assets/great-pepper-roast.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
