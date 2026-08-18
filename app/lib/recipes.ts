@@ -32,6 +32,9 @@ interface RecipeDealTagRow {
   price_estimated?: boolean;
   fragment_by_weight?: boolean;
   package_weight_g?: number;
+  raw_price?: number;
+  raw_original_price?: number;
+  price_unit?: string;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
@@ -51,6 +54,9 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     priceEstimated: tag.price_estimated,
     fragmentByWeight: tag.fragment_by_weight,
     packageWeightG: tag.package_weight_g,
+    rawPrice: tag.raw_price,
+    rawOriginalPrice: tag.raw_original_price,
+    priceUnit: tag.price_unit as DealTag['priceUnit'],
   };
 }
 
@@ -82,7 +88,12 @@ function mapIngredient(
     // genuinely uses less than the whole thing -- independent of
     // whether the price itself is fragmented (see
     // shouldShowUseQuantityText's own comment).
-    const useQuantityText = shouldShowUseQuantityText(ingredient.quantity, ingredient.unit, dealTag?.packageWeightG)
+    const useQuantityText = shouldShowUseQuantityText(
+      ingredient.quantity,
+      ingredient.unit,
+      dealTag?.packageWeightG,
+      ingredient.name
+    )
       ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name)
       : undefined;
     return {
