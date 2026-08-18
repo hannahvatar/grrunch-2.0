@@ -44,6 +44,31 @@ export interface DealTag {
   // show the real "1 package" instead of misreading the raw count as a
   // package multiplier.
   packageWeightG?: number;
+  // The deal's own UNSCALED curated_deals.price/original_price -- vs.
+  // price/originalPrice above, which are the computed total for
+  // however much THIS recipe uses (e.g. $2.63 for 1.79 lb of
+  // plantain, scaled off a $1.47/lb rate). The "On Sale This Week"
+  // badge renders rawPrice/rawOriginalPrice instead of price/
+  // originalPrice so it always visually matches the deal thumbnail's
+  // own printed number -- Anabelle: "NEVER ADJUST THE PRICE... MUST
+  // MATCH PRICE DISPLAYED IN DEAL ITEMS." price/originalPrice (and the
+  // tag_contribution baked into a recipe's own price/serving) are
+  // UNCHANGED and still the real, correctly-scaled cost -- only this
+  // one badge's number differs from them now. See
+  // 20260817050000_deal_tag_raw_rate_display.sql.
+  rawPrice?: number;
+  rawOriginalPrice?: number;
+  // curated_deals.price_unit -- lets the badge distinguish a genuinely
+  // loose/bulk lb-priced item (Plantains, package_weight_g null --
+  // rawPrice alone, "$1.47/lb", is the honest number) from a real
+  // labeled prepackage that's ALSO priced per lb on the flyer (Prime
+  // chicken breast, package_weight_g 700 -- the honest number here is
+  // the estimated cost of the one package you'd actually pick up,
+  // "$6.79/lb" alone undersells what it costs). See
+  // formatDealBadgePrice() in lib/curatedDeals.ts and Anabelle: "item
+  // is per weight BUT ALSO prepackage, it is ok here to update its
+  // price per lbs for the estimated price the package would cost."
+  priceUnit?: 'package' | 'each' | 'lb' | 'kg' | '100g';
 }
 
 // An ingredient line, with the matching deal tag attached when that
@@ -114,6 +139,13 @@ export interface SubRecipe {
   description: string;
   ingredients: string[];
   instructions: string[];
+  // Optional direct attachment to exactly one recipe (sub_recipes.
+  // recipe_id) -- shown on that recipe's page regardless of any
+  // ingredient-name or Optional-text match. undefined (the common
+  // case) keeps the original text-matching behavior, for a reusable
+  // technique like "Basic Crispy Pork Belly" meant to auto-attach to
+  // any recipe naming the matching ingredient, not just one.
+  recipeId?: string;
 }
 
 // Meal shape shared by the recipes data layer (lib/recipes.ts) and the

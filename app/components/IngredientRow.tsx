@@ -23,6 +23,7 @@ import { Swipeable, Pressable as GesturePressable } from 'react-native-gesture-h
 
 import {
   formatComparePriceLabel,
+  formatDealBadgePrice,
   formatGreatReferenceValueLabel,
   isGreatReferenceValue,
   isReferencePriced,
@@ -310,12 +311,20 @@ export function IngredientRow({
       {dealTag?.price != null && (
         <View style={styles.itemPriceRow}>
           <Text style={styles.itemPriceValue}>
-            {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}${dealTag.price.toFixed(2)}
+            {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}$
+            {formatDealBadgePrice(dealTag.rawPrice ?? dealTag.price, dealTag.priceUnit, dealTag.packageWeightG).toFixed(2)}
           </Text>
           {dealTag.originalPrice != null &&
             dealTag.originalPrice > dealTag.price &&
             showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) && (
-              <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
+              <Text style={styles.itemPriceOriginal}>
+                $
+                {formatDealBadgePrice(
+                  dealTag.rawOriginalPrice ?? dealTag.originalPrice,
+                  dealTag.priceUnit,
+                  dealTag.packageWeightG
+                ).toFixed(2)}
+              </Text>
             )}
         </View>
       )}
@@ -323,7 +332,11 @@ export function IngredientRow({
         <Text style={styles.itemPriceEstimated}>{`$${estimatedPrice.avgPrice.toFixed(2)} avg.`}</Text>
       )}
       {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
-        <Text style={styles.itemPriceEstimated}>{formatComparePriceLabel(dealTag.originalPrice)}</Text>
+        <Text style={styles.itemPriceEstimated}>
+          {formatComparePriceLabel(
+            formatDealBadgePrice(dealTag.rawOriginalPrice ?? dealTag.originalPrice, dealTag.priceUnit, dealTag.packageWeightG)
+          )}
+        </Text>
       )}
       {dealTag &&
         (showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
@@ -359,16 +372,28 @@ export function IngredientRow({
         <View style={styles.dealPriceLeft}>
           {dealTag?.price != null && (
             <Text style={styles.itemPriceValue}>
-              {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}${dealTag.price.toFixed(2)}
+              {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}$
+              {formatDealBadgePrice(dealTag.rawPrice ?? dealTag.price, dealTag.priceUnit, dealTag.packageWeightG).toFixed(2)}
             </Text>
           )}
           {dealTag?.originalPrice != null &&
             dealTag.originalPrice > dealTag.price! &&
             showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) && (
-              <Text style={styles.itemPriceOriginal}>${dealTag.originalPrice.toFixed(2)}</Text>
+              <Text style={styles.itemPriceOriginal}>
+                $
+                {formatDealBadgePrice(
+                  dealTag.rawOriginalPrice ?? dealTag.originalPrice,
+                  dealTag.priceUnit,
+                  dealTag.packageWeightG
+                ).toFixed(2)}
+              </Text>
             )}
           {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
-            <Text style={styles.itemPriceEstimated}>{formatComparePriceLabel(dealTag.originalPrice)}</Text>
+            <Text style={styles.itemPriceEstimated}>
+              {formatComparePriceLabel(
+                formatDealBadgePrice(dealTag.rawOriginalPrice ?? dealTag.originalPrice, dealTag.priceUnit, dealTag.packageWeightG)
+              )}
+            </Text>
           )}
         </View>
         {dealTag &&

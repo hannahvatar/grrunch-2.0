@@ -493,6 +493,7 @@ export type Database = {
           ingredients: Json
           instructions: Json
           match_ingredient_name: string
+          recipe_id: string | null
           title: string
         }
         Insert: {
@@ -502,6 +503,7 @@ export type Database = {
           ingredients?: Json
           instructions?: Json
           match_ingredient_name: string
+          recipe_id?: string | null
           title: string
         }
         Update: {
@@ -511,9 +513,18 @@ export type Database = {
           ingredients?: Json
           instructions?: Json
           match_ingredient_name?: string
+          recipe_id?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sub_recipes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -581,6 +592,7 @@ export type Database = {
         | {
             Args: {
               p_fragment_by_weight: boolean
+              p_ing_name: string
               p_ing_quantity: string
               p_ing_unit: string
               p_original_price: number

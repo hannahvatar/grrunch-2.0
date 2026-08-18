@@ -100,6 +100,31 @@ export function formatComparePriceLabel(originalPrice: number): string {
   return `$${originalPrice.toFixed(2)} avg.`;
 }
 
+const GRAMS_PER_PRICE_UNIT: Record<string, number> = { lb: 453.592, kg: 1000, '100g': 100 };
+
+// The "On Sale This Week" badge's number -- distinguishes a genuinely
+// loose/bulk lb/kg/100g-priced item (no known package_weight_g, e.g.
+// Plantains -- the bare rate, "$1.47/lb", IS the honest number, since
+// you pick the exact weight yourself) from a real labeled prepackage
+// that's ALSO priced per lb/kg/100g on the flyer (Prime chicken
+// breast, a known ~700 g package -- the bare "$6.79/lb" undersells
+// what the one package you'd actually pick up costs). Anabelle: "item
+// is per weight BUT ALSO prepackage, it is ok here to update its price
+// per lbs for the estimated price the package would cost." 'package'/
+// 'each' deals are untouched -- rawRate already IS the flat flyer
+// price there, no estimation needed.
+export function formatDealBadgePrice(
+  rawRate: number,
+  priceUnit: 'package' | 'each' | 'lb' | 'kg' | '100g' | undefined,
+  packageWeightG: number | undefined
+): number {
+  if (priceUnit && packageWeightG) {
+    const gramsPerUnit = GRAMS_PER_PRICE_UNIT[priceUnit];
+    if (gramsPerUnit) return Math.round(rawRate * (packageWeightG / gramsPerUnit) * 100) / 100;
+  }
+  return rawRate;
+}
+
 
 // price/original_price became nullable (see
 // supabase/migrations/20260811010000_curated_deals_unknown_price_and_reject.sql

@@ -100,6 +100,13 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // (Supabase) for the server-side twins.
   cornstarch: 120,
   oregano: 33,
+  // Smoky Chicken, Beans & Corn Skillet -- ~100 g/cup for ground
+  // spices, same figure already used for black pepper/paprika/garlic
+  // powder. See the staple_densities table (Supabase) for the
+  // server-side twins.
+  'smoked paprika': 100,
+  'chili powder': 100,
+  'ground cumin': 100,
   // CORRECTION to the second-batch comment above: "a liquid condiment
   // priced in mL already bridges with no density entry needed" was
   // wrong. That's true for PRICE (recipe mL vs. reference mL match
@@ -123,6 +130,26 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // fixed for the Big Mac's slice convention), so a volume-measured "1
   // tbsp, finely chopped" quantity needs this same mL<->g bridge.
   pickles: 240,
+  // Jamaican Patty with Caramelized Plantain & Mango Lime Salsa --
+  // Anabelle's exact spec states these by the cup ("1/2 cup finely
+  // chopped red onion", "1/4 cup chopped cilantro"), same bug class as
+  // olive oil/milk before them. ~160 g/cup finely chopped onion, ~16
+  // g/cup loosely-packed chopped cilantro (same ballpark as basil's
+  // 21 g/cup). See the staple_densities table (Supabase) for the
+  // server-side twins.
+  onion: 160,
+  'red onion': 160,
+  cilantro: 16,
+  // Vermicelli Salad with Spring Rolls -- Anabelle's spec states this
+  // by the cup ("1/4 cup peanuts"). ~150 g/cup for whole roasted
+  // peanuts. See the staple_densities table (Supabase) for the
+  // server-side twin.
+  peanuts: 150,
+  // Vermicelli Gets a Spring Roll -- Anabelle's spec states this by
+  // the cup ("1.5 cup frozen edamame"). ~155 g/cup for shelled
+  // edamame beans. See the staple_densities table (Supabase) for the
+  // server-side twin.
+  edamame: 155,
 };
 
 // A recipe stating "cups of rice" as a dish component means cooked rice,
@@ -367,6 +394,11 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // harmless) alongside its server-side staple_reference_prices twin,
   // same policy as any other superseded-but-real reference row.
   'green bell pepper': 160,
+  // Napolitan's ingredient is named plural ("Green bell peppers", "2
+  // Green bell peppers") -- normalizeWords doesn't stem, so the
+  // singular key above wouldn't match it (same reasoning as
+  // "plantains" vs "plantain"). Duplicate entry, same real weight.
+  'green bell peppers': 160,
   // Pizza Party Pasta's current name -- matches the recipe's own "3
   // Sweet or Bell Peppers" count convention, same as onion above. Real
   // average weight of one pepper. Deliberately keyed on the FULL "sweet
@@ -387,6 +419,29 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // way (bare "pogo", not the full "Pogo Original 20-pack" ingredient
   // name, so it survives the ingredient being renamed to "Pogo pups").
   pogo: 66,
+  // Jamaican Patty with Caramelized Plantain & Mango Lime Salsa --
+  // Plantains prices correctly as a straight lb-rate deal against a
+  // gram quantity (900 g for Anabelle's "5 plantains"), but that
+  // leaves the real count invisible -- the badge just reads "1" (see
+  // describeDealPackage, which shows "1 package" for any non-each
+  // gram quantity regardless of price_unit). This bridge feeds the
+  // "Recipe uses N plantains" display note instead (see
+  // shouldShowUseQuantityText's ingredientName param), same real-world
+  // estimate (180 g/plantain) used to build the 900 g figure. See the
+  // staple_avg_weights table (Supabase) for the server-side twin.
+  // Keyed plural ("plantains") to match the recipe's own ingredient
+  // name exactly -- normalizeWords doesn't stem/singularize, so a
+  // singular "plantain" key would never match ("plantains" !==
+  // "plantain" as an exact array-membership check).
+  plantains: 180,
+  // Smoky Chicken, Beans & Corn Skillet -- "2 green onions", not the
+  // gram figure pricing needs (the real deal is priced per whole
+  // bunch, so a gram quantity is what keeps package_count at 1 --
+  // buying 1 real bunch -- instead of accidentally doubling the
+  // charged price the way a literal "2 each" would on this 'each'-
+  // priced deal). ~12 g per stalk. See the staple_avg_weights table
+  // (Supabase) for the server-side twin.
+  'green onions': 12,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -499,9 +554,21 @@ export function describeDryEquivalent(
   if (Number.isNaN(ua.amount) || ua.baseUnit !== 'ml') return undefined;
 
   const ingWords = normalizeWords(ingredientName);
+  // Exact word-set match (not subset) -- real bug, caught live: "Rice
+  // vinegar" (Vermicelli Salad with Spring Rolls) contains the word
+  // "rice", so the ordinary subset check ("rice" ⊆ {rice, vinegar})
+  // matched it against the bare "rice" cooked-yield entry, wrongly
+  // labeling it "(cooked)" on the recipe page -- a real vinegar has no
+  // cooked/dry distinction at all. Every actual cooked-yield ingredient
+  // in the catalog is named literally just "Rice" (single word,
+  // confirmed across every recipe using it), so requiring the two word
+  // sets to match exactly (not just contain) fixes this compound-name
+  // false positive without needing a longer, more specific key the way
+  // the sweet-peppers/green-bell-pepper collisions were fixed --
+  // "rice" itself IS the correct, intentional key here.
   const yieldEntry = Object.entries(STAPLE_COOKED_YIELD_RATIO).find(([name]) => {
     const words = normalizeWords(name);
-    return words.length > 0 && words.every((w) => ingWords.includes(w));
+    return words.length > 0 && words.length === ingWords.length && words.every((w) => ingWords.includes(w));
   });
   if (!yieldEntry) return undefined;
   const [, ratio] = yieldEntry;
@@ -555,18 +622,34 @@ export function describeDealPackage(
 // PRICE reflects less than the whole package; this controls whether the
 // DISPLAY tells you how much of it you'll actually use -- two separate
 // questions, both true for Pogo, only the second true for Tostitos.
-// Only shown when we know the deal's real package_weight_g (never a
+// Shown either when we know the deal's real package_weight_g (never a
 // guess) and the recipe's own quantity is gram-based and genuinely
 // less than the full package -- a recipe using the whole package needs
-// no such line ("1 package" already says it all).
+// no such line ("1 package" already says it all) -- OR when the
+// ingredient has a DEAL_ITEM_UNIT_LABELS whole-unit bridge (plantain,
+// pogo): a lb/kg-priced produce item like Plantains has no "package"
+// at all (it's loose, priced by weight), so its badge always shows
+// "1" regardless of the real count -- this second condition restores
+// that count as its own note ("Recipe uses 5 plantains") independent
+// of packageWeightG, gated on ingredientName instead.
 export function shouldShowUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,
-  packageWeightG: number | undefined
+  packageWeightG: number | undefined,
+  ingredientName?: string
 ): boolean {
-  if (!packageWeightG) return false;
   const ua = parseUnitAmount(quantity, unit);
-  return ua.baseUnit === 'g' && !Number.isNaN(ua.amount) && ua.amount < packageWeightG;
+  if (ua.baseUnit !== 'g' || Number.isNaN(ua.amount)) return false;
+  if (packageWeightG) return ua.amount < packageWeightG;
+  if (ingredientName) {
+    const ingWords = normalizeWords(ingredientName);
+    const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+      const words = normalizeWords(name);
+      return words.length > 0 && words.every((w) => ingWords.includes(w));
+    });
+    return !!(bridgeEntry && DEAL_ITEM_UNIT_LABELS[bridgeEntry[0]]);
+  }
+  return false;
 }
 
 // "Recipe uses 250 g of the package" -- shown per shouldShowUseQuantityText
@@ -592,6 +675,8 @@ export function shouldShowUseQuantityText(
 // count.
 const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }> = {
   pogo: { singular: 'pogo', plural: 'pogos' },
+  plantains: { singular: 'plantain', plural: 'plantains' },
+  'green onions': { singular: 'green onion', plural: 'green onions' },
 };
 
 export function describeUseQuantityText(
@@ -630,6 +715,17 @@ export function describeUseQuantityText(
 // in the display label wouldn't match here.
 export const STAPLE_UNIT_WEIGHTS_G: Record<string, { gramsPerUnit: number; singular: string; plural: string }> = {
   onions: { gramsPerUnit: 150, singular: 'Onion', plural: 'Onions' },
+  // Vermicelli Salad with Spring Rolls -- Anabelle: "1 cucumber" /
+  // "one bag of shredded cabbage", not the gram figures pricing/
+  // nutrition need behind the scenes. 250 g matches the recipe's own
+  // whole-cucumber estimate; 340 g matches the real bag size used for
+  // the "Shredded cabbage" staple_reference_prices row.
+  cucumbers: { gramsPerUnit: 250, singular: 'Cucumber', plural: 'Cucumbers' },
+  'shredded cabbage': {
+    gramsPerUnit: 340,
+    singular: 'bag of shredded cabbage',
+    plural: 'bags of shredded cabbage',
+  },
 };
 
 // Snaps to a coarse kitchen fraction rather than an oddly precise

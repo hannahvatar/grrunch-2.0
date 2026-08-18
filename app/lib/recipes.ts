@@ -32,6 +32,9 @@ interface RecipeDealTagRow {
   price_estimated?: boolean;
   fragment_by_weight?: boolean;
   package_weight_g?: number;
+  raw_price?: number;
+  raw_original_price?: number;
+  price_unit?: string;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
@@ -51,6 +54,9 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     priceEstimated: tag.price_estimated,
     fragmentByWeight: tag.fragment_by_weight,
     packageWeightG: tag.package_weight_g,
+    rawPrice: tag.raw_price,
+    rawOriginalPrice: tag.raw_original_price,
+    priceUnit: tag.price_unit as DealTag['priceUnit'],
   };
 }
 
@@ -82,7 +88,12 @@ function mapIngredient(
     // genuinely uses less than the whole thing -- independent of
     // whether the price itself is fragmented (see
     // shouldShowUseQuantityText's own comment).
-    const useQuantityText = shouldShowUseQuantityText(ingredient.quantity, ingredient.unit, dealTag?.packageWeightG)
+    const useQuantityText = shouldShowUseQuantityText(
+      ingredient.quantity,
+      ingredient.unit,
+      dealTag?.packageWeightG,
+      ingredient.name
+    )
       ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name)
       : undefined;
     return {
@@ -181,11 +192,14 @@ function mapRowToMeal(
     ),
     instructions: row.instructions as string[],
     optionalAdditions,
-    // The sub-recipes this meal's own ingredients name (exact match) OR
-    // its Optional callout prose mentions (substring match) -- see
-    // lib/subRecipes.ts, matched against the shared table, not embedded
-    // per-recipe.
+    // The sub-recipes this meal's own ingredients name (exact match),
+    // its Optional callout prose mentions (substring match), OR that
+    // are directly attached via recipe_id (no text mention needed at
+    // all -- see lib/subRecipes.ts / 20260817040000_sub_recipe_direct_link.sql,
+    // Anabelle: "add back the companion recipe AND DONT MENTION IT
+    // ANYWHERE IN THIS RECIPE").
     subRecipes: subRecipes.filter((sr) => {
+      if (sr.recipeId) return sr.recipeId === row.id;
       const key = sr.matchIngredientName.toLowerCase();
       return ingredientNames.has(key) || optionalText.includes(key);
     }),
