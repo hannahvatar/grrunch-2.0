@@ -35,11 +35,13 @@ interface RecipeDealTagRow {
   raw_price?: number;
   raw_original_price?: number;
   price_unit?: string;
+  deal_item_name?: string;
 }
 
 function mapDealTag(tag: RecipeDealTagRow): DealTag {
   return {
     name: tag.name,
+    dealItemName: tag.deal_item_name,
     discountPct: tag.discount_pct,
     price: tag.price,
     originalPrice: tag.original_price,
@@ -81,9 +83,15 @@ function mapIngredient(
   // though the recipe's real quantity (unchanged below) is what drives
   // nutrition scaling server-side. Checked before dryEquivalent/
   // unitCount since those describe non-deal staple quantities.
-  const dealPackage = dealTag ? describeDealPackage(ingredient.quantity, ingredient.unit) : undefined;
+  const dealPackage = dealTag
+    ? describeDealPackage(ingredient.quantity, ingredient.unit, ingredient.name, dealTag.priceUnit, dealTag.packageWeightG)
+    : undefined;
   if (dealPackage) {
     const text = `${dealPackage} ${ingredient.name}`;
+    // "On Sale This Week"-only text, using the deal's own real flyer
+    // product name instead of the recipe's ingredient name -- see
+    // IngredientLine.dealDisplayText's own comment.
+    const dealDisplayText = `${dealPackage} ${dealTag?.dealItemName ?? ingredient.name}`;
     // Shown whenever we know the real package weight AND this recipe
     // genuinely uses less than the whole thing -- independent of
     // whether the price itself is fragmented (see
@@ -94,17 +102,38 @@ function mapIngredient(
       dealTag?.packageWeightG,
       ingredient.name
     )
-      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name)
+      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name, 1, dealTag?.packageWeightG)
       : undefined;
     return {
-      text, name: ingredient.name, dealTag, groceryText: text,
+      text, name: ingredient.name, dealTag, groceryText: text, dealDisplayText,
       quantity: ingredient.quantity, unit: ingredient.unit, useQuantityText,
     };
   }
   const { text, groceryText } = describeQuantityText(ingredient.name, ingredient.quantity, ingredient.unit);
   if (dealTag) {
+    // Same real-flyer-name substitution as the dealPackage branch
+    // above, for a deal item whose quantity is already a natural
+    // count (e.g. "8 Kraft Singles") rather than a "1 package" line.
+    const dealDisplayText = dealTag.dealItemName
+      ? describeQuantityText(dealTag.dealItemName, ingredient.quantity, ingredient.unit).text
+      : undefined;
+    // Also missing from this branch until now: shouldShowUseQuantityText/
+    // describeUseQuantityText were only ever called in the dealPackage
+    // branch above, so an each-count deal item that takes THIS branch
+    // (dealPackage is undefined whenever the quantity is already a
+    // natural count) could never get a "Recipe uses N X" note at all --
+    // confirmed live, Kraft Singles' new each-based DEAL_ITEM_UNIT_LABELS
+    // branch was reachable in the code but never actually called.
+    const useQuantityText = shouldShowUseQuantityText(
+      ingredient.quantity,
+      ingredient.unit,
+      dealTag.packageWeightG,
+      ingredient.name
+    )
+      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name, 1, dealTag.packageWeightG)
+      : undefined;
     return {
-      text, name: ingredient.name, dealTag, groceryText,
+      text, name: ingredient.name, dealTag, groceryText, dealDisplayText, useQuantityText,
       quantity: ingredient.quantity, unit: ingredient.unit,
     };
   }

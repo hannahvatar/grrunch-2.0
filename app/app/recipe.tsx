@@ -232,7 +232,7 @@ export default function RecipeScreen() {
                     <View key={index}>
                       {index > 0 && <View style={styles.dealDivider} />}
                       <IngredientRow
-                        text={ingredient.text}
+                        text={ingredient.dealDisplayText ?? ingredient.text}
                         dealTag={ingredient.dealTag}
                         estimatedPrice={ingredient.estimatedPrice}
                         linkedText={subRecipe ? ingredient.name : undefined}

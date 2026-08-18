@@ -69,6 +69,13 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   'garlic powder': 128,
   // ~100 g/cup for ground paprika, same figure as ground black pepper.
   'paprika': 100,
+  // Creamy Kraft Singles Mac & Cheese Casserole -- ~100 g/cup for
+  // onion powder (same ground-spice figure as garlic powder/paprika),
+  // ~50 g/cup for panko breadcrumbs (airier/lighter than regular
+  // breadcrumbs). See the staple_densities table (Supabase) for the
+  // server-side twins.
+  'onion powder': 100,
+  'panko breadcrumbs': 50,
   // 218 g/cup, same density as olive oil -- Vegetable oil had a real
   // statcan price but no nutrition and no density bridge, so it
   // silently contributed $0/0 calories despite already being used in
@@ -145,6 +152,22 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // peanuts. See the staple_densities table (Supabase) for the
   // server-side twin.
   peanuts: 150,
+  // Watermelon, Blueberry & Spinach Salad -- ~16 g/cup for loosely
+  // torn fresh mint (matches cilantro's own figure), ~92 g/cup for
+  // sliced almonds, ~30 g/cup for loosely packed baby spinach. See the
+  // staple_densities table (Supabase) for the server-side twins.
+  mint: 16,
+  'sliced almonds': 92,
+  'baby spinach': 30,
+  // Almonds swapped for pistachios later in the same recipe -- ~120
+  // g/cup for shelled pistachios. See the staple_densities table
+  // (Supabase) for the server-side twin (added there, missed here --
+  // real bug, caught live: the recipe's own price/serving was correct
+  // since refresh_recipe_deal_tags uses the server-side bridge, but
+  // the app's own "$X avg." staple-price display silently showed
+  // nothing for Pistachios since matchReferencePrice only has this
+  // client copy to work with).
+  pistachios: 120,
   // Vermicelli Gets a Spring Roll -- Anabelle's spec states this by
   // the cup ("1.5 cup frozen edamame"). ~155 g/cup for shelled
   // edamame beans. See the staple_densities table (Supabase) for the
@@ -168,8 +191,13 @@ const STOPWORDS = new Set(['with', 'from', 'each', 'selected', 'variety', 'varie
 // then matching "Hot sauce"). See 20260812110000_keep_short_words.sql
 // for the server-side twin and the full story -- deliberately a narrow
 // allowlist of specific words already proven to collide, not a blanket
-// length-threshold change.
-const KEEP_SHORT_WORDS = new Set(['soy', 'oil']);
+// length-threshold change. 'red' added 20260818000000 -- "Red onions"
+// and "Onions" collapsed to the exact same word set, so a whole-unit
+// display bridge keyed on "red onions" could never be told apart from
+// the plain "onions" one (showed "½ onion" for a genuinely whole 110 g
+// red onion), and pricing/nutrition matched a generic onion reference
+// instead of the ingredient's own "Red onion" one.
+const KEEP_SHORT_WORDS = new Set(['soy', 'oil', 'red']);
 
 function normalizeWords(text: string): string[] {
   return text
@@ -362,9 +390,11 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // anyway, since a "package"-priced deal always charges its flat
   // price regardless of the recipe's stated fraction.
   'beef patties': 907,
-  // Real BC package size for Kraft Singles (24-slice, 500g box);
-  // 500/24 ~= 21g/slice.
-  'kraft singles': 21,
+  // Corrected 2026-08-18 (Creamy Kraft Singles Mac & Cheese Casserole)
+  // against the real flyer label: 14 slices, 410 g -- 410/14 ~= 29.3
+  // g/slice. Previous 21 g figure (24-slice/500g box) was a different,
+  // less accurate assumption never checked against a real label.
+  'kraft singles': 29.3,
   fries: 650, // matches McCain Superfries' 454-800g flyer range
   'hamburger buns': 43,
   'cheddar cheese slices': 340, // ~16-slice pack
@@ -605,13 +635,51 @@ function roundUpTo5(n: number): number {
 // refresh_recipe_deal_tags()). Returns undefined when the quantity
 // already reads as a package count (e.g. "2 pack", "1 rack", a bare
 // whole item like "1 CAULIFLOWER") and needs no override.
+//
+// Real bug, caught live (Anabelle, alarmed at the Kraft Singles
+// badge still reading "8" after the fragmentation fixes: "I USING ONE
+// PACKAGE IN WHICH THERE ARE MULTIPLE SINGLES. RECIPE IS USING 8 OF
+// THOSE SINGLES" -- and her own earlier annotated screenshot already
+// said as much: the circled quantity badge should be "the number of
+// packages the recipe will require, that the user needs to buy...
+// its 1", not the count of singles used). "8 each" (baseUnit 'each')
+// used to always return undefined here, so recipes.ts's mapIngredient
+// fell through to the non-package branch and built its text straight
+// from the raw "8 each Kraft Singles slices" -- the "8" became the
+// badge's leading token by accident, because that whole code path was
+// only ever designed for a deal genuinely priced PER EACH unit
+// (Broccoli Crown, a whole bunch of Green onions), where the raw
+// each-count truly IS how many to buy. Kraft Singles is priced per
+// PACKAGE, not per single slice -- its each-count is really "N
+// sub-units out of one multi-count package" (14 slices/box), the exact
+// same shape package/each-priced deals already handle server-side in
+// compute_deal_tag_pricing()'s own package_count override. Mirrored
+// here: bridge the each-count to grams via STAPLE_AVG_WEIGHT_G_PER_EACH
+// and ceil() against the real package weight, so the badge never
+// disagrees with what pricing actually charges for.
 export function describeDealPackage(
   recipeQuantity: string | undefined,
-  recipeUnit: string | undefined
+  recipeUnit: string | undefined,
+  ingredientName?: string,
+  priceUnit?: string,
+  packageWeightG?: number
 ): string | undefined {
   const ua = parseUnitAmount(recipeQuantity, recipeUnit);
-  if (Number.isNaN(ua.amount) || ua.baseUnit === 'each') return undefined;
-  return '1 package';
+  if (Number.isNaN(ua.amount)) return undefined;
+  if (ua.baseUnit !== 'each') return '1 package';
+  if (priceUnit === 'package' && ua.amount > 1 && packageWeightG && ingredientName) {
+    const ingWords = normalizeWords(ingredientName);
+    const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+      const words = normalizeWords(name);
+      return words.length > 0 && words.every((w) => ingWords.includes(w));
+    });
+    if (bridgeEntry) {
+      const [, gramsEach] = bridgeEntry;
+      const packageCount = Math.ceil((ua.amount * gramsEach) / packageWeightG);
+      return packageCount === 1 ? '1 package' : `${packageCount} packages`;
+    }
+  }
+  return undefined;
 }
 
 // Whether to show the "Recipe uses X g of the package" line at all --
@@ -639,15 +707,52 @@ export function shouldShowUseQuantityText(
   ingredientName?: string
 ): boolean {
   const ua = parseUnitAmount(quantity, unit);
-  if (ua.baseUnit !== 'g' || Number.isNaN(ua.amount)) return false;
-  if (packageWeightG) return ua.amount < packageWeightG;
-  if (ingredientName) {
+  if (Number.isNaN(ua.amount)) return false;
+  if (ua.baseUnit === 'g') {
+    if (packageWeightG) return ua.amount < packageWeightG;
+    if (ingredientName) {
+      const ingWords = normalizeWords(ingredientName);
+      const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+        const words = normalizeWords(name);
+        return words.length > 0 && words.every((w) => ingWords.includes(w));
+      });
+      return !!(bridgeEntry && DEAL_ITEM_UNIT_LABELS[bridgeEntry[0]]);
+    }
+    return false;
+  }
+  // Each-based quantity that's ALREADY a natural count (e.g. "8 Kraft
+  // Singles") -- no gram bridge needed, just confirm this ingredient
+  // has its own curated DEAL_ITEM_UNIT_LABELS entry so the note only
+  // shows for deal items we've deliberately opted in, same policy as
+  // every other lookup here.
+  //
+  // Real bug, caught live (Anabelle: "the honey garlic chicken noodle
+  // toss ... also uses the full bunch of green onions"): "1 bunch"
+  // parses to the same baseUnit:'each', amount:1 as a bare "1 each"
+  // count, so this branch showed "Recipe uses 1 green onion" -- reading
+  // as "only 1 stalk out of the bunch", when "1 bunch" actually means
+  // the WHOLE bunch (no fragment at all, same as "1 package" needing
+  // no separate use-quantity note).
+  //
+  // Two genuinely different "each" shapes share this branch: a bare
+  // count with no container word (Kraft Singles: unit "each") means N
+  // discrete pieces out of a bigger package -- always worth noting,
+  // regardless of how big N is. A real container word (bunch, pack,
+  // rack) means N whole containers bought outright -- UNLESS that word
+  // is itself a fractional sub-unit of the container (stalk, clove --
+  // see parseUnitAmount's own /stalk|clove/ division), which is exactly
+  // when ua.amount comes out < 1. So: no container word -> always show;
+  // a container word -> show only when the amount is a genuine
+  // fraction (< 1) of one whole unit, never when it's N whole ones.
+  if (ua.baseUnit === 'each' && ingredientName) {
+    const normalizedUnit = (unit ?? '').trim().toLowerCase();
+    const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
+    if (!isBareCount && ua.amount >= 1) return false;
     const ingWords = normalizeWords(ingredientName);
-    const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+    return Object.keys(DEAL_ITEM_UNIT_LABELS).some((name) => {
       const words = normalizeWords(name);
       return words.length > 0 && words.every((w) => ingWords.includes(w));
     });
-    return !!(bridgeEntry && DEAL_ITEM_UNIT_LABELS[bridgeEntry[0]]);
   }
   return false;
 }
@@ -677,15 +782,59 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   pogo: { singular: 'pogo', plural: 'pogos' },
   plantains: { singular: 'plantain', plural: 'plantains' },
   'green onions': { singular: 'green onion', plural: 'green onions' },
+  // Creamy Kraft Singles Mac & Cheese Casserole -- Anabelle: "display
+  // that recipes is ising 8 kraft singles". Unlike the entries above,
+  // the recipe's own quantity is ALREADY a natural each-count (no
+  // STAPLE_AVG_WEIGHT_G_PER_EACH bridge needed to get there) -- see
+  // the each-based branches in shouldShowUseQuantityText/
+  // describeUseQuantityText below.
+  'kraft singles': { singular: 'Kraft Single', plural: 'Kraft Singles' },
+};
+
+// The counterpart to DEAL_ITEM_UNIT_LABELS above, for a deal item
+// that's genuinely ONE large whole thing (a watermelon, a cabbage)
+// rather than several discrete small ones (a plantain, a green onion)
+// -- "Recipe uses ½ the watermelon" reads naturally where "Recipe
+// uses 0 watermelons" (rounding 0.5 to the nearest whole count, the
+// DEAL_ITEM_UNIT_LABELS path's own math) would not. Anabelle: "grams
+// for watermelon doesnt mean anything to the user. Say that it uses
+// half of the watermelon." Deliberately small, same policy as every
+// other lookup table here.
+const FRACTION_OF_WHOLE_LABELS: Record<string, string> = {
+  watermelon: 'the watermelon',
+  // Pizza Party Pasta -- Anabelle, after specifying "half of the ...
+  // package": "can you say 'half' instead of gr 'Recipe uses 567 g of
+  // the package'". Keyed broadly ("sweet peppers", not the full
+  // ingredient name) so it also covers this same real deal's other two
+  // namings across the catalog -- Pizza Party Pasta's "Sweet or Bell
+  // Peppers" and Souvlaki Street Bowl's "NO NAME... SWEET PEPPERS...".
+  // The Great Pepper Roast's own "Sweet peppers" matches too, but
+  // harmlessly: it always uses the full package there, so this branch
+  // never fires for it regardless (see the `< packageWeightG` gate in
+  // shouldShowUseQuantityText above).
+  'sweet peppers': 'the peppers',
 };
 
 export function describeUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,
   ingredientName: string,
-  multiplier = 1
+  multiplier = 1,
+  packageWeightG?: number
 ): string {
   const ua = parseUnitAmount(quantity, unit);
+  if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g' && packageWeightG) {
+    const ingWords = normalizeWords(ingredientName);
+    const wholeEntry = Object.entries(FRACTION_OF_WHOLE_LABELS).find(([name]) => {
+      const words = normalizeWords(name);
+      return words.length > 0 && words.every((w) => ingWords.includes(w));
+    });
+    if (wholeEntry) {
+      const [, label] = wholeEntry;
+      const fraction = formatFraction(snapUnitCount((ua.amount * multiplier) / packageWeightG));
+      return `Recipe uses ${fraction} ${label}`;
+    }
+  }
   if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g') {
     const ingWords = normalizeWords(ingredientName);
     const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
@@ -696,6 +845,38 @@ export function describeUseQuantityText(
     if (bridgeEntry && label) {
       const [, gramsEach] = bridgeEntry;
       const count = Math.round((ua.amount * multiplier) / gramsEach);
+      return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
+    }
+  }
+  // Each-based quantity that's ALREADY a natural count (e.g. "8 Kraft
+  // Singles") -- no gram bridge needed, the count is already known.
+  // Counterpart to the matching branch in shouldShowUseQuantityText
+  // above (real gap, caught live: the gate existed and returned true,
+  // but this generator had no matching branch, so the note fell all
+  // the way through to the generic "8 each of the package" fallback
+  // instead of "8 Kraft Singles").
+  if (!Number.isNaN(ua.amount) && ua.baseUnit === 'each') {
+    const ingWords = normalizeWords(ingredientName);
+    const labelEntry = Object.entries(DEAL_ITEM_UNIT_LABELS).find(([name]) => {
+      const words = normalizeWords(name);
+      return words.length > 0 && words.every((w) => ingWords.includes(w));
+    });
+    if (labelEntry) {
+      const [, label] = labelEntry;
+      // A bare count (Kraft Singles: unit "each") already IS the count
+      // of individual items -- ua.amount straight from parseUnitAmount
+      // is correct. But "stalk"/"clove" sub-units get pre-divided by
+      // parseUnitAmount (e.g. "2 stalks" -> 0.25, a fraction of a whole
+      // bunch, for pricing purposes) -- reusing that divided amount here
+      // rounds to "0 green onions" for any count under half a bunch, a
+      // real bug caught live right after fixing this branch's sibling
+      // "1 bunch" issue. The individual-item count these labels describe
+      // (a stalk IS a green onion) is just the raw parsed quantity, not
+      // the bunch-fraction pricing needs -- re-parse it directly instead
+      // of undoing parseUnitAmount's division.
+      const normalizedUnit = (unit ?? '').trim().toLowerCase();
+      const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
+      const count = Math.round((isBareCount ? ua.amount : parseQuantity(quantity)) * multiplier);
       return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
     }
   }
@@ -715,6 +896,10 @@ export function describeUseQuantityText(
 // in the display label wouldn't match here.
 export const STAPLE_UNIT_WEIGHTS_G: Record<string, { gramsPerUnit: number; singular: string; plural: string }> = {
   onions: { gramsPerUnit: 150, singular: 'Onion', plural: 'Onions' },
+  // Watermelon, Blueberry & Spinach Salad -- Anabelle's spec: "½ small
+  // red onion". ~110 g for a whole small red onion (lighter than a
+  // regular onion's 150 g).
+  'red onions': { gramsPerUnit: 110, singular: 'Red onion', plural: 'Red onions' },
   // Vermicelli Salad with Spring Rolls -- Anabelle: "1 cucumber" /
   // "one bag of shredded cabbage", not the gram figures pricing/
   // nutrition need behind the scenes. 250 g matches the recipe's own
@@ -773,10 +958,26 @@ export function describeUnitCount(
   if (Number.isNaN(ua.amount) || ua.baseUnit !== 'g') return undefined;
 
   const ingWords = normalizeWords(ingredientName);
-  const entry = Object.entries(STAPLE_UNIT_WEIGHTS_G).find(([name]) => {
-    const words = normalizeWords(name);
-    return words.length > 0 && words.every((w) => ingWords.includes(w));
-  });
+  // Most-specific (longest word-count) match wins, not just the first
+  // one found in object order -- real bug, caught live: "Red onions"
+  // ({red, onions}) is ALSO a valid subset-match for the plain
+  // "onions" key ({onions} <= {red, onions}), so a naive .find() would
+  // stop there and mislabel it plain "Onion" instead of "Red onion"
+  // whenever "onions" happened to be enumerated first. Same collision
+  // class as the sweet-peppers/rice-vinegar bugs fixed earlier tonight,
+  // just here in the display-count lookup rather than a pricing/
+  // nutrition bridge -- fixed the same general way those were,
+  // preferring specificity, but done once in the algorithm so no
+  // future two-word key needs its own manual reordering fix.
+  let entry: [string, { gramsPerUnit: number; singular: string; plural: string }] | undefined;
+  let bestWordCount = 0;
+  for (const candidate of Object.entries(STAPLE_UNIT_WEIGHTS_G)) {
+    const words = normalizeWords(candidate[0]);
+    if (words.length > 0 && words.every((w) => ingWords.includes(w)) && words.length > bestWordCount) {
+      entry = candidate;
+      bestWordCount = words.length;
+    }
+  }
   if (!entry) return undefined;
   const [, { gramsPerUnit, singular, plural }] = entry;
 

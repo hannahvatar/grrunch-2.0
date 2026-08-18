@@ -1,5 +1,15 @@
 export interface DealTag {
   name: string;
+  // The deal's own real flyer product name (curated_deals.item_name,
+  // e.g. "Cracker Barrel Marble cheese block 400 g") -- distinct from
+  // `name` above, which is the RECIPE's own (often simplified)
+  // ingredient name ("Cheddar") used for matching/grocery-list logic.
+  // Anabelle, seeing "package cheddar" on the "On Sale This Week"
+  // card: "keep the deal item original name e.g. this is not called
+  // package cheddar." Used to build that card's display text instead
+  // of the generic ingredient name. See
+  // 20260818010000_deal_tags_real_item_name.sql.
+  dealItemName?: string;
   discountPct: number;
   price?: number;
   originalPrice?: number;
@@ -108,6 +118,14 @@ export interface IngredientLine {
   // annotation under the deal card. Anabelle, after the badge/
   // contribution split: "users now dont know what quantity to use."
   useQuantityText?: string;
+  // "On Sale This Week"-only override of `text`, for a deal-tagged
+  // ingredient -- same quantity prefix (e.g. "package"), but the
+  // deal's own real flyer product name instead of the recipe's
+  // (often simplified) ingredient name. Anabelle: "keep the deal item
+  // original name e.g. this is not called package cheddar." Only the
+  // deal card uses this; `text`/`groceryText` (recipe instructions,
+  // grocery list matching) are untouched.
+  dealDisplayText?: string;
 }
 
 // A serving suggestion shown at the bottom of the recipe page -- e.g.
