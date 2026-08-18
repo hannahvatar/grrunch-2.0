@@ -88,6 +88,11 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Vermicelli Gets a Spring Roll': require('../assets/vermicelli-gets-spring-roll.jpeg'),
+  // Cropped 10% in, centered (Anabelle's call) -- original backed up
+  // before cropping per the standing rule
+  // (bean-there-corn-that-original.jpeg). 1210x706, matching the
+  // card's ~1.7:1 target.
+  'Chicken, Beans & Corny Things': require('../assets/bean-there-corn-that.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
