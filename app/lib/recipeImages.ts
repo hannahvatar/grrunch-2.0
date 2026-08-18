@@ -75,13 +75,19 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // before cropping per the standing rule (kielbasa-gone-krauty-original.jpeg).
   // 1075x627, matching the card's ~1.7:1 target.
   'Kielbasa Gone Krauty': require('../assets/kielbasa-gone-krauty.jpeg'),
-  // Re-adjusted after fully cropping the Doritos bag out (Anabelle:
-  // "i still want to see 2/3 of the doritos bag") -- left edge now
-  // cuts through the bag itself instead of past it, showing its right
-  // ~2/3 (logo partially trimmed, "NACHO CHEESE" + chips visible).
-  // Original backed up before cropping per the standing rule
-  // (k-pogo-original.jpeg). 1083x632, matching the card's ~1.7:1 target.
+  // Zoomed all the way back out to the original upload, uncropped
+  // (Anabelle's call, after two rounds of tighter cropping). 1344x784,
+  // slightly wider than the card's ~1.7:1 target but no longer trimmed.
   'K-Pogo (TikTok Korean Corn Dog)': require('../assets/k-pogo.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Pizza à la Caesar': require('../assets/pizza-ceasar.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Jamaican Patty with Mango Salsa & Caramelized Plantain': require('../assets/jamaican-patties-plantain-mangos.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Vermicelli Gets a Spring Roll': require('../assets/vermicelli-gets-spring-roll.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
