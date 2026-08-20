@@ -255,6 +255,18 @@ export default {
     if (package_weight_g !== null && (typeof package_weight_g !== "number" || package_weight_g <= 0)) {
       return validationError("package_weight_g must be null or a positive number.");
     }
+    // Mirrors the curated_deals_package_weight_g_sane DB constraint
+    // (20260820030000_guard_discount_pct_division.sql) -- checked here
+    // too so a too-small value produces this clear message instead of a
+    // raw Postgres constraint-violation string. Real bug, caught live:
+    // "5" typed into this field for a bag of carrots almost certainly
+    // meant "5 lb", not "5 g" -- no real grocery package weighs under
+    // 10 g, so this always means the wrong unit was entered.
+    if (package_weight_g !== null && package_weight_g < 10) {
+      return validationError(
+        `package_weight_g of ${package_weight_g} is too small to be real (under 10 g) -- if you meant pounds, convert to grams first (1 lb = about 454 g).`
+      );
+    }
     if (
       package_weight_g_source !== null &&
       (typeof package_weight_g_source !== "string" ||

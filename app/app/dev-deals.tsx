@@ -414,6 +414,55 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.item_name]);
 
+  // Package weight is always stored/sent in grams, but this field only
+  // ever shows up when price_unit is lb/kg/100g (see the `priceUnit !==
+  // 'package' && priceUnit !== 'each'` guard below) -- i.e. exactly when
+  // someone has just told the form the PRICE is per lb. It's reasonable to
+  // assume that also makes this field lb-aware, but it doesn't: price_unit
+  // (how the price is denominated) and package_weight_g (how big the whole
+  // labeled package is, for the "$X for the whole bag" badge) are separate
+  // fields entirely. Rather than requiring everyone to do the lb->g
+  // conversion by hand, accept a unit suffix here directly -- a bare
+  // number is still grams (unchanged), but "5 lbs"/"5 lb"/"5 pounds" or
+  // "2.3 kg" convert automatically. Anything else that doesn't parse
+  // cleanly is a real error, not a silent truncation: parseFloat("5 lbs")
+  // used to quietly become the number 5 (five GRAMS), discarding "lbs"
+  // with no warning -- this is what actually triggered the
+  // "too small to be real" backend error, not the lb price_unit selection.
+  function parsePackageWeightGrams(raw: string): { grams: number | null } | { error: string } {
+    const trimmed = raw.trim();
+    if (trimmed === '') return { grams: null };
+
+    const lbMatch = trimmed.match(/^([\d.]+)\s*(lbs?|pounds?)$/i);
+    if (lbMatch) {
+      const lbs = parseFloat(lbMatch[1]);
+      if (Number.isNaN(lbs)) return { error: `Could not read "${raw}" as a weight.` };
+      return { grams: Math.round(lbs * 453.592) };
+    }
+
+    const kgMatch = trimmed.match(/^([\d.]+)\s*kg$/i);
+    if (kgMatch) {
+      const kg = parseFloat(kgMatch[1]);
+      if (Number.isNaN(kg)) return { error: `Could not read "${raw}" as a weight.` };
+      return { grams: Math.round(kg * 1000) };
+    }
+
+    const gMatch = trimmed.match(/^([\d.]+)\s*g(?:rams?)?$/i);
+    if (gMatch) {
+      const g = parseFloat(gMatch[1]);
+      if (Number.isNaN(g)) return { error: `Could not read "${raw}" as a weight.` };
+      return { grams: g };
+    }
+
+    if (/^[\d.]+$/.test(trimmed)) {
+      return { grams: parseFloat(trimmed) };
+    }
+
+    return {
+      error: `Could not read "${raw}" as a package weight -- enter a number in grams, or add a unit (e.g. "900", "5 lbs", "2.3 kg").`,
+    };
+  }
+
   // Shared by both Save and Reject -- a reject action still saves
   // whatever price/quantity fields were filled in at the same time
   // (see the Edge Function's own comment), so both buttons go through
@@ -423,7 +472,11 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
     const trimmedName = itemName.trim();
     const priceNum = priceUnknown ? null : parseFloat(price);
     const originalPriceNum = originalPriceUnknown ? null : parseFloat(originalPrice);
-    const weightNum = packageWeightG.trim() === '' ? null : parseFloat(packageWeightG);
+    const weightResult = parsePackageWeightGrams(packageWeightG);
+    if ('error' in weightResult) {
+      return { error: weightResult.error };
+    }
+    const weightNum = weightResult.grams;
 
     if (trimmedName === '') {
       return { error: 'Item name cannot be blank.' };
@@ -434,7 +487,7 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
     if (originalPriceNum !== null && (Number.isNaN(originalPriceNum) || originalPriceNum < 0)) {
       return { error: 'Original price must be blank/unknown or a non-negative number.' };
     }
-    if (weightNum !== null && (Number.isNaN(weightNum) || weightNum <= 0)) {
+    if (weightNum !== null && weightNum <= 0) {
       return { error: 'Package weight must be blank or a positive number.' };
     }
 
@@ -471,7 +524,30 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
     setSaving(false);
 
     if (invokeError || !data?.deal) {
-      setSaveError(data?.error ?? invokeError?.message ?? 'Save failed.');
+      // supabase-js's own invoke() only populates `data` for a 2xx
+      // response -- for a non-2xx one (a real validation error, e.g.
+      // this function's own hand-written messages, or a Postgres
+      // constraint violation like the package_weight_g sanity check)
+      // `data` comes back null and invokeError.message is just its
+      // generic "Edge Function returned a non-2xx status code" wrapper
+      // text, not the actual body this function DOES send. Real bug,
+      // caught live (Anabelle: "i keep getting this error" -- the
+      // generic text told her nothing about why a genuinely small
+      // package_weight_g got rejected). FunctionsHttpError exposes the
+      // raw Response on .context -- read its real JSON body when
+      // present, falling back to the generic text only if that itself
+      // fails for some other reason.
+      let message = data?.error ?? invokeError?.message ?? 'Save failed.';
+      const context = (invokeError as { context?: Response } | undefined)?.context;
+      if (context && typeof context.json === 'function') {
+        try {
+          const body = (await context.json()) as { error?: string };
+          if (body?.error) message = body.error;
+        } catch {
+          // Body wasn't JSON (or already consumed) -- keep the fallback above.
+        }
+      }
+      setSaveError(message);
       return;
     }
     onSaved(data.deal);
@@ -653,12 +729,15 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
 
         {priceUnit !== 'package' && priceUnit !== 'each' && (
           <>
-            <Text style={styles.fieldLabel}>Package weight (g) -- leave blank if genuinely bulk/loose</Text>
+            <Text style={styles.fieldLabel}>
+              How big is the whole package? Leave blank if genuinely bulk/loose. This is separate from the price unit
+              above -- grams by default, or type lb/kg directly (e.g. "5 lbs").
+            </Text>
             <InputField
               value={packageWeightG}
               onChangeText={setPackageWeightG}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 900"
+              keyboardType="default"
+              placeholder='e.g. 900 or "5 lbs"'
             />
             {packageWeightG.trim() !== '' && (
               <>
