@@ -350,19 +350,39 @@ export default {
       return Response.json({ error: error.message }, { status: 500 });
     }
 
-    // Recompute every recipe's deal_tags/price immediately so the
-    // correction shows up right away -- refresh_recipe_deal_tags() is
-    // otherwise only ever invoked manually, at the bottom of a
-    // migration (see supabase/migrations/20260811000000_curated_deals_pricing_review.sql).
-    // Best-effort: a refresh failure here shouldn't hide that the
-    // pricing correction itself succeeded, but IS surfaced so the
-    // caller knows a manual refresh may still be needed.
-    const { error: refreshError } = await ctx.supabaseAdmin.rpc("refresh_recipe_deal_tags");
+    // refresh_recipe_deal_tags() recomputes deal_tags/price for EVERY
+    // recipe against the FULL curated_deals table (nested loops per
+    // ingredient x per deal x keyword-fallback pass x 3-tier staple
+    // fallback, each its own full-table scan) -- genuinely slow at this
+    // catalog's size (confirmed: exceeds PostgREST's anon-role statement
+    // timeout entirely when called directly). Awaiting it here made
+    // every single Save on this screen wait for a full-catalog recompute
+    // that only ever really needed to touch the handful of recipes
+    // actually referencing THIS deal -- Anabelle: "hitting Save then
+    // takes a long time to process. This is mainly why this takes so
+    // much time."
+    //
+    // The pricing correction itself (the update above) is already fully
+    // committed and returned by this point -- the refresh is a separate,
+    // already-"best-effort" step (see this function's original comment)
+    // that recomputes DERIVED data, not the correction the reviewer
+    // actually asked to save. Deferred to run in the background via
+    // EdgeRuntime.waitUntil() (the supported way to keep working after
+    // the response is sent, without the function being torn down early)
+    // so Save returns the instant the real write succeeds. A failure
+    // here can no longer be surfaced synchronously to the caller -- logs
+    // to the function's own console (visible in the Supabase dashboard)
+    // instead; the next successful save/migration-triggered refresh
+    // still catches up any recipe this one missed.
+    EdgeRuntime.waitUntil(
+      ctx.supabaseAdmin.rpc("refresh_recipe_deal_tags").then(({ error: refreshError }) => {
+        if (refreshError) {
+          console.error("refresh_recipe_deal_tags failed after deal save:", deal_id, refreshError.message);
+        }
+      })
+    );
 
-    return Response.json({
-      deal: updated,
-      refreshError: refreshError ? refreshError.message : undefined,
-    });
+    return Response.json({ deal: updated });
   }),
 };
 
