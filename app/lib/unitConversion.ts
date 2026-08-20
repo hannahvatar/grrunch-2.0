@@ -46,6 +46,16 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // ~21 g/cup for loosely packed fresh basil leaves -- see
   // 20260812070000_basil_density.sql for the server-side twin.
   basil: 21,
+  // ~100 g/cup for a fine ground spice powder (same figure already used
+  // for Paprika server-side) -- without this, "1 tbsp curry powder"
+  // couldn't convert to grams to scale against its own real reference
+  // price at all, silently contributing $0 (same bug class as olive
+  // oil above). See the staple_densities table (Supabase) for the
+  // server-side twin.
+  'curry powder': 100,
+  // Same ~100 g/cup fine-ground-spice figure -- Apple Pie Croissant's
+  // "1/4 tsp cinnamon" needed the same bridge, same reasoning.
+  cinnamon: 100,
   // ~96 g/cup for grated ginger -- see 20260812090000_ginger_density.sql
   // for the server-side twin.
   ginger: 96,
@@ -205,6 +215,20 @@ function normalizeWords(text: string): string[] {
     .replace(/[^a-z0-9]+/g, ' ')
     .split(/\s+/)
     .filter((word) => (word.length > 3 || KEEP_SHORT_WORDS.has(word)) && !STOPWORDS.has(word));
+}
+
+// Whether an each-based recipe unit is a "bare count" for use-quantity-
+// note purposes -- either genuinely no container word at all ("",
+// "each"), or a pure SIZE descriptor ("large") rather than a real
+// container/package word (bunch, pack, can). "large" is the only size
+// descriptor this codebase's recipes actually use (always for eggs) --
+// without this, "6 large" reads as a container-word quantity the same
+// as "6 bunches", which incorrectly suppresses the "Recipe uses N
+// eggs" note the same way a real whole-bunch quantity correctly does.
+// Anabelle: "add recipe uses 6 eggs" -- real gap, caught live.
+function isBareOrSizeCount(unit: string | undefined): boolean {
+  const normalized = (unit ?? '').trim().toLowerCase();
+  return normalized === '' || normalized === 'each' || normalized === 'large';
 }
 
 // Parses a quantity+unit into a normalized (amount, base_unit) pair.
@@ -472,6 +496,25 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // priced deal). ~12 g per stalk. See the staple_avg_weights table
   // (Supabase) for the server-side twin.
   'green onions': 12,
+  // Curry Up Coconut Chicken -- Anabelle: "Reaplce Recipe uses 150 g of
+  // the package with 'Recipe uses 2 coloured peppers'". This deal is
+  // loose/priced per lb (no package_weight_g at all, confirmed via the
+  // real flyer cutout), so the recipe's own gram quantity is what
+  // stays real for pricing -- this bridge only affects the friendly
+  // DISPLAY count. ~150 g for one medium bell pepper (a standard
+  // kitchen estimate, same policy as every other average-weight figure
+  // here).
+  'coloured peppers': 150,
+  // Curry Up Coconut Chicken -- Anabelle: "replace 'Recipe uses 1 lb of
+  // the package' with 'Recipe uses 2 split chicken breast'". ~300 g for
+  // one bone-in, skin-on split chicken breast (a real retail half-
+  // breast cut, larger than a boneless breast) -- a standard estimate,
+  // same policy as every other average-weight figure here.
+  'split chicken breast': 300,
+  // Breakfast for Dinner -- Croissant déjeûner -- Anabelle: "Recipe
+  // uses 6 peaches". ~150 g for one medium peach (a standard kitchen
+  // estimate, same policy as every other average-weight figure here).
+  peaches: 150,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -706,9 +749,7 @@ export function computeDealPackageCount(
       // container word) means something different (N discrete pieces
       // out of a package) and isn't a bundle fragment at all.
       if (ua.baseUnit === 'each' && bundleCount) {
-        const normalizedUnit = (unit ?? '').trim().toLowerCase();
-        const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
-        if (!isBareCount) {
+        if (!isBareOrSizeCount(unit)) {
           return Math.max(1, Math.ceil((ua.amount * multiplier) / bundleCount));
         }
       }
@@ -727,6 +768,16 @@ export function describeDealPackage(
   const ua = parseUnitAmount(recipeQuantity, recipeUnit);
   if (Number.isNaN(ua.amount)) return undefined;
   if (ua.baseUnit !== 'each') return '1 package';
+  // A fractional container sub-unit (clove/stalk -- parseUnitAmount's
+  // own /clove|stalk/ division always lands under 1) still only ever
+  // needs ONE whole package/bulb/bunch bought, same as a bare "1
+  // package"/"1 bunch" -- real bug, caught live (Anabelle: "Qty 3 is
+  // wrong for the garlic"): "3 cloves" against a "PKG OF 3" (bulbs)
+  // deal fell all the way through to the generic describeQuantityText
+  // path below with no bridge at all, so the raw clove COUNT ("3")
+  // leaked through as the package-count badge -- reading as "buy 3 of
+  // these" when it's really a small fraction of the 1 package needed.
+  if (ua.amount < 1) return '1 package';
   if (priceUnit === 'package' && ua.amount > 1 && packageWeightG && ingredientName) {
     const ingWords = normalizeWords(ingredientName);
     const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
@@ -818,8 +869,7 @@ export function shouldShowUseQuantityText(
   // a container word -> show only when the amount is a genuine
   // fraction (< 1) of one whole unit, never when it's N whole ones.
   if (ua.baseUnit === 'each' && ingredientName) {
-    const normalizedUnit = (unit ?? '').trim().toLowerCase();
-    const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
+    const isBareCount = isBareOrSizeCount(unit);
     const ingWords = normalizeWords(ingredientName);
     if (!isBareCount && ua.amount >= 1) {
       // A container-word quantity (e.g. "1 bunch") is normally the
@@ -831,7 +881,18 @@ export function shouldShowUseQuantityText(
       // bundle_count.sql), not a guessed client-side table -- Anabelle,
       // on Green Onions' real "2 bunches for $3" flyer promo: "I dont
       // know how much is one we cant assume its 1.5."
-      return !!(bundleCount && ua.amount < bundleCount);
+      if (bundleCount && ua.amount < bundleCount) return true;
+      // A deliberate, opt-in EXCEPTION to "whole container needs no
+      // note" -- Anabelle: "Add 'Recipe uses 1 can' under the coconut
+      // milk". Most whole-container cases genuinely don't need a
+      // separate line (the badge/label above already says "can"/
+      // "bunch"), but a can isn't as immediately a countable unit as a
+      // bunch is -- deliberately small, same policy as every other
+      // lookup table here.
+      return ALWAYS_SHOW_CONTAINER_COUNT.some((name) => {
+        const words = normalizeWords(name);
+        return words.length > 0 && words.every((w) => ingWords.includes(w));
+      });
     }
     return Object.keys(DEAL_ITEM_UNIT_LABELS).some((name) => {
       const words = normalizeWords(name);
@@ -873,7 +934,45 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   // the each-based branches in shouldShowUseQuantityText/
   // describeUseQuantityText below.
   'kraft singles': { singular: 'Kraft Single', plural: 'Kraft Singles' },
+  // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above -- same
+  // gram-quantity-to-friendly-count bridge as pogo/plantains.
+  'coloured peppers': { singular: 'coloured pepper', plural: 'coloured peppers' },
+  // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above.
+  'split chicken breast': { singular: 'split chicken breast', plural: 'split chicken breasts' },
+  // Curry Up Coconut Chicken -- Anabelle: "Qty 3 is wrong for the
+  // garlic and add how many cloves the recipes uses". "3 cloves"
+  // parses to a fractional each-amount (0.3, a sub-unit of one whole
+  // bulb -- see parseUnitAmount's own /clove/ division), which is
+  // ALREADY the bare-count shape this table's each-based branches
+  // handle (same as Kraft Singles above) -- describeDealPackage's own
+  // fix (a fractional container amount always needs just 1 whole
+  // package) makes the package-count badge correct; this makes the
+  // separate "Recipe uses N cloves" note correct too, using the raw
+  // clove count (re-parsed directly, not the divided fraction -- see
+  // the each-based branches below for why).
+  garlic: { singular: 'clove', plural: 'cloves' },
+  // Breakfast for Dinner -- Croissant déjeûner -- Anabelle: "add recipe
+  // uses 6 eggs". Unit is "large" (a size descriptor, not a real
+  // container word -- see isBareOrSizeCount), so this reaches the
+  // bare-count branches directly, same as Kraft Singles.
+  eggs: { singular: 'egg', plural: 'eggs' },
+  // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above (gram
+  // quantity -> friendly count, same bridge as coloured peppers).
+  peaches: { singular: 'peach', plural: 'peaches' },
 };
+
+// Deal items where even a WHOLE container quantity (amount >= 1, not a
+// fragment) is still worth spelling out explicitly as "Recipe uses N
+// {container word}" -- most container-word cases don't need this (the
+// badge/label already reads "1 can"/"1 bunch"), but Anabelle asked for
+// it specifically here. Uses the ingredient's own literal unit word
+// (pluralized via pluralizeContainerWord below) rather than a per-item
+// label like DEAL_ITEM_UNIT_LABELS, since "can" is already exactly
+// right as-is. Deliberately small, same policy as every other lookup
+// table here.
+const ALWAYS_SHOW_CONTAINER_COUNT: string[] = [
+  'aroy-d coconut milk',
+];
 
 // English pluralization for a kitchen container word (bunch, pack, box,
 // jar...) -- covers the common patterns (bare +s, +es after
@@ -958,9 +1057,7 @@ export function describeUseQuantityText(
   // fragment_by_volume_and_bundle_count.sql), not a guessed table, so
   // the count itself is never assumed.
   if (!Number.isNaN(ua.amount) && ua.baseUnit === 'each' && bundleCount) {
-    const normalizedUnit = (unit ?? '').trim().toLowerCase();
-    const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
-    if (!isBareCount) {
+    if (!isBareOrSizeCount(unit)) {
       // Re-parse directly rather than trusting ua.amount, which
       // parseUnitAmount may have already divided for a fractional
       // container word (clove/stalk) -- same concern as the sibling
@@ -968,6 +1065,25 @@ export function describeUseQuantityText(
       const count = Math.round(parseQuantity(quantity) * multiplier);
       const containerWord = (unit ?? '').trim();
       return `Recipe uses ${count} of ${bundleCount} ${pluralizeContainerWord(containerWord)}`;
+    }
+  }
+  // Counterpart to ALWAYS_SHOW_CONTAINER_COUNT in shouldShowUseQuantityText
+  // above -- a deliberate opt-in exception for a WHOLE container
+  // quantity that's still worth spelling out. Anabelle: "Add 'Recipe
+  // uses 1 can' under the coconut milk".
+  if (!Number.isNaN(ua.amount) && ua.baseUnit === 'each') {
+    if (!isBareOrSizeCount(unit)) {
+      const ingWords = normalizeWords(ingredientName);
+      const alwaysShow = ALWAYS_SHOW_CONTAINER_COUNT.some((name) => {
+        const words = normalizeWords(name);
+        return words.length > 0 && words.every((w) => ingWords.includes(w));
+      });
+      if (alwaysShow) {
+        const count = Math.round(parseQuantity(quantity) * multiplier);
+        const containerWord = (unit ?? '').trim();
+        const word = count === 1 ? containerWord : pluralizeContainerWord(containerWord);
+        return `Recipe uses ${count} ${word}`;
+      }
     }
   }
   // Each-based quantity that's ALREADY a natural count (e.g. "8 Kraft
@@ -996,8 +1112,7 @@ export function describeUseQuantityText(
       // (a stalk IS a green onion) is just the raw parsed quantity, not
       // the bunch-fraction pricing needs -- re-parse it directly instead
       // of undoing parseUnitAmount's division.
-      const normalizedUnit = (unit ?? '').trim().toLowerCase();
-      const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
+      const isBareCount = isBareOrSizeCount(unit);
       const count = Math.round((isBareCount ? ua.amount : parseQuantity(quantity)) * multiplier);
       return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
     }
