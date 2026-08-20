@@ -657,6 +657,66 @@ function roundUpTo5(n: number): number {
 // here: bridge the each-count to grams via STAPLE_AVG_WEIGHT_G_PER_EACH
 // and ceil() against the real package weight, so the badge never
 // disagrees with what pricing actually charges for.
+// The real number of whole packages a deal-tagged ingredient needs at a
+// given batch multiplier -- shared by the recipe page and Grocery
+// list's per-recipe "make this Nx" stepper (see their own IngredientRow
+// call sites). Separate from describeDealPackage above (which only ever
+// describes the natural 1x amount) since this specifically reasons
+// about SCALING.
+//
+// For a NON-fragmented deal item (fragmentByWeight false, or no known
+// packageWeightG): the whole package is credited once per BATCH (see
+// servingsOptions' own comment -- the stepper models "make N whole
+// batches of the recipe", not "scale one big batch's ingredient
+// amounts"), so N batches genuinely does mean N separate packages -- 2x
+// a recipe using Hoisin Sauce really does need a 2nd bottle if you're
+// cooking the whole recipe twice over.
+//
+// For a FRAGMENTED item (fragmentByWeight true, real packageWeightG
+// known -- e.g. Tilda Basmati Rice, 240 g out of a 4.54 kg bag) this is
+// a real bug fix, not the same rule: N batches only needs a 2nd package
+// once the batches' COMBINED real gram usage actually exceeds one whole
+// package's weight. Anabelle: "the stepper should not double items that
+// are fragmented unless qty surpasses the whole qty of the item... rice
+// double up at 480 is not using 2 X package tilda basmati rice, 4.54
+// kg. unit should not show 2 unless recipe is now over 4.54 kg".
+// Previously this badge blindly multiplied a static "1" placeholder by
+// the batch multiplier for every deal item alike, ignoring
+// fragmentByWeight entirely.
+export function computeDealPackageCount(
+  quantity: string | undefined,
+  unit: string | undefined,
+  packageWeightG: number | undefined,
+  fragmentByWeight: boolean | undefined,
+  multiplier: number,
+  packageVolumeMl?: number,
+  bundleCount?: number
+): number {
+  if (fragmentByWeight) {
+    const ua = parseUnitAmount(quantity, unit);
+    if (!Number.isNaN(ua.amount)) {
+      if (ua.baseUnit === 'g' && packageWeightG) {
+        return Math.max(1, Math.ceil((ua.amount * multiplier) / packageWeightG));
+      }
+      if (ua.baseUnit === 'ml' && packageVolumeMl) {
+        return Math.max(1, Math.ceil((ua.amount * multiplier) / packageVolumeMl));
+      }
+      // Bundle count only applies to a real container-word quantity
+      // (e.g. "1 bunch") -- a bare each-count (Kraft Singles-style, no
+      // container word) means something different (N discrete pieces
+      // out of a package) and isn't a bundle fragment at all.
+      if (ua.baseUnit === 'each' && bundleCount) {
+        const normalizedUnit = (unit ?? '').trim().toLowerCase();
+        const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
+        if (!isBareCount) {
+          return Math.max(1, Math.ceil((ua.amount * multiplier) / bundleCount));
+        }
+      }
+    }
+  }
+  return Math.max(1, Math.round(multiplier));
+}
+
 export function describeDealPackage(
   recipeQuantity: string | undefined,
   recipeUnit: string | undefined,
@@ -704,21 +764,34 @@ export function shouldShowUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,
   packageWeightG: number | undefined,
-  ingredientName?: string
+  ingredientName?: string,
+  packageVolumeMl?: number,
+  bundleCount?: number
 ): boolean {
   const ua = parseUnitAmount(quantity, unit);
   if (Number.isNaN(ua.amount)) return false;
+  // A measured weight/volume quantity (as opposed to a whole-container
+  // "1 package"/"1 each") is inherently a FRAGMENT of whatever the
+  // deal's real package turns out to be -- nobody buys "1 lb" or "2
+  // tbsp" as a retail unit on its own. When the real package size is
+  // known (packageWeightG for a gram quantity, packageVolumeMl for a
+  // volume one), still say so precisely (< comparison, as before); when
+  // it's genuinely unknown, show the note regardless, using the
+  // recipe's own stated quantity rather than a computed fraction.
+  // Anabelle: "you must display it when recipe is using a fragment of
+  // the item... package pork stir fry is using 1 lbs, dunno what you
+  // planned for hoisin sauce" -- both cases (lb -> baseUnit 'g' with no
+  // known package size, tbsp -> baseUnit 'ml') were previously silent;
+  // this covers both, and now compares precisely once a real
+  // packageVolumeMl is on file (see 20260820020000_fragment_by_volume_
+  // and_bundle_count.sql -- Lee Kum Kee Hoisin Sauce, 445 mL).
   if (ua.baseUnit === 'g') {
     if (packageWeightG) return ua.amount < packageWeightG;
-    if (ingredientName) {
-      const ingWords = normalizeWords(ingredientName);
-      const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
-        const words = normalizeWords(name);
-        return words.length > 0 && words.every((w) => ingWords.includes(w));
-      });
-      return !!(bridgeEntry && DEAL_ITEM_UNIT_LABELS[bridgeEntry[0]]);
-    }
-    return false;
+    return true;
+  }
+  if (ua.baseUnit === 'ml') {
+    if (packageVolumeMl) return ua.amount < packageVolumeMl;
+    return true;
   }
   // Each-based quantity that's ALREADY a natural count (e.g. "8 Kraft
   // Singles") -- no gram bridge needed, just confirm this ingredient
@@ -747,8 +820,19 @@ export function shouldShowUseQuantityText(
   if (ua.baseUnit === 'each' && ingredientName) {
     const normalizedUnit = (unit ?? '').trim().toLowerCase();
     const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
-    if (!isBareCount && ua.amount >= 1) return false;
     const ingWords = normalizeWords(ingredientName);
+    if (!isBareCount && ua.amount >= 1) {
+      // A container-word quantity (e.g. "1 bunch") is normally the
+      // WHOLE unit, no fragment -- UNLESS this exact deal is known (via
+      // its own real curated_deals.bundle_count) to be sold as a
+      // multi-unit bundle, in which case using fewer than the bundle
+      // count IS a real fragment of what's actually sold together.
+      // Real server data now (20260820020000_fragment_by_volume_and_
+      // bundle_count.sql), not a guessed client-side table -- Anabelle,
+      // on Green Onions' real "2 bunches for $3" flyer promo: "I dont
+      // know how much is one we cant assume its 1.5."
+      return !!(bundleCount && ua.amount < bundleCount);
+    }
     return Object.keys(DEAL_ITEM_UNIT_LABELS).some((name) => {
       const words = normalizeWords(name);
       return words.length > 0 && words.every((w) => ingWords.includes(w));
@@ -791,6 +875,19 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   'kraft singles': { singular: 'Kraft Single', plural: 'Kraft Singles' },
 };
 
+// English pluralization for a kitchen container word (bunch, pack, box,
+// jar...) -- covers the common patterns (bare +s, +es after
+// s/x/z/ch/sh) well enough for the small, real vocabulary of container
+// words recipes actually use. Used only by describeUseQuantityText's
+// real-bundle-count branch below, where the count itself now comes from
+// real server data (curated_deals.bundle_count) rather than a curated
+// per-ingredient label table -- the WORD still needs pluralizing
+// generically since there's no longer a hand-written label to reuse.
+function pluralizeContainerWord(word: string): string {
+  if (/[sxz]$|[cs]h$/i.test(word)) return `${word}es`;
+  return `${word}s`;
+}
+
 // The counterpart to DEAL_ITEM_UNIT_LABELS above, for a deal item
 // that's genuinely ONE large whole thing (a watermelon, a cabbage)
 // rather than several discrete small ones (a plantain, a green onion)
@@ -820,7 +917,8 @@ export function describeUseQuantityText(
   unit: string | undefined,
   ingredientName: string,
   multiplier = 1,
-  packageWeightG?: number
+  packageWeightG?: number,
+  bundleCount?: number
 ): string {
   const ua = parseUnitAmount(quantity, unit);
   if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g' && packageWeightG) {
@@ -846,6 +944,30 @@ export function describeUseQuantityText(
       const [, gramsEach] = bridgeEntry;
       const count = Math.round((ua.amount * multiplier) / gramsEach);
       return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
+    }
+  }
+  // Container-word quantity out of a known real multi-unit bundle (e.g.
+  // "1 bunch" out of a real "2 bunches for $3" deal,
+  // curated_deals.bundle_count) -- counterpart to the matching branch
+  // in shouldShowUseQuantityText above. Checked before the bare-count
+  // DEAL_ITEM_UNIT_LABELS branch below since a bundled item also has
+  // its own singular/plural label there, but the bundle phrasing ("1 of
+  // 2 bunches") is what's actually informative here. Anabelle: "Write 3
+  // but say recipe uses 1 bunch and account for 1.5 in your costs per
+  // serving" -- bundleCount is real server data now (20260820020000_
+  // fragment_by_volume_and_bundle_count.sql), not a guessed table, so
+  // the count itself is never assumed.
+  if (!Number.isNaN(ua.amount) && ua.baseUnit === 'each' && bundleCount) {
+    const normalizedUnit = (unit ?? '').trim().toLowerCase();
+    const isBareCount = normalizedUnit === '' || normalizedUnit === 'each';
+    if (!isBareCount) {
+      // Re-parse directly rather than trusting ua.amount, which
+      // parseUnitAmount may have already divided for a fractional
+      // container word (clove/stalk) -- same concern as the sibling
+      // branch below.
+      const count = Math.round(parseQuantity(quantity) * multiplier);
+      const containerWord = (unit ?? '').trim();
+      return `Recipe uses ${count} of ${bundleCount} ${pluralizeContainerWord(containerWord)}`;
     }
   }
   // Each-based quantity that's ALREADY a natural count (e.g. "8 Kraft
