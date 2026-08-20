@@ -34,12 +34,19 @@
 //     both need to show "Not reviewed" in the list until each is
 //     confirmed/renamed on its own.
 //
-// Doesn't touch status -- both rows keep whatever status the source
-// had (this screen only ever lists status='approved' deals, so in
-// practice both stay 'approved' and visible while awaiting individual
-// review; a full price/name mistake on either can still be corrected
-// or rejected afterward via update-curated-deal-pricing, same as any
-// other row).
+// Doesn't touch status or usage -- both rows keep whatever the source
+// had (dev-deals.tsx now lists every status, so both stay visible
+// while awaiting individual review regardless; a full price/name/
+// classification mistake on either can still be corrected or rejected
+// afterward via update-curated-deal-pricing, same as any other row).
+//
+// The local CuratedDealRow type below used to be missing
+// original_price_source/fragment_by_weight/used_in_recipe -- those
+// were already being copied correctly at runtime (source is a real
+// object from select("*"), and object-spread doesn't care what a
+// TS interface declares), just mistyped. Widened the type here to
+// match reality, and added the new `usage` column (see
+// 20260819010000_curated_deals_usage_classification.sql) the same way.
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
@@ -72,6 +79,10 @@ interface CuratedDealRow {
   package_weight_g_source: PackageWeightSource | null;
   quantity_estimated: boolean;
   pricing_reviewed_at: string | null;
+  original_price_source: "flyer" | "reference";
+  fragment_by_weight: boolean;
+  used_in_recipe: boolean;
+  usage: "recipes" | "deals";
 }
 
 interface Database {

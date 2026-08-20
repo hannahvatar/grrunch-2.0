@@ -13,6 +13,34 @@ type CuratedDeal = Tables<'curated_deals'>;
 type PriceUnit = Database['public']['Enums']['deal_price_unit'];
 type PackageWeightSource = 'label' | 'measured' | 'estimated';
 type OriginalPriceSource = 'flyer' | 'reference';
+type DealUsage = 'recipes' | 'deals';
+type StatusFilter = 'pending' | 'approved' | 'rejected' | 'all';
+
+// See supabase/migrations/20260819010000_curated_deals_usage_classification.sql
+// and 20260819030000_curated_deals_usage_drop_both.sql -- Anabelle's
+// own recipes/deals classification for whether a deal is eligible to
+// price/tag a recipe ingredient. Started as a 3rd option, 'both', but
+// that turned out to be functionally identical to 'recipes' (neither
+// affects Deals-tab visibility -- every approved deal shows there
+// regardless) -- Anabelle: "oh yeah got it both is now redundant".
+// Simplified to the clean binary she actually described from the
+// start: "recipe only... vs deals only".
+const USAGE_OPTIONS: { value: DealUsage; label: string }[] = [
+  { value: 'recipes', label: 'Use in recipes' },
+  { value: 'deals', label: "Don't use in recipes" },
+];
+
+// Anabelle: "why do I approve deals twice: in Airtable and in the page
+// dev-deals" / "I would like to do all at once in dev-deals" -- her
+// whole review (approve/correct/reject) now happens here. Every
+// candidate syncs in as 'pending' (see scripts/sync_weekly_deals.py),
+// so that's the default tab -- the actual weekly work queue.
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'pending', label: 'Needs review' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'all', label: 'All' },
+];
 
 const PRICE_UNIT_OPTIONS: { value: PriceUnit; label: string }[] = [
   { value: 'package', label: 'Package' },
@@ -78,29 +106,37 @@ export default function DevDealsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
-  const [onlyUnreviewed, setOnlyUnreviewed] = useState(true);
+  // Defaults false now that 'pending' is the common weekly state for a
+  // fresh candidate -- forcing this on by default risked hiding a
+  // pending row that has stale carried-forward pricing metadata but a
+  // genuinely new price this week. The "Needs review" status tab does
+  // the primary narrowing instead.
+  const [onlyUnreviewed, setOnlyUnreviewed] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const loadDeals = () => {
     setLoading(true);
-    // Scoped to approved deals -- this screen corrects pricing detail
-    // on deals already live in the app, it doesn't replace the
-    // separate Airtable pending->approved workflow (out of scope, see
-    // the plan this screen was built from).
-    //
-    // Wrapped in Promise.resolve(): the Supabase query builder returns
-    // a PromiseLike, not a real Promise, until awaited -- .finally()
-    // isn't on that interface, unlike dev-recipes.tsx's
-    // fetchAllRecipes() (a real async function already returning a
-    // true Promise).
+    // The direct table query used to be scoped .eq('status', 'approved')
+    // -- but the only RLS policy on curated_deals ("approved
+    // curated_deals are publicly readable") applies to the SAME
+    // anon-key client this screen uses, so a plain query can never see
+    // a pending/rejected row no matter what it asks for -- Postgres
+    // filters it out before the query even runs. list-curated-deals-
+    // for-review is a service-role-backed Edge Function built
+    // specifically to give this __DEV__-only screen a real, all-status
+    // view (see that function's own header comment for the full
+    // reasoning).
     Promise.resolve(
-      supabase.from('curated_deals').select('*').eq('status', 'approved').order('item_name')
+      supabase.functions.invoke<{ deals?: CuratedDeal[]; error?: string }>('list-curated-deals-for-review', {
+        body: {},
+      })
     )
       .then(({ data, error: fetchError }) => {
-        if (fetchError) {
+        if (fetchError || !data?.deals) {
           setError(true);
         } else {
-          setDeals(data ?? []);
+          setDeals(data.deals);
         }
       })
       .finally(() => setLoading(false));
@@ -140,15 +176,12 @@ export default function DevDealsScreen() {
         deal={selectedDeal}
         onBack={() => setSelectedId(null)}
         onSaved={(updated) => {
-          // A rejected deal is no longer 'approved' -- drop it from
-          // this list entirely (it was only ever fetched
-          // status='approved') rather than leaving a stale rejected
-          // row visible until the next full reload.
-          setDeals((prev) =>
-            updated.status === 'approved'
-              ? prev.map((d) => (d.id === updated.id ? updated : d))
-              : prev.filter((d) => d.id !== updated.id)
-          );
+          // Every status is visible somewhere in this screen now (the
+          // status-tab filter, not this list, decides what's shown) --
+          // just replace the row in place; the active statusFilter
+          // naturally hides it if it no longer matches, instead of
+          // this callback special-casing status transitions.
+          setDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
           setSelectedId(null);
         }}
         onDuplicated={(source, duplicate) => {
@@ -163,7 +196,9 @@ export default function DevDealsScreen() {
     );
   }
 
-  const filtered = deals
+  const statusScoped = deals.filter((d) => statusFilter === 'all' || d.status === statusFilter);
+
+  const filtered = statusScoped
     .filter((d) => !onlyUnreviewed || d.pricing_reviewed_at === null)
     .filter((d) => {
       const q = search.trim().toLowerCase();
@@ -180,7 +215,16 @@ export default function DevDealsScreen() {
       return a.item_name.localeCompare(b.item_name);
     });
 
-  const unreviewedCount = deals.filter((d) => d.pricing_reviewed_at === null).length;
+  // Computed against the tab-filtered set, not the full deals array --
+  // "12 needs review · 3 not yet reviewed" while sitting on the
+  // Approved tab would read as nonsense otherwise.
+  const unreviewedCount = statusScoped.filter((d) => d.pricing_reviewed_at === null).length;
+
+  const STATUS_LABELS: Record<CuratedDeal['status'], string> = {
+    pending: 'Needs review',
+    approved: 'Approved',
+    rejected: 'Rejected',
+  };
 
   return (
     <View style={styles.container}>
@@ -190,8 +234,10 @@ export default function DevDealsScreen() {
         </View>
         <Text style={styles.title}>Deal Pricing Review</Text>
         <Text style={styles.subtitle}>
-          {deals.length} approved deal{deals.length === 1 ? '' : 's'} · {unreviewedCount} not yet reviewed
+          {statusScoped.length} deal{statusScoped.length === 1 ? '' : 's'} · {unreviewedCount} not yet reviewed
         </Text>
+
+        <SegmentedControl options={STATUS_FILTER_OPTIONS} value={statusFilter} onChange={setStatusFilter} />
 
         <TextInput
           value={search}
@@ -230,6 +276,20 @@ export default function DevDealsScreen() {
                 <View style={styles.unitBadge}>
                   <Text style={styles.unitBadgeText}>{deal.price_unit}</Text>
                 </View>
+                {/* Redundant once a specific status tab is active (the
+                    tab already says it) -- only shown on "All", where
+                    rows of every status are mixed together. */}
+                {statusFilter === 'all' && (
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      deal.status === 'approved' && styles.statusBadgeApproved,
+                      deal.status === 'rejected' && styles.statusBadgeRejected,
+                    ]}
+                  >
+                    <Text style={styles.statusBadgeText}>{STATUS_LABELS[deal.status]}</Text>
+                  </View>
+                )}
                 {deal.pricing_reviewed_at === null && (
                   <View style={styles.unreviewedBadge}>
                     <Text style={styles.unreviewedBadgeText}>Not reviewed</Text>
@@ -268,6 +328,27 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
   const [originalPriceSource, setOriginalPriceSource] = useState<OriginalPriceSource>(
     deal.original_price_source as OriginalPriceSource
   );
+  const [usage, setUsage] = useState<DealUsage>(deal.usage as DealUsage);
+  // Generic category tags (e.g. "chicken breast", "beans") checked by
+  // refresh_recipe_deal_tags()'s keyword fallback pass when a recipe
+  // ingredient's own name doesn't exactly match this deal's real flyer
+  // name -- see 20260808040000_deal_keyword_matches.sql. Used to only
+  // ever be set during the separate Airtable review pass; folded in
+  // here now that that step is gone (Anabelle: "how can we make it
+  // like prime raised without antibiotics boneless skinless chicken
+  // breasts could match 'chicken breasts'"). keywordInput holds the
+  // in-progress text before it's committed to a chip.
+  const [keywordMatches, setKeywordMatches] = useState<string[]>(deal.keyword_matches ?? []);
+  const [keywordInput, setKeywordInput] = useState('');
+  function addKeyword() {
+    const trimmed = keywordInput.trim();
+    if (trimmed === '') return;
+    setKeywordMatches((prev) => (prev.some((k) => k.toLowerCase() === trimmed.toLowerCase()) ? prev : [...prev, trimmed]));
+    setKeywordInput('');
+  }
+  function removeKeyword(target: string) {
+    setKeywordMatches((prev) => prev.filter((k) => k !== target));
+  }
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [prefillChecked, setPrefillChecked] = useState(false);
@@ -368,6 +449,8 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
         package_weight_g_source: weightNum === null ? null : packageWeightSource,
         quantity_estimated: quantityEstimated,
         original_price_source: originalPriceSource,
+        usage,
+        keyword_matches: keywordMatches,
       },
     };
   }
@@ -457,7 +540,17 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
           </>
         )}
 
-        {referencePrice && (
+        {/* Anabelle: "confusing... if in the deals we do have the original
+            and discount price from the flyer but you also add the statcan
+            reference. Only show the statcan reference when we dont have it
+            from merchant" -- when the flyer already prints a real original
+            price, that IS the comparison; a StatCan/produce/staple hint
+            alongside it is redundant noise, not a second opinion worth
+            seeing. Gated on the live "Unknown" checkbox (originalPriceUnknown),
+            not the persisted deal.original_price, so typing in a real
+            flyer price hides the hint immediately without needing to save
+            first. */}
+        {originalPriceUnknown && referencePrice && (
           <View style={styles.referenceCard}>
             <Text style={styles.referenceCardTitle}>
               Reference price found ({referencePrice.source}): {referencePrice.matchedName}
@@ -471,7 +564,7 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
             </Text>
           </View>
         )}
-        {referencePriceChecked && !referencePrice && (
+        {originalPriceUnknown && referencePriceChecked && !referencePrice && (
           <Text style={styles.referenceCardNote}>
             No StatCan/produce/staple reference match for this item -- common for branded/packaged goods,
             those tables don't cover most of them.
@@ -514,6 +607,46 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
           value={originalPriceSource}
           onChange={setOriginalPriceSource}
         />
+
+        <Text style={styles.fieldLabel}>Should recipe generation use this ingredient?</Text>
+        <SegmentedControl options={USAGE_OPTIONS} value={usage} onChange={setUsage} />
+
+        {/* Anabelle: "Chicken, Beans & Corny Things is missing 2 matched
+            ingredients: chicken and beans... how can we make it like
+            prime raised without antibiotics boneless skinless chicken
+            breasts could match 'chicken breasts'". A recipe ingredient
+            matches this deal if its exact name matches OR any keyword
+            here has every word present in the ingredient's name (plural-
+            tolerant) -- see refresh_recipe_deal_tags()'s keyword
+            fallback pass. Keep keywords generic/category-level (e.g.
+            "chicken breast", "beans"), not the deal's own brand name --
+            that's what lets differently-branded deals across future
+            weeks all share the same keyword. */}
+        <Text style={styles.fieldLabel}>Keywords for recipe matching (e.g. "chicken breast", "beans")</Text>
+        <View style={styles.keywordRow}>
+          <View style={styles.keywordInputWrap}>
+            <InputField
+              value={keywordInput}
+              onChangeText={setKeywordInput}
+              placeholder="Add a keyword"
+              onSubmitEditing={addKeyword}
+              returnKeyType="done"
+            />
+          </View>
+          <Pressable style={styles.addKeywordButton} onPress={addKeyword}>
+            <Text style={styles.addKeywordButtonText}>Add</Text>
+          </Pressable>
+        </View>
+        {keywordMatches.length > 0 && (
+          <View style={styles.keywordChipsRow}>
+            {keywordMatches.map((keyword) => (
+              <Pressable key={keyword} style={styles.keywordChip} onPress={() => removeKeyword(keyword)}>
+                <Text style={styles.keywordChipText}>{keyword}</Text>
+                <Text style={styles.keywordChipRemove}>✕</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         <Text style={styles.fieldLabel}>What is the price denominated in?</Text>
         <SegmentedControl options={PRICE_UNIT_OPTIONS} value={priceUnit} onChange={setPriceUnit} />
@@ -627,6 +760,12 @@ const styles = StyleSheet.create({
   unitBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#666' },
   unreviewedBadge: { backgroundColor: '#FFA955', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   unreviewedBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // Amber (pending) is the default look; approved/rejected override the
+  // background below. Only shown on the "All" status tab.
+  statusBadge: { backgroundColor: '#FFA955', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  statusBadgeApproved: { backgroundColor: '#96E696' },
+  statusBadgeRejected: { backgroundColor: '#F4A6A0' },
+  statusBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   emptyText: { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 24 },
   backLink: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   editPhoto: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#F2F2F2' },
@@ -656,6 +795,29 @@ const styles = StyleSheet.create({
   referenceCardPrice: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   referenceCardNote: { fontSize: 12, color: '#767676' },
   fieldLabel: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginTop: 4 },
+  keywordRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  keywordInputWrap: { flex: 1 },
+  addKeywordButton: {
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    backgroundColor: '#fff',
+  },
+  addKeywordButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  keywordChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  keywordChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F2F2F2',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  keywordChipText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  keywordChipRemove: { fontSize: 12, color: '#767676' },
   saveError: { color: '#D0342C', fontSize: 14 },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   saveButton: {

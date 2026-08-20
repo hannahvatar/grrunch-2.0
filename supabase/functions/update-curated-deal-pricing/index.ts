@@ -18,9 +18,27 @@
 //     package_weight_g_source: 'label' | 'measured' | 'estimated' | null,
 //     quantity_estimated: boolean,
 //     original_price_source: 'flyer' | 'reference',
+//     usage: 'recipes' | 'deals' | 'both',
+//     keyword_matches: string[],
 //     reject?: boolean,
 //   }
 //   -> 200 { deal: CuratedDealRow }
+//
+// keyword_matches: human-curated generic-category tags (e.g. "chicken
+// breast", "beans") checked by refresh_recipe_deal_tags()'s keyword
+// fallback pass -- see 20260808040000_deal_keyword_matches.sql. Used to
+// only ever be set during the separate Airtable review pass; that step
+// is gone (folded into this screen, same as usage above), so this is
+// now the only place it can be set at all. Same
+// trim-empty/dedupe-on-save contract as the client's tag-chip editor.
+//
+// usage: Anabelle's own recipes/deals/both classification for what
+// this deal is good for -- see supabase/migrations/20260819010000_
+// curated_deals_usage_classification.sql. Used to only ever be set by
+// the Airtable review agents at sync time and never touchable again;
+// now freely re-correctable here, same as every other pricing field
+// (Anabelle: "why cant I have a chip option where i select deals,
+// recipes or both").
 //
 // original_price_source: 'flyer' means original_price is a real price
 // the store printed; 'reference' means it's a StatCan/human-researched
@@ -38,19 +56,34 @@
 // 85/175 g") -- see duplicate-curated-deal/index.ts, which splits that
 // into two rows Anabelle then renames individually via this field.
 //
-// price/original_price null means genuinely unknown -- not yet
-// confirmed from the cutout photo (see the column comments in
+// price null means genuinely unknown -- not yet confirmed from the
+// cutout photo (see the column comments in
 // 20260811010000_curated_deals_unknown_price_and_reject.sql). A
-// null-priced deal is simply never tagged onto a recipe until
-// resolved (compute_deal_tag_pricing() treats it the same as an
-// unscalable weight) -- AND, if the row was 'approved', this also
-// downgrades status to 'pending' (unless reject below already sets it
-// to 'rejected'). Without that downgrade, a null-priced-but-still-
+// null-priced deal is simply never tagged onto a recipe until resolved
+// (compute_deal_tag_pricing() treats it the same as an unscalable
+// weight) -- AND, if the row was 'approved', this also downgrades
+// status to 'pending' (unless reject below already sets it to
+// 'rejected'). Without that downgrade, a null-priced-but-still-
 // 'approved' row would keep passing the "approved curated_deals are
 // publicly readable" RLS policy and could reach lib/curatedDeals.ts's
 // fetchAllDeals()/fetchDealsByIds() (the Best Deals tab), which assume
 // a real number -- an unknown price means "not ready to show a
 // shopper," same as a rejected one.
+//
+// original_price null does NOT trigger this downgrade (real bug, fixed
+// 20260819 -- Anabelle: "Saving with Unknown should stay/become
+// approved" after reviewing and saving a legitimately no-printed-
+// regular-price item like Swiss Chalet ribs silently dropped it out of
+// every recipe's pricing). A null original_price is a common, COMPLETE
+// state for most flat-sale-price flyer items, not an unfinished one --
+// and on this client it can only ever reach here via the explicit
+// "Original price is unknown" checkbox (buildBody() in dev-deals.tsx
+// rejects a blank-but-unchecked field as NaN before submit), so it's
+// always a deliberate confirmation, never an accidental gap.
+// compute_deal_tag_pricing() already treats a null original_price as
+// "same as price, 0% discount" (20260819000000_deal_tag_null_original_
+// price_fix.sql), so there's no pricing reason to exclude it either --
+// only price === null still means genuinely not ready.
 //
 // reject: true sets status='rejected' (plus reviewed_by/reviewed_at,
 // the same fields the separate Airtable approve/reject workflow uses)
@@ -87,6 +120,13 @@ const PACKAGE_WEIGHT_SOURCES: PackageWeightSource[] = ["label", "measured", "est
 type OriginalPriceSource = "flyer" | "reference";
 const ORIGINAL_PRICE_SOURCES: OriginalPriceSource[] = ["flyer", "reference"];
 
+// 'both' was dropped (20260819030000_curated_deals_usage_drop_both.sql)
+// -- it was always functionally identical to 'recipes' once Deals-tab
+// visibility turned out to be unconditional. Anabelle's own
+// description was always this clean binary.
+type DealUsage = "recipes" | "deals";
+const USAGE_VALUES: DealUsage[] = ["recipes", "deals"];
+
 // Minimal, function-local slice of the schema (just the columns this
 // function reads/writes) so it stays deployable on its own, without
 // reaching into the Expo app's types/database.ts across the repo --
@@ -120,6 +160,7 @@ interface Database {
           quantity_estimated: boolean;
           pricing_reviewed_at: string | null;
           original_price_source: OriginalPriceSource;
+          usage: DealUsage;
         };
         Insert: never;
         Update: {
@@ -132,6 +173,8 @@ interface Database {
           quantity_estimated?: boolean;
           pricing_reviewed_at?: string | null;
           original_price_source?: OriginalPriceSource;
+          usage?: DealUsage;
+          keyword_matches?: string[];
           status?: "pending" | "approved" | "rejected";
           reviewed_by?: string | null;
           reviewed_at?: string | null;
@@ -158,6 +201,8 @@ interface RequestBody {
   package_weight_g_source?: unknown;
   quantity_estimated?: unknown;
   original_price_source?: unknown;
+  usage?: unknown;
+  keyword_matches?: unknown;
   reject?: unknown;
 }
 
@@ -184,6 +229,8 @@ export default {
       package_weight_g_source,
       quantity_estimated,
       original_price_source,
+      usage,
+      keyword_matches,
       reject,
     } = body;
 
@@ -224,22 +271,42 @@ export default {
     ) {
       return validationError(`original_price_source must be one of: ${ORIGINAL_PRICE_SOURCES.join(", ")}.`);
     }
+    if (typeof usage !== "string" || !USAGE_VALUES.includes(usage as DealUsage)) {
+      return validationError(`usage must be one of: ${USAGE_VALUES.join(", ")}.`);
+    }
+    if (
+      !Array.isArray(keyword_matches) ||
+      keyword_matches.some((k) => typeof k !== "string" || k.trim().length === 0)
+    ) {
+      return validationError("keyword_matches must be an array of non-empty strings.");
+    }
     if (reject !== undefined && typeof reject !== "boolean") {
       return validationError("reject must be a boolean.");
     }
+    // Trim + dedupe here rather than trusting the client to have done
+    // it -- same defensive normalization item_name.trim() already gets
+    // below.
+    const normalizedKeywordMatches = Array.from(
+      new Set(keyword_matches.map((k) => (k as string).trim()).filter((k) => k.length > 0)),
+    );
 
-    // A genuinely unknown price/original_price means this deal isn't
-    // ready to show a shopper -- downgrade it off 'approved' so it
-    // stops passing the "approved curated_deals are publicly readable"
-    // RLS policy (see the comment at the top of this file). reject
-    // takes priority when both apply (rejecting is a stronger, final
-    // signal than "pricing incomplete").
+    // A genuinely unknown price means this deal isn't ready to show a
+    // shopper -- downgrade it off 'approved' so it stops passing the
+    // "approved curated_deals are publicly readable" RLS policy (see
+    // the comment at the top of this file). original_price === null
+    // does NOT downgrade -- see that comment for why. reject takes
+    // priority when both apply (rejecting is a stronger, final signal
+    // than "pricing incomplete"). A normal save with a known price
+    // explicitly marks 'approved' (not left unchanged) -- hitting Save
+    // IS the confirmation signal, so it also recovers a row that had
+    // previously been downgraded to 'pending', without a separate
+    // re-approval step.
     const statusUpdate =
       reject === true
         ? { status: "rejected" as const, reviewed_by: "dev-deals-screen", reviewed_at: new Date().toISOString() }
-        : price === null || original_price === null
+        : price === null
           ? { status: "pending" as const }
-          : {};
+          : { status: "approved" as const };
 
     // ctx.supabaseAdmin bypasses RLS -- needed since curated_deals only
     // grants public SELECT (scoped to status='approved'), never INSERT/
@@ -258,6 +325,8 @@ export default {
         package_weight_g_source: package_weight_g_source as PackageWeightSource | null,
         quantity_estimated,
         original_price_source: original_price_source as OriginalPriceSource,
+        usage: usage as DealUsage,
+        keyword_matches: normalizedKeywordMatches,
         pricing_reviewed_at: new Date().toISOString(),
         ...statusUpdate,
       })
@@ -302,7 +371,9 @@ export default {
       "package_weight_g": null,
       "package_weight_g_source": null,
       "quantity_estimated": false,
-      "original_price_source": "flyer"
+      "original_price_source": "flyer",
+      "usage": "recipes",
+      "keyword_matches": ["longanisa"]
     }'
 
 */

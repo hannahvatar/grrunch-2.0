@@ -1,0 +1,21 @@
+-- Documentation-only fix -- no functional SQL change. refresh_recipe_
+-- deal_tags() (20260819010000_curated_deals_usage_classification.sql)
+-- already does exactly the right thing: usage in ('recipes', 'both')
+-- gates recipe-ingredient matching, unchanged here. What was WRONG was
+-- the column comment's own stated intent, and the matching app-side
+-- assumption in app/lib/curatedDeals.ts's fetchAllDeals() (fixed
+-- separately, same commit) -- both assumed 'recipes'/'deals' were a
+-- mutually-exclusive "which ONE surface does this belong to" choice,
+-- so fetchAllDeals() excluded 'recipes'-only rows from the Weekly
+-- Deals tab entirely.
+--
+-- Real bug, caught live (Anabelle: "When i tagged a deal 'recipe only'
+-- its because i want this ingredient to be fetched for generated
+-- recipes vs 'deals only' while i dont want an item to be used in
+-- recipes... The problem is that in the 'weekly deals' tab on the app,
+-- i would like all the approved deals to show there"). usage only ever
+-- controls ONE thing: is this deal eligible to price/tag a recipe
+-- ingredient. It has NOTHING to do with Weekly Deals tab visibility --
+-- every approved deal belongs there regardless of usage.
+comment on column public.curated_deals.usage is
+  'Anabelle''s own recipes/deals/both classification for whether this deal is eligible to price/tag a recipe ingredient (refresh_recipe_deal_tags() -- ''deals''-only rows are excluded there) -- straight from Airtable''s "status" field at sync time (see scripts/sync_weekly_deals.py), freely re-correctable afterward in dev-deals.tsx. This is NOT a Weekly-Deals-tab visibility control -- every approved deal shows on that tab (app/lib/curatedDeals.ts''s fetchAllDeals()) regardless of usage; ''deals'' simply means "don''t use this to price a recipe," not "hide this from browsing." ''both'' (the default, and the backfill value for every row that existed before this column) is functionally identical to ''recipes'' today (both are recipe-matching-eligible, and neither affects Deals-tab visibility) -- kept as a separate label only because Anabelle may still want that distinction meaningful later.';
