@@ -168,6 +168,19 @@ function mapRowToDeal(row: {
   };
 }
 
+// Real bug, caught live (Anabelle: "When i tagged a deal 'recipe only'
+// its because i want this ingredient to be fetched for generated
+// recipes vs 'deals only' while i dont want an item to be used in
+// recipes... The problem is that in the 'weekly deals' tab on the app,
+// i would like all the approved deals to show there"). This function
+// used to filter out 'recipes'-only rows, on the wrong assumption that
+// usage was a mutually-exclusive "which ONE surface" choice -- it
+// isn't. usage (see supabase/migrations/20260819010000_curated_deals_
+// usage_classification.sql) only ever controls recipe-matching
+// eligibility (refresh_recipe_deal_tags() -- a 'deals'-only row is
+// correctly excluded there, unchanged). It has NOTHING to do with
+// Weekly Deals tab visibility -- every approved deal belongs here,
+// regardless of usage.
 export async function fetchAllDeals(): Promise<Deal[]> {
   const { data, error } = await supabase.from('curated_deals').select('*');
   if (error) throw error;

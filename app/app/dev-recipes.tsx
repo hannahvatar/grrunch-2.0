@@ -3,8 +3,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 
 import { MealCard } from '../components/MealCard';
 import type { Meal } from '../lib/mealData';
-import { sortMealsByName } from '../lib/mealScaling';
 import { fetchAllRecipes } from '../lib/recipes';
+import { supabase } from '../lib/supabase';
 import { useSavedRecipes } from '../lib/savedRecipes';
 import { useSelectedMeals } from '../lib/selectedMeals';
 
@@ -27,12 +27,29 @@ export default function DevRecipesScreen() {
   const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const [meals, setMeals] = useState<Meal[]>([]);
+  // Anabelle: "reoder (just on this page) per newest first so its
+  // easier for me to review recipes". fetchAllRecipes()'s Meal type
+  // (shared with every other screen -- Meals tab, saved recipes, etc.)
+  // doesn't carry created_at, and adding it there would ripple out
+  // wider than this one review page needs. Fetched separately, just
+  // the two columns needed, keyed by id -- scoped entirely to this
+  // screen, no shared types touched.
+  const [createdAtById, setCreatedAtById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetchAllRecipes()
-      .then(setMeals)
+    Promise.all([
+      fetchAllRecipes(),
+      supabase
+        .from('recipes')
+        .select('id, created_at')
+        .then(({ data }) => Object.fromEntries((data ?? []).map((r) => [r.id, r.created_at]))),
+    ])
+      .then(([recipeMeals, createdAt]) => {
+        setMeals(recipeMeals);
+        setCreatedAtById(createdAt);
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -61,7 +78,14 @@ export default function DevRecipesScreen() {
     );
   }
 
-  const sorted = sortMealsByName(meals);
+  // Newest first -- missing/unknown created_at (shouldn't happen, but
+  // fetch failures degrade gracefully) sorts to the end rather than
+  // crashing or clumping at the top.
+  const sorted = [...meals].sort((a, b) => {
+    const aTime = createdAtById[a.id] ? new Date(createdAtById[a.id]).getTime() : -Infinity;
+    const bTime = createdAtById[b.id] ? new Date(createdAtById[b.id]).getTime() : -Infinity;
+    return bTime - aTime;
+  });
 
   return (
     <View style={styles.container}>
@@ -73,7 +97,7 @@ export default function DevRecipesScreen() {
         </View>
         <Text style={styles.title}>All Recipes</Text>
         <Text style={styles.subtitle}>
-          {sorted.length} recipe{sorted.length === 1 ? '' : 's'} · deal-tagged and not, A to Z
+          {sorted.length} recipe{sorted.length === 1 ? '' : 's'} · deal-tagged and not, newest first
         </Text>
 
         {sorted.map((meal) => (

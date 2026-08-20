@@ -42,6 +42,7 @@ export type Database = {
       curated_deals: {
         Row: {
           airtable_record_id: string | null
+          bundle_count: number | null
           category: string | null
           chain_name: string
           created_at: string
@@ -55,6 +56,7 @@ export type Database = {
           keyword_matches: string[]
           original_price: number | null
           original_price_source: string
+          package_volume_ml: number | null
           package_weight_g: number | null
           package_weight_g_source: string | null
           price: number | null
@@ -65,10 +67,12 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by: string | null
           status: Database["public"]["Enums"]["deal_status"]
+          usage: string
           used_in_recipe: boolean
         }
         Insert: {
           airtable_record_id?: string | null
+          bundle_count?: number | null
           category?: string | null
           chain_name: string
           created_at?: string
@@ -82,6 +86,7 @@ export type Database = {
           keyword_matches?: string[]
           original_price?: number | null
           original_price_source?: string
+          package_volume_ml?: number | null
           package_weight_g?: number | null
           package_weight_g_source?: string | null
           price?: number | null
@@ -92,10 +97,12 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["deal_status"]
+          usage?: string
           used_in_recipe?: boolean
         }
         Update: {
           airtable_record_id?: string | null
+          bundle_count?: number | null
           category?: string | null
           chain_name?: string
           created_at?: string
@@ -109,6 +116,7 @@ export type Database = {
           keyword_matches?: string[]
           original_price?: number | null
           original_price_source?: string
+          package_volume_ml?: number | null
           package_weight_g?: number | null
           package_weight_g_source?: string | null
           price?: number | null
@@ -119,6 +127,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: Database["public"]["Enums"]["deal_status"]
+          usage?: string
           used_in_recipe?: boolean
         }
         Relationships: []
@@ -591,11 +600,13 @@ export type Database = {
       compute_deal_tag_pricing:
         | {
             Args: {
+              p_bundle_count: number
               p_fragment_by_weight: boolean
               p_ing_name: string
               p_ing_quantity: string
               p_ing_unit: string
               p_original_price: number
+              p_package_volume_ml: number
               p_package_weight_g: number
               p_package_weight_g_source: string
               p_price: number

@@ -30,6 +30,7 @@ import {
   showsRealDiscount,
 } from '../lib/curatedDeals';
 import type { DealTag } from '../lib/mealData';
+import { computeDealPackageCount } from '../lib/unitConversion';
 import { ArrowOutwardIcon } from './MaterialSymbols';
 
 const INK = '#111';
@@ -58,6 +59,16 @@ interface IngredientRowProps {
   checked?: boolean;
   onToggleCheck?: () => void;
   multiplier?: number;
+  // The recipe's own real per-batch quantity/unit (e.g. "240"/"g" for
+  // Tilda Basmati Rice) -- needed alongside `multiplier` to compute the
+  // real package count correctly for a fragmented deal item (see
+  // computeDealPackageCount). Optional: a caller that never fragments
+  // any of its deal items (or doesn't have this data handy) can omit
+  // both and still get the old always-N-packages behavior, since
+  // computeDealPackageCount falls back to that when quantity/unit don't
+  // parse.
+  quantity?: string;
+  unit?: string;
   // Deal image size in px (square) -- defaults to the Grocery list's
   // compact 36; the recipe page (see app/recipe.tsx) uses 120.
   //
@@ -156,6 +167,8 @@ export function IngredientRow({
   linkedText,
   onLinkedTextPress,
   useQuantityText,
+  quantity,
+  unit,
 }: IngredientRowProps) {
   // stackedLayout only -- text is always "<quantity> <rest of
   // description>" for a deal item (e.g. "1 package Prime raised...",
@@ -175,16 +188,34 @@ export function IngredientRow({
   // The badge below folds the servings stepper's batch multiplier
   // directly into this number (rather than showing it as a separate
   // "×2" badge alongside a static "1") -- text itself never reflects
-  // the multiplier for deal-tagged lines (never fragmented, always
-  // "1 package ..." regardless of batch size -- see
-  // lib/mealScaling.ts scaleIngredientDisplay), so without this the
-  // ellipse would keep reading "1" even after doubling the batch,
-  // sitting right next to a separate badge that DID update -- two
-  // numbers telling two different stories in the same row.
-  const dealQuantityBaseNum = parseFloat(dealQuantityBase);
+  // the multiplier for deal-tagged lines (see lib/mealScaling.ts
+  // scaleIngredientDisplay), so without this the ellipse would keep
+  // reading "1" even after doubling the batch, sitting right next to a
+  // separate badge that DID update -- two numbers telling two different
+  // stories in the same row.
+  //
+  // computeDealPackageCount (not a blind dealQuantityBaseNum * multiplier
+  // fold) -- a FRAGMENTED deal item (fragmentByWeight, e.g. Tilda
+  // Basmati Rice) only genuinely needs a 2nd package once the scaled
+  // real quantity exceeds one whole package's weight, not just because
+  // the batch count doubled (real bug, fixed: doubling a 240 g/4.54 kg
+  // rice recipe to 480 g total still only needs 1 bag -- see that
+  // function's own comment for the full reasoning, including why a
+  // NON-fragmented item like Hoisin Sauce keeps the old N-packages-per-
+  // N-batches behavior).
   const dealQuantity =
-    !!multiplier && multiplier > 1 && !Number.isNaN(dealQuantityBaseNum)
-      ? String(Math.round(dealQuantityBaseNum * multiplier * 100) / 100)
+    !!multiplier && multiplier > 1
+      ? String(
+          computeDealPackageCount(
+            quantity,
+            unit,
+            dealTag?.packageWeightG,
+            dealTag?.fragmentByWeight,
+            multiplier,
+            dealTag?.packageVolumeMl,
+            dealTag?.bundleCount
+          )
+        )
       : dealQuantityBase;
 
   const imageEl = dealTag?.imageUrl && (

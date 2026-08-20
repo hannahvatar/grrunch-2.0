@@ -54,6 +54,20 @@ export interface DealTag {
   // show the real "1 package" instead of misreading the raw count as a
   // package multiplier.
   packageWeightG?: number;
+  // The mL counterpart to packageWeightG, for a deal item genuinely
+  // measured/purchased by volume (curated_deals.package_volume_ml) --
+  // e.g. Lee Kum Kee Hoisin Sauce, 445 mL. Lets a tbsp/tsp/cup/mL
+  // recipe quantity fragment against the real bottle size the same way
+  // a gram quantity already fragments against packageWeightG. See
+  // 20260820020000_fragment_by_volume_and_bundle_count.sql.
+  packageVolumeMl?: number;
+  // Set only when this deal's real flyer promo is a multi-buy bundle
+  // (curated_deals.bundle_count, e.g. "2 bunches for $3" -> 2) rather
+  // than a genuine single-unit rate -- lets a recipe using fewer than
+  // the bundle count (e.g. 1 bunch, or a fractional stalk count) credit
+  // its real fractional share instead of the flat bundle price. See the
+  // same migration as packageVolumeMl above.
+  bundleCount?: number;
   // The deal's own UNSCALED curated_deals.price/original_price -- vs.
   // price/originalPrice above, which are the computed total for
   // however much THIS recipe uses (e.g. $2.63 for 1.79 lb of

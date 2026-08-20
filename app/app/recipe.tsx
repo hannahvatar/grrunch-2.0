@@ -238,10 +238,18 @@ export default function RecipeScreen() {
                         linkedText={subRecipe ? ingredient.name : undefined}
                         onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
                         useQuantityText={ingredient.useQuantityText}
-                        // Never fragmented, so a doubled batch stays "1
-                        // package ..." with a x2 badge instead of a scaled
-                        // quantity -- see scaleIngredientDisplay.
+                        // Deal-tagged lines' own text never scales with the
+                        // batch multiplier -- see scaleIngredientDisplay.
+                        // quantity/unit are passed alongside so
+                        // IngredientRow's package-count badge can tell a
+                        // fragmented item (e.g. rice, needs a 2nd package
+                        // only once the batches' real gram usage exceeds
+                        // one whole package) from a non-fragmented one
+                        // (needs N packages for N batches) -- see
+                        // computeDealPackageCount.
                         multiplier={batchMultiplier}
+                        quantity={ingredient.quantity}
+                        unit={ingredient.unit}
                         // Standardized square (see IngredientRow for why a
                         // fit-to-box version was tried and reverted) -- still
                         // comfortably under every source cutout's own ~400px

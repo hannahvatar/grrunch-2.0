@@ -32,6 +32,8 @@ interface RecipeDealTagRow {
   price_estimated?: boolean;
   fragment_by_weight?: boolean;
   package_weight_g?: number;
+  package_volume_ml?: number;
+  bundle_count?: number;
   raw_price?: number;
   raw_original_price?: number;
   price_unit?: string;
@@ -56,6 +58,8 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     priceEstimated: tag.price_estimated,
     fragmentByWeight: tag.fragment_by_weight,
     packageWeightG: tag.package_weight_g,
+    packageVolumeMl: tag.package_volume_ml,
+    bundleCount: tag.bundle_count,
     rawPrice: tag.raw_price,
     rawOriginalPrice: tag.raw_original_price,
     priceUnit: tag.price_unit as DealTag['priceUnit'],
@@ -100,9 +104,18 @@ function mapIngredient(
       ingredient.quantity,
       ingredient.unit,
       dealTag?.packageWeightG,
-      ingredient.name
+      ingredient.name,
+      dealTag?.packageVolumeMl,
+      dealTag?.bundleCount
     )
-      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name, 1, dealTag?.packageWeightG)
+      ? describeUseQuantityText(
+          ingredient.quantity,
+          ingredient.unit,
+          ingredient.name,
+          1,
+          dealTag?.packageWeightG,
+          dealTag?.bundleCount
+        )
       : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText: text, dealDisplayText,
@@ -128,9 +141,18 @@ function mapIngredient(
       ingredient.quantity,
       ingredient.unit,
       dealTag.packageWeightG,
-      ingredient.name
+      ingredient.name,
+      dealTag.packageVolumeMl,
+      dealTag.bundleCount
     )
-      ? describeUseQuantityText(ingredient.quantity, ingredient.unit, ingredient.name, 1, dealTag.packageWeightG)
+      ? describeUseQuantityText(
+          ingredient.quantity,
+          ingredient.unit,
+          ingredient.name,
+          1,
+          dealTag.packageWeightG,
+          dealTag.bundleCount
+        )
       : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText, dealDisplayText, useQuantityText,

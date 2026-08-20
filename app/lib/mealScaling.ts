@@ -94,14 +94,17 @@ export function scaleIngredientDisplay(
       scaledQuantity,
       ingredient.unit,
       ingredient.dealTag.packageWeightG,
-      ingredient.name
+      ingredient.name,
+      ingredient.dealTag.packageVolumeMl,
+      ingredient.dealTag.bundleCount
     )
       ? describeUseQuantityText(
           ingredient.quantity,
           ingredient.unit,
           ingredient.name,
           multiplier,
-          ingredient.dealTag.packageWeightG
+          ingredient.dealTag.packageWeightG,
+          ingredient.dealTag.bundleCount
         )
       : undefined;
     return {

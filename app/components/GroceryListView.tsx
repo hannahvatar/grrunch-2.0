@@ -32,6 +32,14 @@ interface GroceryItem {
   source: string;
   dealTag?: DealTag;
   multiplier?: number;
+  // Recipe items only (see recipeItems below) -- the real per-batch
+  // quantity/unit IngredientRow's package-count badge needs to tell a
+  // fragmented deal item from a non-fragmented one when `multiplier` is
+  // set. A standalone Best-Deals item (mapDealToGroceryItem) has no
+  // recipe context and never sets `multiplier` at all, so it leaves
+  // these undefined.
+  quantity?: string;
+  unit?: string;
   // The store this item is grouped under -- only ever set from a real
   // match (either the ingredient's own deal, or, for non-deal
   // ingredients, a genuine match against this week's flyers -- see
@@ -291,6 +299,8 @@ export function GroceryListView() {
         // afterward). An override stays fixed until the shopper edits it
         // again themselves.
         multiplier: ingredient.dealTag && !quantityOverrides.has(key) ? multiplier : undefined,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit,
       };
     });
   });
@@ -431,6 +441,8 @@ export function GroceryListView() {
                 checked={checked.has(item.key)}
                 onToggleCheck={() => toggleChecked(item.key)}
                 multiplier={item.multiplier}
+                quantity={item.quantity}
+                unit={item.unit}
                 // Deal-tagged rows only -- same blurred-backdrop/
                 // stacked treatment as the recipe page's own "On Sale
                 // This Week" deal items (Anabelle's ask), so a deal
