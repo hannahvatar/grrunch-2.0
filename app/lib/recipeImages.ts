@@ -108,6 +108,17 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Wok This Way Hoisin Pork': require('../assets/wok-this-way-hoisin-pork.jpeg'),
+  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
+  // no crop needed/applied, uncropped as uploaded.
+  'Curry Up Coconut Chicken': require('../assets/curry-up-coconut-chicken.jpeg'),
+  // Replaced with a "-rev3" shot Anabelle provided -- pre-emptively
+  // re-encoded via `sips -s format jpeg` before wiring in (the "-rev2"
+  // upload looked identical by every file-signature check yet still
+  // crashed Metro's bundler -- `file`/sips alone can't be trusted to
+  // catch this, so re-encoding first is now the standing precaution for
+  // every new photo, not just ones already known to be broken). Already
+  // at the card's ~1.7:1 target (1344x784), no crop needed.
+  'Breakfast for Dinner — Eggy Croissant': require('../assets/breakfast-for-dinner-eggy-croissant-rev3-fixed.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
