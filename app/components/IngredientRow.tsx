@@ -278,6 +278,30 @@ export function IngredientRow({
       lowerText
     );
 
+  // Same idea as itemNameContent above, but for the stacked/deal-card
+  // layout's own name source (dealDescription, the real flyer name --
+  // not the recipe's own ingredient name `text` is built from). Real
+  // gap, caught live: dealInfoEl (below) rendered dealDescription as a
+  // single plain string regardless of linkedText, so a sub-recipe
+  // linked from a DEAL-tagged ingredient (e.g. Potatoes -> "Crispy
+  // Breakfast Potatoes") never became clickable in the "On Sale This
+  // Week" card, even though the same recipe.tsx already passed
+  // linkedText/onLinkedTextPress here same as it does for the plain
+  // pantry list.
+  const linkIndexDeal = linkedText ? dealDescription.indexOf(linkedText.toLowerCase()) : -1;
+  const dealNameContent =
+    linkIndexDeal >= 0 && linkedText ? (
+      <>
+        {dealDescription.slice(0, linkIndexDeal)}
+        <Text style={styles.itemNameLink} onPress={onLinkedTextPress}>
+          {dealDescription.slice(linkIndexDeal, linkIndexDeal + linkedText.length)}
+        </Text>
+        {dealDescription.slice(linkIndexDeal + linkedText.length)}
+      </>
+    ) : (
+      dealDescription
+    );
+
   const infoEl = (
     <View style={styles.itemInfo}>
       <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
@@ -310,7 +334,7 @@ export function IngredientRow({
   const dealInfoEl = (
     <View style={styles.itemInfo}>
       <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
-        {dealDescription}
+        {dealNameContent}
       </Text>
       {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
       {showStoreLink && dealTag && (
