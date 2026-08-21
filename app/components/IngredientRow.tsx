@@ -213,7 +213,8 @@ export function IngredientRow({
             dealTag?.fragmentByWeight,
             multiplier,
             dealTag?.packageVolumeMl,
-            dealTag?.bundleCount
+            dealTag?.bundleCount,
+            dealTag?.name
           )
         )
       : dealQuantityBase;

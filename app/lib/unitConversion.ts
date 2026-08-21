@@ -773,7 +773,8 @@ export function computeDealPackageCount(
   fragmentByWeight: boolean | undefined,
   multiplier: number,
   packageVolumeMl?: number,
-  bundleCount?: number
+  bundleCount?: number,
+  ingredientName?: string
 ): number {
   if (fragmentByWeight) {
     const ua = parseUnitAmount(quantity, unit);
@@ -783,6 +784,32 @@ export function computeDealPackageCount(
       }
       if (ua.baseUnit === 'ml' && packageVolumeMl) {
         return Math.max(1, Math.ceil((ua.amount * multiplier) / packageVolumeMl));
+      }
+      // mL recipe quantity against a weight-denominated package (e.g.
+      // Cilantro, a real bunch priced/weighed by the gram but always
+      // measured in cups in a recipe) -- same cross-dimension gap as
+      // compute_deal_tag_pricing() had server-side (20260821_fragment_
+      // by_weight_ml_density_bridge.sql), just never mirrored here.
+      // Real bug, caught live: doubling "Curry Up, It's Vegan!" doubled
+      // the cilantro package badge to "2" even though 1/4 cup is a tiny
+      // fraction of one real ~50 g bunch -- this function's own
+      // fallback below (N batches = N packages) is only correct for a
+      // NON-fragmented item, but with no ml<->g bridge, a fragmented
+      // item measured by volume against a gram-denominated package fell
+      // through to that same fallback by accident. Bridges via the same
+      // STAPLE_DENSITIES_G_PER_CUP table scaleReferencePrice/nutrition
+      // text already use for this exact conversion.
+      if (ua.baseUnit === 'ml' && !packageVolumeMl && packageWeightG && ingredientName) {
+        const ingWords = normalizeWords(ingredientName);
+        const densityEntry = Object.entries(STAPLE_DENSITIES_G_PER_CUP).find(([name]) => {
+          const words = normalizeWords(name);
+          return words.length > 0 && words.every((w) => ingWords.includes(w));
+        });
+        if (densityEntry) {
+          const [, gramsPerCup] = densityEntry;
+          const bridgedGrams = (ua.amount / 236.588) * gramsPerCup;
+          return Math.max(1, Math.ceil((bridgedGrams * multiplier) / packageWeightG));
+        }
       }
       // Bundle count only applies to a real container-word quantity
       // (e.g. "1 bunch") -- a bare each-count (Kraft Singles-style, no
