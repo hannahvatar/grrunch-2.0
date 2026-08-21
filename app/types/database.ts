@@ -241,6 +241,7 @@ export type Database = {
           servings: number
           source: Database["public"]["Enums"]["recipe_source"]
           source_deal_ids: string[] | null
+          updated_at: string
         }
         Insert: {
           calories?: number | null
@@ -257,6 +258,7 @@ export type Database = {
           servings?: number
           source?: Database["public"]["Enums"]["recipe_source"]
           source_deal_ids?: string[] | null
+          updated_at?: string
         }
         Update: {
           calories?: number | null
@@ -273,6 +275,7 @@ export type Database = {
           servings?: number
           source?: Database["public"]["Enums"]["recipe_source"]
           source_deal_ids?: string[] | null
+          updated_at?: string
         }
         Relationships: []
       }
