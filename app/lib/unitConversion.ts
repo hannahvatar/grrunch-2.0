@@ -72,6 +72,14 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // found while adding Froot Loops French Toast. See the staple_densities
   // table (Supabase) for the server-side twin.
   milk: 244,
+  // 240 g/cup, same class of bug as milk above -- Creamy Lemon Salmon
+  // Fettuccine's "3/4 cup cooking cream" needed this to reach the real
+  // "Cream" reference's fixed 100 g nutrition basis (the reference's
+  // own price happens to be per-litre, which already scales fine
+  // mL-to-mL for PRICE with no bridge -- this is specifically the
+  // nutrition-basis gap). See the staple_densities table (Supabase)
+  // for the server-side twin.
+  cream: 240,
   // ~128 g/cup for garlic powder -- added as a proper staple (real price
   // + nutrition + density) alongside Paprika below, per Anabelle's ask,
   // while building Pork Back Ribs' cauliflower nugget rewrite. See the
@@ -555,6 +563,13 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // kitchen estimate matching typical grocery crown sizes). See the
   // staple_avg_weights table (Supabase) for the server-side twin.
   'broccoli crown': 340,
+  // Crispy Fish 'n' Chips -- "4 fish sticks per serving" (16 total).
+  // ~14 g/stick, real: High Liner's own nutrition panel states 8 sticks
+  // = 109 g. This bridge feeds BOTH the friendly "Recipe uses 16 fish
+  // sticks" display note AND (server-side twin) the actual package-
+  // count/fragmentation math against the real 700 g box -- 16 sticks is
+  // a genuine fraction of one box, not the whole thing.
+  'high liner family fish': 14,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -903,12 +918,20 @@ export function shouldShowUseQuantityText(
   // this covers both, and now compares precisely once a real
   // packageVolumeMl is on file (see 20260820020000_fragment_by_volume_
   // and_bundle_count.sql -- Lee Kum Kee Hoisin Sauce, 445 mL).
+  // Real bug, caught live: Creamy Lemon Salmon Fettuccine's "480 g"
+  // salmon against a real 454 g package (120 g/serving x 4, just over
+  // one 1 lb package) showed no note at all, since 480 is not LESS
+  // than 454 -- the `<` comparison only ever caught a genuine fragment,
+  // never a quantity that runs slightly OVER one whole package. Both
+  // are equally worth spelling out (neither cleanly maps to "exactly N
+  // whole packages"), so this now shows unless the amount matches the
+  // package size exactly.
   if (ua.baseUnit === 'g') {
-    if (packageWeightG) return ua.amount < packageWeightG;
+    if (packageWeightG) return ua.amount !== packageWeightG;
     return true;
   }
   if (ua.baseUnit === 'ml') {
-    if (packageVolumeMl) return ua.amount < packageVolumeMl;
+    if (packageVolumeMl) return ua.amount !== packageVolumeMl;
     return true;
   }
   // Each-based quantity that's ALREADY a natural count (e.g. "8 Kraft
@@ -1034,6 +1057,11 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   // itself is in place (same two-table pairing every other gram-based
   // friendly count needs, e.g. coloured peppers/split chicken breast).
   drumsticks: { singular: 'chicken drumstick', plural: 'chicken drumsticks' },
+  // Crispy Fish 'n' Chips -- "16" is a bare each-count (unit ""), same
+  // shape as Kraft Singles, so this reaches the bare-count branches
+  // directly (no gram bridge needed for the DISPLAY note itself -- the
+  // avg-weight bridge above is for pricing/nutrition scaling instead).
+  'high liner family fish': { singular: 'fish stick', plural: 'fish sticks' },
 };
 
 // Deal items where even a WHOLE container quantity (amount >= 1, not a
