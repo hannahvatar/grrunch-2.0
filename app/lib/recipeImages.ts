@@ -108,9 +108,14 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded already close to the card's ~1.7:1 target (1344x784) --
   // no crop needed/applied, uncropped as uploaded.
   'Wok This Way Hoisin Pork': require('../assets/wok-this-way-hoisin-pork.jpeg'),
-  // Uploaded already close to the card's ~1.7:1 target (1344x784) --
-  // no crop needed/applied, uncropped as uploaded.
-  'Curry Up Coconut Chicken': require('../assets/curry-up-coconut-chicken.jpeg'),
+  // Replaced with a "-rev" shot Anabelle provided -- pre-emptively
+  // re-encoded via `sips -s format jpeg` before wiring in (standing
+  // precaution since the Eggy Croissant photo outages -- a raw upload
+  // can look byte-valid by every file-signature check and still crash
+  // Metro's bundler). Already at the card's ~1.7:1 target (1344x784),
+  // no crop needed. Old unsuffixed original stays on disk
+  // (curry-up-coconut-chicken.jpeg) but is no longer referenced.
+  'Curry Up Coconut Chicken': require('../assets/curry-up-coconut-chicken-rev-fixed.jpeg'),
   // Replaced with a "-rev3" shot Anabelle provided -- pre-emptively
   // re-encoded via `sips -s format jpeg` before wiring in (the "-rev2"
   // upload looked identical by every file-signature check yet still
@@ -119,6 +124,11 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // every new photo, not just ones already known to be broken). Already
   // at the card's ~1.7:1 target (1344x784), no crop needed.
   'Breakfast for Dinner — Eggy Croissant': require('../assets/breakfast-for-dinner-eggy-croissant-rev3-fixed.jpeg'),
+  // Pre-emptively re-encoded via `sips -s format jpeg` before wiring in,
+  // same standing precaution as every photo since the Eggy Croissant
+  // outages. Already at the card's ~1.7:1 target (1344x784), no crop
+  // needed.
+  'Sticky Fingers Chicken': require('../assets/sticky-fingers-chicken-fixed.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
