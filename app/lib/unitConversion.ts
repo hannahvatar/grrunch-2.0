@@ -526,6 +526,31 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // uses 6 peaches". ~150 g for one medium peach (a standard kitchen
   // estimate, same policy as every other average-weight figure here).
   peaches: 150,
+  // Sticky Honey-Garlic Chicken Drumsticks -- same display-only shape
+  // as coloured peppers/split chicken breast/peaches above: the deal
+  // (Compliments Fresh Air-Chilled Drumsticks) is priced per lb with no
+  // package_weight_g, so the recipe's own gram quantity (960 g for "8
+  // drumsticks") is what pricing actually scales against -- this bridge
+  // only affects the friendly "Recipe uses 8 drumsticks" DISPLAY note.
+  // Client-only, deliberately no staple_avg_weights server row: that
+  // table only ever feeds compute_deal_tag_pricing()'s package/each
+  // branch, which a lb-priced deal never reaches (confirmed against the
+  // three lb-priced entries above, none of which have a server row
+  // either, despite older comments here implying otherwise). ~120 g for
+  // one bone-in, skin-on drumstick -- a standard kitchen estimate, same
+  // policy as every other average-weight figure here.
+  drumsticks: 120,
+  // Garlic Broccoli (merged into Sticky Honey-Garlic Chicken
+  // Drumsticks) -- "1 large broccoli crown" is a bare each-count, but
+  // its nutrition reference (Broccoli Crown, produce_reference_prices/
+  // staple_reference_prices) is per-100g -- needs this each<->g bridge
+  // to reach it, same as onion/eggs. Also retroactively fixes Honey
+  // Garlic Chicken Noodle Toss's existing "2 Broccoli Crown", which had
+  // real price data but no nutrition bridge either (found while adding
+  // this). ~340 g for one large crown (no thick stalk, a standard
+  // kitchen estimate matching typical grocery crown sizes). See the
+  // staple_avg_weights table (Supabase) for the server-side twin.
+  'broccoli crown': 340,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -970,6 +995,14 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above (gram
   // quantity -> friendly count, same bridge as coloured peppers).
   peaches: { singular: 'peach', plural: 'peaches' },
+  // Sticky Honey-Garlic Chicken Drumsticks -- Anabelle: "Reaplce Recipe
+  // uses 960 g of the package with Recipe uses 8 chicken drumsticks".
+  // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above -- without
+  // this label too, describeUseQuantityText falls through to the
+  // generic "N g of the package" text even though the weight bridge
+  // itself is in place (same two-table pairing every other gram-based
+  // friendly count needs, e.g. coloured peppers/split chicken breast).
+  drumsticks: { singular: 'chicken drumstick', plural: 'chicken drumsticks' },
 };
 
 // Deal items where even a WHOLE container quantity (amount >= 1, not a
