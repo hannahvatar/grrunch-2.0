@@ -92,6 +92,17 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // Napolitan. Found while rewriting BBQ Ribs 'n' Cauli Nuggets'
   // cauliflower nugget method to use it.
   'vegetable oil': 218,
+  // Same real gap, same fix, found while building Sticky Honey-Garlic
+  // Chicken Drumsticks: "Cooking oil" has its own staple_reference_prices
+  // row (aliased as a full data-duplicate of Vegetable oil, including
+  // nutrition) but this table only ever word-matches an ingredient's OWN
+  // words, and "cooking" is a different word from "vegetable" -- so
+  // "Cooking oil" silently fell through with no density bridge of its
+  // own, same as Vegetable oil before it. Already in live use (Curry Up
+  // Coconut Chicken's "1 tbsp Cooking oil") without anyone noticing,
+  // since a missing ~120 kcal contribution split across servings isn't
+  // obviously wrong by eye. Same density as its twin.
+  'cooking oil': 218,
   // Proactive staple additions (Anabelle: "before generating new
   // recipes, I want to add more staples") -- Peanut butter and Yogurt
   // already had real prices but no nutrition; Cream cheese, Cottage
