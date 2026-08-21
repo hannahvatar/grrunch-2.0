@@ -563,6 +563,13 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // kitchen estimate matching typical grocery crown sizes). See the
   // staple_avg_weights table (Supabase) for the server-side twin.
   'broccoli crown': 340,
+  // Crispy Fish 'n' Chips -- "4 fish sticks per serving" (16 total).
+  // ~14 g/stick, real: High Liner's own nutrition panel states 8 sticks
+  // = 109 g. This bridge feeds BOTH the friendly "Recipe uses 16 fish
+  // sticks" display note AND (server-side twin) the actual package-
+  // count/fragmentation math against the real 700 g box -- 16 sticks is
+  // a genuine fraction of one box, not the whole thing.
+  'high liner family fish': 14,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -1050,6 +1057,11 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   // itself is in place (same two-table pairing every other gram-based
   // friendly count needs, e.g. coloured peppers/split chicken breast).
   drumsticks: { singular: 'chicken drumstick', plural: 'chicken drumsticks' },
+  // Crispy Fish 'n' Chips -- "16" is a bare each-count (unit ""), same
+  // shape as Kraft Singles, so this reaches the bare-count branches
+  // directly (no gram bridge needed for the DISPLAY note itself -- the
+  // avg-weight bridge above is for pricing/nutrition scaling instead).
+  'high liner family fish': { singular: 'fish stick', plural: 'fish sticks' },
 };
 
 // Deal items where even a WHOLE container quantity (amount >= 1, not a
