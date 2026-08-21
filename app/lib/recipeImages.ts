@@ -137,6 +137,11 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // outages. Already at the card's ~1.7:1 target (1344x784), no crop
   // needed.
   "Curry Up, It's Vegan!": require('../assets/curry-up-its-vegan-fixed.jpeg'),
+  // Pre-emptively re-encoded via `sips -s format jpeg` before wiring in,
+  // same standing precaution as every photo since the Eggy Croissant
+  // outages. Already at the card's ~1.7:1 target (1344x784), no crop
+  // needed.
+  'Sunday Roast With the Most': require('../assets/sunday-roast-with-the-most-fixed.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
