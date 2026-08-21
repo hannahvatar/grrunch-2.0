@@ -30,11 +30,21 @@ export default function DevRecipesScreen() {
   // Anabelle: "reoder (just on this page) per newest first so its
   // easier for me to review recipes". fetchAllRecipes()'s Meal type
   // (shared with every other screen -- Meals tab, saved recipes, etc.)
-  // doesn't carry created_at, and adding it there would ripple out
+  // doesn't carry updated_at, and adding it there would ripple out
   // wider than this one review page needs. Fetched separately, just
   // the two columns needed, keyed by id -- scoped entirely to this
   // screen, no shared types touched.
-  const [createdAtById, setCreatedAtById] = useState<Record<string, string>>({});
+  //
+  // Sorts by updated_at, not created_at: a heavily-edited recipe (e.g.
+  // Sticky Fingers Chicken, rewritten today but created back on 08-19
+  // under an old name) needs to show up top when it's the one actually
+  // being worked on, not stay buried under its stale creation date.
+  // updated_at is a real column (20260821020000_recipes_updated_at.sql,
+  // auto-bumped by a trigger on every UPDATE) -- caught live, same
+  // request: Anabelle, on an unrelated Meals-tab question: "make sure
+  // the recipes show the newest first" -> "I meant just for the
+  // dev-recipes view".
+  const [updatedAtById, setUpdatedAtById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -43,12 +53,12 @@ export default function DevRecipesScreen() {
       fetchAllRecipes(),
       supabase
         .from('recipes')
-        .select('id, created_at')
-        .then(({ data }) => Object.fromEntries((data ?? []).map((r) => [r.id, r.created_at]))),
+        .select('id, updated_at')
+        .then(({ data }) => Object.fromEntries((data ?? []).map((r) => [r.id, r.updated_at]))),
     ])
-      .then(([recipeMeals, createdAt]) => {
+      .then(([recipeMeals, updatedAt]) => {
         setMeals(recipeMeals);
-        setCreatedAtById(createdAt);
+        setUpdatedAtById(updatedAt);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -78,12 +88,12 @@ export default function DevRecipesScreen() {
     );
   }
 
-  // Newest first -- missing/unknown created_at (shouldn't happen, but
-  // fetch failures degrade gracefully) sorts to the end rather than
-  // crashing or clumping at the top.
+  // Newest-worked-on first -- missing/unknown updated_at (shouldn't
+  // happen, but fetch failures degrade gracefully) sorts to the end
+  // rather than crashing or clumping at the top.
   const sorted = [...meals].sort((a, b) => {
-    const aTime = createdAtById[a.id] ? new Date(createdAtById[a.id]).getTime() : -Infinity;
-    const bTime = createdAtById[b.id] ? new Date(createdAtById[b.id]).getTime() : -Infinity;
+    const aTime = updatedAtById[a.id] ? new Date(updatedAtById[a.id]).getTime() : -Infinity;
+    const bTime = updatedAtById[b.id] ? new Date(updatedAtById[b.id]).getTime() : -Infinity;
     return bTime - aTime;
   });
 
