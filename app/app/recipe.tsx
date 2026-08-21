@@ -377,8 +377,8 @@ export default function RecipeScreen() {
                         stray leading gap before the description. */}
                     {addition.title ? (
                       <>
-                        <Text style={styles.optionalTitle}>{addition.title}</Text>
-                        {'  '}
+                        <Text style={styles.optionalTitle}>{addition.title}:</Text>
+                        {' '}
                       </>
                     ) : null}
                     {descriptionContent}
