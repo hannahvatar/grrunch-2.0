@@ -127,8 +127,16 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Pre-emptively re-encoded via `sips -s format jpeg` before wiring in,
   // same standing precaution as every photo since the Eggy Croissant
   // outages. Already at the card's ~1.7:1 target (1344x784), no crop
+  // needed. Key renamed from "Sticky Fingers Chicken" -- the recipe's
+  // old name -- to match the current title; the lookup is by exact
+  // name, so the rename alone silently dropped the photo to the
+  // placeholder until this key caught up.
+  'Honey, I Glazed the Chicken': require('../assets/sticky-fingers-chicken-fixed.jpeg'),
+  // Pre-emptively re-encoded via `sips -s format jpeg` before wiring in,
+  // same standing precaution as every photo since the Eggy Croissant
+  // outages. Already at the card's ~1.7:1 target (1344x784), no crop
   // needed.
-  'Sticky Fingers Chicken': require('../assets/sticky-fingers-chicken-fixed.jpeg'),
+  "Curry Up, It's Vegan!": require('../assets/curry-up-its-vegan-fixed.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
