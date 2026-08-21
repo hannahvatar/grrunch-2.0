@@ -136,6 +136,12 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // (Supabase) for the server-side twins.
   cornstarch: 120,
   oregano: 33,
+  // Basic Beef Lasagna -- same ~33 g/cup figure as oregano above
+  // (Italian seasoning is a blend of dried leafy herbs -- oregano,
+  // basil, thyme -- not a fine ground spice, so it gets the leafy-herb
+  // density, not the 100 g/cup ground-spice one). See the
+  // staple_densities table (Supabase) for the server-side twin.
+  'italian seasoning': 33,
   // Smoky Chicken, Beans & Corn Skillet -- ~100 g/cup for ground
   // spices, same figure already used for black pepper/paprika/garlic
   // powder. See the staple_densities table (Supabase) for the
