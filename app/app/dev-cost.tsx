@@ -687,8 +687,9 @@ export default function DevCostScreen() {
                 ))}
                 {referenceSearchOpen && referenceItem.trim().length >= 2 && referenceSearchResults.length === 0 && (
                   <Text style={styles.note}>
-                    Nothing in the reference tables matches "{referenceItem.trim()}". Look it up
-                    (grocerytracker.ca) and type the price/per/unit in below.
+                    No reference on file for "{referenceItem.trim()}". Either type a price/per/unit in below, or
+                    mark it not a valid match — an item with no benchmark still prices in recipes, it just
+                    carries no badge.
                   </Text>
                 )}
 
@@ -703,7 +704,7 @@ export default function DevCostScreen() {
                 {!bestReference && item.trim() !== '' && !referenceSearchOpen && (
                   <Text style={styles.note}>
                     Nothing matched "{item}" automatically — normal for a branded or oddly-worded flyer name.
-                    Search the field above by any word (e.g. "olives"), or type a price in by hand.
+                    Search the field above by any word (e.g. "olives"), or mark it not a valid match.
                   </Text>
                 )}
 

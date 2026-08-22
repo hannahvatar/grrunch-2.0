@@ -164,7 +164,7 @@ export function ReferenceCompareCard({
       {itemName.trim() && candidates.length === 0 && (
         <Text style={styles.note}>
           No reference matches "{itemName}" -- normal for branded/packaged goods, which these tables don't
-          cover. Look the item up (grocerytracker.ca) and enter the price by hand below.
+          cover. Enter a price by hand below, or leave the original price unknown (no badge).
         </Text>
       )}
 
@@ -179,7 +179,7 @@ export function ReferenceCompareCard({
 
       {!manualOpen && (
         <Pressable onPress={() => setManualOpen(true)} hitSlop={8}>
-          <Text style={styles.link}>None of these — enter a reference by hand (e.g. from grocerytracker.ca)</Text>
+          <Text style={styles.link}>None of these — enter a reference by hand</Text>
         </Pressable>
       )}
       {manualOpen && (
