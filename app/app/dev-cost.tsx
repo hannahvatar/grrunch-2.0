@@ -15,6 +15,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { supabase } from '../lib/supabase';
 import {
   COMPARE_UNIT_OPTIONS,
+  benchmarkCostForQuantity,
   compare,
   formatMoney,
   formatPctVsBenchmark,
@@ -164,6 +165,12 @@ export default function DevCostScreen() {
 
   const [recipeChoice, setRecipeChoice] = useState<'add' | 'skip' | null>(null);
   const [outcome, setOutcome] = useState<'confirmed' | 'rejected' | null>(null);
+  // The row Confirm/Reject will write to. Null when the fields were
+  // typed by hand rather than loaded from a chip -- there's nothing to
+  // save against in that case, so the buttons stay inert.
+  const [loadedDeal, setLoadedDeal] = useState<CuratedDeal | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -216,6 +223,8 @@ export default function DevCostScreen() {
 
   function loadDeal(deal: CuratedDeal) {
     const observed = observedQuantity(deal);
+    setLoadedDeal(deal);
+    setSaveError(null);
     setImageUrl(deal.image_url);
     setItem(deal.item_name);
     setPrice(deal.price != null ? String(deal.price) : '');
@@ -267,6 +276,77 @@ export default function DevCostScreen() {
     (usingPreviousPrice || referenceState === 'confirmed');
   const result = ready ? compare(parseFloat(price), quantity, unit, benchmark) : null;
 
+  // Confirm/Reject write the review through the same Edge Function
+  // dev-deals saves with -- one write path, one set of rules, rather
+  // than a second one that could drift. Anabelle: "when i confirm an
+  // item, it should be removed from the list".
+  //
+  // The function REPLACES every column in its contract, so each field
+  // this screen doesn't edit is echoed back from the loaded row
+  // (price_unit, package weight and its source, quantity_estimated,
+  // and especially keyword_matches -- sending an empty array would
+  // silently wipe hand-curated recipe-matching keywords).
+  //
+  // Deliberately NOT saved: the QTY/UNIT typed here. They describe what
+  // the price is a price FOR so the comparison can normalize, and don't
+  // map onto curated_deals.package_weight_g without assuming the deal
+  // is package-priced -- correcting a real package size stays a
+  // dev-deals job.
+  async function submitReview(reject: boolean) {
+    if (!loadedDeal) return;
+    setSaveError(null);
+    setSaving(true);
+
+    // What benchmark survived review decides the original price. A
+    // flyer-printed was-price is the store's own claim ('flyer'); a
+    // confirmed reference is ours ('reference'); an unmatched or
+    // unconfirmed reference leaves it null, which is what makes the
+    // item carry no discount badge at all.
+    const wasPriceNum = wasPrice.trim() === '' ? null : parseFloat(wasPrice);
+    const referenceCost =
+      !usingPreviousPrice && referenceState === 'confirmed' && result?.ok
+        ? benchmarkCostForQuantity(result.comparison, quantity, unit)
+        : undefined;
+    const originalPrice = wasPriceNum ?? referenceCost ?? null;
+    const originalPriceSource = wasPriceNum != null ? 'flyer' : referenceCost != null ? 'reference' : loadedDeal.original_price_source;
+
+    const { data, error: invokeError } = await supabase.functions.invoke<{ deal?: CuratedDeal; error?: string }>(
+      'update-curated-deal-pricing',
+      {
+        body: {
+          deal_id: loadedDeal.id,
+          item_name: item.trim() === '' ? loadedDeal.item_name : item.trim(),
+          price: price.trim() === '' ? null : parseFloat(price),
+          original_price: originalPrice,
+          price_unit: loadedDeal.price_unit,
+          package_weight_g: loadedDeal.package_weight_g,
+          package_weight_g_source: loadedDeal.package_weight_g_source,
+          quantity_estimated: loadedDeal.quantity_estimated,
+          original_price_source: originalPriceSource,
+          usage: recipeChoice === 'add' ? 'recipes' : recipeChoice === 'skip' ? 'deals' : loadedDeal.usage,
+          keyword_matches: loadedDeal.keyword_matches ?? [],
+          reject,
+        },
+      }
+    );
+    setSaving(false);
+
+    if (invokeError || data?.error || !data?.deal) {
+      setSaveError(data?.error ?? invokeError?.message ?? 'Save failed.');
+      return;
+    }
+
+    // Reviewed, so it leaves the queue. The count only drops if this
+    // row hadn't already been reviewed once -- re-reviewing something
+    // shouldn't make the backlog look smaller than it is.
+    setDeals((previous) => previous.filter((entry) => entry.id !== loadedDeal.id));
+    if (loadedDeal.pricing_reviewed_at === null) {
+      setToReviewCount((previous) => (previous === null ? previous : Math.max(0, previous - 1)));
+    }
+    setOutcome(reject ? 'rejected' : 'confirmed');
+    setLoadedDeal(null);
+  }
+
   if (!__DEV__) {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -287,7 +367,7 @@ export default function DevCostScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.devBanner}>
-          <Text style={styles.devBannerText}>DEV ONLY -- nothing here is saved</Text>
+          <Text style={styles.devBannerText}>DEV ONLY -- Confirm/Reject write to curated_deals</Text>
         </View>
 
         {toReviewCount !== null && (
@@ -525,8 +605,8 @@ export default function DevCostScreen() {
                     no discount badge, since a badge would have to claim a saving nobody can back up.
                   </Text>
                   <Text style={styles.note}>
-                    To make that real, leave "Original price is unknown" checked in dev-deals. Nothing was
-                    changed here, and no reference row was touched.
+                    Confirming below saves it with no original price, which is what leaves it badge-less. No
+                    reference row is touched.
                   </Text>
                 </>
               )}
@@ -588,13 +668,29 @@ export default function DevCostScreen() {
             </View>
 
             <View style={styles.row}>
-              <Pressable style={[styles.button, styles.flex1]} onPress={() => setOutcome('confirmed')}>
-                <Text style={styles.buttonText}>Confirm</Text>
+              <Pressable
+                style={[styles.button, styles.flex1, (!loadedDeal || saving) && styles.buttonDisabled]}
+                onPress={() => submitReview(false)}
+                disabled={!loadedDeal || saving}
+              >
+                {saving ? <ActivityIndicator color={INK} /> : <Text style={styles.buttonText}>Confirm</Text>}
               </Pressable>
-              <Pressable style={[styles.button, styles.flex1]} onPress={() => setOutcome('rejected')}>
+              <Pressable
+                style={[styles.button, styles.flex1, (!loadedDeal || saving) && styles.buttonDisabled]}
+                onPress={() => submitReview(true)}
+                disabled={!loadedDeal || saving}
+              >
                 <Text style={styles.buttonText}>Reject</Text>
               </Pressable>
             </View>
+
+            {!loadedDeal && !outcome && (
+              <Text style={styles.note}>
+                Pick a cutout above to review — Confirm/Reject save against a real deal, so they're inert for
+                hand-typed items.
+              </Text>
+            )}
+            {saveError && <Text style={styles.blocked}>{saveError}</Text>}
 
             {outcome && (
               <Text style={styles.note}>
@@ -602,9 +698,9 @@ export default function DevCostScreen() {
                 {recipeChoice === 'add'
                   ? ' · added to recipes'
                   : recipeChoice === 'skip'
-                    ? " · not added to recipes"
+                    ? ' · not added to recipes'
                     : ''}
-                {' — nothing was written. Approve/reject for real in dev-deals.'}
+                {' — saved and removed from the list. Quantity/unit are comparison-only and were not saved.'}
               </Text>
             )}
           </View>
@@ -727,6 +823,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  buttonDisabled: { opacity: 0.4 },
   resultRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   resultLabel: { fontSize: 12, color: MUTED },
   resultValue: { fontSize: 13, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
