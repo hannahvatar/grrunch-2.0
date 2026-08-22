@@ -30,6 +30,7 @@ import {
   fetchStatcanPrices,
   rankReferenceCandidates,
 } from '../lib/staplePrices';
+import { sizeFromItemName, splitMultiItemName } from '../lib/dealNames';
 import type { Tables } from '../types/database';
 
 type CuratedDeal = Tables<'curated_deals'>;
@@ -51,47 +52,20 @@ const UNIT_OPTIONS = COMPARE_UNIT_OPTIONS.map((unit) => ({ value: unit, label: u
 // package and reads as a far better deal than it is. A package/each
 // deal's price is the flat whole-package price, so its real weight (or
 // volume) is the honest quantity.
-const NAME_SIZE_UNITS: Array<[RegExp, CompareUnit]> = [
-  [/^(kilograms?|kg)$/, 'kg'],
-  [/^(grams?|gr|g)$/, 'g'],
-  [/^(millilitres?|milliliters?|ml)$/, 'ml'],
-  [/^(litres?|liters?|l)$/, 'L'],
-  [/^(pounds?|lbs?)$/, 'lb'],
-  [/^(ounces?|oz)$/, 'oz'],
-];
-
-// Last resort when a deal row carries no package_weight_g or
-// package_volume_ml: most flyer names state the size themselves
-// ("AROY-D COCONUT MILK, 400 ML", "KRAFT SINGLES, 410 g"). Without
-// this, every such row loads as "1 ea" and the mismatch guard blocks
-// the comparison against a weight/volume reference -- the screen would
-// look broken on the majority of real deals purely because a field
-// upstream is blank.
-//
-// A parsed size is a GUESS (a range like "234-284 G" yields its upper
-// bound; "650/750 G" yields the larger tub), so it's always flagged in
-// the UI rather than presented as fact, and it never overrides a real
-// stored package size. Takes the LAST match in the name, since a brand
-// or product word can contain a stray number earlier in the string.
-function sizeFromItemName(name: string): { quantity: string; unit: CompareUnit } | undefined {
-  const matches = [...name.matchAll(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\b/g)];
-  for (let index = matches.length - 1; index >= 0; index -= 1) {
-    const [, amount, rawUnit] = matches[index];
-    const unitText = rawUnit.toLowerCase();
-    for (const [pattern, unit] of NAME_SIZE_UNITS) {
-      if (pattern.test(unitText)) return { quantity: amount, unit };
-    }
-  }
-  return undefined;
-}
-
-function observedQuantity(deal: CuratedDeal): { quantity: string; unit: CompareUnit; fromName?: boolean } {
+function observedQuantity(
+  deal: CuratedDeal,
+  nameForSize: string
+): { quantity: string; unit: CompareUnit; fromName?: boolean } {
   if (deal.price_unit === 'lb') return { quantity: '1', unit: 'lb' };
   if (deal.price_unit === 'kg') return { quantity: '1', unit: 'kg' };
   if (deal.price_unit === '100g') return { quantity: '100', unit: 'g' };
   if (deal.package_weight_g != null) return { quantity: String(deal.package_weight_g), unit: 'g' };
   if (deal.package_volume_ml != null) return { quantity: String(deal.package_volume_ml), unit: 'ml' };
-  const fromName = sizeFromItemName(deal.item_name);
+  // Reads the size off the PRODUCT's name, which for a multi-item
+  // cutout is one part ("CAPERS, 125 mL"), not the whole combined
+  // label -- otherwise all three parts would inherit whichever size
+  // happened to come last.
+  const fromName = sizeFromItemName(nameForSize);
   if (fromName) return { ...fromName, fromName: true };
   return { quantity: '1', unit: 'ea' };
 }
@@ -170,10 +144,14 @@ export default function DevCostScreen() {
   // save against in that case, so the buttons stay inert.
   const [loadedDeal, setLoadedDeal] = useState<CuratedDeal | null>(null);
   const [saving, setSaving] = useState(false);
+  const [splitting, setSplitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([
+  // Pulled out of the mount effect so a split can refresh the queue --
+  // the new copies need to appear as their own chips immediately, and
+  // they add to the backlog count.
+  async function reloadDeals() {
+    const [dealsResult, countResult] = await Promise.all([
       // Unreviewed first, so tapping through the chips left-to-right
       // actually works the backlog down rather than landing on items
       // that were already dealt with.
@@ -187,19 +165,21 @@ export default function DevCostScreen() {
         .from('curated_deals')
         .select('id', { count: 'exact', head: true })
         .is('pricing_reviewed_at', null),
-      fetchStatcanPrices(),
-      fetchProducePrices(),
-      fetchStaplePrices(),
-    ])
-      .then(([dealsResult, countResult, statcanPrices, producePrices, staplePrices]) => {
-        setDeals((dealsResult.data ?? []) as CuratedDeal[]);
-        setToReviewCount(countResult.count ?? null);
+    ]);
+    setDeals((dealsResult.data ?? []) as CuratedDeal[]);
+    setToReviewCount(countResult.count ?? null);
+  }
+
+  useEffect(() => {
+    Promise.all([reloadDeals(), fetchStatcanPrices(), fetchProducePrices(), fetchStaplePrices()])
+      .then(([, statcanPrices, producePrices, staplePrices]) => {
         setStatcan(statcanPrices);
         setProduce(producePrices);
         setStaple(staplePrices);
       })
       .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Editing ANY reference field drops the confirmation -- a sign-off
@@ -216,17 +196,82 @@ export default function DevCostScreen() {
     };
   }
 
+  // One entry per PRODUCT, not per row. A cutout naming several
+  // products ("UNICO OLIVES 375 mL, CAPERS, 125 mL or HOT PEPPER
+  // RINGS, 750 mL") shows up once per product -- Anabelle: "i should
+  // see it 3 times".
+  //
+  // Those products can't share one row: each needs its own package size
+  // and its own reference, and confirming would write one name over the
+  // others. So each part is paired with its OWN row, matched by
+  // position among the sibling copies made by duplicate-curated-deal.
+  // Until enough copies exist, the extra parts are shown as pending a
+  // split rather than pretending to be reviewable.
+  const chipEntries = useMemo(() => {
+    const byName = new Map<string, CuratedDeal[]>();
+    for (const deal of deals) {
+      const siblings = byName.get(deal.item_name);
+      if (siblings) siblings.push(deal);
+      else byName.set(deal.item_name, [deal]);
+    }
+    for (const siblings of byName.values()) {
+      siblings.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    }
+
+    const seen = new Set<string>();
+    const entries: Array<{
+      key: string;
+      label: string;
+      itemName: string;
+      deal: CuratedDeal | null;
+      parts: string[];
+      needsSplit: boolean;
+    }> = [];
+
+    for (const deal of deals) {
+      if (seen.has(deal.item_name)) continue;
+      seen.add(deal.item_name);
+      const siblings = byName.get(deal.item_name) ?? [deal];
+      const parts = splitMultiItemName(deal.item_name);
+
+      if (parts.length === 1) {
+        entries.push({
+          key: deal.id,
+          label: deal.item_name,
+          itemName: deal.item_name,
+          deal,
+          parts,
+          needsSplit: false,
+        });
+        continue;
+      }
+
+      parts.forEach((part, index) => {
+        const row = siblings[index] ?? null;
+        entries.push({
+          key: row ? row.id : `${deal.id}-part-${index}`,
+          label: part,
+          itemName: part,
+          deal: row,
+          parts,
+          needsSplit: row === null,
+        });
+      });
+    }
+    return entries;
+  }, [deals]);
+
   const bestReference = useMemo(() => {
     if (!item.trim()) return undefined;
     return rankReferenceCandidates(item, statcan, produce, staple)[0];
   }, [item, statcan, produce, staple]);
 
-  function loadDeal(deal: CuratedDeal) {
-    const observed = observedQuantity(deal);
+  function loadDeal(deal: CuratedDeal, productName: string) {
+    const observed = observedQuantity(deal, productName);
     setLoadedDeal(deal);
     setSaveError(null);
     setImageUrl(deal.image_url);
-    setItem(deal.item_name);
+    setItem(productName);
     setPrice(deal.price != null ? String(deal.price) : '');
     setQuantity(observed.quantity);
     setUnit(observed.unit);
@@ -239,7 +284,10 @@ export default function DevCostScreen() {
     // Prefilled from the best real reference match, then fully
     // editable -- the suggestion is a starting point, the Confirm
     // reference button is the actual decision.
-    const match = rankReferenceCandidates(deal.item_name, statcan, produce, staple)[0];
+    // Matched on the PRODUCT name -- "CAPERS, 125 mL" finds a capers
+    // reference, where the combined cutout label would match nothing
+    // useful (or worse, whichever product happens to share a word).
+    const match = rankReferenceCandidates(productName, statcan, produce, staple)[0];
     if (match) {
       const split = splitReferenceUnit(match.unit);
       setReferenceItem(match.name);
@@ -254,6 +302,30 @@ export default function DevCostScreen() {
     }
   }
 
+  // Makes the extra products real rows, via the same
+  // duplicate-curated-deal function dev-deals' own Duplicate button
+  // uses -- one copy per missing part. Every copy keeps the combined
+  // name (and comes back with pricing_reviewed_at null, so all of them
+  // re-enter the backlog); each one gets its real single-product name
+  // when it's confirmed, since Confirm writes the ITEM field.
+  async function splitCutout(deal: CuratedDeal, missing: number) {
+    setSaveError(null);
+    setSplitting(true);
+    for (let index = 0; index < missing; index += 1) {
+      const { data, error: invokeError } = await supabase.functions.invoke<{ duplicate?: unknown; error?: string }>(
+        'duplicate-curated-deal',
+        { body: { deal_id: deal.id } }
+      );
+      if (invokeError || data?.error || !data?.duplicate) {
+        setSaveError(data?.error ?? invokeError?.message ?? 'Split failed.');
+        setSplitting(false);
+        return;
+      }
+    }
+    setSplitting(false);
+    await reloadDeals();
+  }
+
   function useSuggestedReference() {
     if (!bestReference) return;
     const split = splitReferenceUnit(bestReference.unit);
@@ -263,6 +335,16 @@ export default function DevCostScreen() {
     setReferenceUnit(split.unit);
     setReferenceState('unconfirmed');
   }
+
+  // How many more copies this cutout needs before every product it
+  // names has a row of its own.
+  const missingSplitRows = loadedDeal
+    ? Math.max(
+        0,
+        splitMultiItemName(loadedDeal.item_name).length -
+          deals.filter((entry) => entry.item_name === loadedDeal.item_name).length
+      )
+    : 0;
 
   const usingPreviousPrice = wasPrice.trim() !== '';
   const benchmark: Benchmark = usingPreviousPrice
@@ -380,21 +462,27 @@ export default function DevCostScreen() {
         {loadError && <Text style={styles.blocked}>Couldn't load deals. Check the dev server/console.</Text>}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.chipRow}>
-            {deals.map((deal) => (
+            {chipEntries.map((entry) => (
               <Pressable
-                key={deal.id}
-                style={[styles.chip, item === deal.item_name && styles.chipSelected]}
-                onPress={() => loadDeal(deal)}
+                key={entry.key}
+                style={[
+                  styles.chip,
+                  item === entry.itemName && styles.chipSelected,
+                  entry.needsSplit && styles.chipNeedsSplit,
+                ]}
+                onPress={() => (entry.deal ? loadDeal(entry.deal, entry.itemName) : undefined)}
+                disabled={!entry.deal}
               >
                 <Text
-                  style={[styles.chipText, item === deal.item_name && styles.chipTextSelected]}
+                  style={[styles.chipText, item === entry.itemName && styles.chipTextSelected]}
                   numberOfLines={1}
                 >
-                  {deal.item_name}
+                  {entry.label}
+                  {entry.needsSplit ? ' · needs split' : ''}
                 </Text>
               </Pressable>
             ))}
-            {deals.length === 0 && <Text style={styles.note}>No deals in the table yet.</Text>}
+            {chipEntries.length === 0 && <Text style={styles.note}>No deals in the table yet.</Text>}
           </View>
         </ScrollView>
 
@@ -402,6 +490,41 @@ export default function DevCostScreen() {
           <View style={[styles.column, twoColumn && styles.columnFlex]}>
             <View style={styles.block}>
               <Text style={styles.blockTitle}>FLYER CUTOUT</Text>
+
+              {loadedDeal && splitMultiItemName(loadedDeal.item_name).length > 1 && (
+                <View style={styles.splitCallout}>
+                  <Text style={styles.note}>
+                    This cutout prices {splitMultiItemName(loadedDeal.item_name).length} products together:
+                    {splitMultiItemName(loadedDeal.item_name).map((part, index) => `\n${index + 1}. ${part}`)}
+                  </Text>
+                  {missingSplitRows > 0 ? (
+                    <>
+                      <Pressable
+                        style={[styles.button, splitting && styles.buttonDisabled]}
+                        onPress={() => splitCutout(loadedDeal, missingSplitRows)}
+                        disabled={splitting}
+                      >
+                        {splitting ? (
+                          <ActivityIndicator color={INK} />
+                        ) : (
+                          <Text style={styles.buttonText}>
+                            Split into {splitMultiItemName(loadedDeal.item_name).length} separate items
+                          </Text>
+                        )}
+                      </Pressable>
+                      <Text style={styles.note}>
+                        Copies this row {missingSplitRows} more time{missingSplitRows === 1 ? '' : 's'} so each
+                        product gets its own size, reference and verdict. Each copy keeps the combined name until
+                        you confirm it under its own.
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.note}>
+                      Already split — each product has its own row. Confirming saves this one as "{item}".
+                    </Text>
+                  )}
+                </View>
+              )}
 
               <View style={styles.photoRow}>
                 {imageUrl ? (
@@ -765,6 +888,7 @@ const styles = StyleSheet.create({
   },
   blockTitle: { fontSize: 11, letterSpacing: 1, color: MUTED, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   blockHeading: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  splitCallout: { gap: 8, borderWidth: 1.5, borderColor: RULE, borderRadius: 10, padding: 10 },
   photoRow: { alignItems: 'flex-start' },
   photo: { width: 120, height: 90, borderRadius: 8 },
   photoPlaceholder: {
@@ -802,6 +926,7 @@ const styles = StyleSheet.create({
     maxWidth: 260,
   },
   chipSelected: { backgroundColor: INK },
+  chipNeedsSplit: { borderStyle: 'dashed', opacity: 0.55 },
   chipText: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   chipTextSelected: { color: '#fff' },
   radioChip: {
