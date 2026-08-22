@@ -108,6 +108,11 @@ export default function DevCostScreen() {
   // does not tick down as you work here: this screen writes nothing, so
   // an item is only ever really reviewed by saving it in dev-deals.
   const [toReviewCount, setToReviewCount] = useState<number | null>(null);
+  // Every item_name in the table (not just the loaded window) plus the
+  // ones confirmed in this session. A product whose name already exists
+  // as a row has been dealt with, and must never be handed out again --
+  // see chipEntries.
+  const [claimedNames, setClaimedNames] = useState<Set<string>>(new Set());
 
   const [statcan, setStatcan] = useState<Awaited<ReturnType<typeof fetchStatcanPrices>>>([]);
   const [produce, setProduce] = useState<Awaited<ReturnType<typeof fetchProducePrices>>>([]);
@@ -156,7 +161,7 @@ export default function DevCostScreen() {
   // the new copies need to appear as their own chips immediately, and
   // they add to the backlog count.
   async function reloadDeals() {
-    const [dealsResult, countResult] = await Promise.all([
+    const [dealsResult, countResult, namesResult] = await Promise.all([
       // Unreviewed first, so tapping through the chips left-to-right
       // actually works the backlog down rather than landing on items
       // that were already dealt with.
@@ -170,9 +175,11 @@ export default function DevCostScreen() {
         .from('curated_deals')
         .select('id', { count: 'exact', head: true })
         .is('pricing_reviewed_at', null),
+      supabase.from('curated_deals').select('item_name'),
     ]);
     setDeals((dealsResult.data ?? []) as CuratedDeal[]);
     setToReviewCount(countResult.count ?? null);
+    setClaimedNames(new Set((namesResult.data ?? []).map((row) => row.item_name)));
   }
 
   useEffect(() => {
@@ -251,7 +258,16 @@ export default function DevCostScreen() {
         continue;
       }
 
-      parts.forEach((part, index) => {
+      // A product that already exists as its own row is DONE -- never
+      // offer it again. Pairing by position among the remaining
+      // combined-name rows (the first version of this) meant that
+      // confirming a product renamed one row, dropped it from the list,
+      // and immediately re-attached that same product to the next row
+      // along. Anabelle: "i approved unico olives 3 imes its still
+      // there" -- and by then all three copies had been renamed to
+      // olives, with capers and hot pepper rings never getting a row.
+      const remaining = parts.filter((part) => !claimedNames.has(part));
+      remaining.forEach((part, index) => {
         const row = siblings[index] ?? null;
         entries.push({
           key: row ? row.id : `${deal.id}-part-${index}`,
@@ -262,9 +278,23 @@ export default function DevCostScreen() {
           needsSplit: row === null,
         });
       });
+      // More copies than products left to name means someone split one
+      // time too many. Shown as its own chip rather than hidden, so a
+      // stray copy can be found and rejected instead of lingering
+      // invisibly in the table.
+      siblings.slice(remaining.length).forEach((row) => {
+        entries.push({
+          key: row.id,
+          label: `${deal.item_name} · extra copy`,
+          itemName: deal.item_name,
+          deal: row,
+          parts,
+          needsSplit: false,
+        });
+      });
     }
     return entries;
-  }, [deals]);
+  }, [deals, claimedNames]);
 
   // Free-text search across all three reference tables. The automatic
   // matcher is deliberately strict (every word of the reference name
@@ -385,7 +415,7 @@ export default function DevCostScreen() {
   const missingSplitRows = loadedDeal
     ? Math.max(
         0,
-        splitMultiItemName(loadedDeal.item_name).length -
+        splitMultiItemName(loadedDeal.item_name).filter((part) => !claimedNames.has(part)).length -
           deals.filter((entry) => entry.item_name === loadedDeal.item_name).length
       )
     : 0;
@@ -466,6 +496,7 @@ export default function DevCostScreen() {
     // row hadn't already been reviewed once -- re-reviewing something
     // shouldn't make the backlog look smaller than it is.
     setDeals((previous) => previous.filter((entry) => entry.id !== loadedDeal.id));
+    setClaimedNames((previous) => new Set(previous).add(item.trim()));
     if (loadedDeal.pricing_reviewed_at === null) {
       setToReviewCount((previous) => (previous === null ? previous : Math.max(0, previous - 1)));
     }
