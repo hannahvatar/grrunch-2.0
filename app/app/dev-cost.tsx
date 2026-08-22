@@ -29,6 +29,7 @@ import {
   fetchStaplePrices,
   fetchStatcanPrices,
   rankReferenceCandidates,
+  type ReferenceTier,
 } from '../lib/staplePrices';
 import { sizeFromItemName, splitMultiItemName } from '../lib/dealNames';
 import type { Tables } from '../types/database';
@@ -127,6 +128,10 @@ export default function DevCostScreen() {
   const [referencePrice, setReferencePrice] = useState('');
   const [referencePer, setReferencePer] = useState('');
   const [referenceUnit, setReferenceUnit] = useState<CompareUnit>('g');
+  // Open while she's typing in STATCAN ITEM, closed once a row is
+  // picked -- otherwise the chosen row would keep sitting under the
+  // field as a "result" for its own name.
+  const [referenceSearchOpen, setReferenceSearchOpen] = useState(false);
   // Tri-state, not a boolean. 'unmatched' means the suggested
   // reference is not a fair comparison for this item -- Anabelle:
   // "curry sauce was ref to hot sauce and I dont think its a valid
@@ -261,6 +266,44 @@ export default function DevCostScreen() {
     return entries;
   }, [deals]);
 
+  // Free-text search across all three reference tables. The automatic
+  // matcher is deliberately strict (every word of the reference name
+  // must appear in the item's), which is right for pricing recipes
+  // unattended but leaves a reviewer stuck whenever a flyer name is
+  // branded or worded differently -- Anabelle: "Can the STATCAN ITEM
+  // input could be a search field if i want to reajust the ref item".
+  // This is plain substring matching on purpose: she's reading the
+  // results and choosing, so it should surface everything vaguely
+  // related rather than apply the engine's own conservative rule.
+  const referenceSearchResults = useMemo(() => {
+    const query = referenceItem.trim().toLowerCase();
+    if (!referenceSearchOpen || query.length < 2) return [];
+    const tiers: Array<[typeof statcan, ReferenceTier]> = [
+      [statcan, 'statcan'],
+      [produce, 'produce'],
+      [staple, 'staple'],
+    ];
+    const matches: Array<{ name: string; avgPrice: number; unit: string; source: ReferenceTier }> = [];
+    for (const [prices, source] of tiers) {
+      for (const price of prices) {
+        if (price.ingredientName.toLowerCase().includes(query)) {
+          matches.push({ name: price.ingredientName, avgPrice: price.avgPrice, unit: price.unit, source });
+        }
+      }
+    }
+    return matches.slice(0, 8);
+  }, [referenceItem, referenceSearchOpen, statcan, produce, staple]);
+
+  function pickReference(match: { name: string; avgPrice: number; unit: string }) {
+    const split = splitReferenceUnit(match.unit);
+    setReferenceItem(match.name);
+    setReferencePrice(match.avgPrice.toFixed(2));
+    setReferencePer(split.per);
+    setReferenceUnit(split.unit);
+    setReferenceState('unconfirmed');
+    setReferenceSearchOpen(false);
+  }
+
   const bestReference = useMemo(() => {
     if (!item.trim()) return undefined;
     return rankReferenceCandidates(item, statcan, produce, staple)[0];
@@ -270,6 +313,7 @@ export default function DevCostScreen() {
     const observed = observedQuantity(deal, productName);
     setLoadedDeal(deal);
     setSaveError(null);
+    setReferenceSearchOpen(false);
     setImageUrl(deal.image_url);
     setItem(productName);
     setPrice(deal.price != null ? String(deal.price) : '');
@@ -620,11 +664,33 @@ export default function DevCostScreen() {
                   <TextInput
                     style={styles.input}
                     value={referenceItem}
-                    onChangeText={editReference(setReferenceItem)}
-                    placeholder="matched reference item…"
+                    onChangeText={(value) => {
+                      editReference(setReferenceItem)(value);
+                      setReferenceSearchOpen(true);
+                    }}
+                    placeholder="search reference prices…"
                     placeholderTextColor={MUTED}
                   />
                 </Field>
+
+                {referenceSearchResults.map((match) => (
+                  <Pressable
+                    key={`${match.source}-${match.name}-${match.unit}`}
+                    style={styles.searchResult}
+                    onPress={() => pickReference(match)}
+                  >
+                    <Text style={styles.searchResultName}>{match.name}</Text>
+                    <Text style={styles.searchResultMeta}>
+                      ${match.avgPrice.toFixed(2)} / {match.unit} · {match.source}
+                    </Text>
+                  </Pressable>
+                ))}
+                {referenceSearchOpen && referenceItem.trim().length >= 2 && referenceSearchResults.length === 0 && (
+                  <Text style={styles.note}>
+                    Nothing in the reference tables matches "{referenceItem.trim()}". Look it up
+                    (grocerytracker.ca) and type the price/per/unit in below.
+                  </Text>
+                )}
 
                 {bestReference && bestReference.name !== referenceItem && (
                   <Pressable onPress={useSuggestedReference} hitSlop={8}>
@@ -634,10 +700,10 @@ export default function DevCostScreen() {
                     </Text>
                   </Pressable>
                 )}
-                {!bestReference && item.trim() !== '' && (
+                {!bestReference && item.trim() !== '' && !referenceSearchOpen && (
                   <Text style={styles.note}>
-                    No reference matches "{item}" — normal for branded goods. Look it up (grocerytracker.ca) and
-                    type the numbers in.
+                    Nothing matched "{item}" automatically — normal for a branded or oddly-worded flyer name.
+                    Search the field above by any word (e.g. "olives"), or type a price in by hand.
                   </Text>
                 )}
 
@@ -888,6 +954,16 @@ const styles = StyleSheet.create({
   },
   blockTitle: { fontSize: 11, letterSpacing: 1, color: MUTED, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   blockHeading: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  searchResult: {
+    borderWidth: 1.5,
+    borderColor: RULE,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 2,
+  },
+  searchResultName: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  searchResultMeta: { fontSize: 12, color: MUTED },
   splitCallout: { gap: 8, borderWidth: 1.5, borderColor: RULE, borderRadius: 10, padding: 10 },
   photoRow: { alignItems: 'flex-start' },
   photo: { width: 120, height: 90, borderRadius: 8 },
