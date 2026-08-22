@@ -180,6 +180,20 @@ export function matchStaplePrice(
 // produce prices (fills the gap StatCan leaves), then human-verified
 // staple prices last (never AI-guessed -- see fetchStaplePrices).
 //
+// KNOWN DIVERGENCE from the server (found 2026-08-21 while building the
+// reference comparison tool, not fixed here): the Postgres side stopped
+// working this way in 20260820000000_reference_tier_most_specific_wins.sql
+// -- it now checks all three tiers unconditionally and keeps the single
+// MOST SPECIFIC match across all of them, precisely because first-tier-
+// wins was picking worse prices (statcan's generic "Milk" beating a real
+// "Coconut milk" entry). This function was never updated to match, so a
+// recipe's per-ingredient "$X avg." display here can disagree with the
+// price/serving the server computed for that same ingredient. Left alone
+// deliberately: aligning it changes displayed prices across the app and
+// deserves its own before/after review, not a drive-by edit inside an
+// unrelated feature. rankReferenceCandidates() below follows the SERVER
+// rule, since that's the number a deal review is judged against.
+//
 // The matched reference price is scaled to the ingredient's actual
 // quantity (see unitConversion.ts) rather than returned in full -- "1
 // tbsp olive oil" should cost a fraction of a "$/100ml" reference, not
@@ -207,4 +221,133 @@ export function matchReferencePrice(
     return { avgPrice: scaled, unit: match.unit, source };
   }
   return undefined;
+}
+
+export type ReferenceTier = 'statcan' | 'produce' | 'staple';
+
+// One reference-table entry offered to the reviewer as a possible
+// comparison price for an item, with why it's being offered:
+//   'engine'  -- the strict word-subset rule (matchStaplePrice's first
+//               pass) matches, so this is a reference the app itself
+//               would genuinely use for an ingredient of this name.
+//   'variety' -- matched only via VARIETY_DESCRIPTORS (the reverse
+//               direction, e.g. "Rice" -> "White rice"), same as
+//               matchStaplePrice's second pass.
+//
+// A third, looser kind (shares ANY word) was built and then removed the
+// same day it was tried: produce_reference_prices stores full flyer
+// names, so "NO NAME(R) NATURALLY IMPERFECT(TM) SWEET PEPPERS, 2.5 LB"
+// shares name/naturally/imperfect with every other no-name row and
+// dragged in six unrelated products (zucchini, cucumbers, avocados,
+// mangoes) as suggested comparison prices. Anabelle: "Remove this
+// section its useless". A reference the matcher can't justify is now
+// entered by hand instead -- typing "$3.86 / 750 grams" is less work
+// than reading past six wrong ones.
+export interface ReferenceCandidate {
+  name: string;
+  avgPrice: number;
+  unit: string;
+  source: ReferenceTier;
+  matchKind: 'engine' | 'variety';
+  // Matched word count -- the same specificity measure the server's
+  // "most specific wins" tie-break uses.
+  specificity: number;
+  // True for the single candidate the server-side pricing engine
+  // (refresh_recipe_deal_tags' staple-fallback tier) would pick on its
+  // own for an ingredient with this name.
+  isEnginePick: boolean;
+}
+
+const TIER_ORDER: ReferenceTier[] = ['statcan', 'produce', 'staple'];
+
+// Ranks every reference entry that could plausibly price an item, best
+// first, for a human to confirm one (step 2 of Anabelle's spec: "Match
+// with StatCan reference or other reliable reference. I confirm the
+// reference"). matchStaplePrice() answers a different question -- which
+// SINGLE entry the app uses with no human in the loop -- so this can't
+// just call it: a reviewer needs to see the alternatives, including the
+// near-misses that explain why an item ends up unpriced.
+//
+// isEnginePick deliberately follows the SERVER's rule (all three tiers
+// checked, single most-specific match across all of them wins, ties
+// broken by tier order) rather than this file's own
+// matchReferencePrice(), because the server is what actually sets
+// recipes.price and what a deal review is ultimately judged against.
+// The two currently disagree -- see matchReferencePrice's own note.
+export function rankReferenceCandidates(
+  itemName: string,
+  statcanPrices: StaplePrice[],
+  producePrices: StaplePrice[],
+  staplePrices: StaplePrice[]
+): ReferenceCandidate[] {
+  const itemWordsArr = aliasWords(normalizeWords(itemName));
+  if (itemWordsArr.length === 0) return [];
+  const itemWords = new Set(itemWordsArr);
+
+  const tiers: Array<[StaplePrice[], ReferenceTier]> = [
+    [statcanPrices, 'statcan'],
+    [producePrices, 'produce'],
+    [staplePrices, 'staple'],
+  ];
+
+  const candidates: ReferenceCandidate[] = [];
+  for (const [prices, source] of tiers) {
+    for (const price of prices) {
+      const refWords = aliasWords(normalizeWords(price.ingredientName));
+      if (refWords.length === 0) continue;
+      // Same guard matchStaplePrice uses: a reference that collapses to
+      // one generic word once "frozen" is stripped ("Frozen corn" ->
+      // "corn") would match any ingredient containing that word, fresh
+      // or frozen, at the wrong product's price -- so the app never
+      // uses one, and offering it here would misrepresent what the app
+      // does. Consequence worth knowing: StatCan's "Frozen peas" entry
+      // is unreachable this way, so a frozen item gets compared against
+      // its FRESH reference unless a price is entered by hand.
+      const tooGenericFrozen = refWords.length === 1 && /\bfrozen\b/i.test(price.ingredientName);
+      if (tooGenericFrozen) continue;
+      const refWordSet = new Set(refWords);
+
+      let matchKind: ReferenceCandidate['matchKind'] | undefined;
+      let specificity = 0;
+      if (refWords.every((word) => itemWords.has(word))) {
+        matchKind = 'engine';
+        specificity = refWords.length;
+      } else if (
+        itemWordsArr.every((word) => refWordSet.has(word)) &&
+        refWords.filter((word) => !itemWords.has(word)).every((word) => VARIETY_DESCRIPTORS.has(word))
+      ) {
+        matchKind = 'variety';
+        specificity = itemWordsArr.length;
+      }
+      if (!matchKind) continue;
+
+      candidates.push({
+        name: price.ingredientName,
+        avgPrice: price.avgPrice,
+        unit: price.unit,
+        source,
+        matchKind,
+        specificity,
+        isEnginePick: false,
+      });
+    }
+  }
+
+  const kindRank = { engine: 0, variety: 1 } as const;
+  candidates.sort((a, b) => {
+    if (kindRank[a.matchKind] !== kindRank[b.matchKind]) return kindRank[a.matchKind] - kindRank[b.matchKind];
+    if (a.specificity !== b.specificity) return b.specificity - a.specificity;
+    return TIER_ORDER.indexOf(a.source) - TIER_ORDER.indexOf(b.source);
+  });
+
+  // The engine picks a most-specific strict match if one exists, and
+  // only falls back to a variety-descriptor match when none does --
+  // exactly matchStaplePrice's two passes, but resolved across all
+  // three tiers at once the way the server does.
+  const enginePick =
+    candidates.find((candidate) => candidate.matchKind === 'engine') ??
+    candidates.find((candidate) => candidate.matchKind === 'variety');
+  if (enginePick) enginePick.isEnginePick = true;
+
+  return candidates;
 }
