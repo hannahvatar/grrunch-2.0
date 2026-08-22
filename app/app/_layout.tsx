@@ -104,6 +104,7 @@ export default function RootLayout() {
                       <Stack.Screen name="(tabs)" />
                       <Stack.Screen name="dev-recipes" />
                       <Stack.Screen name="dev-deals" />
+                      <Stack.Screen name="dev-cost" />
                       <Stack.Screen name="settings" />
                       <Stack.Screen name="settings-detail" />
                       <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />

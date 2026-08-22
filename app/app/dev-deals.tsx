@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, Text
 import { CheckIcon } from 'react-native-heroicons/outline';
 
 import { InputField } from '../components/InputField';
+import { ReferenceCompareCard } from '../components/ReferenceCompareCard';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { supabase } from '../lib/supabase';
 import type { Database, Tables } from '../types/database';
@@ -380,39 +381,37 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deal.item_name]);
 
-  // Read-only decision aid, not an auto-fill: when the flyer doesn't
-  // give a clear original/regular price to compare against, look up
-  // whether this item's name matches a StatCan/produce/staple
-  // reference price (find_reference_price() RPC -- same word-subset
-  // matching convention refresh_recipe_deal_tags() already uses for
-  // staple ingredients) and show it so the reviewer can judge deal vs.
-  // fair price vs. reject herself. Only ever finds a match for items
-  // whose name contains a generic staple/produce term -- most branded/
-  // packaged goods genuinely have nothing to compare against, and
-  // that's expected, not a bug (see the migration's own comment).
-  const [referencePrice, setReferencePrice] = useState<{ source: string; matchedName: string; price: number; unit: string } | null>(
-    null
-  );
-  const [referencePriceChecked, setReferencePriceChecked] = useState(false);
-  useEffect(() => {
-    // Promise.resolve(): same PromiseLike-vs-Promise gap noted on
-    // loadDeals above -- the query builder has no .finally() until
-    // awaited/wrapped.
-    Promise.resolve(supabase.rpc('find_reference_price', { p_item_name: deal.item_name }))
-      .then(({ data }) => {
-        const match = data?.[0];
-        if (match) {
-          setReferencePrice({
-            source: match.source,
-            matchedName: match.matched_name,
-            price: match.result_price,
-            unit: match.result_unit,
-          });
-        }
-      })
-      .finally(() => setReferencePriceChecked(true));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deal.item_name]);
+  // The reference-price lookup that used to live here (a
+  // find_reference_price() RPC printing one match, read-only) is now
+  // ReferenceCompareCard below -- same job, but it offers every
+  // plausible reference for confirmation instead of asserting one, and
+  // converts both sides to the same quantity so "is $2.99/750 g better
+  // than $3.29/kg" stops being mental arithmetic done mid-review
+  // (Anabelle's spec: "Standardize ref price to flyer diplayed cost and
+  // quanitty to measure up if the deal is good or not"). Deliberately
+  // NOT kept alongside the new card: two reference lookups on one
+  // screen, each with its own matching rule, is exactly the drift this
+  // codebase keeps having to undo.
+
+  // What this deal's stored price is a price FOR -- the pair the
+  // reference has to be normalized against. A lb/kg/100g deal's price
+  // is a RATE, so the comparable quantity is one of that rate's own
+  // units (1 lb, 1 kg, 100 g) and package weight is deliberately
+  // ignored: pairing a per-lb price with a 700 g package weight would
+  // compare a per-pound rate against the cost of a whole package and
+  // read as a far better deal than it is. A package/each deal's price
+  // is the whole flat price, so its real package weight (when known) is
+  // the honest quantity, falling back to a bare "1 package" when it
+  // genuinely isn't known.
+  const isRatePriced = priceUnit === 'lb' || priceUnit === 'kg' || priceUnit === '100g';
+  const observedQuantity = isRatePriced ? (priceUnit === '100g' ? '100' : '1') : packageWeightG || '1';
+  const observedUnit = isRatePriced
+    ? priceUnit === '100g'
+      ? 'g'
+      : priceUnit
+    : packageWeightG
+      ? 'g'
+      : 'package';
 
   // Package weight is always stored/sent in grams, but this field only
   // ever shows up when price_unit is lb/kg/100g (see the `priceUnit !==
@@ -626,25 +625,48 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
             not the persisted deal.original_price, so typing in a real
             flyer price hides the hint immediately without needing to save
             first. */}
-        {originalPriceUnknown && referencePrice && (
+        {/* Anabelle: "confusing... if in the deals we do have the original
+            and discount price from the flyer but you also add the statcan
+            reference. Only show the statcan reference when we dont have it
+            from merchant" -- unchanged: a flyer-printed original price IS
+            the comparison, and a reference alongside it is noise.
+            originalPriceSource === 'reference' is the second half of that
+            same rule rather than an exception to it: filling the field
+            FROM this card flips originalPriceUnknown false, which would
+            otherwise make the card (and with it, which reference that
+            number came from and at what quantity) disappear the instant
+            it was used. */}
+        {(originalPriceUnknown || originalPriceSource === 'reference') && (
           <View style={styles.referenceCard}>
             <Text style={styles.referenceCardTitle}>
-              Reference price found ({referencePrice.source}): {referencePrice.matchedName}
+              {originalPriceUnknown
+                ? 'No flyer original price -- compare against a reference'
+                : 'Original price came from this reference comparison'}
             </Text>
-            <Text style={styles.referenceCardPrice}>
-              ${referencePrice.price.toFixed(2)} / {referencePrice.unit}
-            </Text>
-            <Text style={styles.referenceCardNote}>
-              Informational only -- not filled in for you. Use it to judge whether this is a real deal, a fair
-              price, or worth rejecting.
-            </Text>
+            {/* Prefilled from this deal's own numbers as they stood when
+                the card mounted (keyed on deal.id, so switching deals
+                starts clean). Every field stays editable -- editing
+                package weight or price unit afterwards doesn't re-seed
+                the card, since re-seeding would silently discard a
+                reference she'd already confirmed. */}
+            <ReferenceCompareCard
+              key={deal.id}
+              itemName={itemName}
+              initialPrice={priceUnknown ? '' : price}
+              initialQuantity={observedQuantity}
+              initialUnit={observedUnit}
+              onUseAsOriginalPrice={(value) => {
+                setOriginalPrice(value.toFixed(2));
+                setOriginalPriceUnknown(false);
+                // A computed comparison price is by definition not one
+                // the store printed -- setting this together with the
+                // value is what keeps the app from ever showing it as a
+                // struck-through "was $X" (see lib/curatedDeals.ts
+                // isReferencePriced).
+                setOriginalPriceSource('reference');
+              }}
+            />
           </View>
-        )}
-        {originalPriceUnknown && referencePriceChecked && !referencePrice && (
-          <Text style={styles.referenceCardNote}>
-            No StatCan/produce/staple reference match for this item -- common for branded/packaged goods,
-            those tables don't cover most of them.
-          </Text>
         )}
 
         <Text style={styles.fieldLabel}>Price</Text>
