@@ -18,6 +18,7 @@ import {
   benchmarkCostForQuantity,
   compare,
   formatMoney,
+  isImplausibleBenchmark,
   formatPctVsBenchmark,
   formatVerdictSentence,
   splitReferenceUnit,
@@ -45,6 +46,17 @@ const RULE = '#C7C7C7';
 const TWO_COLUMN_WIDTH = 1000;
 
 const UNIT_OPTIONS = COMPARE_UNIT_OPTIONS.map((unit) => ({ value: unit, label: unit }));
+
+// A review is a decision, and decisions get made wrong -- Anabelle: "i
+// made a mistake and i would like to fix it for the unico olives. Can i
+// go back to the approved items?". Without this the screen only ever
+// showed the unreviewed queue, so a confirmed item was unreachable and
+// the only way back was dev-deals.
+type QueueFilter = 'toReview' | 'reviewed';
+const QUEUE_FILTER_OPTIONS: { value: QueueFilter; label: string }[] = [
+  { value: 'toReview', label: 'To review' },
+  { value: 'reviewed', label: 'Already reviewed' },
+];
 
 // What a deal's stored price is a price FOR. A lb/kg/100g deal's price
 // is a RATE, so the comparable quantity is one of that rate's own units
@@ -113,6 +125,7 @@ export default function DevCostScreen() {
   // as a row has been dealt with, and must never be handed out again --
   // see chipEntries.
   const [claimedNames, setClaimedNames] = useState<Set<string>>(new Set());
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>('toReview');
 
   const [statcan, setStatcan] = useState<Awaited<ReturnType<typeof fetchStatcanPrices>>>([]);
   const [produce, setProduce] = useState<Awaited<ReturnType<typeof fetchProducePrices>>>([]);
@@ -160,17 +173,25 @@ export default function DevCostScreen() {
   // Pulled out of the mount effect so a split can refresh the queue --
   // the new copies need to appear as their own chips immediately, and
   // they add to the backlog count.
-  async function reloadDeals() {
+  async function reloadDeals(filter: QueueFilter = queueFilter) {
+    // 'toReview' is the backlog. 'reviewed' is most-recently-decided
+    // first, so the item just got wrong is the first chip -- that's the
+    // case this tab exists for.
+    const dealsQuery =
+      filter === 'toReview'
+        ? supabase
+            .from('curated_deals')
+            .select('*')
+            .is('pricing_reviewed_at', null)
+            .order('created_at', { ascending: false })
+        : supabase
+            .from('curated_deals')
+            .select('*')
+            .not('pricing_reviewed_at', 'is', null)
+            .order('pricing_reviewed_at', { ascending: false });
+
     const [dealsResult, countResult, namesResult] = await Promise.all([
-      // Unreviewed first, so tapping through the chips left-to-right
-      // actually works the backlog down rather than landing on items
-      // that were already dealt with.
-      supabase
-        .from('curated_deals')
-        .select('*')
-        .order('pricing_reviewed_at', { ascending: true, nullsFirst: true })
-        .order('created_at', { ascending: false })
-        .limit(40),
+      dealsQuery.limit(40),
       supabase
         .from('curated_deals')
         .select('id', { count: 'exact', head: true })
@@ -459,6 +480,18 @@ export default function DevCostScreen() {
     // unconfirmed reference leaves it null, which is what makes the
     // item carry no discount badge at all.
     const wasPriceNum = wasPrice.trim() === '' ? null : parseFloat(wasPrice);
+    // Refuses to write a benchmark that can't describe a real shelf
+    // price -- see isImplausibleBenchmark. Blocks the whole save rather
+    // than quietly writing null, because only the reviewer can say
+    // whether it's the unit or the reference that's wrong.
+    if (!usingPreviousPrice && referenceState === 'confirmed' && result?.ok && isImplausibleBenchmark(result.comparison)) {
+      setSaving(false);
+      setSaveError(
+        `That reference works out to ${formatMoney(result.comparison.benchmarkPerBasis)}/${result.comparison.basisLabel} against ${formatMoney(result.comparison.itemPerBasis)}/${result.comparison.basisLabel} for this item -- too far apart to be a real regular price. Check the UNIT, or mark the reference not a valid match.`
+      );
+      return;
+    }
+
     const referenceCost =
       !usingPreviousPrice && referenceState === 'confirmed' && result?.ok
         ? benchmarkCostForQuantity(result.comparison, quantity, unit)
@@ -495,8 +528,15 @@ export default function DevCostScreen() {
     // Reviewed, so it leaves the queue. The count only drops if this
     // row hadn't already been reviewed once -- re-reviewing something
     // shouldn't make the backlog look smaller than it is.
-    setDeals((previous) => previous.filter((entry) => entry.id !== loadedDeal.id));
-    setClaimedNames((previous) => new Set(previous).add(item.trim()));
+    // Clearing the item from the list is the point on the backlog tab.
+    // On the reviewed tab it would hide the row that was just
+    // corrected, so it stays put and is refetched instead.
+    if (queueFilter === 'toReview') {
+      setDeals((previous) => previous.filter((entry) => entry.id !== loadedDeal.id));
+      setClaimedNames((previous) => new Set(previous).add(item.trim()));
+    } else {
+      await reloadDeals();
+    }
     if (loadedDeal.pricing_reviewed_at === null) {
       setToReviewCount((previous) => (previous === null ? previous : Math.max(0, previous - 1)));
     }
@@ -533,7 +573,20 @@ export default function DevCostScreen() {
           </Text>
         )}
 
-        <Text style={styles.annotation}>sample cutouts →</Text>
+        <SegmentedControl
+          options={QUEUE_FILTER_OPTIONS}
+          value={queueFilter}
+          onChange={(value) => {
+            setQueueFilter(value);
+            setLoadedDeal(null);
+            setOutcome(null);
+            reloadDeals(value);
+          }}
+        />
+
+        <Text style={styles.annotation}>
+          {queueFilter === 'toReview' ? 'sample cutouts →' : 'already reviewed — newest decision first →'}
+        </Text>
         {loadError && <Text style={styles.blocked}>Couldn't load deals. Check the dev server/console.</Text>}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.chipRow}>
@@ -864,6 +917,13 @@ export default function DevCostScreen() {
 
                   <Text style={styles.verdictSentence}>{formatVerdictSentence(result.comparison)}</Text>
                   <Text style={styles.note}>{formatPctVsBenchmark(result.comparison)}</Text>
+                  {isImplausibleBenchmark(result.comparison) && (
+                    <Text style={styles.blocked}>
+                      ⚠ That gap is too big to be real — check the UNIT (a size typed as a count compares against
+                      that many whole packages). Confirming is blocked until it's fixed or the reference is
+                      marked not a valid match.
+                    </Text>
+                  )}
                 </>
               )}
             </View>

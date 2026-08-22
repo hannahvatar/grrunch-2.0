@@ -194,3 +194,23 @@ export function benchmarkCostForQuantity(
   const per = comparison.basisLabel === 'ea' ? 1 : 100;
   return Math.round(comparison.benchmarkPerBasis * (parsed.amount / per) * 100) / 100;
 }
+
+// A "regular price" several times the sale price doesn't exist in a
+// grocery flyer. When the benchmark comes out that far above the item,
+// the cause is almost always a unit mix-up rather than a spectacular
+// deal -- the case that prompted this guard: "Unico Pizza Sauce" at
+// $1.00 was compared against a "Pizza sauce $2.50 / jar" reference with
+// QTY 213 (the millilitres off the label) and UNIT left on 'ea', so the
+// benchmark was computed as 213 JARS = $532.50, a 99.8% "discount"
+// that would have shown shoppers a purple "100% below" badge.
+//
+// 5x is deliberately loose -- it passes any real markdown (half price,
+// even 75% off) and only catches arithmetic that can't describe a real
+// shelf. Callers refuse to WRITE such a benchmark rather than quietly
+// substituting one, since the reviewer is the only one who can say
+// whether the unit or the reference is wrong.
+export const IMPLAUSIBLE_BENCHMARK_RATIO = 5;
+
+export function isImplausibleBenchmark(comparison: Comparison): boolean {
+  return comparison.benchmarkPerBasis > comparison.itemPerBasis * IMPLAUSIBLE_BENCHMARK_RATIO;
+}
