@@ -154,6 +154,63 @@ def wipe_airtable_table(table_name):
     return len(record_ids)
 
 
+# Real bug, caught live (Anabelle's workspace hit 80%, then 93%, of the
+# Free plan's 1,000 Airtable API calls/month, with ALL of it attributed
+# to this script's own token -- confirmed via the workspace's Usage tab:
+# 0 Automation runs, 0 Sync integrations, 934 calls under "Other, PAT").
+# wipe_airtable_table() above already batches its DELETE calls (max 10
+# ids/request), but flag_produce_gaps()/resolve_produce_gaps()/
+# resolve_staple_gaps() below were each issuing one Airtable CREATE or
+# PATCH call PER RECORD in a loop, even though Airtable's batch create/
+# update endpoints accept the exact same "up to 10 records per request"
+# shape the batch delete already uses. A run that touches 30 gap rows
+# was making 30 calls where it could make ~3. These two helpers give
+# every per-record write loop in this file the same batching wipe_
+# airtable_table() already had, without changing what gets written.
+def batch_create_airtable(table_name, records_fields):
+    """records_fields: list of `fields` dicts to create. Returns the
+    created records (Airtable preserves input order in the response),
+    so a caller needing the new record ids back can zip() them against
+    records_fields."""
+    created = []
+    for i in range(0, len(records_fields), 10):
+        batch = records_fields[i:i + 10]
+        body = json.dumps({
+            "records": [{"fields": f} for f in batch],
+            "typecast": True,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(table_name)}",
+            data=body, method="POST",
+            headers={
+                "Authorization": f"Bearer {AIRTABLE_TOKEN}",
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req) as resp:
+            created.extend(json.loads(resp.read())["records"])
+    return created
+
+
+def batch_update_airtable(table_name, updates):
+    """updates: list of (record_id, fields) tuples to PATCH."""
+    for i in range(0, len(updates), 10):
+        batch = updates[i:i + 10]
+        body = json.dumps({
+            "records": [{"id": rid, "fields": f} for rid, f in batch],
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(table_name)}",
+            data=body, method="PATCH",
+            headers={
+                "Authorization": f"Bearer {AIRTABLE_TOKEN}",
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req):
+            pass
+
+
 def fetch_reviewed_pricing():
     """Real bug, caught live (Anabelle: "ok deals are approved now" --
     checking the resulting recipe prices afterward found the drumsticks
@@ -528,6 +585,7 @@ def flag_produce_gaps(usable_records):
     new_gaps = 0
     auto_resolved = 0
     auto_priced = 0
+    pending_creates = []  # batched at the end -- see batch_create_airtable()
     for deal in produce_deals:
         if deal["item_name"] in already_covered:
             # Real bug, caught live (Anabelle: "Prior today we had
@@ -577,21 +635,15 @@ def flag_produce_gaps(usable_records):
         else:
             fields["Resolved"] = False
 
-        # typecast lets Airtable add a new option to the "Chain" single-select
-        # field automatically, instead of rejecting any chain not already listed.
-        body = json.dumps({"fields": fields, "typecast": True}).encode("utf-8")
-        req = urllib.request.Request(
-            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(GAPS_TABLE)}",
-            data=body, method="POST",
-            headers={
-                "Authorization": f"Bearer {AIRTABLE_TOKEN}",
-                "Content-Type": "application/json",
-            },
-        )
-        with urllib.request.urlopen(req):
-            pass
+        # typecast (passed by batch_create_airtable itself) lets Airtable
+        # add a new option to the "Chain" single-select field
+        # automatically, instead of rejecting any chain not already listed.
+        pending_creates.append(fields)
         flagged_names.add(deal["item_name"])
         new_gaps += 1
+
+    if pending_creates:
+        batch_create_airtable(GAPS_TABLE, pending_creates)
 
     print(
         f"flagged {new_gaps} new price-only produce gaps ({auto_resolved} auto-resolved via StatCan), "
@@ -706,6 +758,7 @@ def resolve_produce_gaps():
     gaps = fetch_airtable_table(GAPS_TABLE)
     resolved = 0
     deals_pushed = 0
+    pending_resolved = []  # (record_id, {"Resolved": True}) -- batched at the end
     for g in gaps:
         f = g["fields"]
         if f.get("Status") != "Approved":
@@ -737,17 +790,7 @@ def resolve_produce_gaps():
             with urllib.request.urlopen(req):
                 pass
 
-            patch_body = json.dumps({"fields": {"Resolved": True}}).encode("utf-8")
-            patch_req = urllib.request.Request(
-                f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(GAPS_TABLE)}/{g['id']}",
-                data=patch_body, method="PATCH",
-                headers={
-                    "Authorization": f"Bearer {AIRTABLE_TOKEN}",
-                    "Content-Type": "application/json",
-                },
-            )
-            with urllib.request.urlopen(patch_req):
-                pass
+            pending_resolved.append((g["id"], {"Resolved": True}))
             resolved += 1
 
             # Pushed ONLY here, at first resolution -- see docstring for
@@ -794,6 +837,9 @@ def resolve_produce_gaps():
             # the flyer's sale price -- not a real discount, so no deal to
             # push (still saved to produce_reference_prices above either way).
 
+    if pending_resolved:
+        batch_update_airtable(GAPS_TABLE, pending_resolved)
+
     print(f"resolved {resolved} produce reference gaps into produce_reference_prices, pushed {deals_pushed} curated deals")
 
 
@@ -810,9 +856,15 @@ def resolve_staple_gaps():
     trusted once approved. checked_by records which source actually won,
     for traceability. Unlike produce, this table isn't auto-flagged from
     flyers/recipes -- rows are added manually to a deliberately small,
-    generic staple list."""
+    generic staple list.
+
+    (This function used to be defined twice in this file, byte-for-byte
+    identical -- harmless in Python, since the second def just silently
+    wins, but real dead-code cruft. Deduped here while adding the same
+    batched-PATCH fix every other per-record write loop in this file got.)"""
     gaps = fetch_airtable_table(STAPLE_GAPS_TABLE)
     resolved = 0
+    pending_resolved = []  # (record_id, {"Resolved": True}) -- batched at the end
     for g in gaps:
         f = g["fields"]
         price = f.get("Anabelle")
@@ -851,88 +903,11 @@ def resolve_staple_gaps():
         with urllib.request.urlopen(req):
             pass
 
-        patch_body = json.dumps({"fields": {"Resolved": True}}).encode("utf-8")
-        patch_req = urllib.request.Request(
-            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(STAPLE_GAPS_TABLE)}/{g['id']}",
-            data=patch_body, method="PATCH",
-            headers={
-                "Authorization": f"Bearer {AIRTABLE_TOKEN}",
-                "Content-Type": "application/json",
-            },
-        )
-        with urllib.request.urlopen(patch_req):
-            pass
+        pending_resolved.append((g["id"], {"Resolved": True}))
         resolved += 1
 
-    print(f"resolved {resolved} staple reference gaps into staple_reference_prices")
-
-
-def resolve_staple_gaps():
-    """Same pattern as resolve_produce_gaps, for the "Staple Reference
-    Gaps" table. Unlike produce, nothing ever gets written to Supabase
-    without first appearing in Airtable for approval -- even a real
-    StatCan number sits in "Reference Price SC" and waits for
-    Status == "Approved" like everything else, rather than syncing
-    straight to Supabase on its own.
-
-    Pulls from "Anabelle" (human-sourced) if filled in, otherwise
-    "Reference Price SC" (StatCan-sourced) -- either way the row is only
-    trusted once approved. checked_by records which source actually won,
-    for traceability. Unlike produce, this table isn't auto-flagged from
-    flyers/recipes -- rows are added manually to a deliberately small,
-    generic staple list."""
-    gaps = fetch_airtable_table(STAPLE_GAPS_TABLE)
-    resolved = 0
-    for g in gaps:
-        f = g["fields"]
-        price = f.get("Anabelle")
-        source = "human_verified"
-        if price is None:
-            price = f.get("Reference Price SC")
-            source = "statcan"
-        if (
-            f.get("Resolved")
-            or f.get("Status") != "Approved"
-            or price is None
-            or not f.get("Unit")
-            or not f.get("Reference Date")
-        ):
-            continue
-
-        row = {
-            "ingredient_name": f["Item Name"],
-            "category": f.get("Category") or "rounding_out_extra",
-            "unit": f["Unit"],
-            "avg_price": price,
-            "last_checked_at": f["Reference Date"],
-            "checked_by": source,
-            "airtable_record_id": g["id"],
-        }
-        req = urllib.request.Request(
-            f"{SUPABASE_URL}/rest/v1/staple_reference_prices?on_conflict=airtable_record_id",
-            data=json.dumps(row).encode("utf-8"), method="POST",
-            headers={
-                "apikey": SERVICE_ROLE,
-                "Authorization": f"Bearer {SERVICE_ROLE}",
-                "Content-Type": "application/json",
-                "Prefer": "resolution=merge-duplicates,return=minimal",
-            },
-        )
-        with urllib.request.urlopen(req):
-            pass
-
-        patch_body = json.dumps({"fields": {"Resolved": True}}).encode("utf-8")
-        patch_req = urllib.request.Request(
-            f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{urllib.parse.quote(STAPLE_GAPS_TABLE)}/{g['id']}",
-            data=patch_body, method="PATCH",
-            headers={
-                "Authorization": f"Bearer {AIRTABLE_TOKEN}",
-                "Content-Type": "application/json",
-            },
-        )
-        with urllib.request.urlopen(patch_req):
-            pass
-        resolved += 1
+    if pending_resolved:
+        batch_update_airtable(STAPLE_GAPS_TABLE, pending_resolved)
 
     print(f"resolved {resolved} staple reference gaps into staple_reference_prices")
 
