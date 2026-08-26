@@ -498,6 +498,11 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // here (server-side staple_avg_weights had it, this client mirror
   // didn't) when the recipe's bread line showed no price at all.
   'sandwich bread': 60,
+  // Samosa Chaat -- 400g/10pcs real PRAN box size. Added both tables
+  // together this time (server + client) after the bacon lesson --
+  // server-only left the badge showing a bare "12" instead of the
+  // real package count.
+  samosas: 40,
   // Pizza Party Pasta -- original ingredient name before Anabelle asked
   // for "Sweet or Bell Peppers" instead; left in place (unused but
   // harmless) alongside its server-side staple_reference_prices twin,
@@ -1121,6 +1126,8 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   // gram-quantity-to-friendly-count bridge as tomatoes/drumsticks (1200 g
   // stored / 300 g per potato = 4 potatoes, one per serving).
   'russet potatoes': { singular: 'potato', plural: 'potatoes' },
+  // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above.
+  samosas: { singular: 'samosa', plural: 'samosas' },
 };
 
 // Deal items where even a WHOLE container quantity (amount >= 1, not a
