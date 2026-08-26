@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Cog6ToothIcon } from 'react-native-heroicons/outline';
+import { CheckBadgeIcon, ChevronRightIcon, Cog6ToothIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 import { HeartIcon } from 'react-native-heroicons/solid';
 
 import { AccountBanner } from '../../components/AccountBanner';
 import { SubRecipeCard } from '../../components/SubRecipeCard';
 import { UpgradeCta } from '../../components/UpgradeCta';
+import { useAuth } from '../../lib/auth';
 import type { Meal, SubRecipe } from '../../lib/mealData';
 import { fetchRecipesByIds } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
@@ -14,8 +15,16 @@ import { useSelectedStores } from '../../lib/selectedStores';
 import { fetchSubRecipes } from '../../lib/subRecipes';
 import { useSubscription } from '../../lib/subscription';
 
-// Not yet fully detailed in the wireframes -- Saved recipes and
-// Companion recipes are the only sections built out so far.
+// GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx/stores.tsx/
+// meals.tsx's palette. Missing here until now (Anabelle: "all i see and
+// black and grey") -- this screen never picked up the app's actual
+// peach background/orange accent, just plain white/grey/black.
+const ACCENT = '#FFA955';
+const INK = '#111';
+
+// No wireframe exists for this page yet (Anabelle, 2026-08-26: "design
+// it yourself"). Built out so far: Membership, My stores, Saved
+// recipes, Companion recipes -- all real data, no mocked content.
 // Grocery list access lives in its own tab (app/(tabs)/grocery.tsx).
 export default function ProfileScreen() {
   const { savedIds, toggleSaved } = useSavedRecipes();
@@ -23,7 +32,18 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
 
   const { stores: myStores, loaded: storesLoaded } = useSelectedStores();
-  const { isSubscribed } = useSubscription();
+  const { status: subscriptionStatus, trialEndsAt, isSubscribed } = useSubscription();
+  const { isGuest } = useAuth();
+
+  // Real trial countdown from the same subscriptions row every other
+  // section already gates on (useSubscription) -- previously computed
+  // nowhere on Profile itself, only used silently to lock/unlock other
+  // sections. Guests are skipped entirely: AccountBanner already carries
+  // the sign-up prompt at the top of the page, no need to repeat it here.
+  const trialDaysLeft =
+    subscriptionStatus === 'trialing' && trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
+      : null;
 
   useEffect(() => {
     fetchRecipesByIds(Array.from(savedIds))
@@ -60,6 +80,7 @@ export default function ProfileScreen() {
   }
 
   return (
+    <View style={styles.gradient}>
     <ScrollView contentContainerStyle={styles.container}>
       <AccountBanner />
 
@@ -69,6 +90,47 @@ export default function ProfileScreen() {
           <Cog6ToothIcon size={22} color="#111" />
         </Pressable>
       </View>
+
+      {!isGuest && (
+        <>
+          <Text style={styles.sectionTitle}>Membership</Text>
+          {isSubscribed ? (
+            subscriptionStatus === 'trialing' ? (
+              <View style={styles.membershipCard}>
+                <CheckBadgeIcon size={20} color={INK} />
+                <View style={styles.membershipTextBlock}>
+                  <Text style={styles.membershipTitle}>
+                    Free trial · {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} left
+                  </Text>
+                  <Text style={styles.membershipSubtitle}>Then $5.99/mo · Cancel anytime</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.membershipCard}>
+                <CheckBadgeIcon size={20} color={INK} />
+                <View style={styles.membershipTextBlock}>
+                  <Text style={styles.membershipTitle}>Grrunch Member</Text>
+                  <Text style={styles.membershipSubtitle}>$5.99/mo · Manage in Settings</Text>
+                </View>
+              </View>
+            )
+          ) : subscriptionStatus === 'trialing' || subscriptionStatus === 'expired' ? (
+            <Pressable
+              style={styles.membershipExpiredCard}
+              onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'renew your membership' } })}
+            >
+              <LockClosedIcon size={18} color="#fff" />
+              <View style={styles.membershipTextBlock}>
+                <Text style={styles.membershipTitleLight}>Your trial has ended</Text>
+                <Text style={styles.membershipSubtitleLight}>Resubscribe for $5.99/mo to keep saving recipes</Text>
+              </View>
+              <ChevronRightIcon size={18} color="#999" />
+            </Pressable>
+          ) : (
+            <UpgradeCta reason="unlock the full app" />
+          )}
+        </>
+      )}
 
       <Text style={styles.sectionTitle}>My stores</Text>
       {!isSubscribed && (
@@ -149,10 +211,12 @@ export default function ProfileScreen() {
         </View>
       )}
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: { flex: 1, backgroundColor: '#FFEAD4' },
   container: { padding: 24, paddingTop: 64, gap: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
@@ -176,7 +240,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#111',
+    backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -197,4 +261,25 @@ const styles = StyleSheet.create({
   savedName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
   subRecipesList: { gap: 12 },
+  membershipCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: ACCENT,
+    borderRadius: 14,
+    padding: 14,
+  },
+  membershipExpiredCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: INK,
+    borderRadius: 14,
+    padding: 14,
+  },
+  membershipTextBlock: { flex: 1 },
+  membershipTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  membershipSubtitle: { fontSize: 12, color: '#5c3d1c', marginTop: 2 },
+  membershipTitleLight: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#fff' },
+  membershipSubtitleLight: { fontSize: 12, color: '#ccc', marginTop: 2 },
 });

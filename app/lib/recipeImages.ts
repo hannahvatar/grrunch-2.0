@@ -175,11 +175,14 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // outages. Already at the card's ~1.7:1 target (1344x784), no crop
   // needed. Found sitting unwired in assets/ during PR cleanup.
   'Cheesy Whizzy Spaghetti': require('../assets/cheesy-whizzy-spaghetti-fixed.jpeg'),
-  // Pre-emptively re-encoded via `sips -s format jpeg` before wiring in,
-  // same standing precaution as every photo since the Eggy Croissant
-  // outages. Already at the card's ~1.7:1 target (1344x784), no crop
-  // needed.
-  'Tomato Soup & Grilled Cheese Remix': require('../assets/tomato-soup-grilled-cheese-remix-fixed.jpeg'),
+  // Replaced with a "-rev" shot Anabelle provided (sliced pickle chips
+  // instead of the original's whole spears + cucumber sticks) --
+  // pre-emptively re-encoded via `sips -s format jpeg` before wiring
+  // in, same standing precaution as every photo since the Eggy
+  // Croissant outages. Already at the card's ~1.7:1 target (1344x784),
+  // no crop needed. Old unsuffixed original stays on disk
+  // (tomato-soup-grilled-cheese-remix.jpeg) but is no longer referenced.
+  'Tomato Soup & Grilled Cheese Remix': require('../assets/tomato-soup-grilled-cheese-remix-rev-fixed.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
