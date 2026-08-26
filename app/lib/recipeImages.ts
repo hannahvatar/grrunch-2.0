@@ -157,6 +157,24 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // outages. Already at the card's ~1.7:1 target (1344x784), no crop
   // needed.
   'Basic, But Make It Lasagna': require('../assets/basic-but-make-it-lasagna-fixed.jpeg'),
+  // Pre-emptively re-encoded via `sips -s format jpeg` before wiring in,
+  // same standing precaution as every photo since the Eggy Croissant
+  // outages. Already at the card's ~1.7:1 target (1344x784), no crop
+  // needed.
+  'Taco Tuesday, Every Day': require('../assets/taco-tuesday-every-day-fixed.jpeg'),
+  // Pre-emptively re-encoded via `sips -s format jpeg` before wiring in,
+  // same standing precaution as every photo since the Eggy Croissant
+  // outages. Already at the card's ~1.7:1 target (1344x784), no crop
+  // needed. Filename corrected from the uploaded original's typo
+  // ("potatoe-bacon0cheese-repeat") -- the require() key is what
+  // matters for matching, but no reason to carry the typo into a new
+  // file on disk.
+  'Potato, Bacon, Cheese, Repeat': require('../assets/potato-bacon-cheese-repeat-fixed.jpeg'),
+  // Pre-emptively re-encoded via `sips -s format jpeg` before wiring in,
+  // same standing precaution as every photo since the Eggy Croissant
+  // outages. Already at the card's ~1.7:1 target (1344x784), no crop
+  // needed. Found sitting unwired in assets/ during PR cleanup.
+  'Cheesy Whizzy Spaghetti': require('../assets/cheesy-whizzy-spaghetti-fixed.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {

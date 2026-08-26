@@ -46,6 +46,15 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // ~21 g/cup for loosely packed fresh basil leaves -- see
   // 20260812070000_basil_density.sql for the server-side twin.
   basil: 21,
+  // Classic Ground Beef Tacos -- ~50 g/cup for shredded iceberg lettuce
+  // (light/airy, well below a leafy-green's typical density). Bridges
+  // "2 cups shredded lettuce" to grams so it can fragment against the
+  // real "Iceberg or Living Lettuce" deal's package_weight_g (540 g,
+  // the same average-head figure already used for the friendly-count
+  // bridge below) instead of being charged the full flat head price
+  // for a fraction of one. See the staple_densities table (Supabase)
+  // for the server-side twin.
+  lettuce: 50,
   // ~100 g/cup for a fine ground spice powder (same figure already used
   // for Paprika server-side) -- without this, "1 tbsp curry powder"
   // couldn't convert to grams to scale against its own real reference
@@ -80,6 +89,12 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // nutrition-basis gap). See the staple_densities table (Supabase)
   // for the server-side twin.
   cream: 240,
+  // Classic Ground Beef Tacos -- same 240 g/cup dairy density as cream
+  // above, same reasoning: "1/2 cup sour cream" needed this to reach
+  // the real "Sour cream" reference's fixed 100 g nutrition basis
+  // (price already scales mL-to-mL fine with no bridge). See the
+  // staple_densities table (Supabase) for the server-side twin.
+  'sour cream': 240,
   // ~128 g/cup for garlic powder -- added as a proper staple (real price
   // + nutrition + density) alongside Paprika below, per Anabelle's ask,
   // while building Pork Back Ribs' cauliflower nugget rewrite. See the
@@ -451,6 +466,17 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   fries: 650, // matches McCain Superfries' 454-800g flyer range
   'hamburger buns': 43,
   'cheddar cheese slices': 340, // ~16-slice pack
+  // Matches the recipe's own stated size ("4 large russet potatoes,
+  // about 300 g each") -- see the DEAL_ITEM_UNIT_LABELS entry below for
+  // the paired singular/plural label.
+  'russet potatoes': 300,
+  // ~28g/slice, standard-cut raw bacon (16oz/16-slice package convention)
+  // -- see the staple_avg_weights row added alongside Loaded Baked
+  // Potatoes for the server-side twin. Missed on first pass (server-side
+  // only), which is why the deal badge showed a bare "8" instead of
+  // converting to a package fraction -- same two-table pairing this
+  // codebase has hit before (see lettuce/onion below).
+  bacon: 28,
   lettuce: 540, // average iceberg head
   // Redefined from 350 (a whole jar) to 12 (one slice) -- Anabelle's
   // house convention is to count pickles by the slice per serving, not
@@ -576,6 +602,15 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // count/fragmentation math against the real 700 g box -- 16 sticks is
   // a genuine fraction of one box, not the whole thing.
   'high liner family fish': 14,
+  // Classic Ground Beef Tacos -- same display-only shape as coloured
+  // peppers/split chicken breast: the deal (Beefsteak Tomatoes) is
+  // priced per lb with no package_weight_g, so the recipe's own gram
+  // quantity (227 g for "1 tomato") is what pricing actually scales
+  // against -- this bridge only affects the friendly "Recipe uses 1
+  // tomato" DISPLAY note. ~227 g (about 8 oz) for one beefsteak tomato
+  // -- notably larger than a standard round tomato, a real produce-aisle
+  // estimate for this specific variety.
+  tomatoes: 227,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -1068,6 +1103,24 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   // directly (no gram bridge needed for the DISPLAY note itself -- the
   // avg-weight bridge above is for pricing/nutrition scaling instead).
   'high liner family fish': { singular: 'fish stick', plural: 'fish sticks' },
+  // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above -- same
+  // gram-quantity-to-friendly-count bridge as coloured peppers/split
+  // chicken breast (both tables needed together, or the note falls
+  // through to the generic "N g of the package" text).
+  tomatoes: { singular: 'tomato', plural: 'tomatoes' },
+  // Loaded Baked Potatoes -- "8" is a bare each-count (unit ""), same
+  // shape as Kraft Singles/high liner family fish, so this reaches the
+  // bare-count branches directly. Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH
+  // entry above -- without this label too, describeUseQuantityText falls
+  // through to the generic "N g of the package" text (or, for a deal
+  // whose badge count comes from the each-count bridge like this one,
+  // no note at all -- caught live: the "canadian butcher bacon" row
+  // showed a bare "8" badge with zero "Recipe uses..." line underneath).
+  bacon: { singular: 'slice', plural: 'slices' },
+  // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above -- same
+  // gram-quantity-to-friendly-count bridge as tomatoes/drumsticks (1200 g
+  // stored / 300 g per potato = 4 potatoes, one per serving).
+  'russet potatoes': { singular: 'potato', plural: 'potatoes' },
 };
 
 // Deal items where even a WHOLE container quantity (amount >= 1, not a
