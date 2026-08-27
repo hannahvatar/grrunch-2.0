@@ -1,7 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CheckBadgeIcon, ChevronRightIcon, Cog6ToothIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import {
+  BuildingStorefrontIcon,
+  CheckBadgeIcon,
+  ChevronRightIcon,
+  Cog6ToothIcon,
+  LockClosedIcon,
+} from 'react-native-heroicons/outline';
 import { HeartIcon } from 'react-native-heroicons/solid';
 
 import { AccountBanner } from '../../components/AccountBanner';
@@ -82,12 +88,17 @@ export default function ProfileScreen() {
   return (
     <View style={styles.gradient}>
     <ScrollView contentContainerStyle={styles.container}>
-      <AccountBanner />
+      {/* "Browsing as guest" removed here per Anabelle's call -- this is
+          the shared AccountBanner also used on Meals, so it's hidden
+          only on Profile (not edited/removed from the component itself)
+          by simply not rendering it in guest mode. The signed-in variant
+          (email + Log out) still renders normally. */}
+      {!isGuest && <AccountBanner />}
 
       <View style={styles.headerRow}>
         <Text style={styles.title}>Profile</Text>
-        <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
-          <Cog6ToothIcon size={22} color="#111" />
+        <Pressable style={styles.settingsButton} onPress={() => router.push('/settings')} hitSlop={8}>
+          <Cog6ToothIcon size={20} color={INK} />
         </Pressable>
       </View>
 
@@ -134,7 +145,21 @@ export default function ProfileScreen() {
 
       <Text style={styles.sectionTitle}>My stores</Text>
       {!isSubscribed && (
-        <Text style={styles.sectionHint}>Auto-selected from your location · Upgrade to customize</Text>
+        <View style={styles.sectionHintRow}>
+          <Text style={styles.sectionHint}>Auto-selected from your location</Text>
+          {/* Primary action per Anabelle's call -- was plain text before.
+              Same btn-primary-orange treatment as login.tsx's primaryButton
+              (the DS's canonical primary/filled action -- ACCENT fill,
+              2px INK border, full pill), just compact/inline-sized for a
+              hint row rather than a full-width screen CTA. Routes to the
+              same /upgrade screen as UpgradeCta elsewhere on this page. */}
+          <Pressable
+            style={styles.upgradeInlineButton}
+            onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'customize your stores' } })}
+          >
+            <Text style={styles.upgradeInlineButtonText}>Upgrade to customize</Text>
+          </Pressable>
+        </View>
       )}
       {storesLoaded && myStores.length === 0 ? (
         <View style={styles.emptyState}>
@@ -146,17 +171,30 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
       ) : (
-        myStores.map((store) => (
-          <View key={store.id} style={styles.storeRow}>
-            <View style={styles.storeAvatar}>
-              <Text style={styles.storeAvatarText}>{store.initial}</Text>
-            </View>
-            <View style={styles.storeInfo}>
-              <Text style={styles.storeName}>{store.name}</Text>
-              <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
-            </View>
+        // Same card design as the onboarding "Stores near you" screen
+        // (app/stores.tsx) -- offset-shadow card, BuildingStorefrontIcon
+        // avatars, border-bottom row separators -- reused here per
+        // Anabelle's call so the two screens showing the same kind of
+        // content (a store list) actually look like the same app.
+        <View style={styles.storesCardOuter}>
+          <View style={styles.storesCardShadow} />
+          <View style={styles.storesCard}>
+            {myStores.map((store, index) => (
+              <View
+                key={store.id}
+                style={[styles.storeRow, index === myStores.length - 1 && styles.storeRowLast]}
+              >
+                <View style={styles.storeAvatar}>
+                  <BuildingStorefrontIcon size={26} color={INK} />
+                </View>
+                <View style={styles.storeInfo}>
+                  <Text style={styles.storeName}>{store.name}</Text>
+                  <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
+                </View>
+              </View>
+            ))}
           </View>
-        ))
+        </View>
       )}
 
       <Text style={styles.sectionTitle}>Saved recipes</Text>
@@ -219,35 +257,82 @@ const styles = StyleSheet.create({
   gradient: { flex: 1, backgroundColor: '#FFEAD4' },
   container: { padding: 24, paddingTop: 64, gap: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 8 },
-  sectionHint: { fontSize: 13, color: '#888', marginTop: -8 },
-  loadingIndicator: { marginTop: 8 },
-  emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 16, gap: 10 },
-  emptyStateText: { color: '#666', fontSize: 14 },
-  smallLinkButton: { alignSelf: 'flex-start' },
-  smallLinkButtonText: { color: '#111', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
-  storeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 14,
-    padding: 12,
-    gap: 12,
-  },
-  storeAvatar: {
+  // Same tertiary treatment as IngredientRow's editButton / GroceryListView's
+  // resetAllButton (white fill, 1.5px INK border) -- Anabelle's call, was a
+  // bare icon with just hitSlop before. Square (Anabelle's follow-up call,
+  // was a circle first), matching storeAvatar's own rounded-square radius
+  // further down this same screen.
+  settingsButton: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: ACCENT,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  storeAvatarText: { color: '#fff', fontWeight: '700', fontFamily: 'OpenSans_700Bold', fontSize: 13 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 8 },
+  sectionHint: { fontSize: 13, color: INK },
+  sectionHintRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: -8, flexWrap: 'wrap' },
+  // Compact btn-primary-orange -- see the DS's canonical spec on
+  // login.tsx's primaryButton (ACCENT fill, 2px INK border, full pill).
+  upgradeInlineButton: {
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  upgradeInlineButtonText: { color: INK, fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  loadingIndicator: { marginTop: 8 },
+  emptyState: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
+  emptyStateText: { color: '#666', fontSize: 14 },
+  smallLinkButton: { alignSelf: 'flex-start' },
+  smallLinkButtonText: { color: '#111', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
+  // Same offset-shadow card technique as app/stores.tsx's listCardOuter/
+  // listCardShadow/listCard -- a flat black shadow layer behind a white,
+  // INK-bordered card on top.
+  storesCardOuter: { marginTop: 4 },
+  storesCardShadow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
+    borderRadius: 24,
+    transform: [{ translateX: -1 }, { translateY: 1 }],
+  },
+  storesCard: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    overflow: 'hidden',
+  },
+  storeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#343837',
+    paddingVertical: 14,
+    gap: 12,
+  },
+  storeRowLast: { borderBottomWidth: 0 },
+  storeAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   storeInfo: { flex: 1 },
-  storeName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  storeSubtitle: { fontSize: 12, color: '#888', marginTop: 1 },
+  storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  storeSubtitle: { fontSize: 13, color: '#888' },
   savedCard: {
     flexDirection: 'row',
     alignItems: 'center',

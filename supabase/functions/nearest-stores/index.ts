@@ -7,16 +7,23 @@
 // of piling up duplicates.
 //
 // Client contract:
-//   POST { lat: number, lng: number }
-//   -> 200 { stores: StoreResult[] }  (0-5 entries — a chain with nothing
-//      found nearby is simply omitted, not backfilled with a distant result)
+//   POST { lat?: number, lng?: number }
+//   -> 200 { stores: StoreResult[], precise: boolean }
+//      (stores: 0-5 entries — a chain with nothing found nearby is simply
+//      omitted, not backfilled with a distant result. precise: true when
+//      lat/lng came from the caller; false when this function had to fall
+//      back to coarse IP geolocation instead.)
 //
-// NOT implemented here: the "location declined -> coarse IP-based fallback"
-// path from architecture.md. This function only handles turning a lat/lng
-// into nearby stores; getting a lat/lng when the user declines precise
-// location needs a separate IP-geolocation provider decision, which hasn't
-// been made yet. Until that lands, callers without device location simply
-// have no fallback path.
+// Implements the "location declined -> coarse IP-based fallback" path from
+// architecture.md (2026-08-26, Anabelle: "yes lets tackle this now") --
+// when lat/lng are omitted (the manual/skip path from app/location.tsx),
+// resolves a city-level lat/lng from the caller's own request IP via
+// ip-api.com (no API key, ~45 req/min per source IP -- more than enough for
+// this MVP's traffic; see resolveCoarseLocation below for the exact
+// provider call). If even THAT fails (no usable client IP -- e.g. local
+// dev, or ip-api.com itself down), returns an empty stores array rather
+// than guessing/mock data, same "honest empty state" principle
+// app/stores.tsx's no-location screen already follows.
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
@@ -78,12 +85,15 @@ interface ChainConfig {
   queries: string[];
 }
 
+// T&T Supermarket dropped (Anabelle, 2026-08-27: "we are no longer doing
+// T&T") -- matches EXCLUDED_CHAINS in scripts/sync_weekly_deals.py, which
+// already excludes it from the weekly deals sync. Reversible the same way
+// that one is documented as reversible: just add the chain back here.
 const MVP_CHAINS: ChainConfig[] = [
   { chainName: "Save-On-Foods", queries: ["Save-On-Foods"] },
   { chainName: "Real Canadian Superstore", queries: ["Real Canadian Superstore"] },
   { chainName: "No Frills", queries: ["No Frills"] },
   { chainName: "Safeway", queries: ["Safeway"] },
-  { chainName: "T&T Supermarket", queries: ["T&T Supermarket"] },
   { chainName: "Walmart", queries: ["Walmart"] },
 ];
 
@@ -103,6 +113,48 @@ interface StoreResult {
   lng: number;
   hours: unknown;
   google_place_id: string;
+}
+
+interface IpApiResponse {
+  status: "success" | "fail";
+  message?: string;
+  lat?: number;
+  lon?: number;
+  city?: string;
+}
+
+// Extracts the caller's real IP from the standard proxy header Supabase's
+// edge runtime populates. x-forwarded-for can carry a comma-separated
+// chain (client, proxy1, proxy2, ...) if the request passed through more
+// than one hop -- the first entry is the original client.
+function clientIpFrom(req: Request): string | null {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return req.headers.get("x-real-ip");
+}
+
+// Coarse, city-level fallback for the "location declined" path -- no API
+// key, no signup (ip-api.com, free tier: ~45 req/min per source IP, HTTP
+// only, well past enough for this MVP's traffic). Returns null (not a
+// guess) for anything that isn't a resolvable public IP -- notably local
+// dev, where the caller's address is loopback/private and ip-api.com will
+// correctly refuse it rather than returning a wrong location.
+async function resolveCoarseLocation(ip: string | null): Promise<{ lat: number; lng: number } | null> {
+  if (!ip) return null;
+  try {
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,lat,lon,city`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as IpApiResponse;
+    if (data.status !== "success" || typeof data.lat !== "number" || typeof data.lon !== "number") {
+      return null;
+    }
+    return { lat: data.lat, lng: data.lon };
+  } catch {
+    return null;
+  }
 }
 
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -188,13 +240,36 @@ export default {
       );
     }
 
-    const { lat, lng } = await req.json();
-    if (typeof lat !== "number" || typeof lng !== "number") {
-      return Response.json({ error: "Request body must include numeric lat and lng." }, { status: 400 });
+    // Tolerate a missing/empty body -- the manual/skip path from
+    // app/location.tsx sends no lat/lng at all, which is the intended
+    // trigger for the coarse IP fallback below, not a malformed request.
+    let body: { lat?: unknown; lng?: unknown } = {};
+    try {
+      body = await req.json();
+    } catch {
+      // no body sent -- fall through to the IP-based path
+    }
+
+    let lat = typeof body.lat === "number" ? body.lat : null;
+    let lng = typeof body.lng === "number" ? body.lng : null;
+    const precise = lat !== null && lng !== null;
+
+    if (!precise) {
+      const coarse = await resolveCoarseLocation(clientIpFrom(req));
+      if (!coarse) {
+        // No precise coords AND IP geolocation couldn't resolve anything
+        // (local dev, unresolvable IP, provider down) -- honest empty
+        // result rather than a guess. app/stores.tsx shows its real
+        // "No location yet" state on this, same as before this fallback
+        // existed.
+        return Response.json({ stores: [], precise: false });
+      }
+      lat = coarse.lat;
+      lng = coarse.lng;
     }
 
     const results = await Promise.all(
-      MVP_CHAINS.map((chain) => findNearestForChain(chain, lat, lng))
+      MVP_CHAINS.map((chain) => findNearestForChain(chain, lat!, lng!))
     );
     const found = results.filter((result): result is StoreResult => result !== null);
 
@@ -210,7 +285,7 @@ export default {
       return Response.json({ error: error.message }, { status: 500 });
     }
 
-    return Response.json({ stores });
+    return Response.json({ stores, precise });
   }),
 };
 
@@ -220,9 +295,21 @@ export default {
      (or export it before `supabase functions serve`)
   2. Make an HTTP request:
 
+  # Precise path (real device coords):
   curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/nearest-stores' \
     --header 'apiKey: <anon key>' \
     --header 'Content-Type: application/json' \
     --data '{"lat":49.2827,"lng":-123.1207}'
+
+  # Coarse IP-fallback path (no lat/lng -- resolves from the caller's own
+  # IP via ip-api.com). Locally this will usually fail to resolve
+  # (loopback/private IP), returning { stores: [], precise: false } --
+  # that's expected; test the real fallback against the deployed function
+  # instead, or set X-Forwarded-For to a real public IP to simulate it:
+  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/nearest-stores' \
+    --header 'apiKey: <anon key>' \
+    --header 'Content-Type: application/json' \
+    --header 'X-Forwarded-For: 8.8.8.8' \
+    --data '{}'
 
 */
