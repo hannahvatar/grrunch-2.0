@@ -15,9 +15,13 @@ const INK = '#111';
 // Guest-mode wireframe step 4 — Stores near you.
 // Wired to the deployed nearest-stores Edge Function (see
 // supabase/functions/nearest-stores/index.ts) using coords forwarded from
-// the Location screen. If no coords were forwarded (manual/skip path — no
-// manual search UI exists yet), this shows an honest no-location state
-// instead of mock data.
+// the Location screen when available. If no coords were forwarded
+// (manual/skip path — no manual search UI exists yet), the function itself
+// now falls back to coarse, city-level IP geolocation (2026-08-26,
+// Anabelle: "yes lets tackle this now" -- the architecture.md-documented
+// "location declined -> coarse fallback" path). Only if THAT also can't
+// resolve anything (no usable client IP -- notably local dev) does this
+// screen show its honest no-location state instead of mock data.
 interface StoreRow {
   id: string;
   chain_name: string;
@@ -51,25 +55,38 @@ function showUpgradePrompt() {
 
 export default function StoresScreen() {
   const { lat, lng } = useLocalSearchParams<{ lat?: string; lng?: string }>();
-  const hasLocation = typeof lat === 'string' && typeof lng === 'string';
+  const hasPreciseLocation = typeof lat === 'string' && typeof lng === 'string';
   const { setStores: setSelectedStores } = useSelectedStores();
   const { isSubscribed: storesEditable } = useSubscription();
 
-  const [loading, setLoading] = useState(hasLocation);
+  const [loading, setLoading] = useState(true);
   const [stores, setStores] = useState<DisplayStore[]>([]);
+  // Whether the result came from real device coords vs. the coarse,
+  // city-level IP fallback (nearest-stores' `precise` field) -- distance
+  // figures only get shown for a precise result; an IP-based guess isn't
+  // accurate enough to claim "X km away" without overstating confidence.
+  const [precise, setPrecise] = useState(hasPreciseLocation);
+  // True once the fetch has come back with a genuinely empty result (both
+  // the precise path, when coords were sent, AND the server's own IP
+  // fallback failed to resolve anything -- e.g. local dev, or ip-api.com
+  // itself down) -- the only case that still shows the honest
+  // no-location state instead of a result list.
+  const [locationUnavailable, setLocationUnavailable] = useState(false);
 
   useEffect(() => {
-    if (!hasLocation) return;
-
-    const userLat = Number(lat);
-    const userLng = Number(lng);
+    const userLat = hasPreciseLocation ? Number(lat) : null;
+    const userLng = hasPreciseLocation ? Number(lng) : null;
 
     let cancelled = false;
     setLoading(true);
 
     supabase.functions
-      .invoke<{ stores?: StoreRow[]; error?: string }>('nearest-stores', {
-        body: { lat: userLat, lng: userLng },
+      .invoke<{ stores?: StoreRow[]; precise?: boolean; error?: string }>('nearest-stores', {
+        // Sending {} (not omitting the body) when there's no precise fix
+        // yet -- app/location.tsx's "Choose store manually"/"Skip for
+        // now" both land here with no params -- triggers the function's
+        // own coarse IP-geolocation fallback instead of erroring.
+        body: hasPreciseLocation ? { lat: userLat, lng: userLng } : {},
       })
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -83,6 +100,13 @@ export default function StoresScreen() {
           });
           return;
         }
+        if (data.stores.length === 0) {
+          setLocationUnavailable(true);
+          setLoading(false);
+          return;
+        }
+        const resultPrecise = data.precise ?? hasPreciseLocation;
+        setPrecise(resultPrecise);
         const display = data.stores
           .map((store) => ({
             id: store.id,
@@ -90,7 +114,7 @@ export default function StoresScreen() {
             name: store.chain_name,
             subtitle: store.banner ?? store.address,
             distanceKm:
-              store.lat !== null && store.lng !== null
+              resultPrecise && userLat !== null && userLng !== null && store.lat !== null && store.lng !== null
                 ? haversineKm(userLat, userLng, store.lat, store.lng)
                 : null,
           }))
@@ -109,7 +133,7 @@ export default function StoresScreen() {
     return () => {
       cancelled = true;
     };
-  }, [hasLocation, lat, lng]);
+  }, [hasPreciseLocation, lat, lng]);
 
   function goToMeals() {
     router.push('/meals');
@@ -130,7 +154,23 @@ export default function StoresScreen() {
     router.push('/meals');
   }
 
-  if (!hasLocation) {
+  if (loading) {
+    return (
+      <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
+        <View style={[styles.container, styles.centered]}>
+          <ActivityIndicator size="large" color={INK} />
+          <Text style={styles.loadingText}>Finding stores near you…</Text>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  // Only reached once the fetch has actually come back empty -- both the
+  // precise path (when coords were sent) AND the server's own coarse IP
+  // fallback failed to resolve anything. Not shown just because coords
+  // weren't sent anymore (2026-08-26 -- that case now goes through the
+  // fallback instead of skipping the fetch entirely).
+  if (locationUnavailable) {
     return (
       <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
         <View style={styles.container}>
@@ -156,17 +196,6 @@ export default function StoresScreen() {
     );
   }
 
-  if (loading) {
-    return (
-      <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
-        <View style={[styles.container, styles.centered]}>
-          <ActivityIndicator size="large" color={INK} />
-          <Text style={styles.loadingText}>Finding stores near you…</Text>
-        </View>
-      </LinearGradient>
-    );
-  }
-
   return (
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <View style={styles.container}>
@@ -175,7 +204,9 @@ export default function StoresScreen() {
           <Text style={[styles.subtitle, !storesEditable && styles.subtitleInk]}>
             {storesEditable
               ? 'Select the stores you want to track — you can refine this anytime in Profile settings.'
-              : "Based on your location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."}
+              : precise
+                ? "Based on your location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."
+                : "Based on your approximate location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."}
           </Text>
         </View>
 
