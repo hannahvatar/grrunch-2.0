@@ -144,23 +144,7 @@ export default function ProfileScreen() {
       )}
 
       <Text style={styles.sectionTitle}>My stores</Text>
-      {!isSubscribed && (
-        <View style={styles.sectionHintRow}>
-          <Text style={styles.sectionHint}>Auto-selected from your location</Text>
-          {/* Primary action per Anabelle's call -- was plain text before.
-              Same btn-primary-orange treatment as login.tsx's primaryButton
-              (the DS's canonical primary/filled action -- ACCENT fill,
-              2px INK border, full pill), just compact/inline-sized for a
-              hint row rather than a full-width screen CTA. Routes to the
-              same /upgrade screen as UpgradeCta elsewhere on this page. */}
-          <Pressable
-            style={styles.upgradeInlineButton}
-            onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'customize your stores' } })}
-          >
-            <Text style={styles.upgradeInlineButtonText}>Upgrade to customize</Text>
-          </Pressable>
-        </View>
-      )}
+      {!isSubscribed && <Text style={styles.sectionHint}>Auto-selected from your location</Text>}
       {storesLoaded && myStores.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
@@ -179,11 +163,8 @@ export default function ProfileScreen() {
         <View style={styles.storesCardOuter}>
           <View style={styles.storesCardShadow} />
           <View style={styles.storesCard}>
-            {myStores.map((store, index) => (
-              <View
-                key={store.id}
-                style={[styles.storeRow, index === myStores.length - 1 && styles.storeRowLast]}
-              >
+            {myStores.map((store) => (
+              <View key={store.id} style={styles.storeRow}>
                 <View style={styles.storeAvatar}>
                   <BuildingStorefrontIcon size={26} color={INK} />
                 </View>
@@ -191,15 +172,52 @@ export default function ProfileScreen() {
                   <Text style={styles.storeName}>{store.name}</Text>
                   <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
                 </View>
+                {/* Next-to-feature member-only treatment (Anabelle's call,
+                    replaces the single "Upgrade to customize" button above
+                    the list) -- every member-only feature gets its own
+                    inline, stroked (outline, not filled) button with a
+                    leading lock icon, sitting right next to the feature it
+                    gates, instead of one banner-style upsell for the whole
+                    section. Free tier can't edit stores at all yet (no
+                    manual search UI -- same gap nearest-stores/index.ts's
+                    own comments flag), so for now this always routes to
+                    /upgrade regardless of tier; once editing is real for
+                    members, this is where that flow would branch. */}
+                <Pressable
+                  style={styles.changeStoreButton}
+                  onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'change your stores' } })}
+                >
+                  <LockClosedIcon size={13} color={INK} />
+                  <Text style={styles.changeStoreButtonText}>Change</Text>
+                </Pressable>
               </View>
             ))}
+            {/* Last line of the store card -- member-only upsell, same
+                next-to-feature language as the per-row Change buttons
+                above (Anabelle's mockup: title + subtitle on the left,
+                solid black "Upgrade" pill on the right). Only the free
+                tier sees it; a real member already has this. */}
+            {!isSubscribed && (
+              <Pressable
+                style={[styles.storeRow, styles.storeRowLast]}
+                onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'choose your own stores' } })}
+              >
+                <View style={styles.storeInfo}>
+                  <Text style={styles.storeName}>Choose your own stores</Text>
+                  <Text style={styles.storeSubtitle}>Subscribers can swap any location.</Text>
+                </View>
+                <View style={styles.upgradeRowButton}>
+                  <Text style={styles.upgradeRowButtonText}>Upgrade</Text>
+                </View>
+              </Pressable>
+            )}
           </View>
         </View>
       )}
 
       <Text style={styles.sectionTitle}>Saved recipes</Text>
       {!isSubscribed ? (
-        <UpgradeCta reason="save recipes" />
+        <UpgradeCta reason="save recipes" variant="outline" />
       ) : loading ? (
         <ActivityIndicator size="small" color="#111" style={styles.loadingIndicator} />
       ) : savedMeals.length === 0 ? (
@@ -229,7 +247,7 @@ export default function ProfileScreen() {
 
       <Text style={styles.sectionTitle}>Companion recipes</Text>
       {!isSubscribed ? (
-        <UpgradeCta reason="browse companion recipes" />
+        <UpgradeCta reason="browse companion recipes" variant="outline" />
       ) : subRecipesLoading ? (
         <ActivityIndicator size="small" color="#111" style={styles.loadingIndicator} />
       ) : subRecipes.length === 0 ? (
@@ -274,19 +292,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 8 },
-  sectionHint: { fontSize: 13, color: INK },
-  sectionHintRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: -8, flexWrap: 'wrap' },
-  // Compact btn-primary-orange -- see the DS's canonical spec on
-  // login.tsx's primaryButton (ACCENT fill, 2px INK border, full pill).
-  upgradeInlineButton: {
-    backgroundColor: ACCENT,
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  upgradeInlineButtonText: { color: INK, fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  sectionHint: { fontSize: 13, color: INK, marginTop: -8 },
   loadingIndicator: { marginTop: 8 },
   emptyState: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
   emptyStateText: { color: '#666', fontSize: 14 },
@@ -333,6 +339,34 @@ const styles = StyleSheet.create({
   storeInfo: { flex: 1 },
   storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 13, color: '#888' },
+  // Next-to-feature member-only button -- stroked/outline (white fill,
+  // 1.5px dashed INK border), leading lock icon, pill shape.
+  changeStoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+  },
+  changeStoreButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Real btn-primary-orange -- see the DS's canonical spec on login.tsx's
+  // primaryButton (ACCENT fill, 2px INK border). Distinct from the Change
+  // buttons' stroked/outline style since this row is the section's one
+  // real conversion action, not a per-item locked-feature marker.
+  upgradeRowButton: {
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+  },
+  upgradeRowButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   savedCard: {
     flexDirection: 'row',
     alignItems: 'center',
