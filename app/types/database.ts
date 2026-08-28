@@ -573,24 +573,30 @@ export type Database = {
           agreed_to_terms_at: string | null
           created_at: string
           email: string | null
+          full_name: string | null
           id: string
           notification_prefs: Json
+          phone: string | null
           terms_version: string | null
         }
         Insert: {
           agreed_to_terms_at?: string | null
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id: string
           notification_prefs?: Json
+          phone?: string | null
           terms_version?: string | null
         }
         Update: {
           agreed_to_terms_at?: string | null
           created_at?: string
           email?: string | null
+          full_name?: string | null
           id?: string
           notification_prefs?: Json
+          phone?: string | null
           terms_version?: string | null
         }
         Relationships: []

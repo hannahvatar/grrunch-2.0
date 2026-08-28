@@ -4,15 +4,13 @@ import { ChatBubbleOvalLeftEllipsisIcon } from 'react-native-heroicons/solid';
 
 // Rendered once, in the root layout, so it floats over every screen in the
 // app -- not just reachable from Settings > Get support. Same destination
-// as that row (settings-detail.tsx), since neither has real support content
-// yet.
+// as that row (get-support.tsx, real FAQ + email-support composer -- no
+// live chat, which would need a 3rd-party provider not set up yet).
+// Solid black fill/white icon -- Anabelle tried the white/INK-border
+// tertiary treatment and reverted, preferred the original black.
 export function SupportBubble() {
   return (
-    <Pressable
-      style={styles.bubble}
-      onPress={() => router.push({ pathname: '/settings-detail', params: { title: 'Get support' } })}
-      hitSlop={8}
-    >
+    <Pressable style={styles.bubble} onPress={() => router.push('/get-support')} hitSlop={8}>
       <ChatBubbleOvalLeftEllipsisIcon size={24} color="#fff" />
     </Pressable>
   );
