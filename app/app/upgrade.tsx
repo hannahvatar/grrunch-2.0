@@ -73,13 +73,13 @@ export default function UpgradeScreen() {
         <View style={styles.iconCircle}>
           <LockClosedIcon size={30} color="#111" />
         </View>
-        <Text style={styles.title}>Upgrade to Grrunch Plus</Text>
+        <Text style={styles.title}>Start 30-day free trial</Text>
         <Text style={styles.body}>
           {isSubscribed
-            ? "You're already on a Grrunch Plus trial or membership."
+            ? "You're already on a Grrunch trial or membership."
             : reason
-              ? `Try Grrunch Plus free for 30 days to ${reason}, plus all your meal recommendations, unlimited saved recipes, and full deals in every category.`
-              : 'Try Grrunch Plus free for 30 days for all your meal recommendations, unlimited saved recipes, and full deals in every category.'}
+              ? `Try Grrunch free for 30 days to ${reason}, plus all your meal recommendations, unlimited saved recipes, and full deals in every category.`
+              : 'Try Grrunch free for 30 days for all your meal recommendations, unlimited saved recipes, and full deals in every category.'}
         </Text>
         <Text style={styles.priceNote}>
           {configured && pkg ? `${pkg.product.priceString}/mo · Cancel anytime` : 'Then $5.99/mo · Cancel anytime'}
@@ -93,7 +93,7 @@ export default function UpgradeScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.primaryButtonText}>
-                {isGuest ? 'Create an account' : 'Start free trial'}
+                {isGuest ? 'Start free trial' : 'Start 30-day free trial'}
               </Text>
             )}
           </Pressable>
