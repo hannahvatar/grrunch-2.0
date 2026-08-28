@@ -6,6 +6,8 @@ import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicon
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
 import { SubRecipeCard } from '../components/SubRecipeCard';
+import { useAuth } from '../lib/auth';
+import { markSignupNudgeShown, recordRecipeView, shouldShowSignupNudge } from '../lib/guestNudge';
 import type { Meal } from '../lib/mealData';
 import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
 import { fetchRecipeById } from '../lib/recipes';
@@ -20,6 +22,7 @@ const INK = '#111';
 // stays plain/functional like the rest of the guest-mode flow.
 export default function RecipeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isGuest } = useAuth();
   // Same context the Meals tab's own "Add to list" toggle uses (see
   // meals.tsx) -- shared with the grocery list, so toggling here shows
   // up there too.
@@ -64,6 +67,15 @@ export default function RecipeScreen() {
       .catch(() => setRawMeal(null));
   }, [id]);
 
+  // Soft sign-up nudge tracking (see lib/guestNudge.ts) -- only guests
+  // accumulate a view count at all; a signed-in person (member or not)
+  // already has the free account this nudge exists to offer.
+  useEffect(() => {
+    if (isGuest && rawMeal?.id) {
+      recordRecipeView(rawMeal.id);
+    }
+  }, [isGuest, rawMeal?.id]);
+
   useEffect(() => {
     setServingsOverride(null);
   }, [rawMeal?.id]);
@@ -107,6 +119,21 @@ export default function RecipeScreen() {
   const dealIngredients = meal.ingredients.filter((ingredient) => ingredient.dealTag);
   const stapleIngredients = meal.ingredients.filter((ingredient) => !ingredient.dealTag);
 
+  // Closing is the natural "done browsing this recipe" moment -- if a
+  // guest has now crossed the view threshold, show the sign-up nudge
+  // (see lib/guestNudge.ts) INSTEAD of returning to Meals, via replace
+  // (not push) so dismissing the nudge itself lands back on Meals, not
+  // back on this recipe. markSignupNudgeShown() first, so a slow/failed
+  // navigation never leaves it able to fire twice.
+  async function handleClose() {
+    if (isGuest && (await shouldShowSignupNudge())) {
+      await markSignupNudgeShown();
+      router.replace('/signup-nudge');
+      return;
+    }
+    router.canGoBack() ? router.back() : router.replace('/meals');
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
@@ -114,10 +141,7 @@ export default function RecipeScreen() {
           reads as pinned in place over whatever scrolls beneath it,
           rather than sitting in its own opaque bar. Positioned outside
           the ScrollView entirely, so it never scrolls away. */}
-      <Pressable
-        style={styles.closeButton}
-        onPress={() => (router.canGoBack() ? router.back() : router.replace('/meals'))}
-      >
+      <Pressable style={styles.closeButton} onPress={handleClose}>
         <XMarkIcon size={18} color={INK} />
       </Pressable>
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent}>

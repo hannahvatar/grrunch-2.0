@@ -107,8 +107,21 @@ export default function RootLayout() {
                       <Stack.Screen name="dev-cost" />
                       <Stack.Screen name="settings" />
                       <Stack.Screen name="settings-detail" />
+                      <Stack.Screen name="manage-account" />
+                      <Stack.Screen name="payment" />
+                      <Stack.Screen name="notifications" />
+                      <Stack.Screen name="notifications-push" />
+                      <Stack.Screen name="notifications-email" />
+                      <Stack.Screen name="get-support" />
+                      <Stack.Screen name="privacy-policy" />
+                      <Stack.Screen name="legal" />
+                      <Stack.Screen name="how-it-works" />
                       <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />
                       <Stack.Screen name="upgrade" options={{ presentation: 'modal', headerShown: false }} />
+                      <Stack.Screen
+                        name="signup-nudge"
+                        options={{ presentation: 'modal', headerShown: false }}
+                      />
                       <Stack.Screen name="error" options={{ presentation: 'modal', headerShown: false }} />
                       <Stack.Screen name="offline" options={{ presentation: 'modal', headerShown: false }} />
                       <Stack.Screen

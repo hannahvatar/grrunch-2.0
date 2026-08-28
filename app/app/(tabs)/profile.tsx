@@ -3,14 +3,15 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
-  CheckBadgeIcon,
-  ChevronRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   Cog6ToothIcon,
   LockClosedIcon,
 } from 'react-native-heroicons/outline';
 import { HeartIcon } from 'react-native-heroicons/solid';
 
 import { AccountBanner } from '../../components/AccountBanner';
+import { MembershipStatus } from '../../components/MembershipStatus';
 import { SubRecipeCard } from '../../components/SubRecipeCard';
 import { UpgradeCta } from '../../components/UpgradeCta';
 import { useAuth } from '../../lib/auth';
@@ -28,6 +29,39 @@ import { useSubscription } from '../../lib/subscription';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
+// My stores / Saved recipes / Companion recipes are each collapsible
+// (Anabelle, 2026-08-27: "should probably be accordions" -- collapsed by
+// default, independent of each other, not a strict single-open
+// accordion). Membership isn't one of these -- it's the page's one
+// always-visible top-level status, not a browsable list. Distinct from
+// Companion recipes' own EXISTING per-item accordion (SubRecipeCard,
+// isSubRecipeExpanded/toggleSubRecipe below) -- this is a second, outer
+// level of collapse on top of that one, for the whole section.
+function SectionHeader({
+  title,
+  subtitle,
+  expanded,
+  onToggle,
+}: {
+  title: string;
+  subtitle?: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <View>
+      {/* subtitle sits with the heading itself, not inside the collapsible
+          content below -- Anabelle's call, stays visible whether the
+          section is open or closed. */}
+      <Pressable style={styles.sectionHeaderRow} onPress={onToggle} hitSlop={8}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {expanded ? <ChevronUpIcon size={18} color={INK} /> : <ChevronDownIcon size={18} color={INK} />}
+      </Pressable>
+      {subtitle && <Text style={styles.sectionHint}>{subtitle}</Text>}
+    </View>
+  );
+}
+
 // No wireframe exists for this page yet (Anabelle, 2026-08-26: "design
 // it yourself"). Built out so far: Membership, My stores, Saved
 // recipes, Companion recipes -- all real data, no mocked content.
@@ -38,18 +72,14 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
 
   const { stores: myStores, loaded: storesLoaded } = useSelectedStores();
-  const { status: subscriptionStatus, trialEndsAt, isSubscribed } = useSubscription();
+  const { isSubscribed } = useSubscription();
   const { isGuest } = useAuth();
 
-  // Real trial countdown from the same subscriptions row every other
-  // section already gates on (useSubscription) -- previously computed
-  // nowhere on Profile itself, only used silently to lock/unlock other
-  // sections. Guests are skipped entirely: AccountBanner already carries
-  // the sign-up prompt at the top of the page, no need to repeat it here.
-  const trialDaysLeft =
-    subscriptionStatus === 'trialing' && trialEndsAt
-      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
-      : null;
+  // Collapsed by default (Anabelle's call) -- each toggles independently,
+  // not a strict single-open accordion.
+  const [storesOpen, setStoresOpen] = useState(false);
+  const [savedOpen, setSavedOpen] = useState(false);
+  const [companionOpen, setCompanionOpen] = useState(false);
 
   useEffect(() => {
     fetchRecipesByIds(Array.from(savedIds))
@@ -105,46 +135,21 @@ export default function ProfileScreen() {
       {!isGuest && (
         <>
           <Text style={styles.sectionTitle}>Membership</Text>
-          {isSubscribed ? (
-            subscriptionStatus === 'trialing' ? (
-              <View style={styles.membershipCard}>
-                <CheckBadgeIcon size={20} color={INK} />
-                <View style={styles.membershipTextBlock}>
-                  <Text style={styles.membershipTitle}>
-                    Free trial · {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} left
-                  </Text>
-                  <Text style={styles.membershipSubtitle}>Then $5.99/mo · Cancel anytime</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.membershipCard}>
-                <CheckBadgeIcon size={20} color={INK} />
-                <View style={styles.membershipTextBlock}>
-                  <Text style={styles.membershipTitle}>Grrunch Member</Text>
-                  <Text style={styles.membershipSubtitle}>$5.99/mo · Manage in Settings</Text>
-                </View>
-              </View>
-            )
-          ) : subscriptionStatus === 'trialing' || subscriptionStatus === 'expired' ? (
-            <Pressable
-              style={styles.membershipExpiredCard}
-              onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'renew your membership' } })}
-            >
-              <LockClosedIcon size={18} color="#fff" />
-              <View style={styles.membershipTextBlock}>
-                <Text style={styles.membershipTitleLight}>Your trial has ended</Text>
-                <Text style={styles.membershipSubtitleLight}>Resubscribe for $5.99/mo to keep saving recipes</Text>
-              </View>
-              <ChevronRightIcon size={18} color="#999" />
-            </Pressable>
-          ) : (
-            <UpgradeCta reason="unlock the full app" />
-          )}
+          {/* Real status card -- extracted to components/MembershipStatus.tsx
+              so payment.tsx (Settings > Payment) can show the exact same
+              logic instead of a second, drift-prone copy of it. */}
+          <MembershipStatus />
         </>
       )}
 
-      <Text style={styles.sectionTitle}>My stores</Text>
-      {!isSubscribed && <Text style={styles.sectionHint}>Auto-selected from your location</Text>}
+      <SectionHeader
+        title="My stores"
+        subtitle={!isSubscribed ? 'Auto-selected from your location' : undefined}
+        expanded={storesOpen}
+        onToggle={() => setStoresOpen((v) => !v)}
+      />
+      {storesOpen && (
+      <>
       {storesLoaded && myStores.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
@@ -214,8 +219,18 @@ export default function ProfileScreen() {
           </View>
         </View>
       )}
+      </>
+      )}
 
-      <Text style={styles.sectionTitle}>Saved recipes</Text>
+      <View style={styles.sectionDivider} />
+      <SectionHeader
+        title="Saved recipes"
+        subtitle="Recipes you've saved to cook again"
+        expanded={savedOpen}
+        onToggle={() => setSavedOpen((v) => !v)}
+      />
+      {savedOpen && (
+      <>
       {!isSubscribed ? (
         <UpgradeCta reason="save recipes" variant="outline" />
       ) : loading ? (
@@ -244,8 +259,18 @@ export default function ProfileScreen() {
           </View>
         ))
       )}
+      </>
+      )}
 
-      <Text style={styles.sectionTitle}>Companion recipes</Text>
+      <View style={styles.sectionDivider} />
+      <SectionHeader
+        title="Companion recipes"
+        subtitle="Techniques and sides that pair with your meals"
+        expanded={companionOpen}
+        onToggle={() => setCompanionOpen((v) => !v)}
+      />
+      {companionOpen && (
+      <>
       {!isSubscribed ? (
         <UpgradeCta reason="browse companion recipes" variant="outline" />
       ) : subRecipesLoading ? (
@@ -266,6 +291,8 @@ export default function ProfileScreen() {
           ))}
         </View>
       )}
+      </>
+      )}
     </ScrollView>
     </View>
   );
@@ -277,13 +304,13 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   // Same tertiary treatment as IngredientRow's editButton / GroceryListView's
   // resetAllButton (white fill, 1.5px INK border) -- Anabelle's call, was a
-  // bare icon with just hitSlop before. Square (Anabelle's follow-up call,
-  // was a circle first), matching storeAvatar's own rounded-square radius
-  // further down this same screen.
+  // bare icon with just hitSlop before. Ellipse (Anabelle's follow-up call,
+  // for consistency with settings.tsx's own closeButton, which uses the
+  // same tertiary treatment as an ellipse).
   settingsButton: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 999,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
@@ -291,8 +318,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 8 },
-  sectionHint: { fontSize: 13, color: INK, marginTop: -8 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  sectionHint: { fontSize: 13, color: INK, marginTop: 6 },
+  // Between accordion sections only (My stores / Saved recipes / Companion
+  // recipes) -- not before My stores itself, since Membership above it
+  // isn't one of these collapsible sections.
+  sectionDivider: { height: 1, backgroundColor: INK, marginTop: 12 },
   loadingIndicator: { marginTop: 8 },
   emptyState: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
   emptyStateText: { color: '#666', fontSize: 14 },
@@ -380,25 +417,4 @@ const styles = StyleSheet.create({
   savedName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
   subRecipesList: { gap: 12 },
-  membershipCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: ACCENT,
-    borderRadius: 14,
-    padding: 14,
-  },
-  membershipExpiredCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: INK,
-    borderRadius: 14,
-    padding: 14,
-  },
-  membershipTextBlock: { flex: 1 },
-  membershipTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  membershipSubtitle: { fontSize: 12, color: '#5c3d1c', marginTop: 2 },
-  membershipTitleLight: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#fff' },
-  membershipSubtitleLight: { fontSize: 12, color: '#ccc', marginTop: 2 },
 });
