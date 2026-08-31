@@ -2,30 +2,49 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ArrowRightIcon, MapPinIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 // GRRUNCH DS -- matches login.tsx/index.tsx's palette.
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Guest-mode wireframe step 3 — Location permission.
+// Guest-mode wireframe step 3 — Location permission. Reachable more than
+// once: also linked from Profile's "My stores" empty state
+// (app/(tabs)/profile.tsx), so a guest who declined here can genuinely
+// come back and turn it on later (Anabelle, 2026-08-28) -- not a one-shot
+// ask that dead-ends.
+//
 // "Allow location access" requests real device location and forwards the
-// coords to Stores. "Choose store manually" and "Skip for now" both push to
-// Stores with no coords — there's no manual search UI yet (see
-// nearest-stores/index.ts's documented gap), so Stores shows its own
-// no-location state rather than pretending to have a result.
+// coords to Stores. "Skip for now" pushes to Stores with no coords, which
+// falls back to coarse IP geolocation or an honest no-location state (see
+// nearest-stores/index.ts) -- there's no manual search UI (a real,
+// deliberate gap, not being built), so this screen no longer claims one
+// exists in its copy.
+//
+// iOS/Android won't re-show the system permission dialog once truly
+// denied -- calling requestForegroundPermissionsAsync() again just
+// silently returns 'denied' again. canAskAgain on the response is exactly
+// how you tell "still askable" apart from "permanently denied, only
+// Settings can fix it" (see expo-modules-core's PermissionsInterface).
 export default function LocationScreen() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [permanentlyDenied, setPermanentlyDenied] = useState(false);
   const [requesting, setRequesting] = useState(false);
 
   async function handleAllowLocation() {
     setStatusMessage(null);
+    setPermanentlyDenied(false);
     setRequesting(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setStatusMessage('Location permission denied. You can search manually or skip for now.');
+        if (canAskAgain) {
+          setStatusMessage("Location access wasn't granted. You can try again or skip for now.");
+        } else {
+          setPermanentlyDenied(true);
+          setStatusMessage('Location access is turned off for Grrunch. Turn it on in Settings, or skip for now.');
+        }
         return;
       }
       const position = await Location.getCurrentPositionAsync({});
@@ -37,7 +56,7 @@ export default function LocationScreen() {
         },
       });
     } catch {
-      setStatusMessage("Couldn't get your location. You can search manually or skip for now.");
+      setStatusMessage("Couldn't get your location. You can try again or skip for now.");
     } finally {
       setRequesting(false);
     }
@@ -52,8 +71,8 @@ export default function LocationScreen() {
         </View>
         <Text style={styles.title}>Find deals near you</Text>
         <Text style={styles.body}>
-          Grrunch can use your location to show nearby stores. This is optional — you can always
-          search manually instead.
+          Grrunch can use your location to show nearby stores. This is optional — you can skip for now and
+          turn it on anytime, right from here.
         </Text>
 
         {statusMessage && (
@@ -73,9 +92,18 @@ export default function LocationScreen() {
             {requesting ? 'Locating…' : 'Allow location access'}
           </Text>
         </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => router.push('/stores')}>
-          <Text style={styles.secondaryButtonText}>Choose store manually</Text>
-        </Pressable>
+        {/* Only shown once truly denied -- re-requesting permission won't
+            show the system dialog again at that point, so this is the
+            one real path back to "on" (Anabelle, 2026-08-28: guests
+            should be able to actually enable/re-enable location, not hit
+            a dead end). Replaces the old "Choose store manually" button,
+            which did nothing different from Skip and promised a search
+            feature that was never built. */}
+        {permanentlyDenied && (
+          <Pressable style={styles.secondaryButton} onPress={() => Linking.openSettings()}>
+            <Text style={styles.secondaryButtonText}>Open Settings</Text>
+          </Pressable>
+        )}
         <Pressable style={styles.skipButton} onPress={() => router.push('/stores')}>
           <Text style={styles.skipText}>Skip for now</Text>
           <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
