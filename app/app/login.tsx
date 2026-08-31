@@ -291,14 +291,14 @@ export default function LoginScreen() {
       </Pressable>
 
       {emailSent ? (
-        <View style={styles.statusBanner}>
-          <EnvelopeIcon size={16} color="#888" />
+        <View style={styles.emailSentBanner}>
+          <EnvelopeIcon size={16} color={INK} />
           <View style={styles.emailSentTextBlock}>
-            <Text style={styles.statusBannerText}>
+            <Text style={styles.emailSentText}>
               We sent a confirmation link to {email}. Open it to finish signing in.
             </Text>
             <Pressable onPress={() => setEmailSent(false)}>
-              <Text style={styles.loginPrompt}>Use a different email</Text>
+              <Text style={styles.emailSentLink}>Use a different email</Text>
             </Pressable>
           </View>
         </View>
@@ -374,6 +374,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   statusBannerText: { fontSize: 14, color: '#555' },
+  // Distinct from statusBanner (still grey, shared with the Apple/Google
+  // cancel message above) -- white fill, black icon/type, icon pinned to
+  // the top since the text now wraps to two lines (the message + the
+  // "Use a different email" link below it), not vertically centered
+  // against the whole block.
+  emailSentBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  emailSentText: { fontSize: 14, color: INK },
+  emailSentLink: { color: INK, textDecorationLine: 'underline' },
   oauthButton: {
     height: 56,
     justifyContent: 'center',
@@ -411,7 +427,6 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   primaryButtonTextDisabled: { color: ACCENT_DISABLED_TEXT },
   emailSentTextBlock: { flex: 1, gap: 8 },
-  loginPrompt: { color: '#666', textDecorationLine: 'underline' },
   guestButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   guestText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });

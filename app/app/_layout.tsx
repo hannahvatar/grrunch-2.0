@@ -15,6 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SupportBubble } from '../components/SupportBubble';
 import { AuthProvider } from '../lib/auth';
+import { AnalyticsProvider, initSentry, wrapWithSentry } from '../lib/observability';
 import { SavedRecipesProvider } from '../lib/savedRecipes';
 import { SelectedDealsProvider } from '../lib/selectedDeals';
 import { SelectedMealsProvider } from '../lib/selectedMeals';
@@ -24,6 +25,11 @@ import { SubscriptionProvider } from '../lib/subscription';
 import { supabase } from '../lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
+
+// As early as possible -- module scope, not inside the component -- so
+// Sentry is armed before RootLayout itself even renders once. No-ops
+// entirely if EXPO_PUBLIC_SENTRY_DSN isn't set (see lib/observability.tsx).
+initSentry();
 
 // App-wide default -- individual styles still set fontWeight (600/700/800)
 // alongside an explicit fontFamily (OpenSans_600SemiBold etc, see the
@@ -63,7 +69,7 @@ function AuthRedirect() {
 // Terms -> Login/Guest -> Location -> Stores -> Main App (tabs, starting on
 // the "Meals" tab). Grocery list lives in the (tabs) group as its own tab
 // now, not a pushed modal screen.
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     OpenSans_400Regular,
     OpenSans_600SemiBold,
@@ -89,6 +95,7 @@ export default function RootLayout() {
     // own setup docs.
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
+      <AnalyticsProvider>
       <AuthProvider>
         <SubscriptionProvider>
           <PurchasesProvider>
@@ -150,8 +157,15 @@ export default function RootLayout() {
           </PurchasesProvider>
         </SubscriptionProvider>
       </AuthProvider>
+      </AnalyticsProvider>
       <StatusBar style="auto" />
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
+
+// wrapWithSentry adds an error boundary + navigation tracing around the
+// whole app on native -- a no-op passthrough on web, and safe to call
+// unconditionally on native even when EXPO_PUBLIC_SENTRY_DSN isn't set
+// (see lib/observability.tsx's own comment for why).
+export default wrapWithSentry(RootLayout);

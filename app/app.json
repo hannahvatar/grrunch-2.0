@@ -34,7 +34,9 @@
         }
       ],
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      "@sentry/react-native",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

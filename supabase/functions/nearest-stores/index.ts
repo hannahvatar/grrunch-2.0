@@ -271,7 +271,27 @@ export default {
     const results = await Promise.all(
       MVP_CHAINS.map((chain) => findNearestForChain(chain, lat!, lng!))
     );
-    const found = results.filter((result): result is StoreResult => result !== null);
+    const foundWithDupes = results.filter((result): result is StoreResult => result !== null);
+
+    // Two different MVP_CHAINS queries can resolve to the literal same
+    // Google Place (e.g. Real Canadian Superstore and No Frills are
+    // separate real storefronts almost everywhere, but Places has been
+    // seen returning the same place_id for both when only one of the two
+    // actually exists near the given coords). A same-batch upsert with
+    // onConflict throws Postgres error 21000 ("ON CONFLICT DO UPDATE
+    // command cannot affect row a second time") when the batch itself
+    // contains two rows targeting the same conflict key -- this isn't
+    // about a row already in the table, it's two incoming rows colliding
+    // with each other. Deduping here (keep the first match, in
+    // MVP_CHAINS order) is the real fix, not a workaround: it reflects
+    // that both chain slots really do point at the same physical store,
+    // so there's only one real row to write.
+    const seenPlaceIds = new Set<string>();
+    const found = foundWithDupes.filter((result) => {
+      if (seenPlaceIds.has(result.google_place_id)) return false;
+      seenPlaceIds.add(result.google_place_id);
+      return true;
+    });
 
     // ctx.supabaseAdmin bypasses RLS — needed since `stores` only grants
     // public SELECT, not INSERT/UPDATE (see the RLS policies in
