@@ -6,7 +6,7 @@ export const PRIVACY_POLICY_EFFECTIVE_DATE = 'August 4, 2026';
 
 export const PRIVACY_POLICY_INTRO =
   'Grrunch ("Grrunch," "we," "our," or "us") respects your privacy. This Privacy Policy explains what information we collect, how we use it, when we share it, and the choices you have regarding your information.\n\n' +
-  'This Privacy Policy applies to the Grrunch mobile application, website, and related services (collectively, the "Service").\n\n' +
+  'This Privacy Policy applies to the Grrunch mobile application and related services (collectively, the "Service").\n\n' +
   'By using Grrunch, you agree to the practices described in this Privacy Policy.';
 
 export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
@@ -227,7 +227,7 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
     title: '14. Contact Us',
     blocks: [
       text('If you have questions about this Privacy Policy or wish to exercise your privacy rights, please contact us:'),
-      text('Grrunch\nEmail: privacy@grrunch.com\nWebsite: www.grrunch.com'),
+      text('Grrunch\nEmail: privacy@grrunch.com'),
     ],
   },
 ];

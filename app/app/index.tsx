@@ -1,99 +1,116 @@
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { GrrunchMascot } from '../components/GrrunchMascot';
-import { LegalDocumentModal } from '../components/LegalDocumentModal';
-import { PRIVACY_POLICY_EFFECTIVE_DATE, PRIVACY_POLICY_INTRO, PRIVACY_POLICY_SECTIONS } from '../lib/privacyPolicy';
-import { TERMS_OF_USE_EFFECTIVE_DATE, TERMS_OF_USE_INTRO, TERMS_OF_USE_OUTRO, TERMS_OF_USE_SECTIONS } from '../lib/termsOfUse';
 
-// GRRUNCH DS accent -- matches login.tsx's palette.
+// GRRUNCH DS accent -- matches terms.tsx/login.tsx's palette.
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Guest-mode wireframe step 1 — Terms & consent.
-export default function TermsScreen() {
-  const [showTerms, setShowTerms] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
+// Value-prop copy, Anabelle's own wording (2026-09-03), lightly cleaned up
+// into a headline/subtext pair per screen -- no Figma wireframe this time,
+// so layout/pagination below is Claude's own call, not a matched design.
+const SLIDES = [
+  {
+    headline: 'Our prices include member prices',
+    body: "Make sure you're geared up with your loyalty cards.",
+  },
+  {
+    headline: 'Drop the deal-hunting hassle',
+    body: 'We analyze flyers weekly and catch the good deals for you.',
+  },
+  {
+    headline: 'Stop meal planning',
+    body: 'We use our findings to get you on an affordable meal plan.',
+  },
+] as const;
 
-  function decline() {
-    Alert.alert('Terms required', 'You need to agree to the terms to use Grrunch.');
+// New first screen (2026-09-03) — value-prop onboarding carousel, ahead of
+// the pre-existing Terms & consent screen (moved to terms.tsx unchanged).
+// Deliberately shown on every cold start, same as the rest of this guest-mode
+// intro sequence (Terms/Login aren't gated behind "seen once" state either)
+// -- not stored/persisted anywhere. Skippable at every step per Anabelle's
+// call; jumps straight to /terms either way.
+export default function OnboardingScreen() {
+  const [step, setStep] = useState(0);
+  const isLast = step === SLIDES.length - 1;
+  const slide = SLIDES[step];
+
+  function next() {
+    if (isLast) {
+      router.push('/terms');
+    } else {
+      setStep((s) => s + 1);
+    }
   }
 
   return (
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <View style={styles.container}>
-        <View style={styles.spacer} />
-        <View style={styles.logo}>
-          <GrrunchMascot size={200} />
-        </View>
-        <Text style={styles.title}>Grrunch</Text>
-        <Text style={styles.body}>
-          By continuing, you agree to our{' '}
-          <Text style={styles.link} onPress={() => setShowTerms(true)}>
-            Terms of Use
-          </Text>{' '}
-          and{' '}
-          <Text style={styles.link} onPress={() => setShowPrivacy(true)}>
-            Privacy Policy
-          </Text>
-          . We collect information to provide and improve Grrunch, including showing deals,
-          building grocery lists, and enhancing your experience.
-        </Text>
-        <View style={styles.spacer} />
-        <Pressable
-          onPress={() => router.push('/login')}
-          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
-        >
-          <Text style={styles.primaryButtonText}>I agree</Text>
+        <Pressable style={styles.skip} onPress={() => router.push('/terms')} hitSlop={12}>
+          <Text style={styles.skipText}>Skip</Text>
         </Pressable>
-        <Pressable style={styles.declineButton} onPress={decline}>
-          <Text style={styles.declineText}>Decline</Text>
-        </Pressable>
-      </View>
 
-      <LegalDocumentModal
-        visible={showTerms}
-        onClose={() => setShowTerms(false)}
-        title="Terms of Use"
-        effectiveDate={TERMS_OF_USE_EFFECTIVE_DATE}
-        intro={TERMS_OF_USE_INTRO}
-        sections={TERMS_OF_USE_SECTIONS}
-        outro={TERMS_OF_USE_OUTRO}
-        showCloseButton
-      />
-      <LegalDocumentModal
-        visible={showPrivacy}
-        onClose={() => setShowPrivacy(false)}
-        title="Privacy Policy"
-        effectiveDate={PRIVACY_POLICY_EFFECTIVE_DATE}
-        intro={PRIVACY_POLICY_INTRO}
-        sections={PRIVACY_POLICY_SECTIONS}
-        showCloseButton
-      />
+        {/* ScrollView, not a fixed-height flex-centered View -- guards the
+            same overflow-behind-the-button risk found live on terms.tsx
+            (see its own comment). flexGrow:1 on contentContainerStyle
+            keeps it centered when it fits, scrolls when it doesn't. */}
+        <ScrollView contentContainerStyle={styles.middle} showsVerticalScrollIndicator={false}>
+          <View style={styles.logo}>
+            <GrrunchMascot size={160} />
+          </View>
+          <Text style={styles.headline}>{slide.headline}</Text>
+          <Text style={styles.body}>{slide.body}</Text>
+        </ScrollView>
+
+        {/* bottom block is pinned via its own paddingBottom (not flex
+            centering) so the button always clears SupportBubble's fixed
+            right:20/bottom:96, 52px footprint -- same reasoning as the
+            paddingBottom fix on GroceryListView's Total card. */}
+        <View style={styles.bottomBlock}>
+          <View style={styles.dots}>
+            {SLIDES.map((s, i) => (
+              <View key={s.headline} style={[styles.dot, i === step && styles.dotActive]} />
+            ))}
+          </View>
+
+          <Pressable
+            onPress={next}
+            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+          >
+            <Text style={styles.primaryButtonText}>{isLast ? 'Get started' : 'Next'}</Text>
+          </Pressable>
+        </View>
+      </View>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  container: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
-  spacer: { height: 24 },
+  container: { flex: 1, padding: 24 },
+  skip: { position: 'absolute', top: 60, right: 24, padding: 8, zIndex: 1 },
+  skipText: { fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: '#343837' },
+  middle: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   logo: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
-  title: {
-    fontSize: 28,
+  headline: {
+    fontSize: 24,
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',
-    textTransform: 'uppercase',
-    marginBottom: 16,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
-  link: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline', color: INK },
+  bottomBlock: { paddingBottom: 160 },
+  dots: { flexDirection: 'row', gap: 8, marginBottom: 24, alignSelf: 'center' },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0C9AE' },
+  dotActive: { backgroundColor: INK, width: 20 },
   primaryButton: {
     width: '100%',
     height: 56,
@@ -103,18 +120,7 @@ const styles = StyleSheet.create({
     borderColor: INK,
     borderRadius: 28,
     alignItems: 'center',
-    marginBottom: 16,
   },
   primaryButtonPressed: { borderColor: INK },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  declineButton: {
-    width: '100%',
-    height: 56,
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 28,
-    alignItems: 'center',
-  },
-  declineText: { color: INK, fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });
