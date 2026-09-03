@@ -66,8 +66,9 @@ function AuthRedirect() {
 }
 
 // Guest-mode onboarding stack — matches the wireframed flow:
-// Terms -> Login/Guest -> Location -> Stores -> Main App (tabs, starting on
-// the "Meals" tab). Grocery list lives in the (tabs) group as its own tab
+// Onboarding (3-screen value-prop carousel, added 2026-09-03) -> Terms ->
+// Login/Guest -> Location -> Stores -> Main App (tabs, starting on the
+// "Meals" tab). Grocery list lives in the (tabs) group as its own tab
 // now, not a pushed modal screen.
 function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -105,6 +106,7 @@ function RootLayout() {
                   <SelectedDealsProvider>
                     <Stack screenOptions={{ headerShown: false }}>
                       <Stack.Screen name="index" />
+                      <Stack.Screen name="terms" />
                       <Stack.Screen name="login" />
                       <Stack.Screen name="location" />
                       <Stack.Screen name="stores" />
