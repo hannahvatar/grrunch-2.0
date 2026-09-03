@@ -16,7 +16,7 @@ const INK = '#111';
 // is Claude's own call, not a matched design.
 const SLIDES = [
   {
-    headline: 'Skip the deal hunting',
+    headline: 'Leave the deal hunting to us',
     body: 'Every week, we scan grocery flyers and pick out the deals actually worth buying.',
   },
   {
@@ -29,11 +29,11 @@ const SLIDES = [
   },
 ] as const;
 
-// The "Skip the deal hunting" slide gets the animated flyer illustration
-// (see FlyerAnimation.tsx) instead of the mascot every other slide uses --
-// keyed to the headline text, not a hardcoded index, so a future reorder
-// can't silently point this at the wrong slide.
-const FLYER_SLIDE = SLIDES.findIndex((s) => s.headline === 'Skip the deal hunting');
+// The "Leave the deal hunting to us" slide gets the animated flyer
+// illustration (see FlyerAnimation.tsx) instead of the mascot every other
+// slide uses -- keyed to the headline text, not a hardcoded index, so a
+// future reorder can't silently point this at the wrong slide.
+const FLYER_SLIDE = SLIDES.findIndex((s) => s.headline === 'Leave the deal hunting to us');
 
 // New first screen (2026-09-03) — value-prop onboarding carousel, ahead of
 // the pre-existing Terms & consent screen (moved to terms.tsx unchanged).
