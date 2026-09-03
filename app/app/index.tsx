@@ -9,21 +9,22 @@ import { GrrunchMascot } from '../components/GrrunchMascot';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Value-prop copy, Anabelle's own wording (2026-09-03), lightly cleaned up
-// into a headline/subtext pair per screen -- no Figma wireframe this time,
-// so layout/pagination below is Claude's own call, not a matched design.
+// Value-prop copy, Anabelle's own wording -- rewritten + reordered
+// 2026-09-03 (was: member prices / deal-hunting / meal planning, in that
+// order). No Figma wireframe for this screen, so layout/pagination below
+// is Claude's own call, not a matched design.
 const SLIDES = [
   {
-    headline: 'Our prices include member prices',
-    body: "Make sure you're geared up with your loyalty cards.",
+    headline: 'Skip the deal hunting',
+    body: 'Every week, we scan grocery flyers and pick out the deals actually worth buying.',
   },
   {
-    headline: 'Drop the deal-hunting hassle',
-    body: 'We analyze flyers weekly and catch the good deals for you.',
+    headline: 'Let the deals decide dinner',
+    body: "We turn the week's best deals into affordable recipes and your meal plan.",
   },
   {
-    headline: 'Stop meal planning',
-    body: 'We use our findings to get you on an affordable meal plan.',
+    headline: 'Member prices count, too',
+    body: 'Some of our deals include loyalty pricing, so keep your grocery rewards cards handy.',
   },
 ] as const;
 
