@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { FlyerAnimation } from '../components/FlyerAnimation';
 import { GrrunchMascot } from '../components/GrrunchMascot';
 
 // GRRUNCH DS accent -- matches terms.tsx/login.tsx's palette.
@@ -27,6 +28,12 @@ const SLIDES = [
     body: 'Some of our deals include loyalty pricing, so keep your grocery rewards cards handy.',
   },
 ] as const;
+
+// The "Skip the deal hunting" slide gets the animated flyer illustration
+// (see FlyerAnimation.tsx) instead of the mascot every other slide uses --
+// keyed to the headline text, not a hardcoded index, so a future reorder
+// can't silently point this at the wrong slide.
+const FLYER_SLIDE = SLIDES.findIndex((s) => s.headline === 'Skip the deal hunting');
 
 // New first screen (2026-09-03) — value-prop onboarding carousel, ahead of
 // the pre-existing Terms & consent screen (moved to terms.tsx unchanged).
@@ -60,7 +67,7 @@ export default function OnboardingScreen() {
             keeps it centered when it fits, scrolls when it doesn't. */}
         <ScrollView contentContainerStyle={styles.middle} showsVerticalScrollIndicator={false}>
           <View style={styles.logo}>
-            <GrrunchMascot size={160} />
+            {step === FLYER_SLIDE ? <FlyerAnimation active={step === FLYER_SLIDE} /> : <GrrunchMascot size={160} />}
           </View>
           <Text style={styles.headline}>{slide.headline}</Text>
           <Text style={styles.body}>{slide.body}</Text>
