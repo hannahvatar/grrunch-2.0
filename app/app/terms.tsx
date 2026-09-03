@@ -38,6 +38,7 @@ export default function TermsScreen() {
             <GrrunchMascot size={200} />
           </View>
           <Text style={styles.title}>Grrunch</Text>
+          <Text style={styles.tagline}>Turns weekly deals into affordable meals</Text>
           <Text style={styles.body}>
             By continuing, you agree to our{' '}
             <Text style={styles.link} onPress={() => setShowTerms(true)}>
@@ -108,6 +109,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',
     textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  tagline: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'OpenSans_700Bold',
+    textAlign: 'center',
+    color: '#343837',
     marginBottom: 16,
   },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },

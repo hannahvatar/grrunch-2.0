@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 
-// Onboarding slide 1 ("Skip the deal hunting") illustration -- a folded
+// Onboarding slide 1 ("Leave the deal hunting to us") illustration -- a folded
 // grocery flyer that opens into a two-page spread, then circles 3 deals in
 // red, on a continuous 9s loop. Ported from a design handoff prototype
 // (design_handoff_onboarding_flyer/, 2026-09-03) that specified
