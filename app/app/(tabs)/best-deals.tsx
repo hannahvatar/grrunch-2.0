@@ -97,6 +97,7 @@ export default function BestDealsScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Weekly Deals</Text>
+        <Text style={styles.tagline}>We checked this week's flyers. These deals made the cut.</Text>
         <Text style={styles.subtitle}>
           {deals.length} deal{deals.length === 1 ? '' : 's'} this week · {categories.length} categor
           {categories.length === 1 ? 'y' : 'ies'}
@@ -270,7 +271,8 @@ const styles = StyleSheet.create({
   // already fixed for its own last card.
   scrollContent: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 140, gap: 20 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  subtitle: { fontSize: 13, color: INK, marginTop: -12 },
+  tagline: { fontSize: 14, color: INK, marginTop: -12 },
+  subtitle: { fontSize: 13, color: INK },
   // "Modal treatment" -- same white/2px-INK-border/16px-radius language
   // as every other card on the Meals/Grocery/Recipe screens (was flat
   // #F2F2F2 grey box with no border).
