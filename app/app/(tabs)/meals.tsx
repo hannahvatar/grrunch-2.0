@@ -84,10 +84,6 @@ export default function MealsScreen() {
   const visibleMeals = isSubscribed ? sortedMeals : sortedMeals.slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = sortedMeals.length - visibleMeals.length;
 
-  const totalServings = visibleMeals.reduce((sum, meal) => sum + meal.servings, 0);
-  const totalPrice = visibleMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);
-  const avgPerServing = totalServings > 0 ? totalPrice / totalServings : 0;
-
   if (loading) {
     return (
       <View style={[styles.gradient, styles.container, styles.loadingContainer]}>
@@ -138,26 +134,12 @@ export default function MealsScreen() {
           >
             <LockClosedIcon size={18} color={INK} />
             <View style={styles.unlockTextBlock}>
-              <Text style={styles.unlockTitle}>
-                Unlock this week's {sortedMeals.length} recipe{sortedMeals.length === 1 ? '' : 's'}
-              </Text>
-              <Text style={styles.unlockDescription}>Hand-picked from the best deals in this week's flyers</Text>
-              <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo · Cancel anytime</Text>
+              <Text style={styles.unlockTitle}>Unlock this week's recipes</Text>
+              <Text style={styles.unlockSubtitle}>Hand-picked from the best deals in this week's flyers</Text>
+              <Text style={styles.unlockPricing}>30-day free trial · Then $5.99/mo · Cancel anytime</Text>
             </View>
             <ChevronRightIcon size={18} color={INK} />
           </Pressable>
-        )}
-
-        {sortedMeals.length > 0 && (
-          <View style={styles.totalCard}>
-            <View>
-              <Text style={styles.totalLabel}>
-                Total · {totalServings} serving{totalServings === 1 ? '' : 's'}
-              </Text>
-              <Text style={styles.totalSublabel}>avg. ${avgPerServing.toFixed(2)} / serving</Text>
-            </View>
-            <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
-          </View>
         )}
       </ScrollView>
     </View>
@@ -193,18 +175,6 @@ const styles = StyleSheet.create({
   },
   unlockTextBlock: { flex: 1, gap: 2 },
   unlockTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  unlockDescription: { fontSize: 12, color: INK },
   unlockSubtitle: { fontSize: 12, color: INK },
-  totalCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 14,
-    padding: 16,
-  },
-  totalLabel: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  totalSublabel: { fontSize: 13, color: '#888' },
-  totalValue: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  unlockPricing: { fontSize: 12, color: INK },
 });
