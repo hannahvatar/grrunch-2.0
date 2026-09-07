@@ -8,11 +8,12 @@ import {
 import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, TextInput } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AnimatedSplashScreen } from '../components/AnimatedSplashScreen';
 import { SupportBubble } from '../components/SupportBubble';
 import { AuthProvider } from '../lib/auth';
 import { AnalyticsProvider, initSentry, wrapWithSentry } from '../lib/observability';
@@ -77,6 +78,10 @@ function RootLayout() {
     OpenSans_700Bold,
     OpenSans_800ExtraBold,
   });
+  // Shown right after the native splash hides -- see AnimatedSplashScreen's
+  // own header comment for why this is a separate JS-side screen, not a
+  // replacement for the native expo-splash-screen config.
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -86,6 +91,10 @@ function RootLayout() {
 
   if (!fontsLoaded) {
     return null;
+  }
+
+  if (showSplash) {
+    return <AnimatedSplashScreen onDone={() => setShowSplash(false)} />;
   }
 
   return (
