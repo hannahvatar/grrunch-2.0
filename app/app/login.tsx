@@ -257,7 +257,6 @@ export default function LoginScreen() {
   return (
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Turn grocery deals into affordable meals</Text>
       <Text style={styles.subtitle}>Create a free account to start saving.</Text>
 
       {cancelledMessage && (
@@ -362,8 +361,7 @@ const ACCENT_DISABLED_TEXT = '#8F8577';
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   container: { padding: 24, paddingTop: 64, gap: 12 },
-  title: { fontSize: 32, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  subtitle: { fontSize: 16, color: '#343837', marginBottom: 12 },
+  subtitle: { fontSize: 16, color: INK, marginBottom: 12 },
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
