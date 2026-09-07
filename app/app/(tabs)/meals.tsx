@@ -139,9 +139,10 @@ export default function MealsScreen() {
             <LockClosedIcon size={18} color={INK} />
             <View style={styles.unlockTextBlock}>
               <Text style={styles.unlockTitle}>
-                Unlock {lockedMealCount} more recipe{lockedMealCount === 1 ? '' : 's'}
+                Unlock this week's {sortedMeals.length} recipe{sortedMeals.length === 1 ? '' : 's'}
               </Text>
-              <Text style={styles.unlockSubtitle}>Start your 30-day free trial · Then $5.99/mo · Cancel anytime</Text>
+              <Text style={styles.unlockDescription}>Hand-picked from the best deals in this week's flyers</Text>
+              <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo · Cancel anytime</Text>
             </View>
             <ChevronRightIcon size={18} color={INK} />
           </Pressable>
@@ -176,22 +177,24 @@ const styles = StyleSheet.create({
   // (components/UpgradeCta.tsx) -- Anabelle's call to match this tile to
   // every other locked-feature teaser instead of its own one-off solid
   // border. Kept as its own Pressable (not the shared component) since
-  // its title is a dynamic "Unlock N more recipes" count, not the shared
-  // component's fixed "Start 30-day free trial" copy.
+  // its title/copy is specific to this week's real recipe count, not the
+  // shared component's fixed "Start 30-day free trial" copy. Transparent
+  // container (Anabelle's call) -- lets the screen's own background show
+  // through instead of a white card floating on it.
   unlockCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#fff',
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: INK,
     borderRadius: 14,
     padding: 14,
   },
-  unlockTextBlock: { flex: 1 },
+  unlockTextBlock: { flex: 1, gap: 2 },
   unlockTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  unlockSubtitle: { fontSize: 12, color: INK, marginTop: 2 },
+  unlockDescription: { fontSize: 12, color: INK },
+  unlockSubtitle: { fontSize: 12, color: INK },
   totalCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
