@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#111' },
   bottomBlock: { paddingBottom: 160 },
   dots: { flexDirection: 'row', gap: 8, marginBottom: 24, alignSelf: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0C9AE' },
