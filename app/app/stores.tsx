@@ -12,6 +12,19 @@ import { supabase } from '../lib/supabase';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
+// Anabelle: size the store-list card to fit exactly 5 rows tall, hugging
+// content when there are fewer, scrolling internally beyond that -- not a
+// fixed-height box with empty space below a short list, and not one that
+// grows past 5 rows and pushes Continue off-screen when there are many.
+// ROW_HEIGHT is the row's own fixed height (avatar 40 + storeRow's
+// paddingVertical 14*2 + its 1px bottom border) -- storeName/storeSubtitle
+// together never exceed the avatar's 40, so the avatar is what actually
+// governs row height, not the text. listContent's paddingVertical (4+4)
+// is added once for the whole list, not per row.
+const ROW_HEIGHT = 40 + 14 * 2 + 1;
+const MAX_VISIBLE_ROWS = 5;
+const LIST_MAX_HEIGHT = ROW_HEIGHT * MAX_VISIBLE_ROWS + 4 * 2;
+
 // Guest-mode wireframe step 4 — Stores near you.
 // Wired to the deployed nearest-stores Edge Function (see
 // supabase/functions/nearest-stores/index.ts) using coords forwarded from
@@ -253,11 +266,20 @@ export default function StoresScreen() {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  container: { flex: 1 },
+  // justifyContent:'center' only takes effect once a child doesn't fill
+  // the main axis on its own -- true for the main content branch now that
+  // listCardOuter hugs its content instead of flex:1'ing to fill the
+  // screen; the loading/no-location branches still fill it via their own
+  // flex:1 inner View (centered/emptyState), so this is a no-op there.
+  container: { flex: 1, justifyContent: 'center' },
   centered: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { fontSize: 14, color: '#343837' },
-  header: { padding: 24, paddingTop: 64, paddingBottom: 0 },
-  listCardOuter: { flex: 1, marginHorizontal: 24, marginTop: 20 },
+  // paddingTop was 64 (clearing the status bar) back when this pinned to
+  // the top of the screen -- now that the whole block centers vertically,
+  // that would just show up as a lopsided gap above the title, so this
+  // uses the same uniform padding as everywhere else.
+  header: { padding: 24, paddingBottom: 0 },
+  listCardOuter: { marginHorizontal: 24, marginTop: 20 },
   // Same flat offset-shadow technique as the legal modal's card and the
   // floating Continue button.
   listCardShadow: {
@@ -271,14 +293,13 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -1 }, { translateY: 1 }],
   },
   listCard: {
-    flex: 1,
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 24,
     overflow: 'hidden',
   },
-  list: { flex: 1 },
+  list: { maxHeight: LIST_MAX_HEIGHT },
   listContent: { paddingHorizontal: 20, paddingVertical: 4 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitle: { fontSize: 14, color: '#343837', marginBottom: 8 },
