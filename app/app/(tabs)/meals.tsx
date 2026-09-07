@@ -1,28 +1,16 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CheckIcon, ChevronDownIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import { LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { AccountBanner } from '../../components/AccountBanner';
 import { MealCard } from '../../components/MealCard';
 import type { Meal } from '../../lib/mealData';
-import { type MealSortMode, sortMealsByBestDeal, sortMealsByPrice } from '../../lib/mealScaling';
+import { sortMealsByPrice } from '../../lib/mealScaling';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedMeals } from '../../lib/selectedMeals';
 import { useSubscription } from '../../lib/subscription';
-
-// "Best Deals" = highest average real savings % across a recipe's own
-// deal-tagged ingredients (sortMealsByBestDeal); "Cheapest" = lowest
-// price/serving first (sortMealsByPrice, unchanged from this dropdown's
-// original single "Best deal" option -- just renamed to what it
-// actually does, since "best deal" was ambiguous between "cheapest"
-// and "biggest markdown"). Replaces the previous price/alphabetical
-// pair -- Anabelle's call, both new options are savings/cost framed.
-const SORT_OPTIONS: { mode: MealSortMode; label: string }[] = [
-  { mode: 'bestDeal', label: 'Best Deals' },
-  { mode: 'cheapest', label: 'Cheapest' },
-];
 
 // GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx/stores.tsx's palette.
 const ACCENT = '#FFA955';
@@ -54,9 +42,14 @@ const FREE_MEAL_LIMIT = 3;
 // of its ingredients currently on sale stops surfacing here entirely
 // (rather than showing at regular price) until one of them is on sale
 // again, since the app's whole value prop is deal-driven meal planning.
-function eligibleMeals(allMeals: Meal[], sortMode: MealSortMode): Meal[] {
+//
+// Always cheapest-first (sortMealsByPrice) -- was the default order behind
+// a "Sort by" dropdown (Cheapest / Best Deals) that Anabelle asked to
+// remove (2026-09-07: didn't think it was needed). sortMealsByBestDeal
+// still lives in lib/mealScaling.ts if that ever needs to come back.
+function eligibleMeals(allMeals: Meal[]): Meal[] {
   const withDeals = allMeals.filter((m) => m.dealTags.length > 0);
-  return sortMode === 'bestDeal' ? sortMealsByBestDeal(withDeals) : sortMealsByPrice(withDeals);
+  return sortMealsByPrice(withDeals);
 }
 
 export default function MealsScreen() {
@@ -66,10 +59,6 @@ export default function MealsScreen() {
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
-  // Default unchanged from before this dropdown's options were renamed
-  // -- was 'price' (now 'cheapest').
-  const [sortMode, setSortMode] = useState<MealSortMode>('cheapest');
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   function handleToggleSaved(mealId: string) {
     if (!isSubscribed) {
@@ -91,7 +80,7 @@ export default function MealsScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  const sortedMeals = eligibleMeals(allMeals, sortMode);
+  const sortedMeals = eligibleMeals(allMeals);
   const visibleMeals = isSubscribed ? sortedMeals : sortedMeals.slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = sortedMeals.length - visibleMeals.length;
 
@@ -113,39 +102,9 @@ export default function MealsScreen() {
         <AccountBanner />
 
         <Text style={styles.title}>Meals from This Week's Deals</Text>
-        <View style={styles.subtitleRow}>
-          <Text style={styles.subtitle}>
-            {visibleMeals.length} recipe{visibleMeals.length === 1 ? '' : 's'}
-          </Text>
-          <View style={styles.sortSection}>
-            <Text style={styles.sortByLabel}>Sort by:</Text>
-            <View>
-              <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
-                <Text style={styles.sortPillText}>
-                  {SORT_OPTIONS.find((o) => o.mode === sortMode)?.label}
-                </Text>
-                <ChevronDownIcon size={16} color={INK} strokeWidth={2} />
-              </Pressable>
-              {sortMenuOpen && (
-                <View style={styles.sortMenu}>
-                  {SORT_OPTIONS.map((option) => (
-                    <Pressable
-                      key={option.mode}
-                      style={styles.sortMenuItem}
-                      onPress={() => {
-                        setSortMode(option.mode);
-                        setSortMenuOpen(false);
-                      }}
-                    >
-                      <Text style={styles.sortMenuItemText}>{option.label}</Text>
-                      {sortMode === option.mode && <CheckIcon size={16} color={INK} strokeWidth={2} />}
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
+        <Text style={styles.subtitle}>
+          {visibleMeals.length} recipe{visibleMeals.length === 1 ? '' : 's'}
+        </Text>
 
         {sortedMeals.length === 0 && (
           <View style={styles.emptyState}>
@@ -207,65 +166,7 @@ const styles = StyleSheet.create({
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { padding: 20, paddingTop: 60, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  // zIndex here (well above the mealCardOuter siblings below it, which sit
-  // at the default stacking level) is load-bearing on web: React Native
-  // Web gives every View an explicit zIndex (0, not auto), so each level
-  // of nesting is its own stacking context -- a high zIndex set deep
-  // inside (e.g. just on sortSection) only wins against ITS siblings, not
-  // against mealCardOuter further up the tree. It has to go on the
-  // container that's the actual sibling of the meal cards.
-  subtitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginTop: -8,
-    zIndex: 20,
-  },
-  subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  sortSection: { alignItems: 'flex-end' },
-  sortByLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'OpenSans_700Bold',
-    color: INK,
-    marginBottom: 6,
-  },
-  sortPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-end',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: INK,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  sortPillText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
-  sortMenu: {
-    position: 'absolute',
-    top: '100%',
-    right: 0,
-    marginTop: 6,
-    minWidth: 240,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: INK,
-    borderRadius: 14,
-    paddingVertical: 4,
-    zIndex: 10,
-    elevation: 4,
-  },
-  sortMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  sortMenuItemText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, flex: 1 },
+  subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: -8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
   unlockCard: {
