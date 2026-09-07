@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LockClosedIcon } from 'react-native-heroicons/outline';
+import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { AccountBanner } from '../../components/AccountBanner';
 import { MealCard } from '../../components/MealCard';
@@ -84,10 +84,6 @@ export default function MealsScreen() {
   const visibleMeals = isSubscribed ? sortedMeals : sortedMeals.slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = sortedMeals.length - visibleMeals.length;
 
-  const totalServings = visibleMeals.reduce((sum, meal) => sum + meal.servings, 0);
-  const totalPrice = visibleMeals.reduce((sum, meal) => sum + meal.price * meal.servings, 0);
-  const avgPerServing = totalServings > 0 ? totalPrice / totalServings : 0;
-
   if (loading) {
     return (
       <View style={[styles.gradient, styles.container, styles.loadingContainer]}>
@@ -136,24 +132,14 @@ export default function MealsScreen() {
               })
             }
           >
-            <LockClosedIcon size={22} color="#111" />
-            <Text style={styles.unlockTitle}>
-              Unlock {lockedMealCount} more recipe{lockedMealCount === 1 ? '' : 's'}
-            </Text>
-            <Text style={styles.unlockSubtitle}>Start your 30-day free trial · Then $5.99/mo</Text>
-          </Pressable>
-        )}
-
-        {sortedMeals.length > 0 && (
-          <View style={styles.totalCard}>
-            <View>
-              <Text style={styles.totalLabel}>
-                Total · {totalServings} serving{totalServings === 1 ? '' : 's'}
-              </Text>
-              <Text style={styles.totalSublabel}>avg. ${avgPerServing.toFixed(2)} / serving</Text>
+            <LockClosedIcon size={18} color={INK} />
+            <View style={styles.unlockTextBlock}>
+              <Text style={styles.unlockTitle}>Unlock this week's recipes</Text>
+              <Text style={styles.unlockSubtitle}>Hand-picked from the best deals in this week's flyers</Text>
+              <Text style={styles.unlockPricing}>30-day free trial · Then $5.99/mo · Cancel anytime</Text>
             </View>
-            <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
-          </View>
+            <ChevronRightIcon size={18} color={INK} />
+          </Pressable>
         )}
       </ScrollView>
     </View>
@@ -169,27 +155,26 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: -8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
+  // Same dashed-outline CTA treatment as UpgradeCta's 'outline' variant
+  // (components/UpgradeCta.tsx) -- Anabelle's call to match this tile to
+  // every other locked-feature teaser instead of its own one-off solid
+  // border. Kept as its own Pressable (not the shared component) since
+  // its title/copy is specific to this week's real recipe count, not the
+  // shared component's fixed "Start 30-day free trial" copy. Transparent
+  // container (Anabelle's call) -- lets the screen's own background show
+  // through instead of a white card floating on it.
   unlockCard: {
-    borderWidth: 1,
-    borderColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    gap: 4,
-  },
-  unlockTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', textAlign: 'center' },
-  unlockSubtitle: { fontSize: 13, color: '#888', textAlign: 'center' },
-  totalCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#eee',
+    gap: 10,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: INK,
     borderRadius: 14,
-    padding: 16,
+    padding: 14,
   },
-  totalLabel: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  totalSublabel: { fontSize: 13, color: '#888' },
-  totalValue: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  unlockTextBlock: { flex: 1, gap: 2 },
+  unlockTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  unlockSubtitle: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
+  unlockPricing: { fontSize: 12, color: INK },
 });
