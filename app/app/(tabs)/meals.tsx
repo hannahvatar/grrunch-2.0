@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LockClosedIcon } from 'react-native-heroicons/outline';
+import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { AccountBanner } from '../../components/AccountBanner';
 import { MealCard } from '../../components/MealCard';
@@ -136,11 +136,14 @@ export default function MealsScreen() {
               })
             }
           >
-            <LockClosedIcon size={22} color="#111" />
-            <Text style={styles.unlockTitle}>
-              Unlock {lockedMealCount} more recipe{lockedMealCount === 1 ? '' : 's'}
-            </Text>
-            <Text style={styles.unlockSubtitle}>Start your 30-day free trial · Then $5.99/mo</Text>
+            <LockClosedIcon size={18} color={INK} />
+            <View style={styles.unlockTextBlock}>
+              <Text style={styles.unlockTitle}>
+                Unlock {lockedMealCount} more recipe{lockedMealCount === 1 ? '' : 's'}
+              </Text>
+              <Text style={styles.unlockSubtitle}>Start your 30-day free trial · Then $5.99/mo · Cancel anytime</Text>
+            </View>
+            <ChevronRightIcon size={18} color={INK} />
           </Pressable>
         )}
 
@@ -169,17 +172,26 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: -8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
+  // Same dashed-outline CTA treatment as UpgradeCta's 'outline' variant
+  // (components/UpgradeCta.tsx) -- Anabelle's call to match this tile to
+  // every other locked-feature teaser instead of its own one-off solid
+  // border. Kept as its own Pressable (not the shared component) since
+  // its title is a dynamic "Unlock N more recipes" count, not the shared
+  // component's fixed "Start 30-day free trial" copy.
   unlockCard: {
-    borderWidth: 1,
-    borderColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: INK,
+    borderRadius: 14,
+    padding: 14,
   },
-  unlockTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', textAlign: 'center' },
-  unlockSubtitle: { fontSize: 13, color: '#888', textAlign: 'center' },
+  unlockTextBlock: { flex: 1 },
+  unlockTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  unlockSubtitle: { fontSize: 12, color: INK, marginTop: 2 },
   totalCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
