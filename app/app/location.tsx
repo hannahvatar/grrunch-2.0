@@ -3,7 +3,9 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ArrowRightIcon, MapPinIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ArrowRightIcon, MapPinIcon } from 'react-native-heroicons/outline';
+
+import { AlertBanner } from '../components/AlertBanner';
 
 // GRRUNCH DS -- matches login.tsx/index.tsx's palette.
 const ACCENT = '#FFA955';
@@ -28,7 +30,11 @@ const INK = '#111';
 // how you tell "still askable" apart from "permanently denied, only
 // Settings can fix it" (see expo-modules-core's PermissionsInterface).
 export default function LocationScreen() {
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  // Split into title/description (was a single string) to match the DS's
+  // alert-banner spec (Figma "Mobile Alert Banners", node 4076-104) --
+  // every case here is a genuine access/technical failure, so all three
+  // use the "error" variant, same as the spec's "Connection Failed" card.
+  const [statusMessage, setStatusMessage] = useState<{ title: string; description: string } | null>(null);
   const [permanentlyDenied, setPermanentlyDenied] = useState(false);
   const [requesting, setRequesting] = useState(false);
 
@@ -40,10 +46,16 @@ export default function LocationScreen() {
       const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         if (canAskAgain) {
-          setStatusMessage("Location access wasn't granted. You can try again or skip for now.");
+          setStatusMessage({
+            title: "Location access wasn't granted",
+            description: 'You can try again or skip for now.',
+          });
         } else {
           setPermanentlyDenied(true);
-          setStatusMessage('Location access is turned off for Grrunch. Turn it on in Settings, or skip for now.');
+          setStatusMessage({
+            title: 'Location access is turned off',
+            description: 'Turn it on in Settings, or skip for now.',
+          });
         }
         return;
       }
@@ -56,7 +68,7 @@ export default function LocationScreen() {
         },
       });
     } catch {
-      setStatusMessage("Couldn't get your location. You can try again or skip for now.");
+      setStatusMessage({ title: "Couldn't get your location", description: 'You can try again or skip for now.' });
     } finally {
       setRequesting(false);
     }
@@ -76,10 +88,13 @@ export default function LocationScreen() {
         </Text>
 
         {statusMessage && (
-          <View style={styles.statusBanner}>
-            <XMarkIcon size={16} color="#888" />
-            <Text style={styles.statusBannerText}>{statusMessage}</Text>
-          </View>
+          <AlertBanner
+            variant="error"
+            title={statusMessage.title}
+            description={statusMessage.description}
+            onDismiss={() => setStatusMessage(null)}
+            style={styles.statusBanner}
+          />
         )}
 
         <View style={styles.spacer} />
@@ -124,18 +139,9 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 12, textAlign: 'center' },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F2F2F2',
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginTop: 16,
-    width: '100%',
-  },
-  statusBannerText: { fontSize: 14, color: '#555', flex: 1 },
+  // Only the spacing/width this screen needs -- AlertBanner supplies its
+  // own colors/padding/radius per the DS spec.
+  statusBanner: { marginTop: 16, width: '100%' },
   primaryButton: {
     width: '100%',
     height: 56,
