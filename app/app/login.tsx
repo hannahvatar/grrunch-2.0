@@ -360,7 +360,10 @@ const ACCENT_DISABLED_TEXT = '#8F8577';
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  container: { padding: 24, paddingTop: 64, gap: 12 },
+  // flexGrow:1 + justifyContent:'center' on a ScrollView's contentContainerStyle
+  // vertically centers the block when it fits, same pattern as index.tsx's
+  // `middle` style -- still scrolls instead of clipping on a short screen.
+  container: { flexGrow: 1, justifyContent: 'center', padding: 24, gap: 12 },
   subtitle: { fontSize: 16, color: INK, marginBottom: 12 },
   statusBanner: {
     flexDirection: 'row',
