@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CakeIcon, CheckIcon, HeartIcon } from 'react-native-heroicons/outline';
+import { CakeIcon, CheckIcon, HeartIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
 
 import {
@@ -22,12 +22,19 @@ interface MealCardProps {
   isSaved: boolean;
   onToggleSelected: () => void;
   onToggleSaved: () => void;
+  // Guest-locked visual state for "Add to list" (Anabelle, 2026-09-07) --
+  // optional and defaulting to false so dev-recipes.tsx (no auth context
+  // at all) is unaffected. Purely presentational: the caller still decides
+  // what onToggleSelected actually does when locked (meals.tsx routes to
+  // /upgrade instead of calling toggleSelected) -- same division of
+  // responsibility as onToggleSaved/handleToggleSaved's subscription gate.
+  locked?: boolean;
 }
 
 // One recipe card as shown on the Meals tab -- shared with app/dev-
 // recipes.tsx (a __DEV__-only, no-login recipe review screen) so a
 // recipe looks identical in both places and never drifts between them.
-export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggleSaved }: MealCardProps) {
+export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggleSaved, locked }: MealCardProps) {
   return (
     <View style={styles.mealCardOuter}>
       <View pointerEvents="none" style={styles.mealCardShadow} />
@@ -104,9 +111,14 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
 
           <View style={styles.buttonsRow}>
             <Pressable
-              style={[styles.groceryToggleButton, isSelected && styles.groceryToggleButtonActive]}
+              style={[
+                styles.groceryToggleButton,
+                isSelected && styles.groceryToggleButtonActive,
+                locked && styles.groceryToggleButtonLocked,
+              ]}
               onPress={onToggleSelected}
             >
+              {locked && <LockClosedIcon size={14} color={INK} />}
               <Text style={[styles.groceryToggleButtonText, isSelected && styles.groceryToggleButtonTextActive]}>
                 {isSelected ? 'Remove from list' : 'Add to list'}
               </Text>
@@ -239,14 +251,21 @@ const styles = StyleSheet.create({
   groceryToggleButton: {
     flex: 1,
     height: 56,
+    flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: ACCENT,
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 999,
-    alignItems: 'center',
   },
   groceryToggleButtonActive: { backgroundColor: INK },
+  // Guest-locked state -- same white-fill/dashed-border/lock-icon
+  // convention as profile.tsx's changeStoreButton and every other
+  // "next-to-feature" locked CTA, instead of the solid ACCENT fill that
+  // implies the action is immediately available.
+  groceryToggleButtonLocked: { backgroundColor: '#fff', borderStyle: 'dashed' },
   groceryToggleButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   groceryToggleButtonTextActive: { color: '#fff' },
   recipeButton: {
