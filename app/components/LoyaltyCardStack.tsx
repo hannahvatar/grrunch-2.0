@@ -80,30 +80,40 @@ function useCardAnim(initial: { x: number; y: number; rot: number; scale: number
 function LoyaltyCard({ anim, color, name }: { anim: CardAnim; color: string; name: string }) {
   const rotateDeg = anim.rot.interpolate({ inputRange: [-90, 90], outputRange: ['-90deg', '90deg'] });
   return (
-    <Animated.View
-      style={[
-        styles.cardWrap,
-        {
-          zIndex: anim.z,
-          transform: [
-            { perspective: 900 },
-            { translateX: anim.x },
-            { translateY: anim.y },
-            { rotateY: rotateDeg },
-            { scale: anim.scale },
-          ],
-        },
-      ]}
-    >
-      <View style={[styles.card, { backgroundColor: color }]}>
-        <View style={styles.magstripe} />
-        <Text style={styles.cardName}>{name}</Text>
-        <View style={styles.barcode}>
-          {[2, 4, 2, 3, 5, 2, 3].map((w, i) => (
-            <View key={i} style={{ width: w, height: [14, 10, 14, 8, 14, 11, 14][i], backgroundColor: '#111' }} />
-          ))}
+    // Split into two nested Animated.Views, not one style object with both
+    // zIndex and transform -- found live on a real device build: zIndex
+    // can't be native-driven, and mixing it into the same style as the
+    // (native-driven) transform forces the whole node's update to fall
+    // back to JS, which then conflicts with transform's own values already
+    // having been moved to "native" by their own useNativeDriver:true
+    // animations, throwing "Attempting to run JS driven animation on
+    // animated node that has been moved to native". Outer view owns
+    // position + zIndex; inner owns transform only.
+    <Animated.View style={[styles.cardWrap, { zIndex: anim.z }]}>
+      <Animated.View
+        style={[
+          styles.cardTransform,
+          {
+            transform: [
+              { perspective: 900 },
+              { translateX: anim.x },
+              { translateY: anim.y },
+              { rotateY: rotateDeg },
+              { scale: anim.scale },
+            ],
+          },
+        ]}
+      >
+        <View style={[styles.card, { backgroundColor: color }]}>
+          <View style={styles.magstripe} />
+          <Text style={styles.cardName}>{name}</Text>
+          <View style={styles.barcode}>
+            {[2, 4, 2, 3, 5, 2, 3].map((w, i) => (
+              <View key={i} style={{ width: w, height: [14, 10, 14, 8, 14, 11, 14][i], backgroundColor: '#111' }} />
+            ))}
+          </View>
         </View>
-      </View>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -246,6 +256,7 @@ const styles = StyleSheet.create({
     marginLeft: -64,
     marginTop: -101,
   },
+  cardTransform: { flex: 1 },
   card: {
     flex: 1,
     borderWidth: 2,
