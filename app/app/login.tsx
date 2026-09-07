@@ -8,8 +8,9 @@ import * as Network from 'expo-network';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { Alert, ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ArrowRightIcon, EnvelopeIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ArrowRightIcon, EnvelopeIcon } from 'react-native-heroicons/outline';
 
+import { AlertBanner } from '../components/AlertBanner';
 import { AppleIcon } from '../components/icons/AppleIcon';
 import { GoogleIcon } from '../components/icons/GoogleIcon';
 import { InputField } from '../components/InputField';
@@ -260,10 +261,7 @@ export default function LoginScreen() {
       <Text style={styles.subtitle}>Create a free account to start saving.</Text>
 
       {cancelledMessage && (
-        <View style={styles.statusBanner}>
-          <XMarkIcon size={16} color="#888" />
-          <Text style={styles.statusBannerText}>{cancelledMessage}</Text>
-        </View>
+        <AlertBanner variant="neutral" title={cancelledMessage} onDismiss={() => setCancelledMessage(null)} />
       )}
 
       {appleAuthAvailable ? (
@@ -365,21 +363,12 @@ const styles = StyleSheet.create({
   // `middle` style -- still scrolls instead of clipping on a short screen.
   container: { flexGrow: 1, justifyContent: 'center', padding: 24, gap: 12 },
   subtitle: { fontSize: 16, color: INK, marginBottom: 12 },
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#F2F2F2',
-    borderRadius: 20,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  statusBannerText: { fontSize: 14, color: '#555' },
-  // Distinct from statusBanner (still grey, shared with the Apple/Google
-  // cancel message above) -- white fill, black icon/type, icon pinned to
-  // the top since the text now wraps to two lines (the message + the
-  // "Use a different email" link below it), not vertically centered
-  // against the whole block.
+  // Distinct from AlertBanner (used above for the Apple/Google cancel
+  // message) -- white fill, black icon/type, icon pinned to the top since
+  // the text now wraps to two lines (the message + the "Use a different
+  // email" link below it), not vertically centered against the whole
+  // block. Keeps its own look since it's a success confirmation with an
+  // inline action link, not a plain title+description alert.
   emailSentBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
