@@ -175,6 +175,6 @@ const styles = StyleSheet.create({
   },
   unlockTextBlock: { flex: 1, gap: 2 },
   unlockTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  unlockSubtitle: { fontSize: 12, color: INK },
+  unlockSubtitle: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
   unlockPricing: { fontSize: 12, color: INK },
 });
