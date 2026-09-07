@@ -97,6 +97,7 @@ export default function BestDealsScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Weekly Deals</Text>
+        <Text style={styles.tagline}>We checked this week's flyers. These deals made the cut.</Text>
         <Text style={styles.subtitle}>
           {deals.length} deal{deals.length === 1 ? '' : 's'} this week · {categories.length} categor
           {categories.length === 1 ? 'y' : 'ies'}
@@ -270,7 +271,8 @@ const styles = StyleSheet.create({
   // already fixed for its own last card.
   scrollContent: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 140, gap: 20 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  subtitle: { fontSize: 13, color: INK, marginTop: -12 },
+  tagline: { fontSize: 14, color: INK, marginTop: -12 },
+  subtitle: { fontSize: 13, color: INK },
   // "Modal treatment" -- same white/2px-INK-border/16px-radius language
   // as every other card on the Meals/Grocery/Recipe screens (was flat
   // #F2F2F2 grey box with no border).
@@ -426,14 +428,13 @@ const styles = StyleSheet.create({
   // "not a confirmed store fact" muted tone, reused here for a
   // reference-sourced original price instead of a non-deal staple avg.
   dealCompareAnnotation: { fontSize: 12, color: '#767676' },
-  // ACCENT-filled pill, matching recipe.tsx's addToListButton/MealCard's
-  // groceryToggleButton convention exactly (same active-state flip to
-  // INK fill + white text) -- was an unfilled thin-border button, the
-  // Icon-only primary button (Anabelle's call), pinned to the card's
-  // own top-right corner -- was a full-width text button
-  // ("+ Add to grocery list") below the content, then a compact text
-  // pill. Same ACCENT/INK-fill active-state flip as those had, just a
-  // circular Plus/Check icon now instead of a text label.
+  // White tertiary treatment (Anabelle's call) -- same white-fill/
+  // 1.5px-INK-border convention as settings.tsx's closeButton/
+  // GroceryListView's editButton-removeMealButton, not an ACCENT-filled
+  // primary. Was ACCENT-filled to match recipe.tsx's addToListButton/
+  // MealCard's groceryToggleButton; still flips to INK fill + white
+  // check on add, same as those, since that's a distinct "confirmed"
+  // state rather than the idle button's own color.
   addIconButton: {
     position: 'absolute',
     top: 10,
@@ -441,7 +442,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: ACCENT,
+    backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
     alignItems: 'center',
