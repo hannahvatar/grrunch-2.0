@@ -23,7 +23,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Do I need an account to use Grrunch?',
     answer:
-      "No — you can browse recipes and this week's deals as a guest, but without an account you can't add recipes to your grocery list, pick or edit your stores, save recipes to your favourites, see companion recipes, or see more than 3 of the week's recipes and 1 deal per category. A free account (still free, separate from membership) unlocks building your grocery list. Everything else on that list needs membership.",
+      "No, you can browse recipes and this week's deals as a guest, but without an account you can't add recipes to your grocery list, pick or edit your stores, save recipes to your favourites, see companion recipes, or see more than 3 of the week's recipes and 1 deal per category. A free account (still free, separate from membership) unlocks building your grocery list. Everything else on that list needs membership.",
   },
   {
     question: 'What does membership include?',
@@ -33,7 +33,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do I cancel my trial or membership?',
     answer:
-      'From your Apple or Google account’s own subscription settings — the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly.',
+      'From your Apple or Google account’s own subscription settings. That’s the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly.',
   },
   {
     question: 'Which stores does Grrunch cover?',
@@ -42,7 +42,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "What do the price tags on ingredients mean?",
     answer:
-      'Each one shows whether a price is a real flyer markdown, priced well below typical cost, a fair everyday price, or an estimate — see Settings > How it works for the full breakdown.',
+      'Each one shows whether a price is a real flyer markdown, priced well below typical cost, a fair everyday price, or an estimate. See Settings > How it works for the full breakdown.',
   },
   {
     question: "My store isn't the one I want — can I change it?",
