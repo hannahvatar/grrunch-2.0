@@ -28,7 +28,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'What does membership include?',
     answer:
-      "A 30-day free trial, then $5.99/mo. It unlocks the full recipe library, every deal in each category (not just one), unlimited saved recipes, companion recipes, and choosing your own stores instead of the ones auto-selected from your location. Cancel anytime.",
+      "A 30-day free trial, then $5.99/mo. It unlocks all of this week's recipes (not just 3), every deal in each category (not just one), unlimited saved recipes, companion recipes, and choosing your own stores instead of the ones auto-selected from your location. Cancel anytime.",
   },
   {
     question: 'How do I cancel my trial or membership?',
