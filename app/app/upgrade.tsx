@@ -99,25 +99,25 @@ export default function UpgradeScreen() {
           {configured && pkg ? `${pkg.product.priceString}/mo · Cancel anytime` : 'Then $5.99/mo · Cancel anytime'}
         </Text>
         {error && <Text style={styles.errorText}>{error}</Text>}
-      </View>
-      {!isSubscribed && (
-        <View style={styles.footer}>
-          <Pressable style={styles.primaryButton} onPress={handlePrimaryAction} disabled={loading}>
-            {loading ? (
-              <ActivityIndicator color={INK} />
-            ) : (
-              <Text style={styles.primaryButtonText}>
-                {isGuest ? 'Start free trial' : 'Start 30-day free trial'}
-              </Text>
-            )}
-          </Pressable>
-          {configured && !isGuest && (
-            <Pressable onPress={handleRestore} disabled={loading} hitSlop={8}>
-              <Text style={styles.restoreText}>Restore purchases</Text>
+        {!isSubscribed && (
+          <View style={styles.actions}>
+            <Pressable style={styles.primaryButton} onPress={handlePrimaryAction} disabled={loading}>
+              {loading ? (
+                <ActivityIndicator color={INK} />
+              ) : (
+                <Text style={styles.primaryButtonText}>
+                  {isGuest ? 'Start free trial' : 'Start 30-day free trial'}
+                </Text>
+              )}
             </Pressable>
-          )}
-        </View>
-      )}
+            {configured && !isGuest && (
+              <Pressable onPress={handleRestore} disabled={loading} hitSlop={8}>
+                <Text style={styles.restoreText}>Restore purchases</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -183,7 +183,12 @@ const styles = StyleSheet.create({
   // Matches InputField.tsx's own ERROR const exactly, so an error here
   // reads as the same "error red" as everywhere else in the app.
   errorText: { fontSize: 13, color: '#D0342C', marginTop: 12, textAlign: 'center' },
-  footer: { padding: 24, gap: 12, alignItems: 'center' },
+  // Sits right in the centered content block, directly under priceNote
+  // (Anabelle's call) -- was a separate footer View pinned to the
+  // screen's own bottom edge, leaving a big gap between the pricing
+  // line and the button. width:'100%' since content's alignItems:
+  // 'center' would otherwise shrink this to its own content size.
+  actions: { width: '100%', marginTop: 24, gap: 12, alignItems: 'center' },
   // Real btn-primary-orange -- see the DS's canonical spec on login.tsx's
   // primaryButton (ACCENT fill, 2px INK border, 28px pill, 56pt tall).
   // Was a flat black/14px-radius button, matching nothing else in the app.
