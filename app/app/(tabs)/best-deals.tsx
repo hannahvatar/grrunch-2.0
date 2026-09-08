@@ -22,6 +22,7 @@ import {
   showsRealDiscount,
 } from '../../lib/curatedDeals';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
+import { useAuth } from '../../lib/auth';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSubscription } from '../../lib/subscription';
 
@@ -51,11 +52,25 @@ const FREE_DEALS_PER_CATEGORY = 1;
 // recipe.
 export default function BestDealsScreen() {
   const { isSubscribed } = useSubscription();
+  const { isGuest } = useAuth();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { selectedDealIds, toggleDealSelected } = useSelectedDeals();
+
+  // Guest-locked, same shape as meals.tsx's handleToggleSelected /
+  // recipe.tsx's handleAddToList -- a deliberate product gate (like
+  // those, lib/selectedDeals is plain in-memory state, no account
+  // needed to use it), not a technical one. A guest tap routes to
+  // /upgrade instead of calling toggleDealSelected.
+  function handleAddDeal(dealId: string) {
+    if (isGuest) {
+      router.push({ pathname: '/upgrade', params: { reason: 'add deals to your grocery list' } });
+      return;
+    }
+    toggleDealSelected(dealId);
+  }
 
   useEffect(() => {
     fetchAllDeals()
@@ -219,11 +234,13 @@ export default function BestDealsScreen() {
                             before, just a circular Plus/Check icon now. */}
                         <Pressable
                           style={[styles.addIconButton, isAdded && styles.addIconButtonActive]}
-                          onPress={() => toggleDealSelected(deal.id)}
+                          onPress={() => handleAddDeal(deal.id)}
                           hitSlop={6}
                         >
                           {isAdded ? (
                             <CheckIcon size={16} color="#fff" />
+                          ) : isGuest ? (
+                            <LockClosedIcon size={14} color={INK} />
                           ) : (
                             <PlusIcon size={16} color={INK} />
                           )}
