@@ -5,11 +5,13 @@ import { ArrowPathIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react
 
 import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItemStore } from '../lib/curatedDeals';
 import { IngredientRow } from './IngredientRow';
+import { useAuth } from '../lib/auth';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
+import { UpgradeCta } from './UpgradeCta';
 
 // Same visual language as the recipe page (app/recipe.tsx) -- peach
 // background, bold 2px-black-border white "modal treatment" cards, INK
@@ -96,6 +98,7 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 // rather than being guessed into whichever store the rest of its recipe
 // happens to be at.
 export function GroceryListView() {
+  const { isGuest } = useAuth();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { selectedDealIds } = useSelectedDeals();
   const [rawSelectedMeals, setRawSelectedMeals] = useState<Meal[]>([]);
@@ -361,12 +364,32 @@ export function GroceryListView() {
             </Pressable>
           </View>
         )}
+        {/* Two different empty states (Anabelle, 2026-09-08): a guest
+            can never actually get anything onto this list -- both
+            feeder screens (meals.tsx/best-deals.tsx) already redirect
+            a guest to /upgrade before adding anything -- so an empty
+            list here always means "you can't use this yet", not "you
+            haven't added anything yet". Signed-in users (subscribed or
+            not -- adding isn't itself subscription-gated, only guest-
+            gated) keep the plain empty-state message below. */}
         {selectedMeals.length === 0 && selectedDeals.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
-              Nothing here yet. Add recipes from Meals or deals from Weekly Deals to build your list.
-            </Text>
-          </View>
+          <>
+            {isGuest ? (
+              <>
+                <Text style={styles.guestLockedTitle}>Your grocery list starts here.</Text>
+                <Text style={styles.guestLockedText}>
+                  Add recipes and deals to keep everything you need in one place.
+                </Text>
+                <UpgradeCta reason="build your grocery list" variant="outline" />
+              </>
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>
+                  Nothing here yet. Add recipes from Meals or deals from Weekly Deals to build your list.
+                </Text>
+              </View>
+            )}
+          </>
         )}
 
         {selectedMeals.length > 0 && (
@@ -572,6 +595,18 @@ const styles = StyleSheet.create({
   // outlier at 20.
   emptyState: { backgroundColor: '#fff', borderWidth: 2, borderColor: INK, borderRadius: 16, padding: 14 },
   emptyStateText: { color: INK, fontSize: 14, textAlign: 'center' },
+  // Title + body pair (Anabelle's copy) ahead of the locked CTA below,
+  // instead of leaving why a guest sees it to be inferred from the
+  // CTA's own generic trial copy.
+  guestLockedTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    color: INK,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  guestLockedText: { color: INK, fontSize: 14, textAlign: 'center', marginBottom: 12 },
   selectedSection: { gap: 10 },
   selectedSectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // "Modal treatment" card -- same white/2px-black-border/16px-radius
