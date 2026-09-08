@@ -589,10 +589,12 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   addToListButtonActive: { backgroundColor: INK },
-  // Guest-locked -- same white-fill/dashed-border/lock-icon convention
-  // as MealCard's own groceryToggleButtonLocked (Meals tab), since this
-  // is the same shared toggleSelected/selectedIds this button drives.
-  addToListButtonLocked: { backgroundColor: '#fff', borderStyle: 'dashed' },
+  // Guest-locked -- dashed-border/lock-icon convention as MealCard's own
+  // groceryToggleButtonLocked (Meals tab), since this is the same shared
+  // toggleSelected/selectedIds this button drives. Transparent (Anabelle's
+  // call) -- the screen's own peach background shows through instead of
+  // a white fill.
+  addToListButtonLocked: { backgroundColor: 'transparent', borderStyle: 'dashed' },
   addToListButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   addToListButtonTextActive: { color: '#fff' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
