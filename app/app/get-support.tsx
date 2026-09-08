@@ -44,13 +44,8 @@ export default function GetSupportScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Get support</Text>
-        <Pressable style={styles.closeButton} onPress={() => router.back()} hitSlop={8}>
-          <XMarkIcon size={18} color={INK} />
-        </Pressable>
-      </View>
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Get support</Text>
         <Pressable
           style={[styles.contactButton, !SUPPORT_EMAIL && styles.contactButtonDisabled]}
           onPress={handleContactUs}
@@ -82,6 +77,13 @@ export default function GetSupportScreen() {
           })}
         </View>
       </ScrollView>
+      {/* Floating over the ScrollView (not a row sharing space with the
+          title) so it stays fixed in the top-right corner regardless of
+          how the content below scrolls/centers -- same convention as
+          recipe.tsx's own closeButton. */}
+      <Pressable style={styles.closeButton} onPress={() => router.back()} hitSlop={8}>
+        <XMarkIcon size={18} color={INK} />
+      </Pressable>
     </View>
   );
 }
@@ -89,14 +91,22 @@ export default function GetSupportScreen() {
 const styles = StyleSheet.create({
   // GRRUNCH DS peach background, matches settings.tsx/how-it-works.tsx.
   container: { flex: 1, backgroundColor: '#FFEAD4' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingTop: 60,
-  },
+  // Standing rule (Anabelle, 2026-09-08): page content vertically
+  // centers -- flexGrow:1 + justifyContent:'center' on the ScrollView's
+  // contentContainerStyle, same pattern as login.tsx/stores.tsx. Still
+  // scrolls from the top instead of clipping once content (an expanded
+  // FAQ list, say) doesn't fit. paddingTop clears the floating
+  // closeButton even in that scrolled state.
+  content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingTop: 110, paddingBottom: 40 },
   closeButton: {
+    // top:60, not the 20 a modal-presented sheet (upgrade.tsx etc.) can
+    // get away with -- this screen is a plain pushed Stack.Screen, not a
+    // 'modal' presentation, so it has no built-in clearance below the
+    // status bar. Matches index.tsx's own absolute-positioned Skip link.
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 10,
     width: 36,
     height: 36,
     borderRadius: 999,
@@ -106,8 +116,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  content: { paddingHorizontal: 24, paddingBottom: 40 },
+  title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 20 },
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
