@@ -5,6 +5,7 @@ import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline
 
 import { AccountBanner } from '../../components/AccountBanner';
 import { MealCard } from '../../components/MealCard';
+import { useAuth } from '../../lib/auth';
 import type { Meal } from '../../lib/mealData';
 import { sortMealsByPrice } from '../../lib/mealScaling';
 import { fetchAllRecipes } from '../../lib/recipes';
@@ -56,6 +57,7 @@ export default function MealsScreen() {
   const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { isSubscribed } = useSubscription();
+  const { isGuest } = useAuth();
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +68,20 @@ export default function MealsScreen() {
       return;
     }
     toggleSaved(mealId);
+  }
+
+  // Guest-locked (Anabelle, 2026-09-07) -- a deliberate product gate, not
+  // a technical one (lib/selectedMeals is plain in-memory state, no
+  // account needed to use it). A guest gets the same /upgrade prompt as
+  // every other locked feature instead of silently building a list.
+  // Same shape as handleToggleSaved's subscription gate above, just
+  // gated on isGuest instead of isSubscribed.
+  function handleToggleSelected(mealId: string) {
+    if (isGuest) {
+      router.push({ pathname: '/upgrade', params: { reason: 'add recipes to your grocery list' } });
+      return;
+    }
+    toggleSelected(mealId);
   }
 
   useEffect(() => {
@@ -117,8 +133,9 @@ export default function MealsScreen() {
             meal={meal}
             isSelected={selectedIds.has(meal.id)}
             isSaved={savedIds.has(meal.id)}
-            onToggleSelected={() => toggleSelected(meal.id)}
+            onToggleSelected={() => handleToggleSelected(meal.id)}
             onToggleSaved={() => handleToggleSaved(meal.id)}
+            locked={isGuest}
           />
         ))}
 
