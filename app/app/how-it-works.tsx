@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { XMarkIcon } from 'react-native-heroicons/outline';
+import { ArrowLongRightIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 const INK = '#111';
 
@@ -93,7 +93,18 @@ export default function HowItWorksScreen() {
           typical pricing, and where the number comes from. Here's what each one means.
         </Text>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tableScroll}>
+        {/* Moved above the table (was below) and given an icon, so the
+            "this scrolls" affordance is seen before you'd have to
+            discover it yourself -- Anabelle's call, back to the original
+            3-column swipeable table, just clearer that it scrolls.
+            showsHorizontalScrollIndicator flipped to true for the same
+            reason -- the native scrollbar itself is a real-time, always-
+            visible cue while the hint text is a one-time read. */}
+        <View style={styles.swipeHintRow}>
+          <Text style={styles.swipeHint}>Swipe to see it all</Text>
+          <ArrowLongRightIcon size={16} color={INK} />
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroll}>
           <View style={styles.table}>
             <View style={[styles.tableRow, styles.tableHeaderRow]}>
               <Text style={[styles.headerCell, styles.colTag]}>Tag</Text>
@@ -117,7 +128,6 @@ export default function HowItWorksScreen() {
             ))}
           </View>
         </ScrollView>
-        <Text style={styles.swipeHint}>Swipe the table to see it all →</Text>
 
         <Text style={styles.footnote}>
           One item without a colored tag just means it's a plain ingredient with an estimated everyday price,
@@ -173,6 +183,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   content: { paddingHorizontal: 24, paddingBottom: 40 },
   intro: { fontSize: 15, lineHeight: 22, color: INK, marginBottom: 20 },
+  swipeHintRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   tableScroll: { marginHorizontal: -24 },
   table: {
     marginHorizontal: 24,
@@ -197,8 +208,8 @@ const styles = StyleSheet.create({
   // Plain (no chip) rows aren't a badge in the real app -- shouldn't read
   // as bold/emphasized like an actual tag does.
   plainTagText: { fontSize: 13, fontWeight: '400', fontFamily: 'OpenSans_400Regular' },
-  swipeHint: { fontSize: 12, color: INK, marginTop: 8, marginBottom: 20 },
-  footnote: { fontSize: 13, lineHeight: 19, color: INK },
+  swipeHint: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  footnote: { fontSize: 13, lineHeight: 19, color: INK, marginTop: 20 },
   sectionHeading: {
     fontSize: 20,
     fontWeight: '800',
