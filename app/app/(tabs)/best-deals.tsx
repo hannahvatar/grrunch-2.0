@@ -247,7 +247,7 @@ export default function BestDealsScreen() {
                       <Text style={styles.unlockTitle}>
                         Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
                       </Text>
-                      <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo</Text>
+                      <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo · Cancel anytime</Text>
                     </Pressable>
                   )}
                 </View>
@@ -341,9 +341,14 @@ const styles = StyleSheet.create({
   // not the 2px "modal treatment" cards use -- this one has no white
   // fill of its own, transparent against the page). Full width now,
   // matching dealCard above.
+  // Dashed treatment (Anabelle, 2026-09-08) -- matches the app's other
+  // dashed-outline locked/CTA cards (meals.tsx's unlockCard, MealCard's
+  // groceryToggleButtonLocked, profile.tsx's changeStoreButton, etc.),
+  // was a solid 1px border.
   unlockCard: {
     width: '100%',
-    borderWidth: 1,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
     borderColor: INK,
     borderRadius: 14,
     padding: 14,
@@ -358,7 +363,8 @@ const styles = StyleSheet.create({
     color: INK,
     textAlign: 'center',
   },
-  unlockSubtitle: { fontSize: 11, color: '#767676', textAlign: 'center' },
+  // Black (was #767676 grey) -- all type in this card reads INK now.
+  unlockSubtitle: { fontSize: 11, color: INK, textAlign: 'center' },
   dealImageWrap: { position: 'relative' },
   // Fixed square now (was width: '100%' of a stacked card) -- sits to
   // the left of the info column in the new horizontal row.
@@ -437,6 +443,7 @@ const styles = StyleSheet.create({
   // MealCard's groceryToggleButton; still flips to INK fill + white
   // check on add, same as those, since that's a distinct "confirmed"
   // state rather than the idle button's own color.
+  // Dashed, same as unlockCard above (Anabelle, 2026-09-08) -- was solid.
   addIconButton: {
     position: 'absolute',
     top: 10,
@@ -446,6 +453,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#fff',
     borderWidth: 1.5,
+    borderStyle: 'dashed',
     borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
