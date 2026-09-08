@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ClockIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
@@ -134,6 +134,19 @@ export default function RecipeScreen() {
     router.canGoBack() ? router.back() : router.replace('/meals');
   }
 
+  // Guest-locked, same as meals.tsx's own handleToggleSelected -- a
+  // deliberate product gate (lib/selectedMeals is plain in-memory state,
+  // no account needed to use it), not a technical one. This is the same
+  // shared toggleSelected/selectedIds as the Meals tab's "Add to list",
+  // so it needs the same gate here too, not just on that card.
+  function handleAddToList(mealId: string) {
+    if (isGuest) {
+      router.push({ pathname: '/upgrade', params: { reason: 'add recipes to your grocery list' } });
+      return;
+    }
+    toggleSelected(mealId);
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
@@ -209,9 +222,14 @@ export default function RecipeScreen() {
               </View>
             </View>
             <Pressable
-              style={[styles.addToListButton, selectedIds.has(meal.id) && styles.addToListButtonActive]}
-              onPress={() => toggleSelected(meal.id)}
+              style={[
+                styles.addToListButton,
+                selectedIds.has(meal.id) && styles.addToListButtonActive,
+                isGuest && styles.addToListButtonLocked,
+              ]}
+              onPress={() => handleAddToList(meal.id)}
             >
+              {isGuest && <LockClosedIcon size={14} color={INK} />}
               <Text
                 style={[
                   styles.addToListButtonText,
@@ -561,14 +579,20 @@ const styles = StyleSheet.create({
   addToListButton: {
     height: 44,
     paddingHorizontal: 14,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
     backgroundColor: ACCENT,
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 999,
   },
   addToListButtonActive: { backgroundColor: INK },
+  // Guest-locked -- same white-fill/dashed-border/lock-icon convention
+  // as MealCard's own groceryToggleButtonLocked (Meals tab), since this
+  // is the same shared toggleSelected/selectedIds this button drives.
+  addToListButtonLocked: { backgroundColor: '#fff', borderStyle: 'dashed' },
   addToListButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   addToListButtonTextActive: { color: '#fff' },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: 16, marginBottom: 8 },
