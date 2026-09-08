@@ -603,10 +603,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',
     color: INK,
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: 4,
   },
-  guestLockedText: { color: INK, fontSize: 14, textAlign: 'center', marginBottom: 12 },
+  guestLockedText: { color: INK, fontSize: 14, textAlign: 'left', marginBottom: 12 },
   selectedSection: { gap: 10 },
   selectedSectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // "Modal treatment" card -- same white/2px-black-border/16px-radius
