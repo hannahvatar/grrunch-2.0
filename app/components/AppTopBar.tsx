@@ -25,7 +25,10 @@ export function AppTopBar() {
 
   return (
     <View style={styles.bar}>
-      <GrrunchMascot size={32} />
+      {/* No crumbs here (Anabelle's call) -- at this small size the
+          floating dots outside the face read as stray specks, not a
+          flourish. terms.tsx's big logo lockup keeps them (default on). */}
+      <GrrunchMascot size={32} showCrumbs={false} />
       {isGuest ? (
         <View style={styles.authButtons}>
           <Pressable style={styles.signInButton} onPress={() => router.push('/login')} hitSlop={8}>
@@ -56,8 +59,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 12,
-    backgroundColor: '#FFEAD4',
+    // Trimmed from 12 (Anabelle's call: bar shouldn't be taller than the
+    // Sign up button itself) -- paddingTop:60 above is still the fixed
+    // status-bar clearance, untouched; this is just the visible strip's
+    // own bottom breathing room, now snug around the row's tallest child
+    // (the Sign up button, ~34px) instead of padding well past it.
+    paddingBottom: 8,
+    // White (Anabelle's call) -- was the shared peach ('#FFEAD4'), now a
+    // plain white strip that sits above the peach page background.
+    backgroundColor: '#fff',
   },
   authButtons: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   signInButton: { paddingVertical: 6, paddingHorizontal: 4 },
