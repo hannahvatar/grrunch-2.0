@@ -239,8 +239,6 @@ export default function BestDealsScreen() {
                         >
                           {isAdded ? (
                             <CheckIcon size={16} color="#fff" />
-                          ) : isGuest ? (
-                            <LockClosedIcon size={14} color={INK} />
                           ) : (
                             <PlusIcon size={16} color={INK} />
                           )}
