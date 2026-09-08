@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
-import { AccountBanner } from '../../components/AccountBanner';
 import { MealCard } from '../../components/MealCard';
 import { useAuth } from '../../lib/auth';
 import type { Meal } from '../../lib/mealData';
@@ -111,8 +110,6 @@ export default function MealsScreen() {
   return (
     <View style={[styles.gradient, styles.container]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <AccountBanner />
-
         <Text style={styles.title}>Meals from This Week's Deals</Text>
         <Text style={styles.subtitle}>
           {visibleMeals.length} recipe{visibleMeals.length === 1 ? '' : 's'}
@@ -167,7 +164,10 @@ const styles = StyleSheet.create({
   gradient: { flex: 1, backgroundColor: '#FFEAD4' },
   container: { flex: 1 },
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
-  scrollContent: { padding: 20, paddingTop: 60, gap: 16 },
+  // paddingTop was 60 (clearing the status bar) -- the new persistent
+  // AppTopBar ((tabs)/_layout.tsx) handles that now, so this only needs
+  // its own normal top margin.
+  scrollContent: { padding: 20, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: -8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },

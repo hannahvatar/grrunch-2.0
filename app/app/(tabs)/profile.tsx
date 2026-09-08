@@ -11,7 +11,6 @@ import {
 } from 'react-native-heroicons/outline';
 import { HeartIcon } from 'react-native-heroicons/solid';
 
-import { AccountBanner } from '../../components/AccountBanner';
 import { MembershipStatus } from '../../components/MembershipStatus';
 import { SubRecipeCard } from '../../components/SubRecipeCard';
 import { UpgradeCta } from '../../components/UpgradeCta';
@@ -119,13 +118,6 @@ export default function ProfileScreen() {
   return (
     <View style={styles.gradient}>
     <ScrollView contentContainerStyle={styles.container}>
-      {/* "Browsing as guest" removed here per Anabelle's call -- this is
-          the shared AccountBanner also used on Meals, so it's hidden
-          only on Profile (not edited/removed from the component itself)
-          by simply not rendering it in guest mode. The signed-in variant
-          (email + Log out) still renders normally. */}
-      {!isGuest && <AccountBanner />}
-
       <View style={styles.headerRow}>
         <Text style={styles.title}>Profile</Text>
         <Pressable style={styles.settingsButton} onPress={() => router.push('/settings')} hitSlop={8}>
@@ -317,7 +309,9 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   gradient: { flex: 1, backgroundColor: '#FFEAD4' },
-  container: { padding: 24, paddingTop: 64, gap: 12 },
+  // paddingTop was 64 (clearing the status bar) -- the new persistent
+  // AppTopBar ((tabs)/_layout.tsx) handles that now.
+  container: { padding: 24, gap: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   // Same tertiary treatment as IngredientRow's editButton / GroceryListView's
   // resetAllButton (white fill, 1.5px INK border) -- Anabelle's call, was a
