@@ -27,8 +27,11 @@ export function AppTopBar() {
     <View style={styles.bar}>
       {/* No crumbs here (Anabelle's call) -- at this small size the
           floating dots outside the face read as stray specks, not a
-          flourish. terms.tsx's big logo lockup keeps them (default on). */}
-      <GrrunchMascot size={32} showCrumbs={false} />
+          flourish. terms.tsx's big logo lockup keeps them (default on).
+          Sized to match the Sign up button's own height (~34px: its
+          paddingVertical:7*2 + borderWidth:1.5*2 + its text line height),
+          not an arbitrary icon size. */}
+      <GrrunchMascot size={34} showCrumbs={false} />
       {isGuest ? (
         <View style={styles.authButtons}>
           <Pressable style={styles.signInButton} onPress={() => router.push('/login')} hitSlop={8}>
