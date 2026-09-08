@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LockClosedIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { LockOpenIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { useAuth } from '../lib/auth';
 import { usePurchases } from '../lib/purchases';
@@ -85,7 +85,7 @@ export default function UpgradeScreen() {
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <LockClosedIcon size={30} color={INK} />
+          <LockOpenIcon size={32} color={INK} strokeWidth={1.5} />
         </View>
         <Text style={styles.title}>Start 30-day free trial</Text>
         <Text style={styles.body}>
@@ -148,16 +148,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  // White-fill/2px-INK-border -- matches the app's "modal treatment"
-  // card language (stores.tsx's listCard, best-deals.tsx's dealCard,
-  // etc.) instead of a flat unbordered grey circle.
+  // White fill, no border (Anabelle's call) -- softer than the app's
+  // usual "modal treatment" (white + 2px INK border), fitting since
+  // this is the "here's how to unlock it" moment, not a locked/denied
+  // one (the closed-lock + bordered-circle treatment is still used at
+  // the point something is actually gated -- MealCard's
+  // groceryToggleButtonLocked, profile.tsx's changeStoreButton, etc.).
+  // LockOpenIcon here for the same reason, instead of LockClosedIcon.
   iconCircle: {
     width: 72,
     height: 72,
     borderRadius: 36,
     backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -171,7 +173,13 @@ const styles = StyleSheet.create({
     color: INK,
   },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
-  priceNote: { fontSize: 13, color: '#767676', marginTop: 12 },
+  priceNote: {
+    fontSize: 13,
+    color: INK,
+    fontWeight: '700',
+    fontFamily: 'OpenSans_700Bold',
+    marginTop: 12,
+  },
   // Matches InputField.tsx's own ERROR const exactly, so an error here
   // reads as the same "error red" as everywhere else in the app.
   errorText: { fontSize: 13, color: '#D0342C', marginTop: 12, textAlign: 'center' },
