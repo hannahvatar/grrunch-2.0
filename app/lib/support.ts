@@ -23,12 +23,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Do I need an account to use Grrunch?',
     answer:
-      "No — you can browse recipes and this week's deals as a guest. A free account lets you save recipes and pick up where you left off; it's separate from membership and doesn't cost anything.",
+      "No — you can browse recipes and this week's deals as a guest, but without an account you can't add recipes to your grocery list, pick or edit your stores, save recipes to your favourites, see companion recipes, or see more than 3 of the week's recipes and 1 deal per category. A free account (still free, separate from membership) unlocks building your grocery list. Everything else on that list needs membership.",
   },
   {
     question: 'What does membership include?',
     answer:
-      "A 30-day free trial, then $5.99/mo. It unlocks the full recipe library, unlimited saved recipes, and choosing your own stores instead of the ones auto-selected from your location. Cancel anytime.",
+      "A 30-day free trial, then $5.99/mo. It unlocks all of this week's recipes (not just 3), every deal in each category (not just one), unlimited saved recipes, companion recipes, and choosing your own stores instead of the ones auto-selected from your location. Cancel anytime.",
   },
   {
     question: 'How do I cancel my trial or membership?',
