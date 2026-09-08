@@ -4,12 +4,12 @@
 // (Linking + mailto:), no chat widget, no fake "connecting you to an
 // agent" UI that doesn't actually connect to anyone).
 //
-// No real support inbox exists yet either -- deliberately null, not a
-// placeholder-looking address like support@grrunch.com, which would
-// silently compose emails to a mailbox nobody reads. Fill in once a real
-// one exists; get-support.tsx already renders an honest "not set up yet"
-// state for as long as this stays null.
-export const SUPPORT_EMAIL: string | null = null;
+// Was deliberately null (no real inbox existed yet) until grrunch.com's
+// Google Workspace migration (2026-09-01/02) made support@grrunch.com a
+// real, monitored alias -- now hooked up here (2026-09-08). get-support.tsx's
+// "not set up yet" fallback state stays in place for the `string | null`
+// type itself, in case this ever needs to go back to null.
+export const SUPPORT_EMAIL: string | null = 'support@grrunch.com';
 
 export interface FaqItem {
   question: string;
