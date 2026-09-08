@@ -219,14 +219,18 @@ function bySavingsDesc(a: Deal, b: Deal): number {
   return b.discountPct - a.discountPct;
 }
 
-// A deal used by any recipe is exempt from the free-tier cap entirely
-// (Anabelle: "all deals items should also appear in the weekly deals
-// section" -- it's core to actually making that recipe, not an upsell
-// surface) -- always included, on top of whichever non-recipe-linked
-// deals the free tier's per-category limit allows through. Those
-// remaining slots go to the biggest real savings first (Anabelle:
-// "the three that show on the free tier should be the most saving"),
-// not whatever order the deals happened to load in.
+// Strict per-category cap (Anabelle, 2026-09-08: "we should see one deal
+// per category" -- no exceptions). A recipe-linked deal used to be exempt
+// from this cap entirely (Anabelle, earlier: "all deals items should also
+// appear in the weekly deals section" -- it's core to actually making
+// that recipe, not an upsell surface), but that's superseded now: this
+// page's own free-tier limit applies uniformly to every deal in the
+// category. A recipe-linked deal locked out here is still fully visible
+// on its own recipe page regardless (meal.dealTags there is a completely
+// separate, ungated read), so this only affects general Weekly Deals
+// browsing, not actually making the recipe. Sorted by biggest real
+// savings first (Anabelle: "the [ones] that show on the free tier should
+// be the most saving"), not whatever order the deals happened to load in.
 export function selectVisibleDeals(
   categoryDeals: Deal[],
   isSubscribed: boolean,
@@ -235,12 +239,11 @@ export function selectVisibleDeals(
   if (isSubscribed) {
     return { visibleDeals: categoryDeals, lockedDealCount: 0 };
   }
-  const recipeLinked = categoryDeals.filter((deal) => deal.usedInRecipe);
-  const others = categoryDeals.filter((deal) => !deal.usedInRecipe).sort(bySavingsDesc);
-  const visibleOthers = others.slice(0, freeLimit);
+  const sorted = [...categoryDeals].sort(bySavingsDesc);
+  const visibleDeals = sorted.slice(0, freeLimit);
   return {
-    visibleDeals: [...recipeLinked, ...visibleOthers],
-    lockedDealCount: others.length - visibleOthers.length,
+    visibleDeals,
+    lockedDealCount: sorted.length - visibleDeals.length,
   };
 }
 
