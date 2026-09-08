@@ -227,11 +227,15 @@ const styles = StyleSheet.create({
   // its own -- colText's flex:1/padding still applies (spread via the
   // style array), this just lays the two Pressables out in a row.
   headerTabsCell: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  // Inactive tab: same size as the active one (still a real tappable
-  // label, not filler text) but muted grey instead of INK, so the active
-  // one reads as selected without needing a pill/underline treatment.
-  headerTabText: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#999' },
-  headerTabTextActive: { color: INK, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Grey-out-when-inactive didn't read as selection state (Anabelle's
+  // call) -- both tabs stay full-strength INK all the time now, and
+  // it's bold+underline on the active one alone that signals selection.
+  headerTabText: { fontSize: 12, fontWeight: '400', fontFamily: 'OpenSans_400Regular', color: INK },
+  headerTabTextActive: {
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    textDecorationLine: 'underline',
+  },
   cellText: { fontSize: 13, lineHeight: 18, color: INK },
   tagChip: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   tagChipText: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
