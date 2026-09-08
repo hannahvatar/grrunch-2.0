@@ -7,6 +7,7 @@ import {
   ChevronUpIcon,
   Cog6ToothIcon,
   LockClosedIcon,
+  PencilIcon,
 } from 'react-native-heroicons/outline';
 import { HeartIcon } from 'react-native-heroicons/solid';
 
@@ -177,22 +178,38 @@ export default function ProfileScreen() {
                   <Text style={styles.storeName}>{store.name}</Text>
                   <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
                 </View>
-                {/* Next-to-feature member-only treatment (Anabelle's call,
-                    replaces the single "Upgrade to customize" button above
-                    the list) -- every member-only feature gets its own
-                    inline, stroked (outline, not filled) button with a
-                    leading lock icon, sitting right next to the feature it
-                    gates, instead of one banner-style upsell for the whole
-                    section. Free tier can't edit stores at all yet (no
-                    manual search UI -- same gap nearest-stores/index.ts's
-                    own comments flag), so for now this always routes to
-                    /upgrade regardless of tier; once editing is real for
-                    members, this is where that flow would branch. */}
+                {/* Next-to-feature treatment (Anabelle's call, replaces
+                    the single "Upgrade to customize" button above the
+                    list) -- every member-only feature gets its own
+                    inline, stroked (outline, not filled) button, sitting
+                    right next to the feature it gates, instead of one
+                    banner-style upsell for the whole section.
+                    Anabelle, 2026-09-08: this now actually branches by
+                    tier, since there's still no manual store-search UI
+                    (same gap nearest-stores/index.ts's own comments
+                    flag) to let a member swap just this one row for a
+                    specific replacement -- a subscriber instead re-runs
+                    the same location -> stores flow onboarding itself
+                    uses, picking a fresh nearby-stores list that
+                    replaces the whole selection at once (not a true
+                    per-row edit, but a real, working path instead of
+                    the paywall a paying member used to get bounced
+                    to). Free tier keeps the old behavior -- store
+                    editing genuinely is member-only, so /upgrade is the
+                    correct destination for them. */}
                 <Pressable
                   style={styles.changeStoreButton}
-                  onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'change your stores' } })}
+                  onPress={() =>
+                    isSubscribed
+                      ? router.push('/location')
+                      : router.push({ pathname: '/upgrade', params: { reason: 'change your stores' } })
+                  }
                 >
-                  <LockClosedIcon size={13} color={INK} />
+                  {isSubscribed ? (
+                    <PencilIcon size={13} color={INK} />
+                  ) : (
+                    <LockClosedIcon size={13} color={INK} />
+                  )}
                   <Text style={styles.changeStoreButtonText}>Change</Text>
                 </Pressable>
               </View>
