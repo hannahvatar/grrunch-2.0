@@ -334,11 +334,18 @@ export function GroceryListView() {
             fixed header sitting outside the ScrollView entirely. */}
         <View style={styles.header}>
           <Text style={styles.title}>Grocery list</Text>
-          <Text style={styles.subtitle}>
-            {items.length} item{items.length === 1 ? '' : 's'} · {dealItemCount} on sale ·{' '}
-            {storeNames.filter((s) => s !== OTHER_ITEMS).length} store
-            {storeNames.filter((s) => s !== OTHER_ITEMS).length === 1 ? '' : 's'}
-          </Text>
+          {/* Hidden on an empty list (Anabelle's call) -- "0 items · 0 on
+              sale · 0 stores" reads as broken/uninformative before the
+              guest-locked or empty-state copy right below it even
+              explains why there's nothing yet. Still shows once there's
+              real content to summarize. */}
+          {items.length > 0 && (
+            <Text style={styles.subtitle}>
+              {items.length} item{items.length === 1 ? '' : 's'} · {dealItemCount} on sale ·{' '}
+              {storeNames.filter((s) => s !== OTHER_ITEMS).length} store
+              {storeNames.filter((s) => s !== OTHER_ITEMS).length === 1 ? '' : 's'}
+            </Text>
+          )}
         </View>
         {items.length > 0 && (
           <View style={styles.quantityNoteRow}>
@@ -380,7 +387,7 @@ export function GroceryListView() {
                 <Text style={styles.guestLockedText}>
                   Add recipes and deals to keep everything you need in one place.
                 </Text>
-                <UpgradeCta reason="build your grocery list" variant="outline" />
+                <UpgradeCta reason="build your grocery list" variant="outline" outlineFill="transparent" />
               </>
             ) : (
               <View style={styles.emptyState}>
@@ -549,13 +556,11 @@ const styles = StyleSheet.create({
   // Matches recipe.tsx's own container -- this screen is a peer of the
   // recipe modal/Meals tab, not a separate white sheet.
   container: { flex: 1, backgroundColor: '#FFEAD4' },
-  // No horizontal/bottom padding of its own anymore -- scrollContent's
-  // own paddingHorizontal and gap (between it and the next child) cover
-  // that now that header lives inside the ScrollView. paddingTop alone
-  // remains, for clearance below the screen's top edge/notch.
-  // paddingTop was 60 (clearing the status bar) -- the new persistent
+  // No padding of its own -- scrollContent's own paddingHorizontal/
+  // paddingTop/gap (between it and the next child) cover that now that
+  // header lives inside the ScrollView, right below the persistent
   // AppTopBar ((tabs)/_layout.tsx, sitting above the grocery tab this
-  // component is the sole content of) handles that now.
+  // component is the sole content of).
   header: {},
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   subtitle: { fontSize: 13, color: INK, marginTop: 2 },
@@ -591,7 +596,10 @@ const styles = StyleSheet.create({
   // of this screen's last/bottom-most content when scrolled all the way
   // down (originally confirmed against the since-removed Total card;
   // the same risk applies to whichever card is now genuinely last).
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 140, gap: 20 },
+  // paddingTop added (Anabelle's call) for breathing room between the
+  // white AppTopBar above this screen and the heading below -- previously
+  // had none, so the heading sat flush against the bar.
+  scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 20 },
   // padding: 14, matching selectedRow/storeCard below (and recipe.tsx's
   // own ingredientsModalCard/instructionsCard) -- every "modal treatment"
   // card on this screen shares the same padding now, this was the one

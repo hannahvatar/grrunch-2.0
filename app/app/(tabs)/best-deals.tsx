@@ -287,8 +287,10 @@ const styles = StyleSheet.create({
   // same fixed floating chat button/clearance issue GroceryListView.tsx
   // already fixed for its own last card.
   // paddingTop was 60 (clearing the status bar) -- the new persistent
-  // AppTopBar ((tabs)/_layout.tsx) handles that now.
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 140, gap: 20 },
+  // AppTopBar ((tabs)/_layout.tsx) handles that now, but this screen still
+  // wants its own top margin (Anabelle's call) for breathing room between
+  // the white nav bar and the title below it -- previously had none.
+  scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 20 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   tagline: { fontSize: 14, color: INK, marginTop: -12 },
   subtitle: { fontSize: 13, color: INK },

@@ -12,15 +12,33 @@ const INK = '#111';
 //
 // variant 'solid' (default) is the original black-fill treatment, used by
 // Profile's Membership section (the page's one real top-level "you're not
-// a member" banner). variant 'outline' is the next-to-feature white/dashed
-// treatment (Anabelle's call) used for Saved recipes/Companion recipes --
-// same content and route, just a lighter-weight look for a locked
-// secondary section rather than the page's primary conversion moment.
-export function UpgradeCta({ reason, variant = 'solid' }: { reason: string; variant?: 'solid' | 'outline' }) {
+// a member" banner). variant 'outline' is the next-to-feature dashed
+// treatment used for Saved recipes/Companion recipes/Grocery list's empty
+// state -- same content and route, just a lighter-weight look for a
+// locked secondary section rather than the page's primary conversion
+// moment. Its fill defaults to white (Saved/Companion recipes, sitting
+// inline mid-page), but Grocery list's version wants the screen's own
+// peach background to show through instead of a white card floating on
+// it (Anabelle's call, same transparent-outline treatment Meals' own
+// one-off unlockCard already uses) -- outlineFill="transparent" opts out
+// per-usage without changing Saved/Companion recipes' look.
+export function UpgradeCta({
+  reason,
+  variant = 'solid',
+  outlineFill = 'white',
+}: {
+  reason: string;
+  variant?: 'solid' | 'outline';
+  outlineFill?: 'white' | 'transparent';
+}) {
   const outline = variant === 'outline';
   return (
     <Pressable
-      style={[styles.container, outline && styles.containerOutline]}
+      style={[
+        styles.container,
+        outline && styles.containerOutline,
+        outline && outlineFill === 'transparent' && styles.containerOutlineTransparent,
+      ]}
       onPress={() => router.push({ pathname: '/upgrade', params: { reason } })}
     >
       <LockClosedIcon size={18} color={outline ? INK : '#fff'} />
@@ -47,6 +65,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: INK,
+  },
+  containerOutlineTransparent: {
+    backgroundColor: 'transparent',
   },
   textBlock: { flex: 1 },
   title: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },

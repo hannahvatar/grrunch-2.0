@@ -111,9 +111,6 @@ export default function MealsScreen() {
     <View style={[styles.gradient, styles.container]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Meals from This Week's Deals</Text>
-        <Text style={styles.subtitle}>
-          {visibleMeals.length} recipe{visibleMeals.length === 1 ? '' : 's'}
-        </Text>
 
         {sortedMeals.length === 0 && (
           <View style={styles.emptyState}>
@@ -165,11 +162,12 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { alignItems: 'center', justifyContent: 'center' },
   // paddingTop was 60 (clearing the status bar) -- the new persistent
-  // AppTopBar ((tabs)/_layout.tsx) handles that now, so this only needs
-  // its own normal top margin.
-  scrollContent: { padding: 20, gap: 16 },
+  // AppTopBar ((tabs)/_layout.tsx) handles that now. Kept as its own
+  // larger value (Anabelle's call), not folded back into the shared 20,
+  // for clear breathing room between the white nav bar and the title
+  // below it.
+  scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: -8 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
   // Same dashed-outline CTA treatment as UpgradeCta's 'outline' variant

@@ -209,8 +209,15 @@ export default function ProfileScreen() {
             {/* Last line of the store card -- member-only upsell, same
                 next-to-feature language as the per-row Change buttons
                 above (Anabelle's mockup: title + subtitle on the left,
-                solid black "Upgrade" pill on the right). Only the free
-                tier sees it; a real member already has this. */}
+                solid black pill on the right, now reading "Sign up"
+                instead of "Upgrade" -- Anabelle's call). Only the free
+                tier sees it; a real member already has this. Note this
+                row (like the rest of this card) is gated on
+                !isSubscribed, not isGuest, so a signed-in-but-unsubscribed
+                member sees "Sign up" too, not just a true guest -- same
+                as before this rename, just flagging it since the new
+                copy reads a little oddly for someone who already has an
+                account. */}
             {!isSubscribed && (
               <Pressable
                 style={[styles.storeRow, styles.storeRowLast]}
@@ -221,7 +228,7 @@ export default function ProfileScreen() {
                   <Text style={styles.storeSubtitle}>Subscribers can swap any location.</Text>
                 </View>
                 <View style={styles.upgradeRowButton}>
-                  <Text style={styles.upgradeRowButtonText}>Upgrade</Text>
+                  <Text style={styles.upgradeRowButtonText}>Sign up</Text>
                 </View>
               </Pressable>
             )}
@@ -310,8 +317,11 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   gradient: { flex: 1, backgroundColor: '#FFEAD4' },
   // paddingTop was 64 (clearing the status bar) -- the new persistent
-  // AppTopBar ((tabs)/_layout.tsx) handles that now.
-  container: { padding: 24, gap: 12 },
+  // AppTopBar ((tabs)/_layout.tsx) handles that now. Kept as its own
+  // larger value (Anabelle's call), not folded back into the shared 24,
+  // for clear breathing room between the white nav bar and this screen's
+  // own heading below it.
+  container: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 24, gap: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   // Same tertiary treatment as IngredientRow's editButton / GroceryListView's
   // resetAllButton (white fill, 1.5px INK border) -- Anabelle's call, was a
