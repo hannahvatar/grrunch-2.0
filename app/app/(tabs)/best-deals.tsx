@@ -286,7 +286,9 @@ const styles = StyleSheet.create({
   // so the last category's own content never lands under SupportBubble --
   // same fixed floating chat button/clearance issue GroceryListView.tsx
   // already fixed for its own last card.
-  scrollContent: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 140, gap: 20 },
+  // paddingTop was 60 (clearing the status bar) -- the new persistent
+  // AppTopBar ((tabs)/_layout.tsx) handles that now.
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 140, gap: 20 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   tagline: { fontSize: 14, color: INK, marginTop: -12 },
   subtitle: { fontSize: 13, color: INK },

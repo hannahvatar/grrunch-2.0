@@ -553,7 +553,10 @@ const styles = StyleSheet.create({
   // own paddingHorizontal and gap (between it and the next child) cover
   // that now that header lives inside the ScrollView. paddingTop alone
   // remains, for clearance below the screen's top edge/notch.
-  header: { paddingTop: 60 },
+  // paddingTop was 60 (clearing the status bar) -- the new persistent
+  // AppTopBar ((tabs)/_layout.tsx, sitting above the grocery tab this
+  // component is the sole content of) handles that now.
+  header: {},
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   subtitle: { fontSize: 13, color: INK, marginTop: 2 },
   // Explains where quantities come from and that they're editable, with
