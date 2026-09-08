@@ -33,14 +33,16 @@ import { useSubscription } from '../../lib/subscription';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Free tier sees the biggest-savings 3 non-recipe-linked items in each
-// category (see selectVisibleDeals) -- Grrunch Plus (30-day free trial,
-// then $5.99/mo) unlocks the rest. A deal used by any recipe is exempt
-// from this cap entirely, always shown regardless of how many others
-// are already visible. A single "Unlock N more deals" tile stands in
-// for however many non-recipe-linked deals are left, naming the real
-// count rather than a generic upsell.
-const FREE_DEALS_PER_CATEGORY = 3;
+// Free tier sees only the single biggest-savings non-recipe-linked item
+// in each category (was 3, Anabelle 2026-09-08) -- see selectVisibleDeals,
+// which already sorts by savings desc before slicing, so this is "the one
+// with the best deal percentage" by construction. Grrunch Plus (30-day
+// free trial, then $5.99/mo) unlocks the rest. A deal used by any recipe
+// is exempt from this cap entirely, always shown regardless of how many
+// others are already visible. The "Unlock N more deals" dashed card
+// stands in for however many non-recipe-linked deals are left, naming the
+// real count rather than a generic upsell.
+const FREE_DEALS_PER_CATEGORY = 1;
 
 // This week's curated flyer deals (Airtable Admin Review Tool, status
 // "deals"/"both" -> curated_deals), grouped into collapsible category
