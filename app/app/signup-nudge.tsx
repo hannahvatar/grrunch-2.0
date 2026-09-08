@@ -2,22 +2,28 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { UserPlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
+// GRRUNCH DS -- matches upgrade.tsx's own bottom-sheet convention.
+const ACCENT = '#FFA955';
+const INK = '#111';
+
 // Soft, skippable sign-up nudge -- shown at most once, triggered from
 // recipe.tsx after a guest has viewed a few recipes (see
 // lib/guestNudge.ts). Same modal shape as upgrade.tsx (handle, close X,
 // icon circle, title, body, one primary button) but a genuinely different
 // ask: creating an account is free and unrelated to membership -- no
-// price note, no trial language, nothing paywall-shaped here.
+// price note, no trial language, nothing paywall-shaped here. Restyled
+// alongside upgrade.tsx (2026-09-08 UI pass) to keep that "same shape"
+// parity real, not just structural.
 export default function SignupNudgeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
       <Pressable style={styles.closeButton} onPress={() => router.back()}>
-        <XMarkIcon size={20} color="#999" />
+        <XMarkIcon size={18} color={INK} />
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <UserPlusIcon size={30} color="#111" />
+          <UserPlusIcon size={30} color={INK} />
         </View>
         <Text style={styles.title}>Create a free account</Text>
         <Text style={styles.body}>
@@ -38,7 +44,7 @@ export default function SignupNudgeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#FFEAD4' },
   handle: {
     width: 40,
     height: 4,
@@ -47,27 +53,51 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 8,
   },
-  closeButton: { position: 'absolute', top: 20, right: 20 },
+  closeButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   iconCircle: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#F2F2F2',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
   },
-  title: { fontSize: 22, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 12, textAlign: 'center' },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#666' },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    marginBottom: 12,
+    textAlign: 'center',
+    color: INK,
+  },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
   footer: { padding: 24, gap: 12, alignItems: 'center' },
   primaryButton: {
     alignSelf: 'stretch',
-    backgroundColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 18,
+    height: 56,
+    justifyContent: 'center',
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  laterText: { fontSize: 13, color: '#666', textDecorationLine: 'underline' },
+  primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  laterText: { fontSize: 13, color: '#767676', textDecorationLine: 'underline' },
 });
