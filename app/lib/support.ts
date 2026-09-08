@@ -23,7 +23,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Do I need an account to use Grrunch?',
     answer:
-      "No — you can browse recipes and this week's deals as a guest. A free account lets you save recipes and pick up where you left off; it's separate from membership and doesn't cost anything.",
+      "No — you can browse recipes and this week's deals as a guest. A free account lets you add recipes to your grocery list and manage your notifications; it's separate from membership and doesn't cost anything. Saving recipes to revisit later is a membership feature.",
   },
   {
     question: 'What does membership include?',
