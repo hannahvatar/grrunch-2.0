@@ -33,14 +33,16 @@ import { useSubscription } from '../../lib/subscription';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Free tier sees the biggest-savings 3 non-recipe-linked items in each
-// category (see selectVisibleDeals) -- Grrunch Plus (30-day free trial,
-// then $5.99/mo) unlocks the rest. A deal used by any recipe is exempt
-// from this cap entirely, always shown regardless of how many others
-// are already visible. A single "Unlock N more deals" tile stands in
-// for however many non-recipe-linked deals are left, naming the real
-// count rather than a generic upsell.
-const FREE_DEALS_PER_CATEGORY = 3;
+// Free tier sees only the single biggest-savings non-recipe-linked item
+// in each category (was 3, Anabelle 2026-09-08) -- see selectVisibleDeals,
+// which already sorts by savings desc before slicing, so this is "the one
+// with the best deal percentage" by construction. Grrunch Plus (30-day
+// free trial, then $5.99/mo) unlocks the rest. A deal used by any recipe
+// is exempt from this cap entirely, always shown regardless of how many
+// others are already visible. The "Unlock N more deals" dashed card
+// stands in for however many non-recipe-linked deals are left, naming the
+// real count rather than a generic upsell.
+const FREE_DEALS_PER_CATEGORY = 1;
 
 // This week's curated flyer deals (Airtable Admin Review Tool, status
 // "deals"/"both" -> curated_deals), grouped into collapsible category
@@ -245,7 +247,7 @@ export default function BestDealsScreen() {
                       <Text style={styles.unlockTitle}>
                         Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
                       </Text>
-                      <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo</Text>
+                      <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo · Cancel anytime</Text>
                     </Pressable>
                   )}
                 </View>
@@ -339,9 +341,14 @@ const styles = StyleSheet.create({
   // not the 2px "modal treatment" cards use -- this one has no white
   // fill of its own, transparent against the page). Full width now,
   // matching dealCard above.
+  // Dashed treatment (Anabelle, 2026-09-08) -- matches the app's other
+  // dashed-outline locked/CTA cards (meals.tsx's unlockCard, MealCard's
+  // groceryToggleButtonLocked, profile.tsx's changeStoreButton, etc.),
+  // was a solid 1px border.
   unlockCard: {
     width: '100%',
-    borderWidth: 1,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
     borderColor: INK,
     borderRadius: 14,
     padding: 14,
@@ -356,7 +363,8 @@ const styles = StyleSheet.create({
     color: INK,
     textAlign: 'center',
   },
-  unlockSubtitle: { fontSize: 11, color: '#767676', textAlign: 'center' },
+  // Black (was #767676 grey) -- all type in this card reads INK now.
+  unlockSubtitle: { fontSize: 11, color: INK, textAlign: 'center' },
   dealImageWrap: { position: 'relative' },
   // Fixed square now (was width: '100%' of a stacked card) -- sits to
   // the left of the info column in the new horizontal row.
@@ -435,6 +443,7 @@ const styles = StyleSheet.create({
   // MealCard's groceryToggleButton; still flips to INK fill + white
   // check on add, same as those, since that's a distinct "confirmed"
   // state rather than the idle button's own color.
+  // Dashed, same as unlockCard above (Anabelle, 2026-09-08) -- was solid.
   addIconButton: {
     position: 'absolute',
     top: 10,
@@ -444,6 +453,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#fff',
     borderWidth: 1.5,
+    borderStyle: 'dashed',
     borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
