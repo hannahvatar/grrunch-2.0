@@ -1,18 +1,8 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { XMarkIcon } from 'react-native-heroicons/outline';
+import { ArrowLongRightIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 const INK = '#111';
-
-// Which of the two text columns the table currently shows next to the
-// (always-visible) Tag column -- see TableColumnKey below.
-type TableColumnKey = 'meaning' | 'source';
-
-const TABLE_COLUMN_OPTIONS: { value: TableColumnKey; label: string }[] = [
-  { value: 'meaning', label: 'What it means' },
-  { value: 'source', label: "Where it's from" },
-];
 
 // Its own screen (pushed from settings.tsx), not the shared settings-detail
 // stub -- Anabelle's call, 2026-08-28: this is a genuinely important
@@ -89,12 +79,6 @@ const TAG_ROWS: TagRow[] = [
 ];
 
 export default function HowItWorksScreen() {
-  // Was a 3-column table (Tag/What it means/Where it's from) users had to
-  // swipe horizontally to see in full -- Anabelle's call: keep Tag always
-  // visible and toggle the other two, so nothing overflows the screen and
-  // there's no swipe-to-discover step at all.
-  const [activeColumn, setActiveColumn] = useState<TableColumnKey>('meaning');
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -109,41 +93,41 @@ export default function HowItWorksScreen() {
           typical pricing, and where the number comes from. Here's what each one means.
         </Text>
 
-        <View style={styles.table}>
-          {/* The two non-Tag columns live in one cell, as tappable tab
-              labels, instead of a separate control above the table --
-              Anabelle's call: the tabs ARE the header row, not a chip row
-              sitting on top of it. */}
-          <View style={[styles.tableRow, styles.tableHeaderRow]}>
-            <Text style={[styles.headerCell, styles.colTag]}>Tag</Text>
-            <View style={[styles.colText, styles.headerTabsCell]}>
-              {TABLE_COLUMN_OPTIONS.map((option) => {
-                const selected = option.value === activeColumn;
-                return (
-                  <Pressable key={option.value} onPress={() => setActiveColumn(option.value)} hitSlop={6}>
-                    <Text style={[styles.headerTabText, selected && styles.headerTabTextActive]}>
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-          {TAG_ROWS.map((row) => (
-            <View key={row.tag} style={styles.tableRow}>
-              <View style={styles.colTag}>
-                {row.noChip ? (
-                  <Text style={[styles.plainTagText, { color: row.tagColor }]}>{row.tag}</Text>
-                ) : (
-                  <View style={[styles.tagChip, { backgroundColor: row.tagBg }]}>
-                    <Text style={[styles.tagChipText, { color: row.tagColor }]}>{row.tag}</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={[styles.cellText, styles.colText]}>{row[activeColumn]}</Text>
-            </View>
-          ))}
+        {/* Moved above the table (was below) and given an icon, so the
+            "this scrolls" affordance is seen before you'd have to
+            discover it yourself -- Anabelle's call, back to the original
+            3-column swipeable table, just clearer that it scrolls.
+            showsHorizontalScrollIndicator flipped to true for the same
+            reason -- the native scrollbar itself is a real-time, always-
+            visible cue while the hint text is a one-time read. */}
+        <View style={styles.swipeHintRow}>
+          <Text style={styles.swipeHint}>Swipe to see it all</Text>
+          <ArrowLongRightIcon size={16} color={INK} />
         </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroll}>
+          <View style={styles.table}>
+            <View style={[styles.tableRow, styles.tableHeaderRow]}>
+              <Text style={[styles.headerCell, styles.colTag]}>Tag</Text>
+              <Text style={[styles.headerCell, styles.colText]}>What it means</Text>
+              <Text style={[styles.headerCell, styles.colText]}>Where it's from</Text>
+            </View>
+            {TAG_ROWS.map((row) => (
+              <View key={row.tag} style={styles.tableRow}>
+                <View style={styles.colTag}>
+                  {row.noChip ? (
+                    <Text style={[styles.plainTagText, { color: row.tagColor }]}>{row.tag}</Text>
+                  ) : (
+                    <View style={[styles.tagChip, { backgroundColor: row.tagBg }]}>
+                      <Text style={[styles.tagChipText, { color: row.tagColor }]}>{row.tag}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.cellText, styles.colText]}>{row.meaning}</Text>
+                <Text style={[styles.cellText, styles.colText]}>{row.source}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
 
         <Text style={styles.footnote}>
           One item without a colored tag just means it's a plain ingredient with an estimated everyday price,
@@ -198,13 +182,11 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   content: { paddingHorizontal: 24, paddingBottom: 40 },
-  intro: { fontSize: 15, lineHeight: 22, color: INK, marginBottom: 16 },
-  // No horizontal scroll anymore -- Tag stays put, the SegmentedControl
-  // above swaps the one remaining column between "What it means"/"Where
-  // it's from" instead of making people swipe to see the rest.
+  intro: { fontSize: 15, lineHeight: 22, color: INK, marginBottom: 20 },
+  swipeHintRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
+  tableScroll: { marginHorizontal: -24 },
   table: {
-    marginTop: 16,
-    marginBottom: 20,
+    marginHorizontal: 24,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: INK,
@@ -218,31 +200,16 @@ const styles = StyleSheet.create({
   },
   tableHeaderRow: { borderTopWidth: 0, backgroundColor: '#FFD8AC' },
   colTag: { width: 130, padding: 10, justifyContent: 'center', borderRightWidth: 1, borderRightColor: INK },
-  // flex:1 (was a fixed 190) -- this is the only text column left, so it
-  // fills whatever width remains next to colTag instead of a fixed size
-  // that assumed two more columns would follow it off-screen.
-  colText: { flex: 1, padding: 10 },
+  colText: { width: 190, padding: 10, borderRightWidth: 1, borderRightColor: INK },
   headerCell: { fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  // The two tab labels sit side by side in the same cell "Tag" occupies
-  // its own -- colText's flex:1/padding still applies (spread via the
-  // style array), this just lays the two Pressables out in a row.
-  headerTabsCell: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  // Grey-out-when-inactive didn't read as selection state (Anabelle's
-  // call) -- both tabs stay full-strength INK all the time now, and
-  // it's bold+underline on the active one alone that signals selection.
-  headerTabText: { fontSize: 12, fontWeight: '400', fontFamily: 'OpenSans_400Regular', color: INK },
-  headerTabTextActive: {
-    fontWeight: '800',
-    fontFamily: 'OpenSans_800ExtraBold',
-    textDecorationLine: 'underline',
-  },
   cellText: { fontSize: 13, lineHeight: 18, color: INK },
   tagChip: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   tagChipText: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // Plain (no chip) rows aren't a badge in the real app -- shouldn't read
   // as bold/emphasized like an actual tag does.
   plainTagText: { fontSize: 13, fontWeight: '400', fontFamily: 'OpenSans_400Regular' },
-  footnote: { fontSize: 13, lineHeight: 19, color: INK },
+  swipeHint: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  footnote: { fontSize: 13, lineHeight: 19, color: INK, marginTop: 20 },
   sectionHeading: {
     fontSize: 20,
     fontWeight: '800',
