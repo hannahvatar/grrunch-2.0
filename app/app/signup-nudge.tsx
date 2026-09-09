@@ -41,7 +41,10 @@ export default function SignupNudgeScreen() {
         </Text>
       </View>
       <View style={styles.footer}>
-        <Pressable style={styles.primaryButton} onPress={() => router.replace('/login')}>
+        <Pressable
+          style={styles.primaryButton}
+          onPress={() => router.replace({ pathname: '/login', params: { mode: 'signup' } })}
+        >
           <Text style={styles.primaryButtonText}>Create free account</Text>
         </Pressable>
         <Pressable onPress={() => router.back()} hitSlop={8}>

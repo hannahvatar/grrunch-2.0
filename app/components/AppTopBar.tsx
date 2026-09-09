@@ -34,10 +34,22 @@ export function AppTopBar() {
       <GrrunchMascot size={34} showCrumbs={false} />
       {isGuest ? (
         <View style={styles.authButtons}>
-          <Pressable style={styles.signInButton} onPress={() => router.push('/login')} hitSlop={8}>
+          {/* Same screen either way (login.tsx) -- Apple/Google/email all
+              use one request to create or sign into an account, so
+              there's no separate form to route to. mode just swaps that
+              screen's headline copy so "Sign in" doesn't land on
+              new-account-creation framing. */}
+          <Pressable
+            style={styles.signInButton}
+            onPress={() => router.push({ pathname: '/login', params: { mode: 'signin' } })}
+            hitSlop={8}
+          >
             <Text style={styles.signInText}>Sign in</Text>
           </Pressable>
-          <Pressable style={styles.signUpButton} onPress={() => router.push('/login')}>
+          <Pressable
+            style={styles.signUpButton}
+            onPress={() => router.push({ pathname: '/login', params: { mode: 'signup' } })}
+          >
             <Text style={styles.signUpText}>Sign up</Text>
           </Pressable>
         </View>

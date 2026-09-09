@@ -18,7 +18,10 @@ const INK = '#111';
 export function SignInOrTrialPrompt({ reason }: { reason: string }) {
   return (
     <View style={styles.wrap}>
-      <Pressable style={styles.signInCard} onPress={() => router.push('/login')}>
+      <Pressable
+        style={styles.signInCard}
+        onPress={() => router.push({ pathname: '/login', params: { mode: 'signin' } })}
+      >
         <UserIcon size={18} color={INK} />
         <View style={styles.textBlock}>
           <Text style={styles.title}>Sign in</Text>

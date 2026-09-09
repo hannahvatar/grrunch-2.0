@@ -1,7 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Network from 'expo-network';
@@ -71,6 +71,17 @@ async function isOffline(): Promise<boolean> {
 }
 
 export default function LoginScreen() {
+  // Same one screen either way -- Apple/Google/email all use the same
+  // request to create an account or sign into an existing one, so there's
+  // no separate "log in" form to build (see the big comment above). mode
+  // only changes the headline copy, not any of the actual mechanics --
+  // 'signin' from an explicit "Sign in" entry point (top nav, the
+  // SignInOrTrialPrompt card, signing back in after signing out),
+  // defaulting to 'signup' everywhere else (cold-start onboarding, the
+  // signup nudge, after deleting an account), since most people reaching
+  // this screen without that context are new.
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const isSignIn = mode === 'signin';
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   // Shared across Apple/Google/email -- whichever method gets cancelled
   // shows the same banner.
@@ -284,7 +295,9 @@ export default function LoginScreen() {
   return (
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.subtitle}>Create a free account to start saving.</Text>
+      <Text style={styles.subtitle}>
+        {isSignIn ? 'Sign in to your account.' : 'Create a free account to start saving.'}
+      </Text>
 
       {cancelledMessage && (
         <AlertBanner variant="neutral" title={cancelledMessage} onDismiss={() => setCancelledMessage(null)} />
