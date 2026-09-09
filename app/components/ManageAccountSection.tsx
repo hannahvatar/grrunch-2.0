@@ -90,7 +90,10 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
 
   function handleSignOut() {
     supabase.auth.signOut();
-    router.replace('/login');
+    // mode:'signin' -- someone who just signed out already has an
+    // account, so /login's headline should read as "sign back in," not
+    // "create a free account."
+    router.replace({ pathname: '/login', params: { mode: 'signin' } });
   }
 
   function handleDeleteAccount() {
@@ -112,7 +115,9 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
               return;
             }
             await supabase.auth.signOut();
-            router.replace('/login');
+            // mode:'signup' -- the account just deleted is gone, so
+            // returning here is starting fresh, not signing back in.
+            router.replace({ pathname: '/login', params: { mode: 'signup' } });
           },
         },
       ]

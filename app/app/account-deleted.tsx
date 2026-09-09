@@ -14,7 +14,10 @@ export default function AccountDeletedScreen() {
       title="Account was deleted"
       body="This Grrunch account was previously deleted."
       actions={[
-        { label: 'Create a new account', onPress: () => router.push('/login') },
+        {
+          label: 'Create a new account',
+          onPress: () => router.push({ pathname: '/login', params: { mode: 'signup' } }),
+        },
         { label: 'Restore account', onPress: () => router.back() },
       ]}
     />
