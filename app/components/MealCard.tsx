@@ -247,7 +247,12 @@ const styles = StyleSheet.create({
   // spacing within a line).
   priceBlock: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, rowGap: 2 },
   nutritionRow: { flexDirection: 'row', gap: 16 },
-  nutritionItem: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  // 'center' (was 'baseline') -- baseline alignment doesn't work reliably
+  // for an icon+text pair since the icon has no font baseline of its own
+  // to align to, which was pushing it visibly below the text. Same
+  // alignItems:'center' convention dealTagRow already uses for its own
+  // icon-badge+text pairs.
+  nutritionItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   nutritionText: { fontSize: 13, color: '#888' },
   mealPrice: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   // Black, matching recipe.tsx's own perServing convention -- it sits
