@@ -3,6 +3,9 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
+const ACCENT = '#FFA955';
+const INK = '#111';
+
 export interface StatusAction {
   label: string;
   variant?: 'primary' | 'secondary' | 'text';
@@ -44,7 +47,7 @@ export function StatusScreen({
         onPress={onBack ?? (() => router.back())}
         hitSlop={8}
       >
-        <ChevronLeftIcon size={24} color="#111" />
+        <ChevronLeftIcon size={20} color={INK} />
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>{icon}</View>
@@ -83,7 +86,9 @@ export function StatusScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  // GRRUNCH DS peach, matches every other modal in the app (upgrade.tsx,
+  // signup-nudge.tsx, etc.) -- was plain white, matching nothing else.
+  container: { flex: 1, backgroundColor: '#FFEAD4' },
   handle: {
     width: 40,
     height: 4,
@@ -92,37 +97,78 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: 8,
   },
-  backButton: { position: 'absolute', top: 24, left: 20 },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: '#ccc',
+  // White-fill/1.5px-INK-border tertiary circle -- same convention as
+  // upgrade.tsx's own closeButton/recipe.tsx's closeButton/settings.tsx's
+  // closeButton, instead of a bare unstyled chevron. Kept as "back"
+  // (ChevronLeftIcon), not swapped for an X -- onBack still just calls
+  // router.back(), and every screen using this component reaches it via
+  // push from somewhere real to go back to, not a modal opened fresh.
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
   },
-  title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 8, textAlign: 'center' },
-  body: { fontSize: 15, color: '#666', textAlign: 'center' },
+  content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  // White fill, no border -- same "softer than a locked/denied state"
+  // reasoning as upgrade.tsx's own iconCircle (that bordered treatment is
+  // reserved for an actually-gated feature, e.g. MealCard's
+  // groceryToggleButtonLocked); every screen sharing this component is
+  // reporting a status, not blocking a specific paid feature.
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    marginBottom: 12,
+    textAlign: 'center',
+    color: INK,
+  },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
   footer: { padding: 24, gap: 12 },
+  // Real btn-primary-orange -- see login.tsx's own primaryButton for the
+  // canonical spec (ACCENT fill, 2px INK border, 28px pill, 56pt tall).
+  // Was a flat black/14px-radius button, matching nothing else in the
+  // app (same fix upgrade.tsx's own primaryButton already got).
   primaryButton: {
-    backgroundColor: '#111',
-    borderRadius: 14,
-    paddingVertical: 18,
+    height: 56,
+    justifyContent: 'center',
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
     alignItems: 'center',
   },
-  primaryButtonText: { color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // Tertiary pill -- same white-fill/INK-border shape as primaryButton
+  // above (same height/radius, so a stacked primary+secondary pair reads
+  // as one consistent group), just unfilled instead of ACCENT.
   secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 14,
-    paddingVertical: 18,
+    height: 56,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
     alignItems: 'center',
   },
-  secondaryButtonText: { color: '#111', fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  secondaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   textButton: { alignItems: 'center', paddingVertical: 6 },
-  textButtonLabel: { color: '#666', fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
+  textButtonLabel: { color: '#767676', fontSize: 14, textDecorationLine: 'underline' },
   footnote: { fontSize: 12, color: '#999', textAlign: 'center', marginTop: -2 },
 });
