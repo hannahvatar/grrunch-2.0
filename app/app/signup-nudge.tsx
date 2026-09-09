@@ -40,7 +40,8 @@ export default function SignupNudgeScreen() {
         <Text style={styles.title}>Create a free account</Text>
         <Text style={styles.body}>
           Manage your account settings and notification preferences. It's free, no payment needed, and you
-          can always add membership later to save recipes and build your grocery list.
+          can always add a membership later to discover the best deals and get affordable recipes built
+          around them every week.
         </Text>
       </View>
       <View style={styles.footer}>
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: INK,
   },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: INK },
   footer: { padding: 24, gap: 12, alignItems: 'center' },
   primaryButton: {
     alignSelf: 'stretch',
