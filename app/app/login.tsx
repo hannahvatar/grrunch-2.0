@@ -14,6 +14,7 @@ import { AlertBanner } from '../components/AlertBanner';
 import { AppleIcon } from '../components/icons/AppleIcon';
 import { GoogleIcon } from '../components/icons/GoogleIcon';
 import { InputField } from '../components/InputField';
+import { useSelectedStores } from '../lib/selectedStores';
 import { supabase } from '../lib/supabase';
 
 // makeRedirectUri() is meant to auto-detect web vs. native, but in
@@ -74,6 +75,11 @@ export default function LoginScreen() {
   // Shared across Apple/Google/email -- whichever method gets cancelled
   // shows the same banner.
   const [cancelledMessage, setCancelledMessage] = useState<string | null>(null);
+  // AsyncStorage-backed, device-local -- already populated for a guest
+  // who finished onboarding before ever reaching this screen (e.g. via
+  // the top nav's Sign in/Sign up, mid-session, not the cold-start
+  // flow). See navigateAfterSignIn below.
+  const { stores: existingStores, loaded: storesLoaded } = useSelectedStores();
 
   // emailSent switches the form from "enter your email" to "check your
   // email" -- sign-in itself completes later, out of band, when the
@@ -110,6 +116,26 @@ export default function LoginScreen() {
     return () => subscription.remove();
   }, []);
 
+  // Was an unconditional router.push('/location') at every call site --
+  // fine for a true cold start, but this screen is also reachable
+  // mid-session (the top nav's Sign in/Sign up, or a guest who already
+  // finished onboarding backing out via "Continue as guest"). Sending
+  // someone who already has stores saved (device-local, see
+  // lib/selectedStores.tsx) through Location + Stores again wasn't just
+  // redundant -- Stores' own "Continue" always overwrites the existing
+  // selection with a fresh nearest-stores lookup (stores.tsx: "Only
+  // persists on the deliberate 'Continue' confirmation"), so a member
+  // who'd customized their list could silently lose it. storesLoaded
+  // false (the AsyncStorage read hasn't resolved yet) falls back to the
+  // full onboarding rather than guessing.
+  function navigateAfterSignIn() {
+    if (storesLoaded && existingStores.length > 0) {
+      router.push('/meals');
+    } else {
+      router.push('/location');
+    }
+  }
+
   async function handleAppleSignIn() {
     setCancelledMessage(null);
     if (await isOffline()) {
@@ -144,7 +170,7 @@ export default function LoginScreen() {
         });
         return;
       }
-      router.push('/location');
+      navigateAfterSignIn();
     } catch (error) {
       if ((error as { code?: string }).code === 'ERR_REQUEST_CANCELED') {
         setCancelledMessage('Sign-in was cancelled.');
@@ -205,7 +231,7 @@ export default function LoginScreen() {
       const refreshToken = params.get('refresh_token');
       if (accessToken && refreshToken) {
         await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-        router.push('/location');
+        navigateAfterSignIn();
         return;
       }
       router.push({
@@ -251,7 +277,7 @@ export default function LoginScreen() {
     }
     Alert.alert('Sign in with Grrunch', 'Using your Apple Account', [
       { text: 'Cancel', style: 'cancel', onPress: () => setCancelledMessage('Sign-in was cancelled.') },
-      { text: 'Continue', onPress: () => router.push('/location') },
+      { text: 'Continue', onPress: navigateAfterSignIn },
     ]);
   }
 
@@ -335,7 +361,7 @@ export default function LoginScreen() {
         <View style={styles.dividerLine} />
       </View>
 
-      <Pressable style={styles.guestButton} onPress={() => router.push('/location')}>
+      <Pressable style={styles.guestButton} onPress={navigateAfterSignIn}>
         <Text style={styles.guestText}>Continue as guest</Text>
         <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
       </Pressable>

@@ -14,6 +14,15 @@ const INK = '#111';
 // price note, no trial language, nothing paywall-shaped here. Restyled
 // alongside upgrade.tsx (2026-09-08 UI pass) to keep that "same shape"
 // parity real, not just structural.
+//
+// Body copy corrected 2026-09-09 -- previously promised "save your
+// favorite recipes and pick up where you left off," both wrong: saving
+// a recipe is isSubscribed-gated (meals.tsx handleToggleSaved), not a
+// free-account perk, and nothing persists for anyone yet (selectedMeals/
+// savedRecipes are plain in-memory state). Same bug the FAQ had twice
+// (see lib/support.ts) -- fixed here too. What a free account actually
+// unlocks: adding recipes to the grocery list (isGuest-gated only) and
+// account settings/notifications (SignInOrTrialPrompt screens).
 export default function SignupNudgeScreen() {
   return (
     <View style={styles.container}>
@@ -22,13 +31,13 @@ export default function SignupNudgeScreen() {
         <XMarkIcon size={18} color={INK} />
       </Pressable>
       <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <UserPlusIcon size={30} color={INK} />
+        <View style={styles.iconWrap}>
+          <UserPlusIcon size={48} color={INK} />
         </View>
         <Text style={styles.title}>Create a free account</Text>
         <Text style={styles.body}>
-          Save your favorite recipes and pick up where you left off next time — free, no payment needed. You
-          can always add membership later.
+          Add recipes to your grocery list and manage your notifications. It's free, no payment needed, and
+          you can always add membership later.
         </Text>
       </View>
       <View style={styles.footer}>
@@ -44,7 +53,11 @@ export default function SignupNudgeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFEAD4' },
+  // justifyContent:'center' here (was only on content below) -- centers
+  // content+footer together as one group, so the button/Not now link sit
+  // right under the body text instead of content's own flex:1 pushing
+  // them all the way down to the screen's bottom edge.
+  container: { flex: 1, backgroundColor: '#FFEAD4', justifyContent: 'center' },
   handle: {
     width: 40,
     height: 4,
@@ -66,18 +79,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
+  content: { alignItems: 'center', padding: 32 },
+  // No more circle/border around the icon (Anabelle's call) -- just the
+  // icon itself, sized up a bit (30 -> 48) now that it's not confined
+  // inside a small badge.
+  iconWrap: { marginBottom: 20 },
   title: {
     fontSize: 22,
     fontWeight: '800',
