@@ -16,7 +16,7 @@ export default function NoAccountScreen() {
 
   return (
     <StatusScreen
-      icon={<MagnifyingGlassIcon size={24} color="#999" />}
+      icon={<MagnifyingGlassIcon size={32} color="#111" />}
       title="No Grrunch account found"
       body={`We couldn't find the Grrunch account connected to this ${providerName} Account.`}
       actions={[

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ChevronLeftIcon } from 'react-native-heroicons/outline';
+import { XMarkIcon } from 'react-native-heroicons/outline';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
@@ -13,7 +13,7 @@ export interface StatusAction {
 }
 
 // Shared layout for full-screen status states reached from auth flows
-// (error.tsx, offline.tsx, no-account.tsx, etc.): back chevron, circled
+// (error.tsx, offline.tsx, no-account.tsx, etc.): X close button, circled
 // icon, title, body, and one or more action buttons. Presented as a modal
 // by the screens that use it.
 //
@@ -47,7 +47,7 @@ export function StatusScreen({
         onPress={onBack ?? (() => router.back())}
         hitSlop={8}
       >
-        <ChevronLeftIcon size={20} color={INK} />
+        <XMarkIcon size={18} color={INK} />
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>{icon}</View>
@@ -88,7 +88,11 @@ export function StatusScreen({
 const styles = StyleSheet.create({
   // GRRUNCH DS peach, matches every other modal in the app (upgrade.tsx,
   // signup-nudge.tsx, etc.) -- was plain white, matching nothing else.
-  container: { flex: 1, backgroundColor: '#FFEAD4' },
+  // justifyContent:'center' centers content+footer together as one
+  // group (Anabelle's call) -- was content's own flex:1 pushing the
+  // buttons all the way down to the screen's bottom edge, same fix as
+  // signup-nudge.tsx's own container/content split.
+  container: { flex: 1, backgroundColor: '#FFEAD4', justifyContent: 'center' },
   handle: {
     width: 40,
     height: 4,
@@ -99,14 +103,14 @@ const styles = StyleSheet.create({
   },
   // White-fill/1.5px-INK-border tertiary circle -- same convention as
   // upgrade.tsx's own closeButton/recipe.tsx's closeButton/settings.tsx's
-  // closeButton, instead of a bare unstyled chevron. Kept as "back"
-  // (ChevronLeftIcon), not swapped for an X -- onBack still just calls
-  // router.back(), and every screen using this component reaches it via
-  // push from somewhere real to go back to, not a modal opened fresh.
+  // closeButton, instead of a bare unstyled chevron. XMarkIcon, not
+  // ChevronLeftIcon (Anabelle's call: "the closing button we usually
+  // use"), top-right like every other X close button in the app -- onPress
+  // still just calls onBack ?? router.back(), unchanged.
   backButton: {
     position: 'absolute',
     top: 20,
-    left: 20,
+    right: 20,
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -116,7 +120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  content: { alignItems: 'center', padding: 32 },
   // White fill, no border -- same "softer than a locked/denied state"
   // reasoning as upgrade.tsx's own iconCircle (that bordered treatment is
   // reserved for an actually-gated feature, e.g. MealCard's
@@ -139,7 +143,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: INK,
   },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
+  // Black (Anabelle's call), not the app's more common #343837 muted
+  // body-copy grey.
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: INK },
   footer: { padding: 24, gap: 12 },
   // Real btn-primary-orange -- see login.tsx's own primaryButton for the
   // canonical spec (ACCENT fill, 2px INK border, 28px pill, 56pt tall).
