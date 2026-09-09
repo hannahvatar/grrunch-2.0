@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   mealCardBody: { padding: 14, gap: 10 },
   mealHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   mealName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', flex: 1, marginRight: 8 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: -4 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   ratingText: { fontSize: 12, color: '#888', marginLeft: 4 },
   priceNutritionRow: {
     flexDirection: 'row',
