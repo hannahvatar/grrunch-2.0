@@ -70,24 +70,6 @@ async function isOffline(): Promise<boolean> {
   }
 }
 
-// signInWithOtp's error.message is Supabase's own raw API text (confirmed
-// live: "Unable to validate email address: invalid format" and 'Email
-// address "..." is invalid' for a reserved domain like example.com) --
-// technically accurate but not this app's voice anywhere else. Maps the
-// known cases to plain copy; anything unrecognized (network errors,
-// Supabase-side issues) falls back to one generic line rather than
-// leaking raw API text either way.
-function describeEmailError(message: string): string {
-  const lower = message.toLowerCase();
-  if (lower.includes('rate limit') || lower.includes('seconds')) {
-    return "You've requested a few too many links in a row. Wait a moment and try again.";
-  }
-  if (lower.includes('email') && (lower.includes('invalid') || lower.includes('validate'))) {
-    return "That doesn't look like a valid email address. Double-check it and try again.";
-  }
-  return "Something went wrong sending that email. Please try again.";
-}
-
 export default function LoginScreen() {
   // Same one screen either way -- Apple/Google/email all use the same
   // request to create an account or sign into an existing one, so there's
@@ -284,7 +266,7 @@ export default function LoginScreen() {
     });
     setEmailLoading(false);
     if (error) {
-      setEmailError(describeEmailError(error.message));
+      setEmailError(error.message);
       return;
     }
     setEmailSent(true);
