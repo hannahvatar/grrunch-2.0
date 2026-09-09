@@ -22,7 +22,6 @@ import {
   showsRealDiscount,
 } from '../../lib/curatedDeals';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
-import { useAuth } from '../../lib/auth';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSubscription } from '../../lib/subscription';
 
@@ -52,20 +51,21 @@ const FREE_DEALS_PER_CATEGORY = 1;
 // recipe.
 export default function BestDealsScreen() {
   const { isSubscribed } = useSubscription();
-  const { isGuest } = useAuth();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { selectedDealIds, toggleDealSelected } = useSelectedDeals();
 
-  // Guest-locked, same shape as meals.tsx's handleToggleSelected /
-  // recipe.tsx's handleAddToList -- a deliberate product gate (like
-  // those, lib/selectedDeals is plain in-memory state, no account
-  // needed to use it), not a technical one. A guest tap routes to
-  // /upgrade instead of calling toggleDealSelected.
+  // Membership-gated, same shape as meals.tsx's handleToggleSelected /
+  // recipe.tsx's handleAddToList (Anabelle, 2026-09-09: "With a free
+  // account BUT NOT MEMBERSHIP you CANT add to your grocery list") -- a
+  // deliberate product gate (lib/selectedDeals is plain in-memory state,
+  // no account needed to use it), not a technical one. Was isGuest-only;
+  // a free (signed-in, non-member) tap now gets the same /upgrade prompt
+  // as a guest instead of calling toggleDealSelected.
   function handleAddDeal(dealId: string) {
-    if (isGuest) {
+    if (!isSubscribed) {
       router.push({ pathname: '/upgrade', params: { reason: 'add deals to your grocery list' } });
       return;
     }

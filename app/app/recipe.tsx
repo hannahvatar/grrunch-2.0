@@ -172,13 +172,15 @@ export default function RecipeScreen() {
     router.canGoBack() ? router.back() : router.replace('/meals');
   }
 
-  // Guest-locked, same as meals.tsx's own handleToggleSelected -- a
-  // deliberate product gate (lib/selectedMeals is plain in-memory state,
-  // no account needed to use it), not a technical one. This is the same
-  // shared toggleSelected/selectedIds as the Meals tab's "Add to list",
-  // so it needs the same gate here too, not just on that card.
+  // Membership-gated, same as meals.tsx's own handleToggleSelected
+  // (Anabelle, 2026-09-09: "With a free account BUT NOT MEMBERSHIP you
+  // CANT add to your grocery list") -- a deliberate product gate
+  // (lib/selectedMeals is plain in-memory state, no account needed to use
+  // it), not a technical one. This is the same shared toggleSelected/
+  // selectedIds as the Meals tab's "Add to list", so it needs the same
+  // gate here too, not just on that card. Was isGuest-only.
   function handleAddToList(mealId: string) {
-    if (isGuest) {
+    if (!isSubscribed) {
       router.push({ pathname: '/upgrade', params: { reason: 'add recipes to your grocery list' } });
       return;
     }
@@ -273,11 +275,13 @@ export default function RecipeScreen() {
               style={[
                 styles.addToListButton,
                 selectedIds.has(meal.id) && styles.addToListButtonActive,
-                isGuest && styles.addToListButtonLocked,
+                // Matches handleAddToList's own gate -- shows for any
+                // non-subscriber, not just a guest.
+                !isSubscribed && styles.addToListButtonLocked,
               ]}
               onPress={() => handleAddToList(meal.id)}
             >
-              {isGuest && <LockClosedIcon size={14} color={INK} />}
+              {!isSubscribed && <LockClosedIcon size={14} color={INK} />}
               <Text
                 style={[
                   styles.addToListButtonText,

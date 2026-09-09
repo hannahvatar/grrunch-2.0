@@ -15,14 +15,17 @@ const INK = '#111';
 // alongside upgrade.tsx (2026-09-08 UI pass) to keep that "same shape"
 // parity real, not just structural.
 //
-// Body copy corrected 2026-09-09 -- previously promised "save your
-// favorite recipes and pick up where you left off," both wrong: saving
-// a recipe is isSubscribed-gated (meals.tsx handleToggleSaved), not a
-// free-account perk, and nothing persists for anyone yet (selectedMeals/
-// savedRecipes are plain in-memory state). Same bug the FAQ had twice
-// (see lib/support.ts) -- fixed here too. What a free account actually
-// unlocks: adding recipes to the grocery list (isGuest-gated only) and
-// account settings/notifications (SignInOrTrialPrompt screens).
+// Body copy corrected 2026-09-09, twice -- first pass dropped "save your
+// favorite recipes and pick up where you left off" (wrong: saving is
+// isSubscribed-gated, meals.tsx handleToggleSaved, and nothing persists
+// for anyone, member or not) in favor of "add recipes to your grocery
+// list," which Anabelle then corrected again: "With a free account BUT
+// NOT MEMBERSHIP you CANT add to your grocery list" -- that's now
+// isSubscribed-gated too (meals.tsx/best-deals.tsx/recipe.tsx), not
+// isGuest-only. What a free account actually unlocks: just account
+// settings/notifications (SignInOrTrialPrompt screens). Everything else
+// -- saving recipes, building a grocery list, companion recipes, store
+// choice -- needs membership, same as lib/support.ts's FAQ answer.
 export default function SignupNudgeScreen() {
   return (
     <View style={styles.container}>
@@ -36,8 +39,8 @@ export default function SignupNudgeScreen() {
         </View>
         <Text style={styles.title}>Create a free account</Text>
         <Text style={styles.body}>
-          Add recipes to your grocery list and manage your notifications. It's free, no payment needed, and
-          you can always add membership later.
+          Manage your account settings and notification preferences. It's free, no payment needed, and you
+          can always add membership later to save recipes and build your grocery list.
         </Text>
       </View>
       <View style={styles.footer}>
