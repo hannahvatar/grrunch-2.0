@@ -39,9 +39,8 @@ export default function SignupNudgeScreen() {
         </View>
         <Text style={styles.title}>Create a free account</Text>
         <Text style={styles.body}>
-          Manage your account settings and notification preferences. It's free, no payment needed, and you
-          can always add a membership later to discover the best deals and get affordable recipes built
-          around them every week.
+          It's free, no payment needed, and you can always add a membership later to discover the best deals
+          and get affordable recipes built around them every week.
         </Text>
       </View>
       <View style={styles.footer}>
@@ -51,8 +50,8 @@ export default function SignupNudgeScreen() {
         >
           <Text style={styles.primaryButtonText}>Create free account</Text>
         </Pressable>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.laterText}>Not now</Text>
+        <Pressable style={styles.tertiaryButton} onPress={() => router.back()}>
+          <Text style={styles.tertiaryButtonText}>Not now</Text>
         </Pressable>
       </View>
     </View>
@@ -112,5 +111,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  laterText: { fontSize: 13, color: '#767676', textDecorationLine: 'underline' },
+  // Tertiary treatment (Anabelle's call) -- same white-fill/1.5px-INK-
+  // border pill convention as settings.tsx's closeButton/recipe.tsx's
+  // closeButton/AppTopBar's profileButton, instead of a bare underlined
+  // link. Same height/radius as primaryButton above so the pair reads as
+  // one consistent stacked CTA group, not two different weights of button.
+  tertiaryButton: {
+    alignSelf: 'stretch',
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 28,
+  },
+  tertiaryButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });
