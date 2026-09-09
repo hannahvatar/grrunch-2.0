@@ -55,6 +55,11 @@ function getRedirectUri(): string {
 // confirmation link as an untrusted redirect.
 WebBrowser.maybeCompleteAuthSession();
 
+// See handleGoogleSignIn's own comment for what this actually guards
+// against -- a disabled/misconfigured OAuth provider that leaves the
+// auth session open forever with no redirect and no error.
+const AUTH_SESSION_TIMEOUT_MS = 20000;
+
 // Real connectivity check (expo-network works in Expo Go, unlike
 // expo-apple-authentication) -- checked before attempting sign-in so the
 // offline screen reflects an actual condition, not another demo trigger.
@@ -222,15 +227,41 @@ export default function LoginScreen() {
     // browsers in particular) rather than the user actually cancelling --
     // that's a real, expected outcome here, not a bug, so it gets the same
     // graceful error handling as an actual auth failure.
-    let result: WebBrowser.WebBrowserAuthSessionResult;
+    //
+    // Timeout guards against a confirmed-live stuck state: a disabled/
+    // misconfigured provider still makes signInWithOAuth return a normal-
+    // looking data.url with no `error` at all -- Supabase only actually
+    // validates it once the browser loads it, landing on a raw
+    // {"code":400,...} JSON error page instead of Google's real sign-in
+    // screen, with no redirect back to the app ever firing. That leaves
+    // openAuthSessionAsync's own promise pending forever (confirmed by
+    // hand -- no way out except force-quitting the app). If it hasn't
+    // resolved within AUTH_SESSION_TIMEOUT_MS, forcibly dismiss it and
+    // show the app's own /error screen instead of leaving the user
+    // stranded on a raw API response with no way back.
+    let result: WebBrowser.WebBrowserAuthSessionResult | 'timeout';
     try {
-      result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      result = await Promise.race([
+        WebBrowser.openAuthSessionAsync(data.url, redirectTo),
+        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), AUTH_SESSION_TIMEOUT_MS)),
+      ]);
     } catch (openError) {
       router.push({
         pathname: '/error',
         params: {
           body: `Couldn't open Google sign-in: ${(openError as Error).message}`,
           footnote: 'This can happen when the browser blocks the sign-in popup.',
+        },
+      });
+      return;
+    }
+    if (result === 'timeout') {
+      WebBrowser.dismissAuthSession();
+      router.push({
+        pathname: '/error',
+        params: {
+          body: "Google sign-in didn't complete.",
+          footnote: "This usually means Google isn't configured yet as a Supabase auth provider.",
         },
       });
       return;
