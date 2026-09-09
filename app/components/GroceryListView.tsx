@@ -5,12 +5,12 @@ import { ArrowPathIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react
 
 import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItemStore } from '../lib/curatedDeals';
 import { IngredientRow } from './IngredientRow';
-import { useAuth } from '../lib/auth';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
+import { useSubscription } from '../lib/subscription';
 import { UpgradeCta } from './UpgradeCta';
 
 // Same visual language as the recipe page (app/recipe.tsx) -- peach
@@ -98,7 +98,7 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 // rather than being guessed into whichever store the rest of its recipe
 // happens to be at.
 export function GroceryListView() {
-  const { isGuest } = useAuth();
+  const { isSubscribed } = useSubscription();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { selectedDealIds } = useSelectedDeals();
   const [rawSelectedMeals, setRawSelectedMeals] = useState<Meal[]>([]);
@@ -371,20 +371,23 @@ export function GroceryListView() {
             </Pressable>
           </View>
         )}
-        {/* Two different empty states (Anabelle, 2026-09-08): a guest
-            can never actually get anything onto this list -- both
-            feeder screens (meals.tsx/best-deals.tsx) already redirect
-            a guest to /upgrade before adding anything -- so an empty
-            list here always means "you can't use this yet", not "you
-            haven't added anything yet". Signed-in users (subscribed or
-            not -- adding isn't itself subscription-gated, only guest-
-            gated) keep the plain empty-state message below. */}
+        {/* Two different empty states. Was isGuest-only until Anabelle's
+            correction (2026-09-09: "With a free account BUT NOT
+            MEMBERSHIP you CANT add to your grocery list") -- adding is
+            membership-gated (meals.tsx/best-deals.tsx/recipe.tsx all
+            redirect to /upgrade before adding anything unless
+            isSubscribed), so a non-subscriber -- guest or signed-in free
+            account alike -- can never actually get anything onto this
+            list. An empty list here means "you can't use this yet," not
+            "you haven't added anything yet," for anyone who isn't a
+            member. Only a genuine subscriber with an empty list keeps
+            the plain empty-state message below. */}
         {selectedMeals.length === 0 && selectedDeals.length === 0 && (
           <>
-            {isGuest ? (
+            {!isSubscribed ? (
               <>
-                <Text style={styles.guestLockedTitle}>Your grocery list starts here.</Text>
-                <Text style={styles.guestLockedText}>
+                <Text style={styles.lockedTitle}>Your grocery list starts here.</Text>
+                <Text style={styles.lockedText}>
                   Add recipes and deals to keep everything you need in one place.
                 </Text>
                 <UpgradeCta reason="build your grocery list" variant="outline" outlineFill="transparent" />
@@ -607,9 +610,10 @@ const styles = StyleSheet.create({
   emptyState: { backgroundColor: '#fff', borderWidth: 2, borderColor: INK, borderRadius: 16, padding: 14 },
   emptyStateText: { color: INK, fontSize: 14, textAlign: 'center' },
   // Title + body pair (Anabelle's copy) ahead of the locked CTA below,
-  // instead of leaving why a guest sees it to be inferred from the
-  // CTA's own generic trial copy.
-  guestLockedTitle: {
+  // instead of leaving why a non-subscriber sees it to be inferred from
+  // the CTA's own generic trial copy. Renamed from guestLocked* -- this
+  // shows for any non-subscriber now, not just a guest.
+  lockedTitle: {
     fontSize: 16,
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',
@@ -617,7 +621,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginBottom: 4,
   },
-  guestLockedText: { color: INK, fontSize: 14, textAlign: 'left', marginBottom: 12 },
+  lockedText: { color: INK, fontSize: 14, textAlign: 'left', marginBottom: 12 },
   selectedSection: { gap: 10 },
   selectedSectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // "Modal treatment" card -- same white/2px-black-border/16px-radius

@@ -4,7 +4,6 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { MealCard } from '../../components/MealCard';
-import { useAuth } from '../../lib/auth';
 import type { Meal } from '../../lib/mealData';
 import { sortMealsByPrice } from '../../lib/mealScaling';
 import { fetchAllRecipes } from '../../lib/recipes';
@@ -56,7 +55,6 @@ export default function MealsScreen() {
   const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { isSubscribed } = useSubscription();
-  const { isGuest } = useAuth();
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,14 +67,15 @@ export default function MealsScreen() {
     toggleSaved(mealId);
   }
 
-  // Guest-locked (Anabelle, 2026-09-07) -- a deliberate product gate, not
-  // a technical one (lib/selectedMeals is plain in-memory state, no
-  // account needed to use it). A guest gets the same /upgrade prompt as
-  // every other locked feature instead of silently building a list.
-  // Same shape as handleToggleSaved's subscription gate above, just
-  // gated on isGuest instead of isSubscribed.
+  // Membership-gated (Anabelle, 2026-09-09: "With a free account BUT NOT
+  // MEMBERSHIP you CANT add to your grocery list") -- a deliberate
+  // product gate, not a technical one (lib/selectedMeals is plain
+  // in-memory state, no account needed to use it). Was isGuest-only until
+  // this correction, which meant a signed-in free account could build a
+  // list; now matches handleToggleSaved's own isSubscribed gate exactly,
+  // since a free account and a guest should be blocked the same way here.
   function handleToggleSelected(mealId: string) {
-    if (isGuest) {
+    if (!isSubscribed) {
       router.push({ pathname: '/upgrade', params: { reason: 'add recipes to your grocery list' } });
       return;
     }
@@ -129,7 +128,10 @@ export default function MealsScreen() {
             isSaved={savedIds.has(meal.id)}
             onToggleSelected={() => handleToggleSelected(meal.id)}
             onToggleSaved={() => handleToggleSaved(meal.id)}
-            locked={isGuest}
+            // Matches handleToggleSelected's own gate -- the lock icon/
+            // dashed border on "Add to list" now shows for any
+            // non-subscriber, not just a guest.
+            locked={!isSubscribed}
           />
         ))}
 
