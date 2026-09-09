@@ -38,10 +38,7 @@ export default function SignupNudgeScreen() {
           <UserPlusIcon size={48} color={INK} />
         </View>
         <Text style={styles.title}>Create a free account</Text>
-        <Text style={styles.body}>
-          It's free, no payment needed, and you can always add a membership later to discover the best deals
-          and get affordable recipes built around them every week.
-        </Text>
+        <Text style={styles.body}>It's free, no payment needed.</Text>
       </View>
       <View style={styles.footer}>
         <Pressable
