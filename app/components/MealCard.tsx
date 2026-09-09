@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CakeIcon, CheckIcon, HeartIcon, LockClosedIcon } from 'react-native-heroicons/outline';
-import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
+import { CakeIcon, CheckIcon, HeartIcon, LockClosedIcon, StarIcon } from 'react-native-heroicons/outline';
+import { HeartIcon as HeartIconSolid, StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
 
 import {
   formatGreatReferenceValueLabel,
@@ -63,6 +63,27 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
           <View style={styles.mealHeaderRow}>
             <Text style={styles.mealName}>{meal.name}</Text>
           </View>
+          {/* Read-only -- MealCard has no auth/subscription context at all
+              (it's shared with dev-recipes.tsx, a no-login review screen),
+              so actually casting a rating only happens on the recipe page
+              itself (see RecipeRating.tsx). Omitted entirely rather than
+              showing "No ratings yet" on every single card -- with ratings
+              this new, that would currently be every card in the list,
+              which is more clutter than signal. */}
+          {meal.avgRating != null && (
+            <View style={styles.ratingRow}>
+              {[1, 2, 3, 4, 5].map((star) =>
+                star <= Math.round(meal.avgRating!) ? (
+                  <StarIconSolid key={star} size={14} color={ACCENT} />
+                ) : (
+                  <StarIcon key={star} size={14} color="#ccc" strokeWidth={1.5} />
+                )
+              )}
+              <Text style={styles.ratingText}>
+                {meal.avgRating.toFixed(1)} ({meal.ratingCount})
+              </Text>
+            </View>
+          )}
           <View style={styles.priceNutritionRow}>
             <View style={styles.priceBlock}>
               <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
@@ -207,6 +228,8 @@ const styles = StyleSheet.create({
   mealCardBody: { padding: 14, gap: 10 },
   mealHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   mealName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', flex: 1, marginRight: 8 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: -4 },
+  ratingText: { fontSize: 12, color: '#888', marginLeft: 4 },
   priceNutritionRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
