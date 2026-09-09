@@ -206,6 +206,8 @@ function mapRowToMeal(
     price: number | null;
     servings: number;
     optional_additions: unknown;
+    avg_rating: number | null;
+    rating_count: number;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -254,6 +256,8 @@ function mapRowToMeal(
       const key = sr.matchIngredientName.toLowerCase();
       return ingredientNames.has(key) || optionalText.includes(key);
     }),
+    avgRating: row.avg_rating,
+    ratingCount: row.rating_count,
   };
 }
 

@@ -198,4 +198,11 @@ export interface Meal {
   // ingredients (cross-referenced by name in lib/recipes.ts) -- not
   // every sub-recipe in the shared table.
   subRecipes: SubRecipe[];
+  // Materialized on recipes.avg_rating/rating_count (see
+  // 20260908070000_recipe_ratings.sql) -- null avgRating means no one's
+  // rated it yet, distinct from "rated it and it averaged low". Visible
+  // to everyone regardless of tier; only casting a rating is
+  // subscriber-only (see components/RecipeRating.tsx).
+  avgRating: number | null;
+  ratingCount: number;
 }

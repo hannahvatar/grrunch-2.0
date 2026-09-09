@@ -5,13 +5,16 @@ import { ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
+import { RecipeRating } from '../components/RecipeRating';
 import { SubRecipeCard } from '../components/SubRecipeCard';
 import { useAuth } from '../lib/auth';
 import { markSignupNudgeShown, recordRecipeView, shouldShowSignupNudge } from '../lib/guestNudge';
 import type { Meal } from '../lib/mealData';
 import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
+import { fetchMyRating, rateRecipe } from '../lib/ratings';
 import { fetchRecipeById } from '../lib/recipes';
 import { useSelectedMeals } from '../lib/selectedMeals';
+import { useSubscription } from '../lib/subscription';
 
 const ACCENT = '#FFA955';
 
@@ -22,12 +25,18 @@ const INK = '#111';
 // stays plain/functional like the rest of the guest-mode flow.
 export default function RecipeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { isGuest } = useAuth();
+  const { isGuest, session } = useAuth();
+  const { isSubscribed } = useSubscription();
   // Same context the Meals tab's own "Add to list" toggle uses (see
   // meals.tsx) -- shared with the grocery list, so toggling here shows
   // up there too.
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const [rawMeal, setRawMeal] = useState<Meal | null | undefined>(undefined);
+  // This viewer's own rating -- only ever fetched for a subscriber (see
+  // the effect below); null for everyone else, so RecipeRating always
+  // falls back to showing the crowd average instead of a stale personal
+  // rating from before a subscription lapsed.
+  const [myRating, setMyRating] = useState<number | null>(null);
   // Manual override of the recipe's own natural serving count, via the
   // stepper below -- null means "show it as authored". Reset whenever a
   // different recipe is opened, so a stale override from a previous
@@ -75,6 +84,35 @@ export default function RecipeScreen() {
       recordRecipeView(rawMeal.id);
     }
   }, [isGuest, rawMeal?.id]);
+
+  // Only ever looked up for a subscriber -- a guest/free account can't
+  // have cast one (RLS wouldn't have let the insert through), so there's
+  // nothing to fetch, and resetting to null here covers switching to a
+  // different recipe.
+  useEffect(() => {
+    if (isSubscribed && session && rawMeal?.id) {
+      fetchMyRating(rawMeal.id, session.user.id)
+        .then(setMyRating)
+        .catch(() => setMyRating(null));
+    } else {
+      setMyRating(null);
+    }
+  }, [isSubscribed, session, rawMeal?.id]);
+
+  // Optimistic: updates myRating immediately rather than waiting on a
+  // refetch, then still re-fetches the recipe so avgRating/ratingCount
+  // (materialized server-side by the recipe_ratings_refresh_aggregate
+  // trigger) catch up to the vote that was just cast.
+  async function handleRate(stars: number) {
+    if (!session || !rawMeal) return;
+    setMyRating(stars);
+    const { error } = await rateRecipe(rawMeal.id, session.user.id, stars);
+    if (error) {
+      setMyRating(null);
+      return;
+    }
+    fetchRecipeById(rawMeal.id).then(setRawMeal).catch(() => {});
+  }
 
   useEffect(() => {
     setServingsOverride(null);
@@ -164,6 +202,16 @@ export default function RecipeScreen() {
             <ClockIcon size={13} color={INK} />
             <Text style={styles.subtitle}>{meal.minutes} min</Text>
           </View>
+          {/* Anyone sees the average; only a subscriber's tap actually
+              rates (RecipeRating routes anyone else to /upgrade instead
+              -- see its own comment). */}
+          <RecipeRating
+            avgRating={meal.avgRating}
+            ratingCount={meal.ratingCount}
+            myRating={myRating}
+            canRate={isSubscribed}
+            onRate={handleRate}
+          />
         </View>
         {/* Same layout as MealCard's own priceNutritionRow (the Meals
             results page) -- price/cal/protein as plain icon+text, not
