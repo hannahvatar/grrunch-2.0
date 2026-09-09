@@ -10,7 +10,7 @@ import { StatusScreen } from '../components/StatusScreen';
 export default function AccountUnavailableScreen() {
   return (
     <StatusScreen
-      icon={<LockClosedIcon size={24} color="#999" />}
+      icon={<LockClosedIcon size={32} color="#111" />}
       title="Account unavailable"
       body="Your account is currently unavailable. Contact support for help."
       actions={[{ label: 'Contact support', onPress: () => router.back() }]}

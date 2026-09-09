@@ -10,7 +10,7 @@ import { StatusScreen } from '../components/StatusScreen';
 export default function AccountDeletedScreen() {
   return (
     <StatusScreen
-      icon={<TrashIcon size={24} color="#999" />}
+      icon={<TrashIcon size={32} color="#111" />}
       title="Account was deleted"
       body="This Grrunch account was previously deleted."
       actions={[

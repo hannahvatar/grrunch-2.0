@@ -15,7 +15,7 @@ export default function AccessRevokedScreen() {
 
   return (
     <StatusScreen
-      icon={<ArrowPathIcon size={24} color="#999" />}
+      icon={<ArrowPathIcon size={32} color="#111" />}
       title={`${providerName} access was revoked`}
       body={`You previously removed Grrunch from your ${providerName} ID. Reconnect to continue, or use a different sign-in method.`}
       actions={[

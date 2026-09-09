@@ -19,7 +19,7 @@ export default function ErrorScreen() {
 
   return (
     <StatusScreen
-      icon={<ExclamationTriangleIcon size={24} color="#999" />}
+      icon={<ExclamationTriangleIcon size={32} color="#111" />}
       title={title || 'Something went wrong'}
       body={body || 'Something went wrong. Please try again.'}
       footnote={footnote}

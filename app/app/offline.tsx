@@ -7,7 +7,7 @@ import { StatusScreen } from '../components/StatusScreen';
 export default function OfflineScreen() {
   return (
     <StatusScreen
-      icon={<SignalSlashIcon size={24} color="#999" />}
+      icon={<SignalSlashIcon size={32} color="#111" />}
       title="You're offline"
       body="Check your connection and try again."
     />
