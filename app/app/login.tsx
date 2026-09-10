@@ -362,7 +362,7 @@ export default function LoginScreen() {
           <EnvelopeIcon size={16} color={INK} />
           <View style={styles.emailSentTextBlock}>
             <Text style={styles.emailSentText}>
-              We sent a confirmation link to {email}. Open it to finish signing in.
+              We sent a confirmation link to {email}. Open it to finish signing in. Check your junk/spam folder if you don't see it.
             </Text>
             <Pressable onPress={() => setEmailSent(false)}>
               <Text style={styles.emailSentLink}>Use a different email</Text>

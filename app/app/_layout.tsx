@@ -5,6 +5,7 @@ import {
   OpenSans_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/open-sans';
+import * as Linking from 'expo-linking';
 import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -62,6 +63,63 @@ function AuthRedirect() {
       }
     });
     return () => listener.subscription.unsubscribe();
+  }, []);
+  return null;
+}
+
+// Complements AuthRedirect: catches a FAILED magic-link/OAuth redirect
+// (an expired or already-used link, most commonly) wherever it lands,
+// the same way AuthRedirect catches a successful one -- otherwise it
+// falls straight through to Expo Router's own generic "Unmatched Route"
+// screen, which is where an expired link was landing before this (real
+// repro, Anabelle, 2026-09-10).
+//
+// Supabase reports failures as a #error=...&error_code=...&error_
+// description=... fragment, but that fragment can arrive percent-encoded
+// more than once by the time it reaches Linking's listener (observed:
+// "#" as "%2523" -- double-encoded -- in the repro above), which is what
+// turned it into something Router tried to match as a literal path
+// instead of recognizing as a fragment. extractErrorCode() tries the raw
+// string first, then decodes progressively, so it finds error_code
+// regardless of how many passes of encoding survived the redirect.
+function extractErrorCode(url: string): string | null {
+  let candidate = url;
+  for (let i = 0; i < 3; i += 1) {
+    const match = candidate.match(/error_code=([^&]+)/);
+    if (match) return match[1];
+    let next: string;
+    try {
+      next = decodeURIComponent(candidate);
+    } catch {
+      break;
+    }
+    if (next === candidate) break;
+    candidate = next;
+  }
+  return null;
+}
+
+function DeepLinkErrorRedirect() {
+  useEffect(() => {
+    function handle(url: string) {
+      const errorCode = extractErrorCode(url);
+      if (!errorCode) return;
+      router.replace({
+        pathname: '/error',
+        params: {
+          body:
+            errorCode === 'otp_expired'
+              ? 'This sign-in link has expired.'
+              : 'This sign-in link is no longer valid.',
+          footnote: 'Request a new one from the sign-in screen.',
+        },
+      });
+    }
+    Linking.getInitialURL().then((url) => {
+      if (url) handle(url);
+    });
+    const subscription = Linking.addEventListener('url', ({ url }) => handle(url));
+    return () => subscription.remove();
   }, []);
   return null;
 }
@@ -160,6 +218,7 @@ function RootLayout() {
                       />
                     </Stack>
                     <AuthRedirect />
+                    <DeepLinkErrorRedirect />
                     <SupportBubble />
                   </SelectedDealsProvider>
                 </SelectedMealsProvider>
