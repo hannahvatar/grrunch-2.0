@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: INK,
   },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: INK },
   priceNote: {
     fontSize: 13,
     color: INK,
