@@ -1,16 +1,15 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import {
-  CheckBadgeIcon,
-  CheckCircleIcon,
-  ChevronRightIcon,
-  ExclamationTriangleIcon,
-  LockClosedIcon,
-  XCircleIcon,
-} from 'react-native-heroicons/outline';
+import { CheckBadgeIcon, ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
-import { TRIAL_DAYS, useSubscription } from '../lib/subscription';
+import {
+  getTrialDaysLeft,
+  getTrialUrgencyTier,
+  TRIAL_DAYS,
+  TRIAL_URGENCY_STYLES,
+  useSubscription,
+} from '../lib/subscription';
 import { UpgradeCta } from './UpgradeCta';
 
 const ACCENT = '#FFA955';
@@ -18,27 +17,6 @@ const INK = '#111';
 // Matches ManageAccountSection.tsx's own ERROR const -- same red used for
 // "Delete account" there, now this card's "Cancel trial".
 const ERROR = '#D0342C';
-// The trial card's badge/progress-bar color escalates through the GRRUNCH
-// DS's real success/warning/error variants (Figma "Mobile Alert Banners",
-// node 4076-104 -- same spec AlertBanner.tsx already implements; these are
-// its exact colors, not the different, unrelated green MealCard's
-// groceryConfirmBadge happens to use) as the trial gets closer to ending.
-// Thresholds (Anabelle, 2026-09-11): >7 days is no-urgency success, 3-7
-// days is a warning (same "one week left" mental model most trial-reminder
-// emails already use, so the in-app color lines up with that rather than
-// surprising someone), 0-2 days is error -- genuinely urgent, about to
-// lose access.
-const TRIAL_URGENCY = {
-  success: { bg: '#E8F5E9', strong: '#1E7B34', Icon: CheckCircleIcon },
-  warning: { bg: '#FFF4E5', strong: '#93450B', Icon: ExclamationTriangleIcon },
-  error: { bg: '#FDECEC', strong: '#B42318', Icon: XCircleIcon },
-} as const;
-
-function getTrialUrgency(daysLeft: number | null) {
-  if (daysLeft !== null && daysLeft <= 2) return TRIAL_URGENCY.error;
-  if (daysLeft !== null && daysLeft <= 7) return TRIAL_URGENCY.warning;
-  return TRIAL_URGENCY.success;
-}
 
 // Real subscription status card -- extracted from profile.tsx's
 // Membership section (Anabelle, 2026-08-28) so payment.tsx can show the
@@ -51,10 +29,7 @@ export function MembershipStatus() {
   const { status: subscriptionStatus, trialEndsAt, isSubscribed, cancelTrial } = useSubscription();
   const [cancelling, setCancelling] = useState(false);
 
-  const trialDaysLeft =
-    subscriptionStatus === 'trialing' && trialEndsAt
-      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))
-      : null;
+  const trialDaysLeft = getTrialDaysLeft(subscriptionStatus, trialEndsAt);
 
   // Confirms first, same as ManageAccountSection's own "Delete account" --
   // both are one-tap-irreversible actions on this same destructive-red
@@ -82,7 +57,7 @@ export function MembershipStatus() {
   // trialing only counts while trial_ends_at hasn't passed), but this
   // stays clamped defensively rather than assuming that invariant holds.
   const trialProgress = trialDaysLeft !== null ? Math.max(0, Math.min(1, trialDaysLeft / TRIAL_DAYS)) : 0;
-  const urgency = getTrialUrgency(trialDaysLeft);
+  const urgency = TRIAL_URGENCY_STYLES[getTrialUrgencyTier(trialDaysLeft)];
 
   if (isSubscribed) {
     return subscriptionStatus === 'trialing' ? (
@@ -173,9 +148,9 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 12,
   },
-  // bg/text color set inline per urgency tier (see TRIAL_URGENCY above) --
-  // alignSelf:'flex-start' keeps it sized to its own content, not
-  // stretched to the card's full width.
+  // bg/text color set inline per urgency tier (TRIAL_URGENCY_STYLES,
+  // lib/subscription.tsx) -- alignSelf:'flex-start' keeps it sized to
+  // its own content, not stretched to the card's full width.
   confirmBadge: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
