@@ -47,7 +47,7 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
           )}
           {isSelected && (
             <View style={styles.groceryConfirmBadge}>
-              <CheckIcon size={12} color="#fff" />
+              <CheckIcon size={12} color="#1E7B34" />
               <Text style={styles.groceryConfirmBadgeText}>Added</Text>
             </View>
           )}
@@ -219,6 +219,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Same light-green confirmation scheme as MembershipStatus.tsx's
+  // "Free trial" badge (TRIAL_URGENCY_STYLES.success in lib/
+  // subscription.tsx: bg #E8F5E9, icon/text #1E7B34) -- Anabelle,
+  // 2026-09-11: "make it the same color schema than the confirmation
+  // badge". Was a solid mid-green (#1E9E5A) fill with white text/icon.
   groceryConfirmBadge: {
     position: 'absolute',
     top: 14,
@@ -226,12 +231,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#1E9E5A',
+    backgroundColor: '#E8F5E9',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
-  groceryConfirmBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  groceryConfirmBadgeText: { color: '#1E7B34', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   mealCardBody: { padding: 14, gap: 10 },
   mealHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   mealName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', flex: 1, marginRight: 8 },
