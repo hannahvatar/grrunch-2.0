@@ -29,11 +29,11 @@ import { useSubscription } from '../../lib/subscription';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// My stores / Saved recipes / Companion recipes are each collapsible
-// (Anabelle, 2026-08-27: "should probably be accordions" -- collapsed by
-// default, independent of each other, not a strict single-open
-// accordion). Membership isn't one of these -- it's the page's one
-// always-visible top-level status, not a browsable list. Distinct from
+// Membership / My stores / Saved recipes / Companion recipes are each
+// collapsible (Anabelle, 2026-08-27: "should probably be accordions" --
+// collapsed by default, independent of each other, not a strict
+// single-open accordion; Membership joined the rest 2026-09-11, having
+// briefly been the one section kept always-visible). Distinct from
 // Companion recipes' own EXISTING per-item accordion (SubRecipeCard,
 // isSubRecipeExpanded/toggleSubRecipe below) -- this is a second, outer
 // level of collapse on top of that one, for the whole section.
@@ -77,6 +77,7 @@ export default function ProfileScreen() {
 
   // Collapsed by default (Anabelle's call) -- each toggles independently,
   // not a strict single-open accordion.
+  const [membershipOpen, setMembershipOpen] = useState(false);
   const [storesOpen, setStoresOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [companionOpen, setCompanionOpen] = useState(false);
@@ -127,14 +128,21 @@ export default function ProfileScreen() {
 
       {!isGuest && (
         <>
-          <Text style={styles.sectionTitle}>Membership</Text>
-          {/* Real status card -- extracted to components/MembershipStatus.tsx
-              so payment.tsx (Settings > Payment) can show the exact same
-              logic instead of a second, drift-prone copy of it. */}
-          <MembershipStatus />
+          <SectionHeader
+            title="Membership"
+            expanded={membershipOpen}
+            onToggle={() => setMembershipOpen((v) => !v)}
+          />
+          {membershipOpen && (
+            // Real status card -- extracted to components/MembershipStatus.tsx
+            // so payment.tsx (Settings > Payment) can show the exact same
+            // logic instead of a second, drift-prone copy of it.
+            <MembershipStatus />
+          )}
         </>
       )}
 
+      {!isGuest && <View style={styles.sectionDivider} />}
       <SectionHeader
         title="My stores"
         subtitle={!isSubscribed ? 'Auto-selected from your location' : undefined}
