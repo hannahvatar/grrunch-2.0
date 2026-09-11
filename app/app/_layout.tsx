@@ -193,6 +193,7 @@ function RootLayout() {
                       <Stack.Screen name="how-it-works" />
                       <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />
                       <Stack.Screen name="upgrade" options={{ presentation: 'modal', headerShown: false }} />
+                      <Stack.Screen name="subscribed" options={{ presentation: 'modal', headerShown: false }} />
                       <Stack.Screen
                         name="signup-nudge"
                         options={{ presentation: 'modal', headerShown: false }}

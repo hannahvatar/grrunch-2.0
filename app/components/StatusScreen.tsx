@@ -2,7 +2,6 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { XMarkIcon } from 'react-native-heroicons/outline';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
@@ -39,21 +38,23 @@ export function StatusScreen({
   onBack?: () => void;
 }) {
   const resolvedActions: StatusAction[] = actions ?? [{ label: 'Try again' }];
-  // A modal push already insets its own content below the status bar, but
-  // this screen can also be the very first thing rendered -- a cold app
-  // launch straight onto /error, which is exactly what DeepLinkErrorRedirect
-  // (app/_layout.tsx) produces for someone tapping an expired magic link
-  // when the app wasn't already running. There's no modal chrome to inset
-  // it in that case, so a hardcoded `top` landed the close button under the
-  // status bar/notch (real repro, Anabelle, 2026-09-10). insets.top is 0
-  // when a parent already accounts for the safe area, so this is safe to
-  // add unconditionally rather than only in the cold-start case.
-  const insets = useSafeAreaInsets();
-
+  // Plain top:20, matching upgrade.tsx's own closeButton exactly -- no
+  // safe-area math. A previous version of this added useSafeAreaInsets()
+  // on the theory that a true cold start (no modal chrome) needed extra
+  // clearance for the status bar/notch, based on a real repro at the time
+  // (Anabelle, 2026-09-10). Turned out wrong: insets.top reads the same
+  // nonzero value (e.g. 62 on a Dynamic Island device) whether or not
+  // modal chrome is actually present, so adding it unconditionally
+  // double-counted the clearance the modal sheet already provides and
+  // pushed the button noticeably low (Anabelle, 2026-09-11: "its close
+  // button seems low" / "Is the close button supposed to be very top
+  // right of the modal? It looks low"). Reverted to the simple fixed
+  // offset that every other close button in the app already uses
+  // successfully in the same presentation:'modal' contexts.
   return (
     <View style={styles.container}>
       <Pressable
-        style={[styles.backButton, { top: insets.top + 20 }]}
+        style={styles.backButton}
         onPress={onBack ?? (() => router.back())}
         hitSlop={8}
       >
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
   // still just calls onBack ?? router.back(), unchanged.
   backButton: {
     position: 'absolute',
-    // top is set inline, above -- see the insets.top comment there.
+    top: 20,
     right: 20,
     width: 32,
     height: 32,
