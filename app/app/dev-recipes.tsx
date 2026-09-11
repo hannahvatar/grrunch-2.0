@@ -12,10 +12,6 @@ import { useSelectedMeals } from '../lib/selectedMeals';
 
 const INK = '#111';
 const ACCENT = '#FFA955';
-// Intended weekly count (Anabelle, 2026-09-11) -- not enforced, just
-// shown as a live counter so it's obvious at a glance whether this
-// week's set is under/over/on target while toggling.
-const TARGET_FEATURED_COUNT = 12;
 
 // Internal-only recipe review screen -- every recipe, exactly as the
 // Meals tab renders it (same MealCard component), with no login and no
@@ -150,20 +146,10 @@ export default function DevRecipesScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.devBanner}>
-          <Text style={styles.devBannerText}>
-            DEV ONLY -- all {meals.length} recipes, no login, no free-tier limit
-          </Text>
+          <Text style={styles.devBannerText}>DEV ONLY -- no login, no free-tier limit</Text>
         </View>
         <Text style={styles.title}>All Recipes</Text>
-        <Text style={styles.subtitle}>
-          {sorted.length} recipe{sorted.length === 1 ? '' : 's'} · deal-tagged and not, newest first
-        </Text>
-        {/* Live count against the intended weekly target -- not
-            enforced, just a glance-able guide while toggling (Anabelle,
-            2026-09-11: "Weekly, we will display 12 recipes"). */}
-        <Text style={styles.featuredCount}>
-          {meals.filter((m) => m.featured).length} of {TARGET_FEATURED_COUNT} featured this week
-        </Text>
+        <Text style={styles.subtitle}>Newest first</Text>
 
         {sorted.map((meal) => (
           <View key={meal.id} style={styles.recipeBlock}>
@@ -171,17 +157,15 @@ export default function DevRecipesScreen() {
               style={[styles.featureToggle, meal.featured && styles.featureToggleActive]}
               onPress={() => handleToggleFeatured(meal)}
               disabled={togglingIds.has(meal.id)}
+              accessibilityLabel={meal.featured ? 'Featured this week' : 'Feature this week'}
             >
               {togglingIds.has(meal.id) ? (
                 <ActivityIndicator size="small" color={meal.featured ? INK : '#888'} />
               ) : meal.featured ? (
-                <StarIconSolid size={16} color={INK} />
+                <StarIconSolid size={18} color={INK} />
               ) : (
-                <StarIcon size={16} color="#888" />
+                <StarIcon size={18} color="#888" />
               )}
-              <Text style={[styles.featureToggleText, meal.featured && styles.featureToggleTextActive]}>
-                {meal.featured ? 'Featured this week' : 'Feature this week'}
-              </Text>
             </Pressable>
             <MealCard
               meal={meal}
@@ -212,21 +196,17 @@ const styles = StyleSheet.create({
   devBannerText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: -8 },
-  featuredCount: { fontSize: 13, color: '#888', marginTop: -8 },
   recipeBlock: { gap: 8 },
   featureToggle: {
-    flexDirection: 'row',
     alignSelf: 'flex-start',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    width: 36,
+    height: 36,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: '#ccc',
     borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
   },
   featureToggleActive: { backgroundColor: ACCENT, borderColor: INK },
-  featureToggleText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#888' },
-  featureToggleTextActive: { color: INK },
 });
