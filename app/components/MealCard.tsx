@@ -282,8 +282,16 @@ const styles = StyleSheet.create({
   dealTagsRow: { gap: 6 },
   dealTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dealTagName: { color: '#888', fontSize: 13, flex: 1 },
-  dealTagBadge: { backgroundColor: '#96E696', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  dealTagBadgeText: { color: INK, fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Light-green bg + dark-green text -- same confirmation scheme as
+  // MembershipStatus.tsx's "Free trial" badge and MealCard's own
+  // groceryConfirmBadge ("Added"): #E8F5E9/#1E7B34 (Anabelle,
+  // 2026-09-11: "the percentage off should be adjusted also", after
+  // asking for the Added badge to match that scheme first). Was a
+  // solid #96E696 fill with plain black (INK) text -- the one deal-tag
+  // badge that didn't pair a light bg with a saturated matching text
+  // color the way fairPriceBadge/greatValueBadge below already did.
+  dealTagBadge: { backgroundColor: '#E8F5E9', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  dealTagBadgeText: { color: '#1E7B34', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Light peach + saturated orange text -- distinct from
   // dealTagBadge's green (reserved for a real store discount; Fair
   // price sharing that color was a pre-existing inconsistency with
