@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { FlyerAnimation } from '../components/FlyerAnimation';
 import { LoyaltyCardStack } from '../components/LoyaltyCardStack';
 import { SauteAnimation } from '../components/SauteAnimation';
+import { useAuth } from '../lib/auth';
 
 // GRRUNCH DS accent -- matches terms.tsx/login.tsx's palette.
 const ACCENT = '#FFA955';
@@ -43,15 +44,38 @@ const CARD_SLIDE = SLIDES.findIndex((s) => s.headline === 'Member prices count, 
 // Deliberately shown on every cold start, same as the rest of this guest-mode
 // intro sequence (Terms/Login aren't gated behind "seen once" state either)
 // -- not stored/persisted anywhere. Skippable at every step per Anabelle's
-// call; jumps straight to /terms either way.
+// call.
+//
+// Real bug found live (Anabelle, 2026-09-11: "the app should stay signed
+// in"/"why doesn't sign-in persist"): the carousel itself was never the
+// problem -- Supabase's session IS correctly persisted to AsyncStorage and
+// restored (see lib/supabase.ts/lib/auth.tsx) -- but proceeding()
+// unconditionally pushed to /terms -> login regardless, so an already-
+// signed-in user got forced through Terms/Login/Location/Stores again on
+// every single cold start, with no way to tell the app already knew who
+// they were. proceedPastOnboarding() now checks the restored session:
+// still shows this carousel every time (unchanged, per Anabelle's
+// original call above), but skips straight to the tabs for a real signed-
+// in session instead of re-running the whole first-run funnel. Guests
+// (isGuest, no session) and a session still being restored (loading) fall
+// through to the original /terms path, unchanged.
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const isLast = step === SLIDES.length - 1;
   const slide = SLIDES[step];
+  const { session, loading } = useAuth();
+
+  function proceedPastOnboarding() {
+    if (!loading && session) {
+      router.replace('/meals');
+    } else {
+      router.push('/terms');
+    }
+  }
 
   function next() {
     if (isLast) {
-      router.push('/terms');
+      proceedPastOnboarding();
     } else {
       setStep((s) => s + 1);
     }
@@ -60,7 +84,7 @@ export default function OnboardingScreen() {
   return (
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <View style={styles.container}>
-        <Pressable style={styles.skip} onPress={() => router.push('/terms')} hitSlop={12}>
+        <Pressable style={styles.skip} onPress={proceedPastOnboarding} hitSlop={12}>
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>
 
