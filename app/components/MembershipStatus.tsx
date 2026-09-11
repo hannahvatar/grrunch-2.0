@@ -10,6 +10,7 @@ import {
   XCircleIcon,
 } from 'react-native-heroicons/outline';
 
+import { useSubscribeNow } from '../lib/purchases';
 import { TRIAL_DAYS, useSubscription } from '../lib/subscription';
 import { UpgradeCta } from './UpgradeCta';
 
@@ -50,6 +51,7 @@ function getTrialUrgency(daysLeft: number | null) {
 export function MembershipStatus() {
   const { status: subscriptionStatus, trialEndsAt, isSubscribed, cancelTrial } = useSubscription();
   const [cancelling, setCancelling] = useState(false);
+  const { subscribeNow, subscribing } = useSubscribeNow();
 
   const trialDaysLeft =
     subscriptionStatus === 'trialing' && trialEndsAt
@@ -115,11 +117,12 @@ export function MembershipStatus() {
               <Text style={styles.cancelTrialButtonText}>Cancel trial</Text>
             )}
           </Pressable>
-          <Pressable
-            style={styles.subscribeButton}
-            onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'skip the rest of your trial' } })}
-          >
-            <Text style={styles.subscribeButtonText}>Subscribe</Text>
+          <Pressable style={styles.subscribeButton} onPress={subscribeNow} disabled={subscribing} hitSlop={4}>
+            {subscribing ? (
+              <ActivityIndicator color={INK} />
+            ) : (
+              <Text style={styles.subscribeButtonText}>Subscribe</Text>
+            )}
           </Pressable>
         </View>
       </View>

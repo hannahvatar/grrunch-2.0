@@ -1,8 +1,8 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BellIcon } from 'react-native-heroicons/outline';
 
+import { useSubscribeNow } from '../lib/purchases';
 import { useSubscription } from '../lib/subscription';
 
 const ACCENT = '#FFA955';
@@ -38,6 +38,7 @@ function useNotifications() {
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const items = useNotifications();
+  const { subscribeNow, subscribing } = useSubscribeNow();
   // Read state is per-item (keyed, not one flat boolean) so a second
   // notification added later tracks independently -- and in-memory only
   // (component state, not persisted) for this first pass: read status
@@ -83,13 +84,18 @@ export function NotificationBell() {
                   </View>
                   <Pressable
                     style={styles.subscribeButton}
+                    disabled={subscribing}
                     onPress={() => {
                       markRead(item.key);
                       setOpen(false);
-                      router.push({ pathname: '/upgrade', params: { reason: 'keep your access' } });
+                      subscribeNow();
                     }}
                   >
-                    <Text style={styles.subscribeButtonText}>Subscribe</Text>
+                    {subscribing ? (
+                      <ActivityIndicator color={INK} />
+                    ) : (
+                      <Text style={styles.subscribeButtonText}>Subscribe</Text>
+                    )}
                   </Pressable>
                 </Pressable>
               );

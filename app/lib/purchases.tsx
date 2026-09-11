@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 
 import { useAuth } from './auth';
@@ -148,4 +148,38 @@ export function usePurchases(): PurchasesContextValue {
     throw new Error('usePurchases must be used within a PurchasesProvider');
   }
   return ctx;
+}
+
+// Shared "convert an active trial to paid, right now" action --
+// MembershipStatus.tsx's Subscribe button and NotificationBell.tsx's
+// both use this instead of navigating to /upgrade first (Anabelle,
+// 2026-09-11: "this modal is an unnecessary step... clicking subscribe
+// should trigger the subscribe flow"). When RevenueCat is configured,
+// this goes straight to the real native purchase sheet -- no detour.
+// When it isn't (today), there's nothing real to trigger, so this falls
+// back to an inline alert instead of a screen -- same honest "not live
+// yet" message /upgrade's own alreadyTrialing case shows, just without
+// the extra step of navigating there first.
+export function useSubscribeNow() {
+  const { configured, offering, purchase } = usePurchases();
+  const [subscribing, setSubscribing] = useState(false);
+  const pkg = offering?.availablePackages[0];
+
+  async function subscribeNow() {
+    if (!configured || !pkg) {
+      Alert.alert(
+        'Not available yet',
+        "Real payments aren't set up yet, so you can't subscribe directly just yet — your free trial will keep working until it ends."
+      );
+      return;
+    }
+    setSubscribing(true);
+    const { error } = await purchase(pkg);
+    setSubscribing(false);
+    if (error) {
+      Alert.alert('Something went wrong', error);
+    }
+  }
+
+  return { subscribeNow, subscribing };
 }
