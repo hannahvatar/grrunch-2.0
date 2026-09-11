@@ -58,12 +58,13 @@ export function NotificationBell() {
               <View key={item.key} style={[styles.row, index > 0 && styles.rowDivider]}>
                 <Text style={styles.rowText}>{item.message}</Text>
                 <Pressable
+                  style={styles.subscribeButton}
                   onPress={() => {
                     setOpen(false);
                     router.push({ pathname: '/upgrade', params: { reason: 'keep your access' } });
                   }}
                 >
-                  <Text style={styles.rowLink}>Subscribe</Text>
+                  <Text style={styles.subscribeButtonText}>Subscribe</Text>
                 </Pressable>
               </View>
             ))
@@ -120,6 +121,18 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: '#888' },
   row: { gap: 10 },
   rowDivider: { borderTopWidth: 1, borderTopColor: '#eee', marginTop: 10, paddingTop: 10 },
-  rowText: { fontSize: 13, lineHeight: 19, color: INK },
-  rowLink: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: ACCENT },
+  rowText: { fontSize: 16, lineHeight: 22, color: INK },
+  // Same compact ACCENT pill as profile.tsx's own upgradeRowButton (the
+  // "Choose your own stores" upsell row) -- alignSelf:'flex-start' keeps
+  // it sized to its own content instead of stretching full-width.
+  subscribeButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+  },
+  subscribeButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
 });
