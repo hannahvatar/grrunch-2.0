@@ -209,15 +209,18 @@ export default function ProfileScreen() {
             {/* Last line of the store card -- member-only upsell, same
                 next-to-feature language as the per-row Change buttons
                 above (Anabelle's mockup: title + subtitle on the left,
-                solid black pill on the right, now reading "Sign up"
-                instead of "Upgrade" -- Anabelle's call). Only the free
-                tier sees it; a real member already has this. Note this
-                row (like the rest of this card) is gated on
-                !isSubscribed, not isGuest, so a signed-in-but-unsubscribed
-                member sees "Sign up" too, not just a true guest -- same
-                as before this rename, just flagging it since the new
-                copy reads a little oddly for someone who already has an
-                account. */}
+                solid black pill on the right). Only the free tier sees
+                it; a real member already has this. This row (like the
+                rest of this card) is gated on !isSubscribed, not isGuest,
+                so a signed-in-but-unsubscribed member sees it too, not
+                just a true guest -- "Subscribe" (2026-09-11, was briefly
+                "Sign up") is deliberate: this routes to /upgrade, a real
+                paid-trial action, not account creation, and reads
+                correctly either way -- unlike "Sign up", which was
+                confusing for someone who already has an account (see
+                AppTopBar.tsx/AccountBanner.tsx for where "Sign up"
+                correctly means creating one, and MembershipStatus.tsx's
+                own "Subscribe" button for the same wording used there). */}
             {!isSubscribed && (
               <Pressable
                 style={[styles.storeRow, styles.storeRowLast]}
@@ -228,7 +231,7 @@ export default function ProfileScreen() {
                   <Text style={styles.storeSubtitle}>Subscribers can swap any location.</Text>
                 </View>
                 <View style={styles.upgradeRowButton}>
-                  <Text style={styles.upgradeRowButtonText}>Sign up</Text>
+                  <Text style={styles.upgradeRowButtonText}>Subscribe</Text>
                 </View>
               </Pressable>
             )}
