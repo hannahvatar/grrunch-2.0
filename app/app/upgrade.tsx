@@ -60,27 +60,28 @@ const FEATURES = [
 export default function UpgradeScreen() {
   const { reason } = useLocalSearchParams<{ reason?: string }>();
   const { isGuest } = useAuth();
-  const { isSubscribed: dbSubscribed, startTrial, status: dbStatus } = useSubscription();
+  const { isSubscribed: dbSubscribed, startTrial } = useSubscription();
   const { configured, offering, isSubscribed: purchasesSubscribed, purchase, restore } = usePurchases();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isSubscribed = configured ? purchasesSubscribed : dbSubscribed;
   const pkg = offering?.availablePackages[0];
-  // Real bug, found live (Anabelle, 2026-09-11): tapping "Subscribe" on
-  // an already-active trial landed here, which unconditionally titled
-  // itself "Start 30-day free trial" and hid the action button (since
-  // isSubscribed is already true) -- a dead end with copy that read as
-  // "activate a trial" when the point was converting an existing one to
-  // paid. Split into three distinct cases instead of one screen that
-  // only ever knew how to say "start a trial": a true first-timer, an
-  // already-trialing member wanting to pay now (genuinely can't yet --
-  // no real payment processor is live, and self-granting 'active'
-  // client-side is deliberately blocked by RLS, see 20260911000000_
-  // subscriptions_restart_trial_policy.sql), and an already-paying
-  // member who has no reason to be here at all.
-  const alreadyTrialing = !isGuest && !configured && dbStatus === 'trialing';
-  const alreadyMember = !isGuest && isSubscribed && !alreadyTrialing;
+  // Original bug this fixed, still true: the title used to unconditionally
+  // say "Start 30-day free trial" even once isSubscribed was already true,
+  // with the action button hidden -- a dead-end screen that read as
+  // "activate a trial" instead of anything relevant.
+  //
+  // A THIRD case (Anabelle 2026-09-11's "Subscribe now" state, for someone
+  // already trialing and wanting to pay right now) briefly lived here too,
+  // but every real path to it got replaced by useSubscribeNow() (lib/
+  // purchases.tsx) -- both Subscribe buttons now trigger the real purchase
+  // (or its honest "not live yet" alert) directly, with no /upgrade
+  // detour. That left this screen showing a state nothing could reach
+  // and Anabelle couldn't make sense of ("I really dont get the point of
+  // this subscribe now modal") -- removed rather than kept as dead,
+  // confusing code.
+  const alreadyMember = !isGuest && isSubscribed;
 
   async function handlePrimaryAction() {
     if (isGuest) {
@@ -121,19 +122,15 @@ export default function UpgradeScreen() {
         <View style={styles.iconCircle}>
           <LockOpenIcon size={32} color={INK} strokeWidth={1.5} />
         </View>
-        <Text style={styles.title}>
-          {alreadyTrialing ? 'Subscribe now' : alreadyMember ? "You're a member" : 'Start 30-day free trial'}
-        </Text>
+        <Text style={styles.title}>{alreadyMember ? "You're a member" : 'Start 30-day free trial'}</Text>
         <Text style={styles.body}>
-          {alreadyTrialing
-            ? "Real payments aren't set up yet, so you can't subscribe directly just yet — your free trial will keep working until it ends."
-            : alreadyMember
-              ? "You're already a Grrunch member. Manage your membership in Settings."
-              : reason
-                ? `Try Grrunch free for 30 days to ${reason}.`
-                : 'Try Grrunch free for 30 days.'}
+          {alreadyMember
+            ? "You're already a Grrunch member. Manage your membership in Settings."
+            : reason
+              ? `Try Grrunch free for 30 days to ${reason}.`
+              : 'Try Grrunch free for 30 days.'}
         </Text>
-        {!alreadyTrialing && !alreadyMember && (
+        {!alreadyMember && (
           <View style={styles.featureList}>
             {FEATURES.map((feature) => (
               <View key={feature} style={styles.featureRow}>
@@ -145,7 +142,7 @@ export default function UpgradeScreen() {
             ))}
           </View>
         )}
-        {!alreadyTrialing && !alreadyMember && (
+        {!alreadyMember && (
           <Text style={styles.priceNote}>
             {configured && pkg ? `${pkg.product.priceString}/mo · Cancel anytime` : 'Then $5.99/mo · Cancel anytime'}
           </Text>
