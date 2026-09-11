@@ -11,12 +11,6 @@ import { useSubscription } from '../lib/subscription';
 // fill, not the onboarding screens' white-to-peach gradient).
 const ACCENT = '#FFA955';
 const INK = '#111';
-// Same success-green as MembershipStatus.tsx's confirmation badge/
-// AlertBanner.tsx's success variant (Figma "Mobile Alert Banners", node
-// 4076-104) -- reused here for the feature checklist below instead of a
-// third green.
-const CONFIRM_BG = '#E8F5E9';
-const CONFIRM_STRONG = '#1E7B34';
 
 // Real, already-gated features (every one of these is an actual
 // !isSubscribed check somewhere in the app today -- meals.tsx/recipe.tsx/
@@ -134,9 +128,7 @@ export default function UpgradeScreen() {
           <View style={styles.featureList}>
             {FEATURES.map((feature) => (
               <View key={feature} style={styles.featureRow}>
-                <View style={styles.featureBadge}>
-                  <CheckIcon size={12} color={CONFIRM_STRONG} />
-                </View>
+                <CheckIcon size={16} color={INK} />
                 <Text style={styles.featureText}>{feature}</Text>
               </View>
             ))}
@@ -227,14 +219,6 @@ const styles = StyleSheet.create({
   // more than one line of it.
   featureList: { alignSelf: 'stretch', marginTop: 20, gap: 12 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  featureBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: CONFIRM_BG,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   featureText: { fontSize: 15, color: INK, flex: 1 },
   priceNote: {
     fontSize: 13,
