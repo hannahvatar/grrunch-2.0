@@ -11,25 +11,21 @@ const ERROR = '#D0342C';
 
 // First real notification source: an active trial. This is deliberately
 // scoped to one hardcoded case for now, not a general notifications
-// backend/table -- there's nothing else to notify about yet, and no
-// read/unread persistence (the badge just reflects "is there currently
-// something worth surfacing", recomputed live from useSubscription(),
-// not a dismissible state). Add real entries here (or a proper list)
-// once there's a second kind of notification to show.
+// backend/table -- there's nothing else to notify about yet. Add real
+// entries here (or a proper list) once there's a second kind of
+// notification to show; `key` is already what read-tracking below keys
+// off of, so a second item slots in without any other change.
 function useNotifications() {
   const { status, isSubscribed } = useSubscription();
   const onTrial = isSubscribed && status === 'trialing';
-  return {
-    hasActive: onTrial,
-    items: onTrial
-      ? [
-          {
-            key: 'trial',
-            message: "You're on a 30-day free trial. Subscribe now to keep your access once it ends.",
-          },
-        ]
-      : [],
-  };
+  return onTrial
+    ? [
+        {
+          key: 'trial',
+          message: "You're on a 30-day free trial. Subscribe now to keep your access once it ends.",
+        },
+      ]
+    : [];
 }
 
 // Lives in AppTopBar, next to the profile shortcut -- signed-in only,
@@ -41,33 +37,63 @@ function useNotifications() {
 // it.
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const { hasActive, items } = useNotifications();
+  const items = useNotifications();
+  // Read state is per-item (keyed, not one flat boolean) so a second
+  // notification added later tracks independently -- and in-memory only
+  // (component state, not persisted) for this first pass: read status
+  // resets on app restart. Reasonable for now since this is still a
+  // single always-the-same trial reminder, not something a real
+  // notification history needs to survive a relaunch for yet.
+  const [readKeys, setReadKeys] = useState<Set<string>>(new Set());
+
+  function markRead(key: string) {
+    setReadKeys((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
+  }
+
+  const hasUnread = items.some((item) => !readKeys.has(item.key));
 
   return (
     <View>
       <Pressable style={styles.bellButton} onPress={() => setOpen((v) => !v)} hitSlop={8}>
         <BellIcon size={18} color={INK} />
-        {hasActive && <View style={styles.badge} />}
+        {hasUnread && <View style={styles.badge} />}
       </Pressable>
       {open && (
         <View style={styles.panel}>
           {items.length === 0 ? (
             <Text style={styles.emptyText}>No notifications right now.</Text>
           ) : (
-            items.map((item, index) => (
-              <View key={item.key} style={[styles.row, index > 0 && styles.rowDivider]}>
-                <Text style={styles.rowText}>{item.message}</Text>
+            items.map((item, index) => {
+              const unread = !readKeys.has(item.key);
+              return (
+                // The whole row marks itself read on tap (not just the
+                // Subscribe button) -- "read" and "click" both count, per
+                // Anabelle's own phrasing. Subscribe's onPress calls
+                // markRead() directly too, rather than relying on the
+                // touch bubbling up to this wrapping Pressable, since
+                // nested Pressables in RN don't reliably do that.
                 <Pressable
-                  style={styles.subscribeButton}
-                  onPress={() => {
-                    setOpen(false);
-                    router.push({ pathname: '/upgrade', params: { reason: 'keep your access' } });
-                  }}
+                  key={item.key}
+                  style={[styles.row, index > 0 && styles.rowDivider]}
+                  onPress={() => markRead(item.key)}
                 >
-                  <Text style={styles.subscribeButtonText}>Subscribe</Text>
+                  <View style={styles.rowHeader}>
+                    <Text style={[styles.rowText, styles.rowTextFlex]}>{item.message}</Text>
+                    {unread && <View style={styles.itemBadge} />}
+                  </View>
+                  <Pressable
+                    style={styles.subscribeButton}
+                    onPress={() => {
+                      markRead(item.key);
+                      setOpen(false);
+                      router.push({ pathname: '/upgrade', params: { reason: 'keep your access' } });
+                    }}
+                  >
+                    <Text style={styles.subscribeButtonText}>Subscribe</Text>
+                  </Pressable>
                 </Pressable>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
       )}
@@ -121,7 +147,14 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 13, color: '#888' },
   row: { gap: 10 },
   rowDivider: { borderTopWidth: 1, borderTopColor: '#eee', marginTop: 10, paddingTop: 10 },
+  rowHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   rowText: { fontSize: 16, lineHeight: 22, color: INK },
+  rowTextFlex: { flex: 1 },
+  // Same red dot as the bell's own badge (unfilled border here since it's
+  // not sitting on a white circle edge the way that one is) -- marginTop
+  // roughly centers it on the message's first line instead of its full
+  // (multi-line) height.
+  itemBadge: { width: 10, height: 10, borderRadius: 5, backgroundColor: ERROR, marginTop: 6 },
   // Same compact ACCENT pill as profile.tsx's own upgradeRowButton (the
   // "Choose your own stores" upsell row) -- alignSelf:'flex-start' keeps
   // it sized to its own content instead of stretching full-width.
