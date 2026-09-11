@@ -30,8 +30,8 @@ export default function SubscribedScreen() {
       title={configured ? 'Welcome to Grrunch Plus' : 'Your free trial has started'}
       body={
         configured
-          ? "You're all set. Full deals, unlimited recipes, and grocery lists are yours."
-          : `You have ${TRIAL_DAYS} days of full access — full deals, unlimited recipes, and grocery lists included.`
+          ? "You're all set. Every week you'll get new deal-focused recipes curated for you, plus unlimited saved recipes, full deals, and grocery lists."
+          : `You have ${TRIAL_DAYS} days of full access. Every week you'll get new deal-focused recipes curated for you, plus unlimited saved recipes, full deals, and grocery lists.`
       }
       actions={[{ label: 'Start exploring', onPress: () => router.back() }]}
     />
