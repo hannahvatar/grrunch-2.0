@@ -396,15 +396,20 @@ const styles = StyleSheet.create({
   // pills), not IngredientRow's solid-bg/white-text rounded-rect --
   // this app's own Meals tab is the more relevant precedent for a
   // recipe/deal card's badge, so this now matches that instead.
+  //
+  // Light-green/dark-green confirmation scheme (#E8F5E9/#1E7B34) --
+  // kept in lockstep with MealCard.tsx's dealTagBadge (Anabelle,
+  // 2026-09-11: "the percentage off should be adjusted also"), which
+  // moved off the old solid #96E696 fill for the same reason.
   dealBadge: {
     alignSelf: 'flex-start',
     marginTop: 4,
-    backgroundColor: '#96E696',
+    backgroundColor: '#E8F5E9',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  dealBadgeText: { color: INK, fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  dealBadgeText: { color: '#1E7B34', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Peach/orange -- distinct from dealBadge's green (a real store
   // discount), matching MealCard's fairPriceBadge exactly.
   dealFairPriceBadge: {

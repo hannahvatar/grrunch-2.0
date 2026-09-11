@@ -47,7 +47,7 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
           )}
           {isSelected && (
             <View style={styles.groceryConfirmBadge}>
-              <CheckIcon size={12} color="#fff" />
+              <CheckIcon size={12} color="#1E7B34" />
               <Text style={styles.groceryConfirmBadgeText}>Added</Text>
             </View>
           )}
@@ -219,6 +219,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Same light-green confirmation scheme as MembershipStatus.tsx's
+  // "Free trial" badge (TRIAL_URGENCY_STYLES.success in lib/
+  // subscription.tsx: bg #E8F5E9, icon/text #1E7B34) -- Anabelle,
+  // 2026-09-11: "make it the same color schema than the confirmation
+  // badge". Was a solid mid-green (#1E9E5A) fill with white text/icon.
   groceryConfirmBadge: {
     position: 'absolute',
     top: 14,
@@ -226,12 +231,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#1E9E5A',
+    backgroundColor: '#E8F5E9',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
-  groceryConfirmBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  groceryConfirmBadgeText: { color: '#1E7B34', fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   mealCardBody: { padding: 14, gap: 10 },
   mealHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   mealName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', flex: 1, marginRight: 8 },
@@ -277,8 +282,16 @@ const styles = StyleSheet.create({
   dealTagsRow: { gap: 6 },
   dealTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dealTagName: { color: '#888', fontSize: 13, flex: 1 },
-  dealTagBadge: { backgroundColor: '#96E696', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  dealTagBadgeText: { color: INK, fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Light-green bg + dark-green text -- same confirmation scheme as
+  // MembershipStatus.tsx's "Free trial" badge and MealCard's own
+  // groceryConfirmBadge ("Added"): #E8F5E9/#1E7B34 (Anabelle,
+  // 2026-09-11: "the percentage off should be adjusted also", after
+  // asking for the Added badge to match that scheme first). Was a
+  // solid #96E696 fill with plain black (INK) text -- the one deal-tag
+  // badge that didn't pair a light bg with a saturated matching text
+  // color the way fairPriceBadge/greatValueBadge below already did.
+  dealTagBadge: { backgroundColor: '#E8F5E9', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  dealTagBadgeText: { color: '#1E7B34', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Light peach + saturated orange text -- distinct from
   // dealTagBadge's green (reserved for a real store discount; Fair
   // price sharing that color was a pre-existing inconsistency with
