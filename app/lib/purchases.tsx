@@ -31,7 +31,14 @@ interface PurchasesContextValue {
   offering: PurchasesOffering | null;
   isSubscribed: boolean;
   purchase: (pkg: PurchasesPackage) => Promise<{ error: string | null }>;
-  restore: () => Promise<{ error: string | null }>;
+  // restored tells the caller whether an entitlement was actually found,
+  // not just whether the call itself succeeded -- Purchases.
+  // restorePurchases() resolves without error even when there's genuinely
+  // nothing to restore, so error:null alone can't tell "restored
+  // something" apart from "found nothing" (real gap, Anabelle,
+  // 2026-09-11: upgrade.tsx used to treat both the same, silently
+  // closing either way with zero feedback).
+  restore: () => Promise<{ error: string | null; restored: boolean }>;
 }
 
 const PurchasesContext = createContext<PurchasesContextValue | undefined>(undefined);
@@ -125,13 +132,14 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function restore(): Promise<{ error: string | null }> {
+  async function restore(): Promise<{ error: string | null; restored: boolean }> {
     try {
       const info = await Purchases.restorePurchases();
-      setIsSubscribed(isEntitled(info));
-      return { error: null };
+      const restored = isEntitled(info);
+      setIsSubscribed(restored);
+      return { error: null, restored };
     } catch (e: any) {
-      return { error: e?.message ?? 'Could not restore purchases.' };
+      return { error: e?.message ?? 'Could not restore purchases.', restored: false };
     }
   }
 
