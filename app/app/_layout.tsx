@@ -111,7 +111,6 @@ function DeepLinkErrorRedirect() {
             errorCode === 'otp_expired'
               ? 'This sign-in link has expired.'
               : 'This sign-in link is no longer valid.',
-          footnote: 'Request a new one from the sign-in screen.',
         },
       });
     }
