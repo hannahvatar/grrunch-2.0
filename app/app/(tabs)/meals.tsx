@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { MealCard } from '../../components/MealCard';
 import type { Meal } from '../../lib/mealData';
-import { sortMealsByPrice } from '../../lib/mealScaling';
+import { type MealSortMode, sortMealsByBestDeal, sortMealsByPrice } from '../../lib/mealScaling';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedMeals } from '../../lib/selectedMeals';
@@ -20,6 +20,19 @@ const INK = '#111';
 // more recipes" tile stands in for however many are left, naming the real
 // count rather than a generic upsell.
 const FREE_MEAL_LIMIT = 3;
+
+// Anabelle, 2026-09-11 (bringing this back): "a dropdown filter on the
+// top right (pill shape): defaulted to Best savings other choice is
+// Cheapest." Reuses sortMealsByBestDeal/sortMealsByPrice, which were
+// left in lib/mealScaling.ts when this dropdown was removed on
+// 2026-09-07 (see eligibleMeals below) -- same MealSortMode
+// ('cheapest' | 'bestDeal') as that earlier "Best Deals"/"Cheapest"
+// version, just relabeled "Best savings" per this request and now
+// defaulting to bestDeal instead of cheapest.
+const SORT_OPTIONS: { mode: MealSortMode; label: string }[] = [
+  { mode: 'bestDeal', label: 'Best savings' },
+  { mode: 'cheapest', label: 'Cheapest' },
+];
 
 // Guest-mode wireframe step 6 — Main App, Meals tab (the app's landing
 // tab now that there's no separate Plan step before it).
@@ -46,16 +59,11 @@ const FREE_MEAL_LIMIT = 3;
 // fixed package cost across more portions), never the ingredients or
 // macro target, which don't move price at all for a deal-tagged item
 // (see lib/mealScaling.ts's price-vs-quantity note). The sort dropdown
-// below just reorders this same list by price or name; nothing gets
-// hidden or resized beyond the featured filter above.
-//
-// Always cheapest-first (sortMealsByPrice) -- was the default order behind
-// a "Sort by" dropdown (Cheapest / Best Deals) that Anabelle asked to
-// remove (2026-09-07: didn't think it was needed). sortMealsByBestDeal
-// still lives in lib/mealScaling.ts if that ever needs to come back.
-function eligibleMeals(allMeals: Meal[]): Meal[] {
+// just reorders this same list by real savings % or price/serving;
+// nothing gets hidden or resized beyond the featured filter above.
+function eligibleMeals(allMeals: Meal[], sortMode: MealSortMode): Meal[] {
   const featured = allMeals.filter((m) => m.featured);
-  return sortMealsByPrice(featured);
+  return sortMode === 'bestDeal' ? sortMealsByBestDeal(featured) : sortMealsByPrice(featured);
 }
 
 export default function MealsScreen() {
@@ -65,6 +73,8 @@ export default function MealsScreen() {
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortMode, setSortMode] = useState<MealSortMode>('bestDeal');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   function handleToggleSaved(mealId: string) {
     if (!isSubscribed) {
@@ -101,7 +111,7 @@ export default function MealsScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  const sortedMeals = eligibleMeals(allMeals);
+  const sortedMeals = eligibleMeals(allMeals, sortMode);
   const visibleMeals = isSubscribed ? sortedMeals : sortedMeals.slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = sortedMeals.length - visibleMeals.length;
 
@@ -116,7 +126,32 @@ export default function MealsScreen() {
   return (
     <View style={[styles.gradient, styles.container]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Meals from This Week's Deals</Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.title, styles.titleFlex]}>Meals from This Week's Deals</Text>
+          <View style={styles.sortSection}>
+            <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
+              <Text style={styles.sortPillText}>{SORT_OPTIONS.find((o) => o.mode === sortMode)?.label}</Text>
+              <ChevronDownIcon size={16} color={INK} strokeWidth={2} />
+            </Pressable>
+            {sortMenuOpen && (
+              <View style={styles.sortMenu}>
+                {SORT_OPTIONS.map((option) => (
+                  <Pressable
+                    key={option.mode}
+                    style={styles.sortMenuItem}
+                    onPress={() => {
+                      setSortMode(option.mode);
+                      setSortMenuOpen(false);
+                    }}
+                  >
+                    <Text style={styles.sortMenuItemText}>{option.label}</Text>
+                    {sortMode === option.mode && <CheckIcon size={16} color={INK} strokeWidth={2} />}
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
 
         {sortedMeals.length === 0 && (
           <View style={styles.emptyState}>
@@ -177,6 +212,53 @@ const styles = StyleSheet.create({
   // below it.
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  titleFlex: { flex: 1, marginRight: 12 },
+  // zIndex here (well above mealCardOuter's siblings below, which sit at
+  // the default stacking level) is load-bearing on web: React Native Web
+  // gives every View an explicit zIndex (0, not auto), so each level of
+  // nesting is its own stacking context -- a high zIndex set deep inside
+  // (e.g. just on sortSection) only wins against ITS siblings, not
+  // against mealCardOuter further up the tree. It has to go on the row
+  // that's the actual sibling of the meal cards, or the menu paints
+  // underneath them.
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 20 },
+  sortSection: { alignItems: 'flex-end' },
+  sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-end',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  sortPillText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
+  sortMenu: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    marginTop: 6,
+    minWidth: 180,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: INK,
+    borderRadius: 14,
+    paddingVertical: 4,
+    zIndex: 10,
+    elevation: 4,
+  },
+  sortMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  sortMenuItemText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, flex: 1 },
   emptyState: { backgroundColor: '#F2F2F2', borderRadius: 14, padding: 20 },
   emptyStateText: { color: '#666', fontSize: 14, textAlign: 'center' },
   // Same dashed-outline CTA treatment as UpgradeCta's 'outline' variant
