@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon, LockOpenIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
+import { AlertBanner } from '../components/AlertBanner';
 import { useAuth } from '../lib/auth';
 import { usePurchases } from '../lib/purchases';
 import { useSubscription } from '../lib/subscription';
@@ -143,7 +144,15 @@ export default function UpgradeScreen() {
             {configured && pkg ? `${pkg.product.priceString}/mo · Cancel anytime` : 'Then $5.99/mo · Cancel anytime'}
           </Text>
         )}
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && (
+          <AlertBanner
+            variant="error"
+            title="Purchase failed"
+            description={error}
+            onDismiss={() => setError(null)}
+            style={styles.errorBanner}
+          />
+        )}
         {!isSubscribed && (
           <View style={styles.actions}>
             <Pressable style={styles.primaryButton} onPress={handlePrimaryAction} disabled={loading}>
@@ -231,9 +240,13 @@ const styles = StyleSheet.create({
     fontFamily: 'OpenSans_700Bold',
     marginTop: 12,
   },
-  // Matches InputField.tsx's own ERROR const exactly, so an error here
-  // reads as the same "error red" as everywhere else in the app.
-  errorText: { fontSize: 13, color: '#D0342C', marginTop: 12, textAlign: 'center' },
+  // Real AlertBanner (its own DS error variant -- Figma "Mobile Alert
+  // Banners", node 4076-104), not a bare red text line -- a failed
+  // purchase (declined card, etc.) deserves the same polished treatment
+  // login.tsx/location.tsx already give their own inline errors, not a
+  // lesser one. alignSelf:'stretch' since AlertBanner is a full-width
+  // row layout, not centered text.
+  errorBanner: { alignSelf: 'stretch', marginTop: 16 },
   // Sits right in the centered content block, directly under priceNote
   // (Anabelle's call) -- was a separate footer View pinned to the
   // screen's own bottom edge, leaving a big gap between the pricing
