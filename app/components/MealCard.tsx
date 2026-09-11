@@ -53,9 +53,9 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
           )}
           <Pressable style={styles.saveButton} onPress={onToggleSaved} hitSlop={8}>
             {isSaved ? (
-              <HeartIconSolid size={20} color="#e0245e" />
+              <HeartIconSolid size={20} color={INK} />
             ) : (
-              <HeartIcon size={20} color="#111" strokeWidth={2} />
+              <HeartIcon size={20} color={INK} strokeWidth={2} />
             )}
           </Pressable>
         </View>
@@ -198,6 +198,16 @@ const styles = StyleSheet.create({
   // than relying on auto-crop.
   mealImagePlaceholderPhoto: { height: 'auto', aspectRatio: 1402 / 824 },
   mealImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  // No border (Anabelle, 2026-09-11: this was unconditionally dashed --
+  // not gated on `locked` like groceryToggleButtonLocked below -- which
+  // read as a locked feature even for a subscribed/trial user; saving a
+  // recipe IS gated in meals.tsx's handleToggleSaved, but that gate
+  // routes to /upgrade instead of toggling, it doesn't need its own
+  // dashed-border indicator here. First tried swapping to a solid
+  // border, then decided no border reads cleanest against the white
+  // circle). Saved-heart color also changed from red (#e0245e) to INK,
+  // matching the outline heart's own color instead of introducing a
+  // one-off accent.
   saveButton: {
     position: 'absolute',
     top: 14,
@@ -206,9 +216,6 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: '#ffffffcc',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
   },
