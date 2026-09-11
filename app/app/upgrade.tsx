@@ -28,7 +28,7 @@ const FEATURES = [
   'Add recipes to your grocery list',
   'Unlimited saved recipes',
   'Full deals in every category',
-  'Personalized meal recommendations',
+  'Curated, deal-focused recipes every week',
   'Choose your own stores',
 ];
 
