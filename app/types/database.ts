@@ -263,6 +263,7 @@ export type Database = {
           calories: number | null
           created_at: string
           deal_tags: Json | null
+          featured: boolean
           id: string
           ingredients: Json
           instructions: Json
@@ -282,6 +283,7 @@ export type Database = {
           calories?: number | null
           created_at?: string
           deal_tags?: Json | null
+          featured?: boolean
           id?: string
           ingredients: Json
           instructions: Json
@@ -301,6 +303,7 @@ export type Database = {
           calories?: number | null
           created_at?: string
           deal_tags?: Json | null
+          featured?: boolean
           id?: string
           ingredients?: Json
           instructions?: Json

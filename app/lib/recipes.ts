@@ -208,6 +208,7 @@ function mapRowToMeal(
     optional_additions: unknown;
     avg_rating: number | null;
     rating_count: number;
+    featured: boolean | null;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -258,6 +259,7 @@ function mapRowToMeal(
     }),
     avgRating: row.avg_rating,
     ratingCount: row.rating_count,
+    featured: row.featured ?? false,
   };
 }
 

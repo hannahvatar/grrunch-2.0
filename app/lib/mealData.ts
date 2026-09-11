@@ -205,4 +205,9 @@ export interface Meal {
   // subscriber-only (see components/RecipeRating.tsx).
   avgRating: number | null;
   ratingCount: number;
+  // Manually toggled by Anabelle (dev-recipes.tsx, via the toggle-
+  // recipe-featured Edge Function) -- true for this week's featured set
+  // (intended: 12 recipes). Meals tab filters on this now, not
+  // dealTags.length > 0 -- see 20260911020000_recipes_featured_flag.sql.
+  featured: boolean;
 }

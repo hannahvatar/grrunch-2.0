@@ -23,8 +23,21 @@ const FREE_MEAL_LIMIT = 3;
 
 // Guest-mode wireframe step 6 — Main App, Meals tab (the app's landing
 // tab now that there's no separate Plan step before it).
-// Every recipe with an active deal shows, full stop -- coverage and real
-// cost-per-serving matter more here than hitting an exact macro number
+//
+// Shows exactly this week's featured set (recipes.featured, toggled by
+// hand via dev-recipes.tsx -- see 20260911020000_recipes_featured_flag.sql)
+// -- NOT "every recipe with an active deal", which was the rule here
+// until a real repro (Anabelle, 2026-09-11: "Weekly, we will display 12
+// recipes... Ensure we are displaying here 12 recipes") turned up that
+// the old auto-filter was showing 38 of 41 recipes with zero cap or
+// curation. A featured recipe is typically also deal-tagged (the normal
+// case: pulled from the database because one of its ingredients is on
+// sale this week), but doesn't have to be -- a custom recipe built just
+// for this week can be featured with no deal tag at all. `featured` is
+// now the one real gate; deal tags still drive pricing/badges on the
+// card itself, just not visibility.
+//
+// cost-per-serving matters more here than hitting an exact macro number
 // (see lib/mealScaling.ts). There's no per-user calorie/protein target to
 // sort against anymore: every recipe's own serving is designed to land in
 // a normal range (~500 cal / ~20g protein, +/-30%) by construction, not
@@ -33,22 +46,16 @@ const FREE_MEAL_LIMIT = 3;
 // fixed package cost across more portions), never the ingredients or
 // macro target, which don't move price at all for a deal-tagged item
 // (see lib/mealScaling.ts's price-vs-quantity note). The sort dropdown
-// below just reorders this same always-shown list by price or name;
-// nothing gets hidden or resized.
-//
-// Recipes are persistent and reused week to week, but their deal_tags are
-// re-matched against each new week's curated_deals -- a recipe with none
-// of its ingredients currently on sale stops surfacing here entirely
-// (rather than showing at regular price) until one of them is on sale
-// again, since the app's whole value prop is deal-driven meal planning.
+// below just reorders this same list by price or name; nothing gets
+// hidden or resized beyond the featured filter above.
 //
 // Always cheapest-first (sortMealsByPrice) -- was the default order behind
 // a "Sort by" dropdown (Cheapest / Best Deals) that Anabelle asked to
 // remove (2026-09-07: didn't think it was needed). sortMealsByBestDeal
 // still lives in lib/mealScaling.ts if that ever needs to come back.
 function eligibleMeals(allMeals: Meal[]): Meal[] {
-  const withDeals = allMeals.filter((m) => m.dealTags.length > 0);
-  return sortMealsByPrice(withDeals);
+  const featured = allMeals.filter((m) => m.featured);
+  return sortMealsByPrice(featured);
 }
 
 export default function MealsScreen() {
