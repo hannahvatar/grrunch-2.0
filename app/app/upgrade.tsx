@@ -91,7 +91,11 @@ export default function UpgradeScreen() {
       setError(actionError);
       return;
     }
-    router.back();
+    // replace, not push -- /subscribed's own "Start exploring" button
+    // does a single router.back() to return to wherever /upgrade was
+    // opened from; pushing on top would leave /upgrade itself still in
+    // the stack underneath, needing a second back to actually leave.
+    router.replace('/subscribed');
   }
 
   async function handleRestore() {
