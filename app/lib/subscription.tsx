@@ -3,7 +3,10 @@ import { createContext, ReactNode, useContext, useEffect, useState } from 'react
 import { useAuth } from './auth';
 import { supabase } from './supabase';
 
-const TRIAL_DAYS = 30;
+// Exported so MembershipStatus's days-left progress bar can compute its
+// fill fraction against the same real total this file uses, instead of a
+// second hardcoded 30 that could silently drift from this one.
+export const TRIAL_DAYS = 30;
 
 type SubscriptionStatus = 'none' | 'trialing' | 'active' | 'expired';
 
@@ -18,6 +21,7 @@ interface SubscriptionContextValue {
   // stored status to 'expired'.
   isSubscribed: boolean;
   startTrial: () => Promise<{ error: string | null }>;
+  cancelTrial: () => Promise<{ error: string | null }>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
@@ -74,11 +78,35 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     return { error: null };
   }
 
+  // Deletes the row outright rather than updating status -- 'none' isn't
+  // a real value this column stores (see the status check constraint in
+  // 20260803000000_subscriptions.sql); no row IS 'none', by definition
+  // (same logic as a guest never having one at all). The matching RLS
+  // policy (20260911010000_subscriptions_cancel_trial_policy.sql) only
+  // allows this while status = 'trialing' -- a real paid ('active') row
+  // can't be deleted this way, since real cancellation for a paying
+  // member has to go through the store's own subscription management,
+  // not a raw client-side delete.
+  async function cancelTrial(): Promise<{ error: string | null }> {
+    if (!session) {
+      return { error: 'You need an account to cancel a trial.' };
+    }
+    const { error } = await supabase.from('subscriptions').delete().eq('user_id', session.user.id);
+    if (error) {
+      return { error: error.message };
+    }
+    setStatus('none');
+    setTrialEndsAt(null);
+    return { error: null };
+  }
+
   const isSubscribed =
     status === 'active' || (status === 'trialing' && !!trialEndsAt && new Date(trialEndsAt) > new Date());
 
   return (
-    <SubscriptionContext.Provider value={{ status, trialEndsAt, loading, isSubscribed, startTrial }}>
+    <SubscriptionContext.Provider
+      value={{ status, trialEndsAt, loading, isSubscribed, startTrial, cancelTrial }}
+    >
       {children}
     </SubscriptionContext.Provider>
   );
