@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { XMarkIcon } from 'react-native-heroicons/outline';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
@@ -38,12 +39,21 @@ export function StatusScreen({
   onBack?: () => void;
 }) {
   const resolvedActions: StatusAction[] = actions ?? [{ label: 'Try again' }];
+  // A modal push already insets its own content below the status bar, but
+  // this screen can also be the very first thing rendered -- a cold app
+  // launch straight onto /error, which is exactly what DeepLinkErrorRedirect
+  // (app/_layout.tsx) produces for someone tapping an expired magic link
+  // when the app wasn't already running. There's no modal chrome to inset
+  // it in that case, so a hardcoded `top` landed the close button under the
+  // status bar/notch (real repro, Anabelle, 2026-09-10). insets.top is 0
+  // when a parent already accounts for the safe area, so this is safe to
+  // add unconditionally rather than only in the cold-start case.
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
-      <View style={styles.handle} />
       <Pressable
-        style={styles.backButton}
+        style={[styles.backButton, { top: insets.top + 20 }]}
         onPress={onBack ?? (() => router.back())}
         hitSlop={8}
       >
@@ -93,14 +103,6 @@ const styles = StyleSheet.create({
   // buttons all the way down to the screen's bottom edge, same fix as
   // signup-nudge.tsx's own container/content split.
   container: { flex: 1, backgroundColor: '#FFEAD4', justifyContent: 'center' },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#ddd',
-    alignSelf: 'center',
-    marginTop: 8,
-  },
   // White-fill/1.5px-INK-border tertiary circle -- same convention as
   // upgrade.tsx's own closeButton/recipe.tsx's closeButton/settings.tsx's
   // closeButton, instead of a bare unstyled chevron. XMarkIcon, not
@@ -109,7 +111,7 @@ const styles = StyleSheet.create({
   // still just calls onBack ?? router.back(), unchanged.
   backButton: {
     position: 'absolute',
-    top: 20,
+    // top is set inline, above -- see the insets.top comment there.
     right: 20,
     width: 32,
     height: 32,
