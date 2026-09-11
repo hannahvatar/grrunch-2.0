@@ -59,6 +59,17 @@ export default function UpgradeScreen() {
   const { configured, offering, isSubscribed: purchasesSubscribed, purchase, restore } = usePurchases();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Separate from `loading` -- that one already drives the primary
+  // button's own spinner; sharing it with Restore purchases meant tapping
+  // the restore link showed a spinner inside the PRIMARY button instead
+  // of any visible feedback on the link itself (real gap, Anabelle,
+  // 2026-09-11, the last of 4 UI-only paywall pieces).
+  const [restoring, setRestoring] = useState(false);
+  // Distinct from `error` -- Purchases.restorePurchases() resolves
+  // without throwing even when there's genuinely nothing to restore, so
+  // this was previously indistinguishable from a real success: both
+  // silently router.back()'d with zero feedback either way.
+  const [restoreInfo, setRestoreInfo] = useState<string | null>(null);
 
   const isSubscribed = configured ? purchasesSubscribed : dbSubscribed;
   const pkg = offering?.availablePackages[0];
@@ -101,14 +112,22 @@ export default function UpgradeScreen() {
 
   async function handleRestore() {
     setError(null);
-    setLoading(true);
-    const { error: restoreError } = await restore();
-    setLoading(false);
+    setRestoreInfo(null);
+    setRestoring(true);
+    const { error: restoreError, restored } = await restore();
+    setRestoring(false);
     if (restoreError) {
       setError(restoreError);
       return;
     }
-    router.back();
+    if (!restored) {
+      setRestoreInfo('No previous purchase was found for this account.');
+      return;
+    }
+    // Same replace-not-push reasoning as handlePrimaryAction above -- a
+    // successful restore is functionally the same "you're a member now"
+    // moment as a fresh purchase, so it gets the same success screen.
+    router.replace('/subscribed');
   }
 
   return (
@@ -153,9 +172,22 @@ export default function UpgradeScreen() {
             style={styles.errorBanner}
           />
         )}
+        {restoreInfo && (
+          <AlertBanner
+            variant="info"
+            title="Nothing to restore"
+            description={restoreInfo}
+            onDismiss={() => setRestoreInfo(null)}
+            style={styles.errorBanner}
+          />
+        )}
         {!isSubscribed && (
           <View style={styles.actions}>
-            <Pressable style={styles.primaryButton} onPress={handlePrimaryAction} disabled={loading}>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={handlePrimaryAction}
+              disabled={loading || restoring}
+            >
               {loading ? (
                 <ActivityIndicator color={INK} />
               ) : (
@@ -165,8 +197,12 @@ export default function UpgradeScreen() {
               )}
             </Pressable>
             {configured && !isGuest && (
-              <Pressable onPress={handleRestore} disabled={loading} hitSlop={8}>
-                <Text style={styles.restoreText}>Restore purchases</Text>
+              <Pressable onPress={handleRestore} disabled={loading || restoring} hitSlop={8}>
+                {restoring ? (
+                  <ActivityIndicator size="small" color="#767676" />
+                ) : (
+                  <Text style={styles.restoreText}>Restore purchases</Text>
+                )}
               </Pressable>
             )}
           </View>
