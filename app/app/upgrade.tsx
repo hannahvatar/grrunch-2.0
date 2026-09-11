@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LockOpenIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { CheckIcon, LockOpenIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { useAuth } from '../lib/auth';
 import { usePurchases } from '../lib/purchases';
@@ -11,6 +11,26 @@ import { useSubscription } from '../lib/subscription';
 // fill, not the onboarding screens' white-to-peach gradient).
 const ACCENT = '#FFA955';
 const INK = '#111';
+// Same success-green as MembershipStatus.tsx's confirmation badge/
+// AlertBanner.tsx's success variant (Figma "Mobile Alert Banners", node
+// 4076-104) -- reused here for the feature checklist below instead of a
+// third green.
+const CONFIRM_BG = '#E8F5E9';
+const CONFIRM_STRONG = '#1E7B34';
+
+// Real, already-gated features (every one of these is an actual
+// !isSubscribed check somewhere in the app today -- meals.tsx/recipe.tsx/
+// best-deals.tsx's grocery-list gates, profile.tsx's stores/saved-recipes
+// sections), not invented benefits. Deliberately no testimonials/review
+// counts here -- there's no real data for that yet, and fabricating some
+// would be actively dishonest, not just a placeholder.
+const FEATURES = [
+  'Add recipes to your grocery list',
+  'Unlimited saved recipes',
+  'Full deals in every category',
+  'Personalized meal recommendations',
+  'Choose your own stores',
+];
 
 // Shared upgrade prompt — presented as a modal wherever a locked, paid-tier
 // feature is tapped (see components/UpgradeCta.tsx, and the direct call
@@ -110,9 +130,21 @@ export default function UpgradeScreen() {
             : alreadyMember
               ? "You're already a Grrunch member. Manage your membership in Settings."
               : reason
-                ? `Try Grrunch free for 30 days to ${reason}, plus all your meal recommendations, unlimited saved recipes, and full deals in every category.`
-                : 'Try Grrunch free for 30 days for all your meal recommendations, unlimited saved recipes, and full deals in every category.'}
+                ? `Try Grrunch free for 30 days to ${reason}.`
+                : 'Try Grrunch free for 30 days.'}
         </Text>
+        {!alreadyTrialing && !alreadyMember && (
+          <View style={styles.featureList}>
+            {FEATURES.map((feature) => (
+              <View key={feature} style={styles.featureRow}>
+                <View style={styles.featureBadge}>
+                  <CheckIcon size={12} color={CONFIRM_STRONG} />
+                </View>
+                <Text style={styles.featureText}>{feature}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         {!alreadyTrialing && !alreadyMember && (
           <Text style={styles.priceNote}>
             {configured && pkg ? `${pkg.product.priceString}/mo · Cancel anytime` : 'Then $5.99/mo · Cancel anytime'}
@@ -193,6 +225,20 @@ const styles = StyleSheet.create({
     color: INK,
   },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: INK },
+  // alignSelf:'stretch' (not centered like body/title above) -- a
+  // left-aligned checklist reads faster than centered text once there's
+  // more than one line of it.
+  featureList: { alignSelf: 'stretch', marginTop: 20, gap: 12 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  featureBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: CONFIRM_BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureText: { fontSize: 15, color: INK, flex: 1 },
   priceNote: {
     fontSize: 13,
     color: INK,
