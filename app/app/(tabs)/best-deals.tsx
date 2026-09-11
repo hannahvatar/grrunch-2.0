@@ -467,7 +467,8 @@ const styles = StyleSheet.create({
   // MealCard's groceryToggleButton; still flips to INK fill + white
   // check on add, same as those, since that's a distinct "confirmed"
   // state rather than the idle button's own color.
-  // Dashed, same as unlockCard above (Anabelle, 2026-09-08) -- was solid.
+  // Solid again (Anabelle, 2026-09-11) -- was switched to dashed on
+  // 2026-09-08 to match unlockCard above; reverted back.
   addIconButton: {
     position: 'absolute',
     top: 10,
@@ -477,7 +478,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderStyle: 'dashed',
     borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
