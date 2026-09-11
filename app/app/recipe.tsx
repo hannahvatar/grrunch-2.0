@@ -499,9 +499,18 @@ export default function RecipeScreen() {
         {meal.subRecipes.map((subRecipe) => (
           <View
             key={subRecipe.title}
-            onLayout={(e) =>
-              setSubRecipeOffsets((prev) => ({ ...prev, [subRecipe.title]: e.nativeEvent.layout.y }))
-            }
+            onLayout={(e) => {
+              // Read layout.y synchronously, right here -- React reuses/
+              // nullifies the synthetic event object after this handler
+              // returns, so reading e.nativeEvent lazily inside the
+              // setState updater below (which React may not invoke until
+              // a later batch) was hitting a released event and throwing
+              // "This synthetic event is reused for performance reasons"
+              // on every recipe page with a companion recipe. Capturing
+              // the plain number up front sidesteps that entirely.
+              const y = e.nativeEvent.layout.y;
+              setSubRecipeOffsets((prev) => ({ ...prev, [subRecipe.title]: y }));
+            }}
           >
             <View style={styles.companionEyebrowRow}>
               <Text style={styles.companionEyebrowText}>Companion Recipe</Text>
