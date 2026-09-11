@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { GrrunchMascot } from './GrrunchMascot';
 import { PersonIcon } from './MaterialSymbols';
+import { NotificationBell } from './NotificationBell';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
@@ -54,14 +55,17 @@ export function AppTopBar() {
           </Pressable>
         </View>
       ) : (
-        // Same white-fill/1.5px-INK-border tertiary circle convention as
-        // settings.tsx's closeButton/recipe.tsx's closeButton -- routes
-        // straight into the existing Profile tab (group segments like
-        // "(tabs)" don't appear in the URL, so this is just '/profile',
-        // same pattern stores.tsx already uses for '/meals').
-        <Pressable style={styles.profileButton} onPress={() => router.push('/profile')} hitSlop={8}>
-          <PersonIcon size={18} color={INK} />
-        </Pressable>
+        <View style={styles.signedInButtons}>
+          <NotificationBell />
+          {/* Same white-fill/1.5px-INK-border tertiary circle convention as
+              settings.tsx's closeButton/recipe.tsx's closeButton -- routes
+              straight into the existing Profile tab (group segments like
+              "(tabs)" don't appear in the URL, so this is just '/profile',
+              same pattern stores.tsx already uses for '/meals'). */}
+          <Pressable style={styles.profileButton} onPress={() => router.push('/profile')} hitSlop={8}>
+            <PersonIcon size={18} color={INK} />
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -85,6 +89,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   authButtons: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  signedInButtons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   signInButton: { paddingVertical: 6, paddingHorizontal: 4 },
   signInText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   signUpButton: {

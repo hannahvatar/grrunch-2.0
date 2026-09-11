@@ -19,6 +19,7 @@ import type { Meal, SubRecipe } from '../../lib/mealData';
 import { fetchRecipesByIds } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedStores } from '../../lib/selectedStores';
+import { supabase } from '../../lib/supabase';
 import { fetchSubRecipes } from '../../lib/subRecipes';
 import { useSubscription } from '../../lib/subscription';
 
@@ -320,6 +321,19 @@ export default function ProfileScreen() {
       )}
       </>
       )}
+
+      {/* Real supabase.auth.signOut() -- same call ManageAccountSection.tsx
+          already uses (reachable today via Settings > Manage account),
+          now also directly on Profile itself so it doesn't take a detour
+          through Settings to find. Tertiary pill -- same white-fill/
+          1.5px-INK-border convention as signup-nudge.tsx's own
+          tertiaryButton, not a destructive-red one: signing out isn't
+          data loss, just ending the session. */}
+      {!isGuest && (
+        <Pressable style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
+          <Text style={styles.signOutButtonText}>Sign out</Text>
+        </Pressable>
+      )}
     </ScrollView>
     </View>
   );
@@ -449,4 +463,17 @@ const styles = StyleSheet.create({
   savedName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
   subRecipesList: { gap: 12 },
+  // Same shape/height/radius as signup-nudge.tsx's tertiaryButton --
+  // white fill, 1.5px INK border, 56pt pill.
+  signOutButton: {
+    marginTop: 24,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 28,
+  },
+  signOutButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });
