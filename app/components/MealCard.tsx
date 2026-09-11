@@ -232,7 +232,15 @@ const styles = StyleSheet.create({
   ratingText: { fontSize: 12, color: '#888', marginLeft: 4 },
   priceNutritionRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    // 'center', not 'baseline' -- same reasoning as nutritionItem below:
+    // nutritionRow is a composite icon+text view, not plain text, so it
+    // has no real font baseline to align priceBlock's own baseline
+    // against. RN's guess at one was rendering nutritionRow's content
+    // below its own measured layout box, overlapping straight into
+    // dealTagsRow underneath despite mealCardBody's gap:10 (real repro,
+    // Anabelle, 2026-09-11: the "Fair price" badge visibly overlapping
+    // "359 cal" above it).
+    alignItems: 'center',
     flexWrap: 'wrap',
     gap: 12,
   },
