@@ -54,9 +54,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       return { error: 'You need an account to start a free trial.' };
     }
     const trialEndsAtValue = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    // upsert, not insert -- user_id is this table's primary key, so a
+    // plain insert() fails for anyone who already has a row (their first
+    // trial, an active membership, or one that's since expired). Real
+    // repro, Anabelle, 2026-09-11: resubscribing after a trial ended threw
+    // "duplicate key value violates unique constraint subscriptions_pkey".
+    // The matching RLS policy (20260911000000_subscriptions_restart_trial_
+    // policy.sql) deliberately only allows the conflict-path UPDATE to
+    // land on status = 'trialing', not 'active' -- so this can't be used
+    // to grant a free membership, only to restart a trial.
     const { error } = await supabase
       .from('subscriptions')
-      .insert({ user_id: session.user.id, status: 'trialing', trial_ends_at: trialEndsAtValue });
+      .upsert({ user_id: session.user.id, status: 'trialing', trial_ends_at: trialEndsAtValue });
     if (error) {
       return { error: error.message };
     }
