@@ -205,13 +205,14 @@ export default function ProfileScreen() {
                       ? router.push('/location')
                       : router.push({ pathname: '/upgrade', params: { reason: 'change your stores' } })
                   }
+                  accessibilityLabel="Change"
+                  hitSlop={8}
                 >
                   {isSubscribed ? (
-                    <PencilIcon size={13} color={INK} />
+                    <PencilIcon size={15} color={INK} />
                   ) : (
-                    <LockClosedIcon size={13} color={INK} />
+                    <LockClosedIcon size={15} color={INK} />
                   )}
-                  <Text style={styles.changeStoreButtonText}>Change</Text>
                 </Pressable>
               </View>
             ))}
@@ -423,20 +424,20 @@ const styles = StyleSheet.create({
   storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 13, color: '#888' },
   // Next-to-feature member-only button -- stroked/outline (white fill,
-  // 1.5px solid INK border -- was dashed, Anabelle 2026-09-14), leading
-  // lock/pencil icon, pill shape.
+  // 1.5px solid INK border -- was dashed, Anabelle 2026-09-14), icon
+  // only now (the "Change" text label was removed same day) -- a fixed-
+  // size circle instead of a text pill, accessibilityLabel carries the
+  // same "Change" wording for screen readers.
   changeStoreButton: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
     alignItems: 'center',
-    gap: 5,
+    justifyContent: 'center',
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+    borderRadius: 16,
   },
-  changeStoreButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Real btn-primary-orange -- see the DS's canonical spec on login.tsx's
   // primaryButton (ACCENT fill, 2px INK border). Distinct from the Change
   // buttons' stroked/outline style since this row is the section's one
