@@ -139,11 +139,14 @@ const styles = StyleSheet.create({
   },
   // White, not ACCENT -- Anabelle's call (2026-09-11), the same white-fill
   // language as the app's other cards, rather than this being the one
-  // filled-orange exception. No border either (her follow-up call) -- the
-  // confirmation badge below now carries the "this is really on" signal
-  // instead of a bordered container.
+  // filled-orange exception. Border added back (2026-09-14, her follow-up
+  // call reversing the "no border" decision from the same day) -- matches
+  // the 2px INK border convention every other "modal treatment" card in
+  // the app already uses (mealCard, GroceryListView's emptyState, etc.).
   trialCard: {
     backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
     borderRadius: 14,
     padding: 14,
     gap: 12,
