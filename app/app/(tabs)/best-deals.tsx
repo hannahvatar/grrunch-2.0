@@ -22,7 +22,9 @@ import {
   showsRealDiscount,
 } from '../../lib/curatedDeals';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
+import { filterDealsByZone } from '../../lib/dealZones';
 import { useSelectedDeals } from '../../lib/selectedDeals';
+import { useSelectedStores } from '../../lib/selectedStores';
 import { useSubscription } from '../../lib/subscription';
 
 // GRRUNCH DS -- matches meals.tsx/recipe.tsx/GroceryListView.tsx's own
@@ -51,11 +53,22 @@ const FREE_DEALS_PER_CATEGORY = 1;
 // recipe.
 export default function BestDealsScreen() {
   const { isSubscribed } = useSubscription();
-  const [deals, setDeals] = useState<Deal[]>([]);
+  const [allDeals, setAllDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { selectedDealIds, toggleDealSelected } = useSelectedDeals();
+  const { stores: myStores } = useSelectedStores();
+
+  // Excludes a deal only when it's actually zone-tagged AND that tag
+  // disagrees with the zone the user's own selected store (for that same
+  // chain) is nearest to -- see lib/dealZones.ts's own header comment for
+  // why this stays conservative given how incomplete zone tagging still
+  // is (Anabelle, 2026-09-14: a Real Canadian Superstore outside the
+  // Burnaby/urban zone shouldn't silently show that zone's pricing).
+  // Recomputed from `myStores` reactively (not re-fetched) so editing a
+  // store in Profile updates this list without a network round trip.
+  const deals = filterDealsByZone(allDeals, myStores);
 
   // Membership-gated, same shape as meals.tsx's handleToggleSelected /
   // recipe.tsx's handleAddToList (Anabelle, 2026-09-09: "With a free
@@ -74,7 +87,7 @@ export default function BestDealsScreen() {
 
   useEffect(() => {
     fetchAllDeals()
-      .then(setDeals)
+      .then(setAllDeals)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);

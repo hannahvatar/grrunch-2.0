@@ -50,6 +50,10 @@ interface DisplayStore {
   name: string;
   subtitle: string;
   distanceKm: number | null;
+  // Carried through to SelectedStore on confirm -- lib/dealZones.ts needs
+  // a real point to match this store against its chain's zone anchors.
+  lat: number | null;
+  lng: number | null;
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -126,6 +130,8 @@ export default function StoresScreen() {
             initial: store.chain_name.charAt(0),
             name: store.chain_name,
             subtitle: store.banner ?? store.address,
+            lat: store.lat,
+            lng: store.lng,
             distanceKm:
               resultPrecise && userLat !== null && userLng !== null && store.lat !== null && store.lng !== null
                 ? haversineKm(userLat, userLng, store.lat, store.lng)
@@ -162,6 +168,8 @@ export default function StoresScreen() {
         initial: store.initial,
         name: store.name,
         subtitle: store.subtitle,
+        lat: store.lat ?? undefined,
+        lng: store.lng ?? undefined,
       }))
     );
     router.push('/meals');

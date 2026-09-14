@@ -191,7 +191,7 @@ export function StoreSelectorModal({ visible, onClose, chainName, currentStoreId
               <View style={styles.centered}>
                 <Text style={styles.errorText}>
                   {outsideServiceArea
-                    ? `We found ${chainName} locations there, but they're outside the area our deals currently cover. Deals and pricing are Metro Vancouver only for now.`
+                    ? `We found ${chainName} locations there, but they're outside the area our deals currently cover. Deals and pricing are British Columbia only for now.`
                     : `No ${chainName} locations found. Try a different city.`}
                 </Text>
               </View>

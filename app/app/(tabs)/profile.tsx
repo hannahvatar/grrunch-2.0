@@ -352,6 +352,8 @@ export default function ProfileScreen() {
               initial: editingStore.initial,
               name: editingStore.name,
               subtitle: result.address,
+              lat: result.lat,
+              lng: result.lng,
             };
             setMyStores(myStores.map((s) => (s.id === editingStore.id ? chosen : s)));
           }}

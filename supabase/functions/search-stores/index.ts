@@ -19,10 +19,10 @@
 //   }
 //   -> 200 { stores: StoreSearchResult[], outsideServiceArea: boolean }
 //      (outsideServiceArea: true only when real Places results existed but
-//      every one was farther than SERVICE_AREA_RADIUS_METERS from
-//      SERVICE_AREA_CENTER -- see that constant's own comment for why this
-//      cap exists. stores is always [] in that case; false whenever stores
-//      has results OR Places genuinely found nothing at all.)
+//      every one fell outside BC_BOUNDS (all of British Columbia) -- see
+//      that constant's own comment for why this cap exists. stores is
+//      always [] in that case; false whenever stores has results OR
+//      Places genuinely found nothing at all.)
 //
 // Every result is upserted into `stores` (same google_place_id-keyed
 // upsert nearest-stores already uses) so a store picked here has the same
@@ -85,24 +85,77 @@ const MAX_LIMIT = 10; // Places' own searchText maxResultCount ceiling.
 // discounts per region, but `curated_deals` has no city/zone column at
 // all -- scripts/sync_weekly_deals.py's own dedup step explicitly
 // collapses every zone's candidates into one flat (chain_name, item_name,
-// price) pool, and every zone that exists today only ever covers Metro
-// Vancouver. fetchAllDeals() shows that whole pool to every user
+// price) pool. fetchAllDeals() shows that whole pool to every user
 // regardless of which store they've picked (there's no per-store
 // filtering anywhere), so a store picked from FAR outside the area the
 // deals were actually collected for would show a real, correct address in
-// Profile while every price/deal shown everywhere else stays Vancouver-
-// area pricing with nothing indicating the mismatch.
+// Profile while every price/deal shown everywhere else stays whatever
+// this pool actually covers, with nothing indicating the mismatch.
 //
 // Before this function existed, "nearest store" search made picking a
 // distant store practically impossible (it took real GPS coordinates to
 // get there) -- free-text city search removes that accidental guardrail,
-// so this cap replaces it on purpose: any result farther than this from
-// the service area's center is dropped, and if that empties out an
-// otherwise-real result set, the response says so via
-// `outsideServiceArea` so the client can show an honest reason instead of
-// a bare "no results" (see the caller in index.ts below).
-const SERVICE_AREA_CENTER = { lat: 49.2827, lng: -123.1207 }; // Vancouver, BC
-const SERVICE_AREA_RADIUS_METERS = 100_000;
+// so this cap replaces it on purpose.
+//
+// The service area is all of British Columbia (Anabelle, correcting an
+// initial Metro-Vancouver-only pass: "We are covering all BC not only
+// metro vancouver") -- a single radius-from-Vancouver circle can't fit BC
+// well either way: too small and it excludes real BC towns (Prince
+// George, Fort St. John are both 700km+ from Vancouver); too large and it
+// lets in Alberta/the US/Yukon.
+//
+// A plain lat/lng bounding box was the first attempt at fixing that, but
+// doesn't work either -- caught by testing it against Calgary before
+// shipping: BC's real southeast corner (near Cranbrook/Fernie) and
+// Calgary sit at almost the SAME longitude, just different latitudes,
+// because the real BC/Alberta border runs diagonally along the Rockies,
+// not a straight north-south line. A box using BC's overall min/max
+// longitude has no way to tell those apart -- it either lets Calgary in
+// (a real store picked here would face the exact same misleading-address
+// problem this cap exists to prevent) or excludes real BC towns in the
+// East Kootenays.
+//
+// BC_POLYGON is a simplified (~14-vertex) trace of the real provincial
+// border -- accurate enough to correctly separate Calgary (excluded) from
+// Cranbrook/Fernie (included), not surveyed-accurate at the actual
+// boundary line, which isn't this cap's job. isWithinServiceArea is a
+// standard ray-casting point-in-polygon test: counts how many polygon
+// edges a ray from the point (going east, toward +longitude) crosses --
+// odd means inside, even means outside.
+//
+// Any result outside this polygon is dropped, and if that empties out an
+// otherwise-real result set, the response says so via `outsideServiceArea`
+// so the client can show an honest reason instead of a bare "no results"
+// (see the caller in index.ts below).
+const BC_POLYGON: Array<[lng: number, lat: number]> = [
+  [-139.1, 60.0], // NW corner (Alaska/Yukon)
+  [-120.0, 60.0], // N border along the 60th parallel
+  [-120.0, 54.0], // E border, roughly straight down to here
+  [-118.7, 52.8], // border bends west of Jasper/Mt. Robson
+  [-116.8, 51.7], // near Golden
+  [-115.9, 50.7], // near Radium
+  [-115.2, 49.7], // near Cranbrook
+  [-114.4, 49.0], // SE corner (near Waterton/US border)
+  [-123.3, 49.0], // S border along the 49th parallel, west to the coast
+  [-123.5, 48.3], // southern Vancouver Island tip (Victoria area)
+  [-125.0, 48.5], // west coast of Vancouver Island
+  [-128.0, 50.0], // north Vancouver Island / Queen Charlotte Sound
+  [-133.0, 54.0], // Haida Gwaii / north coast
+  [-136.0, 58.0], // Alaska panhandle border
+];
+
+function isWithinServiceArea(lat: number, lng: number): boolean {
+  let inside = false;
+  for (let i = 0, j = BC_POLYGON.length - 1; i < BC_POLYGON.length; j = i++) {
+    const [xi, yi] = BC_POLYGON[i];
+    const [xj, yj] = BC_POLYGON[j];
+    const crossesLatitude = yi > lat !== yj > lat;
+    if (crossesLatitude && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
 
 interface GoogleAddressComponent {
   longText?: string;
@@ -292,19 +345,11 @@ export default {
       p.location !== undefined
     );
 
-    // Service-area cap -- see this constant's own header comment for why.
+    // Service-area cap -- see BC_BOUNDS' own header comment for why.
     // Applied before anything else touches `withLocation` so a distant
     // result never becomes the sort anchor, never gets upserted, and never
     // reaches the client at all.
-    const inServiceArea = withLocation.filter(
-      (p) =>
-        haversineMeters(
-          SERVICE_AREA_CENTER.lat,
-          SERVICE_AREA_CENTER.lng,
-          p.location.latitude,
-          p.location.longitude
-        ) <= SERVICE_AREA_RADIUS_METERS
-    );
+    const inServiceArea = withLocation.filter((p) => isWithinServiceArea(p.location.latitude, p.location.longitude));
     // Real candidates existed, but every single one was outside the
     // service area -- distinct from a genuine "no <chain> found here" (0
     // Places results at all), so the client can show the honest reason.

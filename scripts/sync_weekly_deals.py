@@ -333,6 +333,18 @@ def sync_curated_deals(records):
             # specialty/branded item that should stay matched to its
             # own exact name.
             "keyword_matches": f.get("keyword_matches") or [],
+            # Real gap, caught live (Anabelle, 2026-09-14: "We have
+            # different zone coverages as banners can change their
+            # pricing according to store area... Are the price still
+            # accurate?" for a store outside the zone the price was
+            # sourced from). Airtable's "Deals" table already has this
+            # field, set by whichever of the 9 zone-review agents found
+            # this candidate -- was never read into Supabase before.
+            # Genuinely null for a lot of rows (an agent not filling it
+            # in, or an older record from before this field existed) --
+            # see 20260914010000_curated_deals_zone.sql's own comment for
+            # how the client treats that (unknown, not "wrong zone").
+            "zone": f.get("Zone coverage") or None,
         })
         prior = reviewed_pricing.get(r["id"])
         if prior:
@@ -384,6 +396,22 @@ def sync_curated_deals(records):
         if existing is None:
             best_by_key[key] = row
         elif row.get("pricing_reviewed_at") and not existing.get("pricing_reviewed_at"):
+            best_by_key[key] = row
+            dropped += 1
+        elif (
+            not existing.get("pricing_reviewed_at")
+            and not row.get("pricing_reviewed_at")
+            and row.get("zone")
+            and not existing.get("zone")
+        ):
+            # Neither candidate carries forward a prior review -- prefer
+            # whichever actually has a "Zone coverage" tag (Anabelle,
+            # 2026-09-14, re: per-zone pricing accuracy) over one that
+            # doesn't, so a genuinely zone-invariant price (that's WHY
+            # these deduped to begin with -- identical chain/item/price
+            # across zones) still ends up tagged when at least one of its
+            # zone-duplicates had the field set, instead of silently
+            # discarding that just because the untagged one came first.
             best_by_key[key] = row
             dropped += 1
         else:

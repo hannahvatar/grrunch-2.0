@@ -21,6 +21,7 @@
 //     usage: 'recipes' | 'deals' | 'both',
 //     keyword_matches: string[],
 //     reject?: boolean,
+//     zone?: string | null,
 //   }
 //   -> 200 { deal: CuratedDealRow }
 //
@@ -161,6 +162,7 @@ interface Database {
           pricing_reviewed_at: string | null;
           original_price_source: OriginalPriceSource;
           usage: DealUsage;
+          zone: string | null;
         };
         Insert: never;
         Update: {
@@ -178,6 +180,7 @@ interface Database {
           status?: "pending" | "approved" | "rejected";
           reviewed_by?: string | null;
           reviewed_at?: string | null;
+          zone?: string | null;
         };
         Relationships: [];
       };
@@ -204,6 +207,12 @@ interface RequestBody {
   usage?: unknown;
   keyword_matches?: unknown;
   reject?: unknown;
+  // See 20260914010000_curated_deals_zone.sql -- null means "not zone-
+  // tagged" (still the common case; not validated against a fixed list
+  // here since the valid set is per-chain and lives client-side in
+  // app/lib/dealZones.ts's knownZonesForChain(), which is what actually
+  // builds this field's SegmentedControl in dev-deals.tsx).
+  zone?: unknown;
 }
 
 function validationError(message: string) {
@@ -232,6 +241,7 @@ export default {
       usage,
       keyword_matches,
       reject,
+      zone,
     } = body;
 
     if (typeof deal_id !== "string" || deal_id.length === 0) {
@@ -295,6 +305,9 @@ export default {
     if (reject !== undefined && typeof reject !== "boolean") {
       return validationError("reject must be a boolean.");
     }
+    if (zone !== undefined && zone !== null && (typeof zone !== "string" || zone.trim().length === 0)) {
+      return validationError("zone must be null or a non-empty string.");
+    }
     // Trim + dedupe here rather than trusting the client to have done
     // it -- same defensive normalization item_name.trim() already gets
     // below.
@@ -340,6 +353,7 @@ export default {
         usage: usage as DealUsage,
         keyword_matches: normalizedKeywordMatches,
         pricing_reviewed_at: new Date().toISOString(),
+        zone: (zone as string | null | undefined) ?? null,
         ...statusUpdate,
       })
       .eq("id", deal_id)
