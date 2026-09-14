@@ -318,6 +318,17 @@ export default function ProfileScreen() {
         // (getRecipeImage, same helper/fallback pattern as MealCard's
         // own image) so this reads as a recipe card, not a bare text
         // row.
+        //
+        // One more follow-up: "I still see current items when i clikc
+        // on the view icon to see the recipe. I need to see a generic
+        // recipe" -- the recipe page itself still showed this week's
+        // price and per-ingredient deal tags/store links regardless of
+        // how you got there. Both navigations below now pass
+        // generic=true, which recipe.tsx reads to hide meal.price and
+        // every ingredient's dealTag/estimatedPrice/store-link (see its
+        // own header comment) -- MealCard.tsx/GroceryListView.tsx's own
+        // navigations to this same screen are untouched, so the Meals
+        // tab and grocery list still show the full, deal-aware page.
         savedMeals.map((meal) => (
           <View key={meal.id} style={styles.savedCard}>
             <View style={styles.savedThumb}>
@@ -329,7 +340,7 @@ export default function ProfileScreen() {
             </View>
             <Pressable
               style={styles.savedInfo}
-              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
+              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id, generic: 'true' } })}
             >
               <Text style={styles.savedName}>{meal.name}</Text>
               <Text style={styles.savedMeta}>{meal.minutes} min</Text>
@@ -339,7 +350,7 @@ export default function ProfileScreen() {
             </Pressable>
             <Pressable
               style={styles.viewSavedButton}
-              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
+              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id, generic: 'true' } })}
               accessibilityLabel="View recipe"
               hitSlop={8}
             >
