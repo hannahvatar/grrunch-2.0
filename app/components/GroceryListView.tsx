@@ -608,7 +608,9 @@ const styles = StyleSheet.create({
   // card on this screen shares the same padding now, this was the one
   // outlier at 20.
   emptyState: { backgroundColor: '#fff', borderWidth: 2, borderColor: INK, borderRadius: 16, padding: 14 },
-  emptyStateText: { color: INK, fontSize: 14, textAlign: 'center' },
+  // 16px, black (Anabelle, 2026-09-14) -- was 14px. The icon that briefly
+  // sat above this (same request) was removed again right after.
+  emptyStateText: { color: INK, fontSize: 16, textAlign: 'center' },
   // Title + body pair (Anabelle's copy) ahead of the locked CTA below,
   // instead of leaving why a non-subscriber sees it to be inferred from
   // the CTA's own generic trial copy. Renamed from guestLocked* -- this
