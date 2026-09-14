@@ -1,7 +1,14 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ArrowPathIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import {
+  ArrowPathIcon,
+  MapPinIcon,
+  MinusIcon,
+  PlusIcon,
+  ShoppingBagIcon,
+  XMarkIcon,
+} from 'react-native-heroicons/outline';
 
 import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItemStore } from '../lib/curatedDeals';
 import { IngredientRow } from './IngredientRow';
@@ -394,6 +401,7 @@ export function GroceryListView() {
               </>
             ) : (
               <View style={styles.emptyState}>
+                <ShoppingBagIcon size={48} color={INK} strokeWidth={1} />
                 <Text style={styles.emptyStateText}>
                   Nothing here yet. Add recipes from Meals or deals from Weekly Deals to build your list.
                 </Text>
@@ -607,8 +615,20 @@ const styles = StyleSheet.create({
   // own ingredientsModalCard/instructionsCard) -- every "modal treatment"
   // card on this screen shares the same padding now, this was the one
   // outlier at 20.
-  emptyState: { backgroundColor: '#fff', borderWidth: 2, borderColor: INK, borderRadius: 16, padding: 14 },
-  emptyStateText: { color: INK, fontSize: 14, textAlign: 'center' },
+  // Icon (ShoppingBagIcon, matching stores.tsx's own empty-state
+  // convention: 48px, INK, strokeWidth 1) + text, stacked and centered --
+  // Anabelle, 2026-09-14: "make sure the typeface is 16 px and black. Add
+  // an empty state icon at the top of this container."
+  emptyState: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    gap: 10,
+  },
+  emptyStateText: { color: INK, fontSize: 16, textAlign: 'center' },
   // Title + body pair (Anabelle's copy) ahead of the locked CTA below,
   // instead of leaving why a non-subscriber sees it to be inferred from
   // the CTA's own generic trial copy. Renamed from guestLocked* -- this
