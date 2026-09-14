@@ -24,7 +24,19 @@ const INK = '#111';
 // meal card's "View recipe" button. Not covered by a wireframe yet, so this
 // stays plain/functional like the rest of the guest-mode flow.
 export default function RecipeScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, generic } = useLocalSearchParams<{ id: string; generic?: string }>();
+  // Opted into from Profile > Saved recipes (Anabelle, 2026-09-14: "I
+  // still see current items when i clikc on the view icon to see the
+  // recipe. I need to see a generic recipe") -- a saved recipe is meant
+  // to be reopened long after this week's flyer prices are gone, so its
+  // view icon passes generic=true here instead of the meal/deals-tab
+  // views (MealCard.tsx/GroceryListView.tsx), which keep this false and
+  // see the full, deal-aware page unchanged. Hides meal.price and every
+  // ingredient's dealTag/estimatedPrice/store-link -- see isGeneric's
+  // uses below. Plain recipe content (name, minutes, rating, servings,
+  // nutrition, instructions, optional additions, sub-recipes) is
+  // unaffected either way; none of it is deal-derived.
+  const isGeneric = generic === 'true';
   const { isGuest, session } = useAuth();
   const { isSubscribed } = useSubscription();
   // Same context the Meals tab's own "Add to list" toggle uses (see
@@ -222,10 +234,12 @@ export default function RecipeScreen() {
             secondary text/icons, and there's no min. servings note --
             the stepper right below already covers that. */}
         <View style={styles.priceNutritionRow}>
-          <View style={styles.priceBlock}>
-            <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
-            <Text style={styles.perServing}>/ serving</Text>
-          </View>
+          {!isGeneric && (
+            <View style={styles.priceBlock}>
+              <Text style={styles.mealPrice}>${meal.price.toFixed(2)}</Text>
+              <Text style={styles.perServing}>/ serving</Text>
+            </View>
+          )}
           <View style={styles.nutritionRow}>
             <View style={styles.nutritionItem}>
               <RestaurantIcon size={16} color={INK} />
@@ -301,7 +315,36 @@ export default function RecipeScreen() {
             you'll need" umbrella title, which still covers both since
             the staples group is not on sale. */}
         <Text style={styles.sectionTitle}>What you'll need</Text>
-        {(dealIngredients.length > 0 || stapleIngredients.length > 0) && (
+        {/* Generic mode: one plain list, no "On Sale This Week"/"From
+            your pantry" split (that split IS deal info -- it's literally
+            "does this ingredient have a deal tag right now") -- every
+            ingredient renders the same bare text+quantity way the
+            staple branch below already does for a non-deal ingredient,
+            with no dealTag/estimatedPrice/store-link props passed at
+            all. Sub-recipe jump links are kept -- that's real recipe
+            content, not deal data. */}
+        {isGeneric && meal.ingredients.length > 0 && (
+          <View style={styles.ingredientsModalCard}>
+            <View style={styles.staplesList}>
+              {meal.ingredients.map((ingredient, index) => {
+                const subRecipe = meal.subRecipes.find(
+                  (sr) => sr.matchIngredientName.toLowerCase() === ingredient.name.toLowerCase()
+                );
+                return (
+                  <IngredientRow
+                    key={index}
+                    text={ingredient.text}
+                    bulleted
+                    linkedText={subRecipe ? ingredient.name : undefined}
+                    onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
+                    useQuantityText={ingredient.useQuantityText}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        )}
+        {!isGeneric && (dealIngredients.length > 0 || stapleIngredients.length > 0) && (
           <View style={styles.ingredientsModalCard}>
             {dealIngredients.length > 0 && (
               <View>
