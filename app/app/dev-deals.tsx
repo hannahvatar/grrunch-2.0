@@ -5,6 +5,7 @@ import { CheckIcon } from 'react-native-heroicons/outline';
 import { InputField } from '../components/InputField';
 import { ReferenceCompareCard } from '../components/ReferenceCompareCard';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { knownZonesForChain } from '../lib/dealZones';
 import { supabase } from '../lib/supabase';
 import type { Database, Tables } from '../types/database';
 
@@ -42,6 +43,10 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'rejected', label: 'Rejected' },
   { value: 'all', label: 'All' },
 ];
+
+// Sentinel for the zone filter's "untagged" bucket -- can't use null as a
+// SegmentedControl value (it's typed <T extends string>).
+const NO_ZONE = '__no_zone__';
 
 const PRICE_UNIT_OPTIONS: { value: PriceUnit; label: string }[] = [
   { value: 'package', label: 'Package' },
@@ -114,6 +119,13 @@ export default function DevDealsScreen() {
   // the primary narrowing instead.
   const [onlyUnreviewed, setOnlyUnreviewed] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
+  // 'all' (default) shows every row regardless of zone. Anabelle,
+  // 2026-09-14: "Can Airtable show the deals in their different zone for
+  // me to approve instead?" -- this is that, for her own weekly review
+  // (curated_deals.zone is never shown to shoppers anywhere -- see
+  // lib/dealZones.ts's filterDealsByZone, which only ever hides a deal,
+  // never labels it).
+  const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const loadDeals = () => {
@@ -199,7 +211,26 @@ export default function DevDealsScreen() {
 
   const statusScoped = deals.filter((d) => statusFilter === 'all' || d.status === statusFilter);
 
-  const filtered = statusScoped
+  // Options are built from whatever zones actually appear in the current
+  // status tab, not a hardcoded list -- stays correct as more deals get
+  // tagged (or as ZONES_BY_CHAIN in lib/dealZones.ts grows) with no edits
+  // needed here.
+  const presentZones = Array.from(
+    new Set(statusScoped.map((d) => d.zone).filter((z): z is string => z !== null))
+  ).sort();
+  const zoneOptions: { value: string; label: string }[] = [
+    { value: 'all', label: 'All zones' },
+    ...presentZones.map((z) => ({ value: z, label: z })),
+    { value: NO_ZONE, label: 'No zone tag' },
+  ];
+
+  const zoneScoped = statusScoped.filter((d) => {
+    if (zoneFilter === 'all') return true;
+    if (zoneFilter === NO_ZONE) return d.zone === null;
+    return d.zone === zoneFilter;
+  });
+
+  const filtered = zoneScoped
     .filter((d) => !onlyUnreviewed || d.pricing_reviewed_at === null)
     .filter((d) => {
       const q = search.trim().toLowerCase();
@@ -240,6 +271,13 @@ export default function DevDealsScreen() {
 
         <SegmentedControl options={STATUS_FILTER_OPTIONS} value={statusFilter} onChange={setStatusFilter} />
 
+        {/* Only worth showing once more than one real zone exists in
+            this tab -- with a single zone (or none at all) the filter
+            has nothing to actually narrow. */}
+        {presentZones.length > 0 && (
+          <SegmentedControl options={zoneOptions} value={zoneFilter} onChange={setZoneFilter} />
+        )}
+
         <TextInput
           value={search}
           onChangeText={setSearch}
@@ -277,6 +315,15 @@ export default function DevDealsScreen() {
                 <View style={styles.unitBadge}>
                   <Text style={styles.unitBadgeText}>{deal.price_unit}</Text>
                 </View>
+                {/* Not shown when untagged -- most rows still are, and an
+                    empty/"No zone" badge on every single row would be
+                    more noise than signal. The zone filter above already
+                    covers "show me the untagged ones". */}
+                {deal.zone && (
+                  <View style={styles.zoneBadge}>
+                    <Text style={styles.zoneBadgeText}>{deal.zone}</Text>
+                  </View>
+                )}
                 {/* Redundant once a specific status tab is active (the
                     tab already says it) -- only shown on "All", where
                     rows of every status are mixed together. */}
@@ -330,6 +377,12 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
     deal.original_price_source as OriginalPriceSource
   );
   const [usage, setUsage] = useState<DealUsage>(deal.usage as DealUsage);
+  // NO_ZONE stands in for null -- SegmentedControl's value is typed
+  // <T extends string>. Options are just this ONE deal's own chain's
+  // known zones (lib/dealZones.ts's knownZonesForChain) plus NO_ZONE, so
+  // there's no way to save a typo'd value that would silently fail to
+  // match a real shopper's store later.
+  const [zone, setZone] = useState<string>(deal.zone ?? NO_ZONE);
   // Generic category tags (e.g. "chicken breast", "beans") checked by
   // refresh_recipe_deal_tags()'s keyword fallback pass when a recipe
   // ingredient's own name doesn't exactly match this deal's real flyer
@@ -503,6 +556,7 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
         original_price_source: originalPriceSource,
         usage,
         keyword_matches: keywordMatches,
+        zone: zone === NO_ZONE ? null : zone,
       },
     };
   }
@@ -709,6 +763,28 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
         <Text style={styles.fieldLabel}>Should recipe generation use this ingredient?</Text>
         <SegmentedControl options={USAGE_OPTIONS} value={usage} onChange={setUsage} />
 
+        {/* Anabelle, 2026-09-14: "Can Airtable show the deals in their
+            different zone for me to approve instead?" -- this price only
+            applies where this chain's flyer said so; options are just
+            THIS deal's own chain's known zones (never freeform text, so
+            a typo can't silently break the shopper-side match in
+            lib/dealZones.ts) plus "No zone tag" for the common case
+            where it isn't known to differ. Never shown to a shopper
+            anywhere -- purely for your own review. */}
+        {knownZonesForChain(deal.chain_name).length > 0 && (
+          <>
+            <Text style={styles.fieldLabel}>Which zone does this price apply to?</Text>
+            <SegmentedControl
+              options={[
+                ...knownZonesForChain(deal.chain_name).map((z) => ({ value: z, label: z })),
+                { value: NO_ZONE, label: 'No zone tag' },
+              ]}
+              value={zone}
+              onChange={setZone}
+            />
+          </>
+        )}
+
         {/* Anabelle: "Chicken, Beans & Corny Things is missing 2 matched
             ingredients: chicken and beans... how can we make it like
             prime raised without antibiotics boneless skinless chicken
@@ -859,6 +935,10 @@ const styles = StyleSheet.create({
   dealRowOriginal: { fontSize: 12, fontWeight: '400', color: '#aaa', textDecorationLine: 'line-through' },
   unitBadge: { backgroundColor: '#F2F2F2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   unitBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#666' },
+  // Light purple -- distinct from unitBadge's neutral gray so a zone tag
+  // reads as its own kind of information, not a variant of price_unit.
+  zoneBadge: { backgroundColor: '#EDE7FE', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  zoneBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#6B46C1' },
   unreviewedBadge: { backgroundColor: '#FFA955', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   unreviewedBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   // Amber (pending) is the default look; approved/rejected override the

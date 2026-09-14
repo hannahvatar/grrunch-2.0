@@ -76,6 +76,7 @@ interface CuratedDealRow {
   fragment_by_weight: boolean;
   used_in_recipe: boolean;
   usage: DealUsage;
+  zone: string | null;
 }
 
 interface Database {

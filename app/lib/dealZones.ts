@@ -50,6 +50,15 @@ const ZONES_BY_CHAIN: Record<string, ZoneAnchor[]> = {
   ],
 };
 
+// The known-good zone names for a chain -- e.g. for dev-deals.tsx's zone
+// filter/editor, so a reviewer can only pick a value that actually matches
+// what nearestZoneForChain() can produce (freeform text risks a typo
+// silently breaking the match: "Vancouver (east)" would never equal
+// "Vancouver (East)"). Empty for a chain not in ZONES_BY_CHAIN.
+export function knownZonesForChain(chainName: string): string[] {
+  return (ZONES_BY_CHAIN[chainName] ?? []).map((z) => z.zone);
+}
+
 function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6_371_000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
