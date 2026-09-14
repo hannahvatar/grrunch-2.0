@@ -173,7 +173,7 @@ export default function ProfileScreen() {
         <AlertBanner
           variant="info"
           title="Advanced store customization coming soon"
-          description="You can already update where each chain shops from. Removing a store entirely isn't available yet -- for now, all 5 stay active."
+          description="You can already change the location used for each store banner. Soon, you'll also be able to remove stores you don't want included. For now, all 5 stores remain active."
           onDismiss={() => setStoresBannerDismissed(true)}
           style={styles.storesInfoBanner}
         />
