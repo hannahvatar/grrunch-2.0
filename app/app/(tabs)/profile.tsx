@@ -290,7 +290,7 @@ export default function ProfileScreen() {
       ) : savedMeals.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={[styles.emptyStateText, styles.savedEmptyStateText]}>
-            No saved recipes yet — tap the ♡ on a meal in your plan to save it here.
+            No saved recipes yet. Tap the ♡ on a meal in your plan to save it here.
           </Text>
         </View>
       ) : (
