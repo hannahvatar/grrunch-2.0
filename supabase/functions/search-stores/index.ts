@@ -17,7 +17,12 @@
 //                               // "use my location"
 //     limit?: number,          // default 8, max 10 (Places' own cap)
 //   }
-//   -> 200 { stores: StoreSearchResult[] }
+//   -> 200 { stores: StoreSearchResult[], outsideServiceArea: boolean }
+//      (outsideServiceArea: true only when real Places results existed but
+//      every one was farther than SERVICE_AREA_RADIUS_METERS from
+//      SERVICE_AREA_CENTER -- see that constant's own comment for why this
+//      cap exists. stores is always [] in that case; false whenever stores
+//      has results OR Places genuinely found nothing at all.)
 //
 // Every result is upserted into `stores` (same google_place_id-keyed
 // upsert nearest-stores already uses) so a store picked here has the same
@@ -75,6 +80,29 @@ const GOOGLE_PLACES_API_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY");
 const SEARCH_RADIUS_METERS = 50_000;
 const DEFAULT_LIMIT = 8;
 const MAX_LIMIT = 10; // Places' own searchText maxResultCount ceiling.
+
+// Real gap, caught live (Anabelle, 2026-09-14): banners set prices/
+// discounts per region, but `curated_deals` has no city/zone column at
+// all -- scripts/sync_weekly_deals.py's own dedup step explicitly
+// collapses every zone's candidates into one flat (chain_name, item_name,
+// price) pool, and every zone that exists today only ever covers Metro
+// Vancouver. fetchAllDeals() shows that whole pool to every user
+// regardless of which store they've picked (there's no per-store
+// filtering anywhere), so a store picked from FAR outside the area the
+// deals were actually collected for would show a real, correct address in
+// Profile while every price/deal shown everywhere else stays Vancouver-
+// area pricing with nothing indicating the mismatch.
+//
+// Before this function existed, "nearest store" search made picking a
+// distant store practically impossible (it took real GPS coordinates to
+// get there) -- free-text city search removes that accidental guardrail,
+// so this cap replaces it on purpose: any result farther than this from
+// the service area's center is dropped, and if that empties out an
+// otherwise-real result set, the response says so via
+// `outsideServiceArea` so the client can show an honest reason instead of
+// a bare "no results" (see the caller in index.ts below).
+const SERVICE_AREA_CENTER = { lat: 49.2827, lng: -123.1207 }; // Vancouver, BC
+const SERVICE_AREA_RADIUS_METERS = 100_000;
 
 interface GoogleAddressComponent {
   longText?: string;
@@ -264,6 +292,24 @@ export default {
       p.location !== undefined
     );
 
+    // Service-area cap -- see this constant's own header comment for why.
+    // Applied before anything else touches `withLocation` so a distant
+    // result never becomes the sort anchor, never gets upserted, and never
+    // reaches the client at all.
+    const inServiceArea = withLocation.filter(
+      (p) =>
+        haversineMeters(
+          SERVICE_AREA_CENTER.lat,
+          SERVICE_AREA_CENTER.lng,
+          p.location.latitude,
+          p.location.longitude
+        ) <= SERVICE_AREA_RADIUS_METERS
+    );
+    // Real candidates existed, but every single one was outside the
+    // service area -- distinct from a genuine "no <chain> found here" (0
+    // Places results at all), so the client can show the honest reason.
+    const outsideServiceArea = withLocation.length > 0 && inServiceArea.length === 0;
+
     // Closest-first when we have a real reference point to sort against
     // (either the user's own lat/lng, or -- once city search returns
     // results -- the first result's own location as an anchor, so the rest
@@ -272,16 +318,16 @@ export default {
     const anchor =
       numericLat !== undefined && numericLng !== undefined
         ? { lat: numericLat, lng: numericLng }
-        : withLocation[0]
-          ? { lat: withLocation[0].location.latitude, lng: withLocation[0].location.longitude }
+        : inServiceArea[0]
+          ? { lat: inServiceArea[0].location.latitude, lng: inServiceArea[0].location.longitude }
           : null;
     const sorted = anchor
-      ? [...withLocation].sort(
+      ? [...inServiceArea].sort(
           (a, b) =>
             haversineMeters(anchor.lat, anchor.lng, a.location.latitude, a.location.longitude) -
             haversineMeters(anchor.lat, anchor.lng, b.location.latitude, b.location.longitude)
         )
-      : withLocation;
+      : inServiceArea;
 
     const upsertRows = sorted.map((place) => ({
       chain_name: chainName,
@@ -305,7 +351,7 @@ export default {
     });
 
     if (dedupedRows.length === 0) {
-      return Response.json({ stores: [] });
+      return Response.json({ stores: [], outsideServiceArea });
     }
 
     // ctx.supabaseAdmin bypasses RLS -- stores only grants public SELECT.
@@ -346,7 +392,7 @@ export default {
       })
       .filter((r): r is StoreSearchResult => r !== null);
 
-    return Response.json({ stores: results });
+    return Response.json({ stores: results, outsideServiceArea });
   }),
 };
 

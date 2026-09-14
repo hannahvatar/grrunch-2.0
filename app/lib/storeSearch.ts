@@ -24,6 +24,17 @@ interface SearchStoresParams {
   limit?: number;
 }
 
+export interface SearchStoresResult {
+  stores: StoreSearchResult[];
+  // True when real locations existed for this search but every one was
+  // outside the region the app's deals data actually covers (see
+  // search-stores/index.ts's SERVICE_AREA_CENTER comment for the full
+  // "banners price regionally, curated_deals has no zone column" reasoning
+  // -- Anabelle, 2026-09-14) -- lets the picker show an honest reason
+  // instead of a bare "no results".
+  outsideServiceArea: boolean;
+}
+
 // Thin wrapper around the search-stores Edge Function, for the "Select a
 // Store" picker (components/StoreSelectorModal.tsx). Throws on a non-2xx
 // response with the real server-side error message unwrapped -- same
@@ -31,9 +42,10 @@ interface SearchStoresParams {
 // handleToggleFeatured: supabase-js only populates `data` for a genuine
 // 2xx, so a validation/upstream error's message has to be read off
 // invokeError's raw Response instead.
-export async function searchStoresByChain(params: SearchStoresParams): Promise<StoreSearchResult[]> {
+export async function searchStoresByChain(params: SearchStoresParams): Promise<SearchStoresResult> {
   const { data, error: invokeError } = await supabase.functions.invoke<{
     stores?: StoreSearchResult[];
+    outsideServiceArea?: boolean;
     error?: string;
   }>('search-stores', {
     body: {
@@ -59,5 +71,5 @@ export async function searchStoresByChain(params: SearchStoresParams): Promise<S
     throw new Error(message);
   }
 
-  return data.stores;
+  return { stores: data.stores, outsideServiceArea: data.outsideServiceArea ?? false };
 }

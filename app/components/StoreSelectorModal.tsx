@@ -55,13 +55,18 @@ export function StoreSelectorModal({ visible, onClose, chainName, currentStoreId
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState(false);
+  // Distinct from a genuine "no <chain> found here" -- see search-stores/
+  // index.ts's SERVICE_AREA_CENTER comment for what this actually means.
+  const [outsideServiceArea, setOutsideServiceArea] = useState(false);
 
   async function runSearch(opts: { city?: string; lat?: number; lng?: number }) {
     setLoading(true);
     setError(false);
+    setOutsideServiceArea(false);
     try {
-      const results = await searchStoresByChain({ chainName, limit: 8, ...opts });
-      setStores(results);
+      const result = await searchStoresByChain({ chainName, limit: 8, ...opts });
+      setStores(result.stores);
+      setOutsideServiceArea(result.outsideServiceArea);
     } catch {
       setError(true);
     } finally {
@@ -184,7 +189,11 @@ export function StoreSelectorModal({ visible, onClose, chainName, currentStoreId
 
             {!loading && !error && stores.length === 0 && (
               <View style={styles.centered}>
-                <Text style={styles.errorText}>No {chainName} locations found. Try a different city.</Text>
+                <Text style={styles.errorText}>
+                  {outsideServiceArea
+                    ? `We found ${chainName} locations there, but they're outside the area our deals currently cover. Deals and pricing are Metro Vancouver only for now.`
+                    : `No ${chainName} locations found. Try a different city.`}
+                </Text>
               </View>
             )}
 
