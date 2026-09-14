@@ -15,6 +15,14 @@ export interface SelectedStore {
   // no new filtering for that one row until the user re-picks it).
   lat?: number;
   lng?: number;
+  // True once the user has removed this store from Profile > My stores
+  // (Anabelle, 2026-09-14: "for the user to remove one or more stores
+  // from their stores list... Once a store is removed, it should appear
+  // disabled and an add back button should be there to add it back").
+  // A removed store stays in this array (never spliced out) so "Add
+  // back" can restore it without re-running the picker -- undefined/
+  // false means active, same as every store before this field existed.
+  removed?: boolean;
 }
 
 const STORAGE_KEY = 'grrunch:selectedStores';

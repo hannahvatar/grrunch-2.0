@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
   ChevronDownIcon,
@@ -8,6 +8,7 @@ import {
   Cog6ToothIcon,
   LockClosedIcon,
   PencilIcon,
+  TrashIcon,
 } from 'react-native-heroicons/outline';
 import { HeartIcon } from 'react-native-heroicons/solid';
 
@@ -30,6 +31,10 @@ import { useSubscription } from '../../lib/subscription';
 // peach background/orange accent, just plain white/grey/black.
 const ACCENT = '#FFA955';
 const INK = '#111';
+// Matches MembershipStatus.tsx/ManageAccountSection.tsx's own ERROR
+// const -- same red used for "Cancel trial"/"Delete account" there, now
+// this screen's "Yes, delete store" too.
+const ERROR = '#D0342C';
 
 // Membership / My stores / Saved recipes / Companion recipes are each
 // collapsible (Anabelle, 2026-08-27: "should probably be accordions" --
@@ -80,6 +85,12 @@ export default function ProfileScreen() {
   // right slot even if myStores itself has re-rendered with a new array
   // reference in the meantime.
   const [editingStore, setEditingStore] = useState<SelectedStore | null>(null);
+  // The store pending a remove confirmation -- null when the modal is
+  // closed. Anabelle, 2026-09-14: "add a garbage bin icon button next to
+  // the pencil button. Pair it with a confirmation modal... keeping one
+  // mandatory". Removing never deletes the row -- see SelectedStore's
+  // own `removed` field comment -- so "Add back" can restore it later.
+  const [deletingStore, setDeletingStore] = useState<SelectedStore | null>(null);
   const { isSubscribed } = useSubscription();
   const { isGuest } = useAuth();
 
@@ -177,49 +188,92 @@ export default function ProfileScreen() {
         <View style={styles.storesCardOuter}>
           <View style={styles.storesCardShadow} />
           <View style={styles.storesCard}>
-            {myStores.map((store) => (
-              <View key={store.id} style={styles.storeRow}>
-                <View style={styles.storeAvatar}>
-                  <BuildingStorefrontIcon size={26} color={INK} />
-                </View>
-                <View style={styles.storeInfo}>
-                  <Text style={styles.storeName}>{store.name}</Text>
-                  <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
-                </View>
-                {/* Next-to-feature treatment (Anabelle's call, replaces
-                    the single "Upgrade to customize" button above the
-                    list) -- every member-only feature gets its own
-                    inline, stroked (outline, not filled) button, sitting
-                    right next to the feature it gates, instead of one
-                    banner-style upsell for the whole section.
-                    A subscriber now gets a real per-row picker
-                    (StoreSelectorModal, 2026-09-14) -- browse/search
-                    other locations of just THIS chain and swap only this
-                    one slot, closing the gap flagged here up through
-                    2026-09-08 (a subscriber used to have to re-run the
-                    whole location -> stores onboarding flow, replacing
-                    all 5 stores at once just to change one). Free tier
-                    keeps the old behavior -- store editing genuinely is
-                    member-only, so /upgrade is the correct destination
-                    for them. */}
-                <Pressable
-                  style={styles.changeStoreButton}
-                  onPress={() =>
-                    isSubscribed
-                      ? setEditingStore(store)
-                      : router.push({ pathname: '/upgrade', params: { reason: 'change your stores' } })
-                  }
-                  accessibilityLabel="Change"
-                  hitSlop={8}
-                >
-                  {isSubscribed ? (
-                    <PencilIcon size={15} color={INK} />
+            {/* At least one store must stay active -- computed once
+                against the whole list (not per-row) so removing the
+                second-to-last active store correctly disables the
+                remaining one's own trash button too, not just the one
+                just removed. */}
+            {(() => {
+              const activeStoreCount = myStores.filter((s) => !s.removed).length;
+              return myStores.map((store) => (
+                <View key={store.id} style={styles.storeRow}>
+                  <View style={[styles.storeAvatar, store.removed && styles.storeAvatarRemoved]}>
+                    <BuildingStorefrontIcon size={26} color={store.removed ? '#999' : INK} />
+                  </View>
+                  <View style={styles.storeInfo}>
+                    <Text style={[styles.storeName, store.removed && styles.storeNameRemoved]}>{store.name}</Text>
+                    <Text style={styles.storeSubtitle}>{store.removed ? 'Removed' : store.subtitle}</Text>
+                  </View>
+                  {store.removed ? (
+                    // Anabelle, 2026-09-14: "Once a store is removed, it
+                    // should appear disabled and a add back button should
+                    // be there to add it back" -- non-destructive, so no
+                    // confirmation needed, unlike removing.
+                    <Pressable
+                      style={styles.addBackButton}
+                      onPress={() => setMyStores(myStores.map((s) => (s.id === store.id ? { ...s, removed: false } : s)))}
+                    >
+                      <Text style={styles.addBackButtonText}>Add back</Text>
+                    </Pressable>
                   ) : (
-                    <LockClosedIcon size={15} color={INK} />
+                    <View style={styles.storeRowActions}>
+                      {/* Next-to-feature treatment (Anabelle's call,
+                          replaces the single "Upgrade to customize"
+                          button above the list) -- every member-only
+                          feature gets its own inline, stroked (outline,
+                          not filled) button, sitting right next to the
+                          feature it gates, instead of one banner-style
+                          upsell for the whole section.
+                          A subscriber now gets a real per-row picker
+                          (StoreSelectorModal, 2026-09-14) -- browse/
+                          search other locations of just THIS chain and
+                          swap only this one slot, closing the gap
+                          flagged here up through 2026-09-08 (a
+                          subscriber used to have to re-run the whole
+                          location -> stores onboarding flow, replacing
+                          all 5 stores at once just to change one). Free
+                          tier keeps the old behavior -- store editing
+                          genuinely is member-only, so /upgrade is the
+                          correct destination for them. */}
+                      <Pressable
+                        style={styles.changeStoreButton}
+                        onPress={() =>
+                          isSubscribed
+                            ? setEditingStore(store)
+                            : router.push({ pathname: '/upgrade', params: { reason: 'change your stores' } })
+                        }
+                        accessibilityLabel="Change"
+                        hitSlop={8}
+                      >
+                        {isSubscribed ? (
+                          <PencilIcon size={15} color={INK} />
+                        ) : (
+                          <LockClosedIcon size={15} color={INK} />
+                        )}
+                      </Pressable>
+                      {/* Member-only, same gate as Change -- free tier
+                          can't remove a store any more than they can
+                          swap one, so this simply doesn't render rather
+                          than showing a second lock icon next to
+                          Change's own. Hidden (not just disabled) on the
+                          one remaining active store -- "keeping one
+                          mandatory" -- rather than letting the confirm
+                          modal open just to fail. */}
+                      {isSubscribed && activeStoreCount > 1 && (
+                        <Pressable
+                          style={styles.deleteStoreButton}
+                          onPress={() => setDeletingStore(store)}
+                          accessibilityLabel="Remove"
+                          hitSlop={8}
+                        >
+                          <TrashIcon size={15} color={INK} />
+                        </Pressable>
+                      )}
+                    </View>
                   )}
-                </Pressable>
-              </View>
-            ))}
+                </View>
+              ));
+            })()}
             {/* Last line of the store card -- member-only upsell, same
                 next-to-feature language as the per-row Change buttons
                 above (Anabelle's mockup: title + subtitle on the left,
@@ -359,6 +413,37 @@ export default function ProfileScreen() {
           }}
         />
       )}
+      {/* Same plain-Modal/centered-card pattern as LegalDocumentModal.tsx
+          -- a native Alert.alert can't give "Yes, delete store"/"Keep it"
+          their own real button styling (destructive-outline vs. filled-
+          primary), which is specifically what Anabelle asked for here. */}
+      <Modal visible={!!deletingStore} transparent animationType="fade" onRequestClose={() => setDeletingStore(null)}>
+        <Pressable style={styles.confirmBackdrop} onPress={() => setDeletingStore(null)}>
+          <View style={styles.confirmCardWrap}>
+            <View pointerEvents="none" style={styles.confirmCardShadow} />
+            <Pressable style={styles.confirmCard} onPress={(e) => e.stopPropagation()}>
+              <Text style={styles.confirmTitle}>Remove {deletingStore?.name}?</Text>
+              <Text style={styles.confirmBody}>
+                You won't see deals or pricing from this store anymore. You can add it back anytime.
+              </Text>
+              <View style={styles.confirmActions}>
+                <Pressable style={styles.confirmKeepButton} onPress={() => setDeletingStore(null)}>
+                  <Text style={styles.confirmKeepButtonText}>Keep it</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.confirmDeleteButton}
+                  onPress={() => {
+                    setMyStores(myStores.map((s) => (s.id === deletingStore?.id ? { ...s, removed: true } : s)));
+                    setDeletingStore(null);
+                  }}
+                >
+                  <Text style={styles.confirmDeleteButtonText}>Yes, delete store</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -446,6 +531,12 @@ const styles = StyleSheet.create({
   storeInfo: { flex: 1 },
   storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 13, color: '#888' },
+  // Muted, not hidden -- Anabelle, 2026-09-14: a removed store "should
+  // appear disabled", still readable (so "Add back" means something)
+  // rather than collapsing to a bare row.
+  storeAvatarRemoved: { backgroundColor: '#F2F2F2' },
+  storeNameRemoved: { color: '#999' },
+  storeRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   // Next-to-feature member-only button -- stroked/outline (white fill,
   // 1.5px solid INK border -- was dashed, Anabelle 2026-09-14), icon
   // only now (the "Change" text label was removed same day) -- a fixed-
@@ -461,6 +552,34 @@ const styles = StyleSheet.create({
     borderColor: INK,
     borderRadius: 16,
   },
+  // Same icon-only-circle shape as changeStoreButton, right next to it
+  // (Anabelle, 2026-09-14: "add a garbage bin icon button next to the
+  // pencil button") -- plain INK/white, not red: the row itself isn't
+  // "dangerous" to look at, the confirmation modal is where the real
+  // destructive styling (ERROR) actually shows up.
+  deleteStoreButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 16,
+  },
+  // Real btn-primary-orange (matches upgradeRowButton below) -- restoring
+  // a removed store is a positive action, not a lesser-emphasis one, so
+  // it gets the same filled-pill treatment as the section's other real
+  // conversion action instead of changeStoreButton's stroked-outline look.
+  addBackButton: {
+    backgroundColor: ACCENT,
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  addBackButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Real btn-primary-orange -- see the DS's canonical spec on login.tsx's
   // primaryButton (ACCENT fill, 2px INK border). Distinct from the Change
   // buttons' stroked/outline style since this row is the section's one
@@ -500,4 +619,64 @@ const styles = StyleSheet.create({
     borderRadius: 28,
   },
   signOutButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // Delete-store confirmation -- same centered-card/backdrop-press-to-
+  // close/stopPropagation pattern as LegalDocumentModal.tsx, sized to
+  // its own short content instead of that component's 80%-viewport card.
+  confirmBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(17,17,17,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  confirmCardWrap: { width: '100%', maxWidth: 360 },
+  confirmCardShadow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
+    borderRadius: 24,
+    transform: [{ translateX: -1 }, { translateY: 1 }],
+  },
+  confirmCard: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 24,
+    padding: 20,
+    gap: 12,
+  },
+  confirmTitle: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  confirmBody: { fontSize: 14, lineHeight: 20, color: '#343837' },
+  confirmActions: { gap: 10, marginTop: 8 },
+  // Primary/safe action first and most prominent (ACCENT fill, matches
+  // this screen's other real primary actions) -- Anabelle's own framing
+  // ("a destructive style button that says yes, delete store. Or
+  // another primary button that say keep it") puts "Keep it" as the
+  // normal/default choice, "Yes, delete store" as the deliberate,
+  // lesser-emphasis one right below it.
+  confirmKeepButton: {
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 24,
+  },
+  confirmKeepButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // Same btn-secondary-destructive as MembershipStatus.tsx's own
+  // cancelTrialButton -- white fill, 2px ERROR border, ERROR text.
+  confirmDeleteButton: {
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: ERROR,
+    borderRadius: 24,
+  },
+  confirmDeleteButtonText: { color: ERROR, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });
