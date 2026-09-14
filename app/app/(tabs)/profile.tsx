@@ -289,8 +289,8 @@ export default function ProfileScreen() {
         <ActivityIndicator size="small" color="#111" style={styles.loadingIndicator} />
       ) : savedMeals.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>
-            No saved recipes yet — tap the ♡ on a meal in your plan to save it here.
+          <Text style={[styles.emptyStateText, styles.savedEmptyStateText]}>
+            No saved recipes yet. Tap the ♡ on a meal in your plan to save it here.
           </Text>
         </View>
       ) : (
@@ -422,6 +422,12 @@ const styles = StyleSheet.create({
   loadingIndicator: { marginTop: 8 },
   emptyState: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
   emptyStateText: { color: '#666', fontSize: 14 },
+  // 16px, black (Anabelle, 2026-09-14) -- was 14px/#666, same as
+  // emptyStateText above. Scoped to just the Saved recipes empty state
+  // (an override layered on top of emptyStateText, not a change to that
+  // shared style) since My stores/Companion recipes' own empty states
+  // weren't part of this request.
+  savedEmptyStateText: { fontSize: 16, color: INK },
   smallLinkButton: { alignSelf: 'flex-start' },
   smallLinkButtonText: { color: '#111', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
   // Same offset-shadow card technique as app/stores.tsx's listCardOuter/
