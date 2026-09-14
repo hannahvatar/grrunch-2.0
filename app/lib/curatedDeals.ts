@@ -26,6 +26,12 @@ export interface Deal {
   // Anabelle: "all deals items should also appear in the weekly deals
   // section" (it's core to actually making that recipe, not an upsell).
   usedInRecipe: boolean;
+  // Airtable's "Zone coverage" field, passed through as-is (e.g.
+  // "Vancouver (East)", "Hope") -- see 20260914010000_curated_deals_zone
+  // .sql and lib/dealZones.ts. Null for most rows today (only ~1/3 of
+  // Airtable "Deals" records had it set as of 2026-09-14) -- filterDealsByZone
+  // below treats that as "unknown, don't exclude", not "wrong zone".
+  zone: string | null;
 }
 
 const UNCATEGORIZED = 'Other';
@@ -151,6 +157,7 @@ function mapRowToDeal(row: {
   image_url: string | null;
   original_price_source: string;
   used_in_recipe: boolean | null;
+  zone: string | null;
 }): Deal | null {
   if (row.price == null || row.original_price == null) return null;
   return {
@@ -165,6 +172,7 @@ function mapRowToDeal(row: {
     imageUrl: row.image_url,
     originalPriceSource: row.original_price_source as OriginalPriceSource,
     usedInRecipe: row.used_in_recipe ?? false,
+    zone: row.zone,
   };
 }
 

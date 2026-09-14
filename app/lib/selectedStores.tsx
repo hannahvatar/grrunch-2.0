@@ -6,6 +6,15 @@ export interface SelectedStore {
   initial: string;
   name: string;
   subtitle: string;
+  // The specific location's real coordinates -- added 2026-09-14 for
+  // lib/dealZones.ts's nearestZoneForChain(), which needs a real point to
+  // match against a chain's zone anchors (e.g. telling a Burnaby Real
+  // Canadian Superstore apart from one outside the urban-zone flyer).
+  // Optional: a store persisted before this field existed has neither,
+  // and simply isn't zone-matched (same as before -- no regression, just
+  // no new filtering for that one row until the user re-picks it).
+  lat?: number;
+  lng?: number;
 }
 
 const STORAGE_KEY = 'grrunch:selectedStores';

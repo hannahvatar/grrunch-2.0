@@ -69,6 +69,7 @@ export type Database = {
           status: Database["public"]["Enums"]["deal_status"]
           usage: string
           used_in_recipe: boolean
+          zone: string | null
         }
         Insert: {
           airtable_record_id?: string | null
@@ -99,6 +100,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["deal_status"]
           usage?: string
           used_in_recipe?: boolean
+          zone?: string | null
         }
         Update: {
           airtable_record_id?: string | null
@@ -129,6 +131,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["deal_status"]
           usage?: string
           used_in_recipe?: boolean
+          zone?: string | null
         }
         Relationships: []
       }
