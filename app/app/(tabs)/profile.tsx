@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
+  CakeIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   Cog6ToothIcon,
+  EyeIcon,
   LockClosedIcon,
   PencilIcon,
 } from 'react-native-heroicons/outline';
@@ -18,6 +20,7 @@ import { SubRecipeCard } from '../../components/SubRecipeCard';
 import { UpgradeCta } from '../../components/UpgradeCta';
 import { useAuth } from '../../lib/auth';
 import type { Meal, SubRecipe } from '../../lib/mealData';
+import { getRecipeImage } from '../../lib/recipeImages';
 import { fetchRecipesByIds } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
 import { type SelectedStore, useSelectedStores } from '../../lib/selectedStores';
@@ -294,19 +297,53 @@ export default function ProfileScreen() {
           </Text>
         </View>
       ) : (
+        // Anabelle, 2026-09-14: "the recipe should appear in individual
+        // white container and add a view icon so when user click on it
+        // it access the ful recipe" -- savedCard already navigated on
+        // tapping the name/meta text (kept, same as before); the new
+        // EyeIcon button is the explicit, discoverable affordance for
+        // that same action, same idea as MealCard's own separate "View
+        // recipe" button existing alongside a tappable card.
+        //
+        // Follow-up, same day: "These saved recipes will live over time
+        // so i want to make them recipe card thumb than their card
+        // detached from current info. Remove references to weekly
+        // deals also price per serving." price/serving is THIS week's
+        // deal-driven number (refresh_recipe_deal_tags(), recomputed
+        // weekly) -- showing it here read as a live promise for a
+        // recipe someone might reopen months later, long after this
+        // week's flyer prices (and even this exact deal match) are
+        // gone. Dropped it entirely; minutes is real recipe metadata,
+        // not deal-derived, so it stays. Added a real thumbnail
+        // (getRecipeImage, same helper/fallback pattern as MealCard's
+        // own image) so this reads as a recipe card, not a bare text
+        // row.
         savedMeals.map((meal) => (
           <View key={meal.id} style={styles.savedCard}>
-            <Pressable onPress={() => toggleSaved(meal.id)} hitSlop={8}>
-              <HeartIcon size={18} color="#e0245e" />
-            </Pressable>
+            <View style={styles.savedThumb}>
+              {getRecipeImage(meal.name) ? (
+                <Image source={getRecipeImage(meal.name)} style={styles.savedThumbImage} resizeMode="cover" />
+              ) : (
+                <CakeIcon size={22} color="#ccc" />
+              )}
+            </View>
             <Pressable
               style={styles.savedInfo}
               onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
             >
               <Text style={styles.savedName}>{meal.name}</Text>
-              <Text style={styles.savedMeta}>
-                ${meal.price.toFixed(2)} / serving · {meal.minutes} min
-              </Text>
+              <Text style={styles.savedMeta}>{meal.minutes} min</Text>
+            </Pressable>
+            <Pressable onPress={() => toggleSaved(meal.id)} hitSlop={8}>
+              <HeartIcon size={18} color="#e0245e" />
+            </Pressable>
+            <Pressable
+              style={styles.viewSavedButton}
+              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
+              accessibilityLabel="View recipe"
+              hitSlop={8}
+            >
+              <EyeIcon size={18} color={INK} />
             </Pressable>
           </View>
         ))
@@ -500,18 +537,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   upgradeRowButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // White container (Anabelle, 2026-09-14) -- was transparent (just a
+  // thin #eee border on the screen's own peach background), so a row
+  // didn't visually read as its own card the way My stores'/Weekly
+  // Deals' own white cards do.
   savedCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#eee',
     borderRadius: 14,
     padding: 14,
     gap: 12,
   },
+  // Recipe-card thumbnail (Anabelle, 2026-09-14: "make them recipe card
+  // thumb") -- same getRecipeImage/CakeIcon-fallback pattern as
+  // MealCard's own image, just smaller for this compact row.
+  savedThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    backgroundColor: '#F2F2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  savedThumbImage: { width: '100%', height: '100%' },
   savedInfo: { flex: 1 },
   savedName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // Cook time only -- price/serving (THIS week's deal-driven number)
+  // was removed here (Anabelle, 2026-09-14: "detached from current
+  // info... remove references to weekly deals also price per
+  // serving") since a saved recipe is meant to be reopened long after
+  // this week's flyer prices are gone.
   savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
+  // Explicit "view full recipe" affordance, same icon-only-circle shape
+  // as changeStoreButton above -- same action the card's own name/meta
+  // tap already triggers, just discoverable now instead of implicit.
+  viewSavedButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 16,
+  },
   subRecipesList: { gap: 12 },
   // Same shape/height/radius as signup-nudge.tsx's tertiaryButton --
   // white fill, 1.5px INK border, 56pt pill.
