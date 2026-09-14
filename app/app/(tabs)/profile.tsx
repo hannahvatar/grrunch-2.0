@@ -423,14 +423,14 @@ const styles = StyleSheet.create({
   storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 13, color: '#888' },
   // Next-to-feature member-only button -- stroked/outline (white fill,
-  // 1.5px dashed INK border), leading lock icon, pill shape.
+  // 1.5px solid INK border -- was dashed, Anabelle 2026-09-14), leading
+  // lock/pencil icon, pill shape.
   changeStoreButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderStyle: 'dashed',
     borderColor: INK,
     borderRadius: 999,
     paddingVertical: 7,
