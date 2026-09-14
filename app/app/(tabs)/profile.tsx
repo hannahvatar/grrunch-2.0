@@ -6,6 +6,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   Cog6ToothIcon,
+  EyeIcon,
   LockClosedIcon,
   PencilIcon,
 } from 'react-native-heroicons/outline';
@@ -294,6 +295,13 @@ export default function ProfileScreen() {
           </Text>
         </View>
       ) : (
+        // Anabelle, 2026-09-14: "the recipe should appear in individual
+        // white container and add a view icon so when user click on it
+        // it access the ful recipe" -- savedCard already navigated on
+        // tapping the name/meta text (kept, same as before); the new
+        // EyeIcon button is the explicit, discoverable affordance for
+        // that same action, same idea as MealCard's own separate "View
+        // recipe" button existing alongside a tappable card.
         savedMeals.map((meal) => (
           <View key={meal.id} style={styles.savedCard}>
             <Pressable onPress={() => toggleSaved(meal.id)} hitSlop={8}>
@@ -307,6 +315,14 @@ export default function ProfileScreen() {
               <Text style={styles.savedMeta}>
                 ${meal.price.toFixed(2)} / serving · {meal.minutes} min
               </Text>
+            </Pressable>
+            <Pressable
+              style={styles.viewSavedButton}
+              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
+              accessibilityLabel="View recipe"
+              hitSlop={8}
+            >
+              <EyeIcon size={18} color={INK} />
             </Pressable>
           </View>
         ))
@@ -500,9 +516,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   upgradeRowButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // White container (Anabelle, 2026-09-14) -- was transparent (just a
+  // thin #eee border on the screen's own peach background), so a row
+  // didn't visually read as its own card the way My stores'/Weekly
+  // Deals' own white cards do.
   savedCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#eee',
     borderRadius: 14,
@@ -512,6 +533,19 @@ const styles = StyleSheet.create({
   savedInfo: { flex: 1 },
   savedName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
+  // Explicit "view full recipe" affordance, same icon-only-circle shape
+  // as changeStoreButton above -- same action the card's own name/meta
+  // tap already triggers, just discoverable now instead of implicit.
+  viewSavedButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 16,
+  },
   subRecipesList: { gap: 12 },
   // Same shape/height/radius as signup-nudge.tsx's tertiaryButton --
   // white fill, 1.5px INK border, 56pt pill.
