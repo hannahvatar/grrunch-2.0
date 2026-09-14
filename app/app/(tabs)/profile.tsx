@@ -11,6 +11,7 @@ import {
 } from 'react-native-heroicons/outline';
 import { HeartIcon } from 'react-native-heroicons/solid';
 
+import { AlertBanner } from '../../components/AlertBanner';
 import { MembershipStatus } from '../../components/MembershipStatus';
 import { StoreSelectorModal } from '../../components/StoreSelectorModal';
 import { SubRecipeCard } from '../../components/SubRecipeCard';
@@ -80,6 +81,15 @@ export default function ProfileScreen() {
   // right slot even if myStores itself has re-rendered with a new array
   // reference in the meantime.
   const [editingStore, setEditingStore] = useState<SelectedStore | null>(null);
+  // Dismissible per screen visit, not persisted -- Anabelle, 2026-09-14:
+  // "add a info banner at the top of my stores section that tell user
+  // that advanced stores customization such as removing store will come
+  // soon" (following the decision to hold off on store removal for v1 --
+  // see the "keeping the recipe-generation scope simple" conversation
+  // this banner's copy is paraphrasing). Not worth AsyncStorage-backed
+  // "seen once" persistence for a temporary, low-stakes heads-up like
+  // this -- reappearing next visit is fine.
+  const [storesBannerDismissed, setStoresBannerDismissed] = useState(false);
   const { isSubscribed } = useSubscription();
   const { isGuest } = useAuth();
 
@@ -159,6 +169,15 @@ export default function ProfileScreen() {
       />
       {storesOpen && (
       <>
+      {isSubscribed && !storesBannerDismissed && (
+        <AlertBanner
+          variant="info"
+          title="Advanced store customization coming soon"
+          description="You can already update where each chain shops from. Removing a store entirely isn't available yet -- for now, all 5 stay active."
+          onDismiss={() => setStoresBannerDismissed(true)}
+          style={styles.storesInfoBanner}
+        />
+      )}
       {storesLoaded && myStores.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
@@ -408,6 +427,7 @@ const styles = StyleSheet.create({
   // Same offset-shadow card technique as app/stores.tsx's listCardOuter/
   // listCardShadow/listCard -- a flat black shadow layer behind a white,
   // INK-bordered card on top.
+  storesInfoBanner: { marginTop: 8, marginBottom: 4 },
   storesCardOuter: { marginTop: 4 },
   storesCardShadow: {
     position: 'absolute',
