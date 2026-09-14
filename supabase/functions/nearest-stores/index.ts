@@ -47,6 +47,7 @@ interface Database {
           lat: number | null;
           lng: number | null;
           hours: unknown | null;
+          phone: string | null;
           google_place_id: string | null;
           created_at: string;
         };
@@ -58,6 +59,7 @@ interface Database {
           lat?: number | null;
           lng?: number | null;
           hours?: unknown | null;
+          phone?: string | null;
           google_place_id?: string | null;
           created_at?: string;
         };
@@ -103,6 +105,7 @@ interface GooglePlace {
   formattedAddress?: string;
   location?: { latitude: number; longitude: number };
   regularOpeningHours?: unknown;
+  nationalPhoneNumber?: string;
 }
 
 interface StoreResult {
@@ -112,6 +115,7 @@ interface StoreResult {
   lat: number;
   lng: number;
   hours: unknown;
+  phone: string | null;
   google_place_id: string;
 }
 
@@ -175,7 +179,7 @@ async function searchPlaces(query: string, lat: number, lng: number): Promise<Go
       "Content-Type": "application/json",
       "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY ?? "",
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.location,places.regularOpeningHours",
+        "places.id,places.displayName,places.formattedAddress,places.location,places.regularOpeningHours,places.nationalPhoneNumber",
     },
     body: JSON.stringify({
       textQuery: query,
@@ -227,6 +231,7 @@ async function findNearestForChain(
     lat: nearest.location!.latitude,
     lng: nearest.location!.longitude,
     hours: nearest.regularOpeningHours ?? null,
+    phone: nearest.nationalPhoneNumber ?? null,
     google_place_id: nearest.id,
   };
 }

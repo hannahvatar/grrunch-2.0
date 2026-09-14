@@ -12,13 +12,14 @@ import {
 import { HeartIcon } from 'react-native-heroicons/solid';
 
 import { MembershipStatus } from '../../components/MembershipStatus';
+import { StoreSelectorModal } from '../../components/StoreSelectorModal';
 import { SubRecipeCard } from '../../components/SubRecipeCard';
 import { UpgradeCta } from '../../components/UpgradeCta';
 import { useAuth } from '../../lib/auth';
 import type { Meal, SubRecipe } from '../../lib/mealData';
 import { fetchRecipesByIds } from '../../lib/recipes';
 import { useSavedRecipes } from '../../lib/savedRecipes';
-import { useSelectedStores } from '../../lib/selectedStores';
+import { type SelectedStore, useSelectedStores } from '../../lib/selectedStores';
 import { supabase } from '../../lib/supabase';
 import { fetchSubRecipes } from '../../lib/subRecipes';
 import { useSubscription } from '../../lib/subscription';
@@ -72,7 +73,13 @@ export default function ProfileScreen() {
   const [savedMeals, setSavedMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { stores: myStores, loaded: storesLoaded } = useSelectedStores();
+  const { stores: myStores, loaded: storesLoaded, setStores: setMyStores } = useSelectedStores();
+  // The single "My stores" row currently open in the Select-a-Store picker
+  // -- null when the modal is closed. Tracking the whole row (not just an
+  // id) means onSelectStore below can always find its way back to the
+  // right slot even if myStores itself has re-rendered with a new array
+  // reference in the meantime.
+  const [editingStore, setEditingStore] = useState<SelectedStore | null>(null);
   const { isSubscribed } = useSubscription();
   const { isGuest } = useAuth();
 
@@ -185,33 +192,31 @@ export default function ProfileScreen() {
                     inline, stroked (outline, not filled) button, sitting
                     right next to the feature it gates, instead of one
                     banner-style upsell for the whole section.
-                    Anabelle, 2026-09-08: this now actually branches by
-                    tier, since there's still no manual store-search UI
-                    (same gap nearest-stores/index.ts's own comments
-                    flag) to let a member swap just this one row for a
-                    specific replacement -- a subscriber instead re-runs
-                    the same location -> stores flow onboarding itself
-                    uses, picking a fresh nearby-stores list that
-                    replaces the whole selection at once (not a true
-                    per-row edit, but a real, working path instead of
-                    the paywall a paying member used to get bounced
-                    to). Free tier keeps the old behavior -- store
-                    editing genuinely is member-only, so /upgrade is the
-                    correct destination for them. */}
+                    A subscriber now gets a real per-row picker
+                    (StoreSelectorModal, 2026-09-14) -- browse/search
+                    other locations of just THIS chain and swap only this
+                    one slot, closing the gap flagged here up through
+                    2026-09-08 (a subscriber used to have to re-run the
+                    whole location -> stores onboarding flow, replacing
+                    all 5 stores at once just to change one). Free tier
+                    keeps the old behavior -- store editing genuinely is
+                    member-only, so /upgrade is the correct destination
+                    for them. */}
                 <Pressable
                   style={styles.changeStoreButton}
                   onPress={() =>
                     isSubscribed
-                      ? router.push('/location')
+                      ? setEditingStore(store)
                       : router.push({ pathname: '/upgrade', params: { reason: 'change your stores' } })
                   }
+                  accessibilityLabel="Change"
+                  hitSlop={8}
                 >
                   {isSubscribed ? (
-                    <PencilIcon size={13} color={INK} />
+                    <PencilIcon size={15} color={INK} />
                   ) : (
-                    <LockClosedIcon size={13} color={INK} />
+                    <LockClosedIcon size={15} color={INK} />
                   )}
-                  <Text style={styles.changeStoreButtonText}>Change</Text>
                 </Pressable>
               </View>
             ))}
@@ -335,6 +340,23 @@ export default function ProfileScreen() {
         </Pressable>
       )}
     </ScrollView>
+      {editingStore && (
+        <StoreSelectorModal
+          visible={!!editingStore}
+          onClose={() => setEditingStore(null)}
+          chainName={editingStore.name}
+          currentStoreId={editingStore.id}
+          onSelectStore={(result) => {
+            const chosen: SelectedStore = {
+              id: result.id,
+              initial: editingStore.initial,
+              name: editingStore.name,
+              subtitle: result.address,
+            };
+            setMyStores(myStores.map((s) => (s.id === editingStore.id ? chosen : s)));
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -423,20 +445,20 @@ const styles = StyleSheet.create({
   storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 13, color: '#888' },
   // Next-to-feature member-only button -- stroked/outline (white fill,
-  // 1.5px dashed INK border), leading lock icon, pill shape.
+  // 1.5px solid INK border -- was dashed, Anabelle 2026-09-14), icon
+  // only now (the "Change" text label was removed same day) -- a fixed-
+  // size circle instead of a text pill, accessibilityLabel carries the
+  // same "Change" wording for screen readers.
   changeStoreButton: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
     alignItems: 'center',
-    gap: 5,
+    justifyContent: 'center',
     backgroundColor: '#fff',
     borderWidth: 1.5,
-    borderStyle: 'dashed',
     borderColor: INK,
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+    borderRadius: 16,
   },
-  changeStoreButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Real btn-primary-orange -- see the DS's canonical spec on login.tsx's
   // primaryButton (ACCENT fill, 2px INK border). Distinct from the Change
   // buttons' stroked/outline style since this row is the section's one
