@@ -243,52 +243,63 @@ function ManageAccountForm({
         Tell us a little more about you so we can personalize your deals and recipes.
       </Text>
 
-      <Text style={styles.subheading}>Personal info</Text>
-      {/* Split into First/Last (Anabelle, 2026-09-15), was one combined
-          "Name" field -- two real columns (see the migration), not a
-          client-side split/join of one string. */}
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>First name</Text>
-        <InputField placeholder="First name" value={firstName} onChangeText={setFirstName} />
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Last name</Text>
-        <InputField placeholder="Last name" value={lastName} onChangeText={setLastName} />
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Phone number</Text>
-        <InputField placeholder="Phone number" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Email</Text>
-        <View style={styles.readOnlyField}>
-          <Text style={styles.readOnlyText}>{email ?? '—'}</Text>
+      {/* Personal info / Grrunch preferences each get their own white
+          card (Anabelle, 2026-09-15: "should be in defined section in a
+          white container") -- same white-fill/2px-INK-border language
+          as MembershipStatus.tsx's trialCard, rather than plain
+          subheadings running directly into the peach background. */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.subheading}>Personal info</Text>
+        {/* Split into First/Last (Anabelle, 2026-09-15), was one combined
+            "Name" field -- two real columns (see the migration), not a
+            client-side split/join of one string. */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>First name</Text>
+          <InputField placeholder="First name" value={firstName} onChangeText={setFirstName} />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Last name</Text>
+          <InputField placeholder="Last name" value={lastName} onChangeText={setLastName} />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Phone number</Text>
+          <InputField placeholder="Phone number" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
+        </View>
+        {/* Postal code lives here, right after Phone number (Anabelle,
+            2026-09-15: "move postal code below phone number") -- moved
+            out of Grrunch preferences below, it's still the same
+            optional field/column, just relocated. */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Postal code</Text>
+          <InputField placeholder="Postal code" value={postalCode} onChangeText={setPostalCode} />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Email</Text>
+          <View style={styles.readOnlyField}>
+            <Text style={styles.readOnlyText}>{email ?? '—'}</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.divider} />
-
-      <Text style={styles.subheading}>Grrunch preferences</Text>
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Postal code</Text>
-        <InputField placeholder="Postal code" value={postalCode} onChangeText={setPostalCode} />
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Household size</Text>
-        <InputField
-          placeholder="Household size"
-          keyboardType="number-pad"
-          value={householdSize}
-          onChangeText={setHouseholdSize}
-        />
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Preferred stores</Text>
-        <ChipMultiSelect options={STORE_CHAINS} values={preferredStores} onChange={setPreferredStores} />
-      </View>
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Dietary preferences</Text>
-        <ChipMultiSelect options={DIETARY_OPTIONS} values={dietaryPreferences} onChange={setDietaryPreferences} />
+      <View style={styles.sectionCard}>
+        <Text style={styles.subheading}>Grrunch preferences</Text>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Household size</Text>
+          <InputField
+            placeholder="Household size"
+            keyboardType="number-pad"
+            value={householdSize}
+            onChangeText={setHouseholdSize}
+          />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Preferred stores</Text>
+          <ChipMultiSelect options={STORE_CHAINS} values={preferredStores} onChange={setPreferredStores} />
+        </View>
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Dietary preferences</Text>
+          <ChipMultiSelect options={DIETARY_OPTIONS} values={dietaryPreferences} onChange={setDietaryPreferences} />
+        </View>
       </View>
 
       {saveError && <Text style={styles.errorText}>{saveError}</Text>}
@@ -334,6 +345,17 @@ const styles = StyleSheet.create({
   // treatment as most other body copy on this screen, but the ask was
   // for this specific line to read at full text weight/size instead.
   sectionIntro: { fontSize: 16, color: INK, marginTop: -8, marginBottom: 4 },
+  // "Personal info"/"Grrunch preferences" containers (Anabelle,
+  // 2026-09-15) -- same white-fill/2px-INK-border card language as
+  // MembershipStatus.tsx's trialCard, rather than plain subheadings
+  // running directly into the peach background.
+  sectionCard: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 14,
+    padding: 16,
+  },
   field: { marginBottom: 12 },
   fieldLabel: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, marginBottom: 6 },
   readOnlyField: {
