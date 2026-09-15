@@ -4,6 +4,12 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 import { CheckBadgeIcon, ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import {
+  ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
+  ANNUAL_PRICE_DISPLAY,
+  MONTHLY_PRICE_DISPLAY,
+  usePurchases,
+} from '../lib/purchases';
+import {
   getTrialDaysLeft,
   getTrialUrgencyTier,
   TRIAL_DAYS,
@@ -27,7 +33,20 @@ const ERROR = '#D0342C';
 // what a guest should see differs by context (Manage account vs Payment).
 export function MembershipStatus() {
   const { status: subscriptionStatus, trialEndsAt, isSubscribed, cancelTrial } = useSubscription();
+  const { activePackage } = usePurchases();
   const [cancelling, setCancelling] = useState(false);
+
+  // The real price/period the member is actually on, now that there are
+  // two (Anabelle, 2026-09-15) -- falls back to a plan-agnostic line
+  // rather than guessing when activePackage isn't known yet (RevenueCat
+  // not configured, still loading, or a DB-only trial with no real
+  // product behind it at all). Previously this whole component just
+  // hardcoded "$5.99/mo" regardless of what was actually purchased --
+  // silently wrong even before the annual plan existed, for anyone on
+  // a different real price than that stale number.
+  const activePriceLabel = activePackage
+    ? `${activePackage.product.priceString}${activePackage.packageType === 'ANNUAL' ? '/yr' : '/mo'}`
+    : null;
 
   const trialDaysLeft = getTrialDaysLeft(subscriptionStatus, trialEndsAt);
 
@@ -76,7 +95,11 @@ export function MembershipStatus() {
             {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} left
           </Text>
         </View>
-        <Text style={styles.membershipSubtitle}>Then $5.99/mo · Cancel anytime</Text>
+        <Text style={styles.membershipSubtitle}>
+          {activePriceLabel
+            ? `Then ${activePriceLabel} · Cancel anytime`
+            : `Then ${MONTHLY_PRICE_DISPLAY}/mo or ${ANNUAL_PRICE_DISPLAY}/yr (${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo) · Cancel anytime`}
+        </Text>
         <View style={styles.trialCardActions}>
           <Pressable
             style={styles.cancelTrialButton}
@@ -103,7 +126,9 @@ export function MembershipStatus() {
         <CheckBadgeIcon size={20} color={INK} />
         <View style={styles.membershipTextBlock}>
           <Text style={styles.membershipTitle}>Grrunch Member</Text>
-          <Text style={styles.membershipSubtitle}>$5.99/mo · Manage in Settings</Text>
+          <Text style={styles.membershipSubtitle}>
+            {activePriceLabel ? `${activePriceLabel} · Manage in Settings` : 'Manage in Settings'}
+          </Text>
         </View>
       </View>
     );
@@ -118,7 +143,12 @@ export function MembershipStatus() {
         <LockClosedIcon size={18} color="#fff" />
         <View style={styles.membershipTextBlock}>
           <Text style={styles.membershipTitleLight}>Your trial has ended</Text>
-          <Text style={styles.membershipSubtitleLight}>Resubscribe for $5.99/mo to keep saving recipes</Text>
+          {/* No specific price here -- unlike the trialing/active states
+              above, a lapsed member hasn't picked a plan yet (they may
+              switch between monthly/annual on resubscribe), so /upgrade
+              (which shows both real prices) is the right place for that
+              number, not a guess here. */}
+          <Text style={styles.membershipSubtitleLight}>Resubscribe to keep saving recipes</Text>
         </View>
         <ChevronRightIcon size={18} color="#999" />
       </Pressable>

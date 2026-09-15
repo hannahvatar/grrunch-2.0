@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
+import { ANNUAL_MONTHLY_EQUIVALENT_DISPLAY } from '../lib/purchases';
+
 const INK = '#111';
 
 // Inline teaser shown beside a locked, paid-tier feature -- always routes
@@ -44,7 +46,15 @@ export function UpgradeCta({
       <LockClosedIcon size={18} color={outline ? INK : '#fff'} />
       <View style={styles.textBlock}>
         <Text style={[styles.title, outline && styles.titleOutline]}>Start 30-day free trial</Text>
-        <Text style={[styles.subtitle, outline && styles.subtitleOutline]}>Then $5.99/mo · Cancel anytime</Text>
+        {/* "From" the annual-equivalent monthly rate, the cheaper of the
+            two real plans (Anabelle, 2026-09-15: monthly $7.99 or annual
+            $69.99) -- this is a lightweight inline teaser, not the actual
+            plan picker (that's /upgrade, which this always routes to and
+            where both real prices are shown), so one honest "as low as"
+            number reads better here than spelling out both. */}
+        <Text style={[styles.subtitle, outline && styles.subtitleOutline]}>
+          Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime
+        </Text>
       </View>
       <ChevronRightIcon size={18} color={outline ? INK : '#999'} />
     </Pressable>

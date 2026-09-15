@@ -4,9 +4,18 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { CheckIcon, LockOpenIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
+import { SegmentedControl } from '../components/SegmentedControl';
 import { useAuth } from '../lib/auth';
-import { usePurchases } from '../lib/purchases';
+import {
+  ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
+  ANNUAL_PRICE_DISPLAY,
+  ANNUAL_SAVINGS_PCT,
+  MONTHLY_PRICE_DISPLAY,
+  usePurchases,
+} from '../lib/purchases';
 import { useSubscription } from '../lib/subscription';
+
+type PlanPeriod = 'monthly' | 'annual';
 
 // GRRUNCH DS -- matches recipe.tsx's own bottom-sheet convention (peach
 // fill, not the onboarding screens' white-to-peach gradient).
@@ -57,6 +66,12 @@ export default function UpgradeScreen() {
   const { isGuest } = useAuth();
   const { isSubscribed: dbSubscribed, startTrial } = useSubscription();
   const { configured, offering, isSubscribed: purchasesSubscribed, purchase, restore } = usePurchases();
+  // Anabelle, 2026-09-15: "Instead of offering a monthly price point i
+  // want to offer also an annual price point. $7.99 monthly or $69.99
+  // annual" -- defaults to annual since it's the better deal (see
+  // ANNUAL_SAVINGS_PCT) and is the conventional default in every
+  // subscription paywall for exactly that reason.
+  const [plan, setPlan] = useState<PlanPeriod>('annual');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Separate from `loading` -- that one already drives the primary
@@ -72,7 +87,13 @@ export default function UpgradeScreen() {
   const [restoreInfo, setRestoreInfo] = useState<string | null>(null);
 
   const isSubscribed = configured ? purchasesSubscribed : dbSubscribed;
-  const pkg = offering?.availablePackages[0];
+  // offering.monthly/offering.annual are RevenueCat's own convenience
+  // accessors for a package configured with that predefined period in
+  // the dashboard -- falls back to the first available package if the
+  // offering isn't set up with those identifiers yet, so this still
+  // works (on whichever single plan exists) before both products are
+  // live in the store.
+  const pkg = (plan === 'annual' ? offering?.annual : offering?.monthly) ?? offering?.availablePackages[0];
   // Original bug this fixed, still true: the title used to unconditionally
   // say "Start 30-day free trial" even once isSubscribed was already true,
   // with the action button hidden -- a dead-end screen that read as
@@ -159,8 +180,28 @@ export default function UpgradeScreen() {
           </View>
         )}
         {!alreadyMember && (
+          <View style={styles.planPicker}>
+            <SegmentedControl
+              options={[
+                { value: 'annual', label: `Annual · Save ${ANNUAL_SAVINGS_PCT}%` },
+                { value: 'monthly', label: 'Monthly' },
+              ]}
+              value={plan}
+              onChange={setPlan}
+            />
+          </View>
+        )}
+        {!alreadyMember && (
           <Text style={styles.priceNote}>
-            {configured && pkg ? `${pkg.product.priceString}/mo · Cancel anytime` : 'Then $5.99/mo · Cancel anytime'}
+            {configured && pkg
+              ? plan === 'annual'
+                ? `${pkg.product.priceString}/yr${
+                    pkg.product.pricePerMonthString ? ` (${pkg.product.pricePerMonthString}/mo)` : ''
+                  } · Cancel anytime`
+                : `${pkg.product.priceString}/mo · Cancel anytime`
+              : plan === 'annual'
+                ? `Then ${ANNUAL_PRICE_DISPLAY}/yr (${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo) · Cancel anytime`
+                : `Then ${MONTHLY_PRICE_DISPLAY}/mo · Cancel anytime`}
           </Text>
         )}
         {error && (
@@ -269,6 +310,9 @@ const styles = StyleSheet.create({
   featureList: { alignSelf: 'stretch', marginTop: 20, gap: 12 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   featureText: { fontSize: 15, color: INK, flex: 1 },
+  // Annual/Monthly plan picker (Anabelle, 2026-09-15) -- sits between the
+  // feature list and the price note it controls.
+  planPicker: { marginTop: 20 },
   priceNote: {
     fontSize: 13,
     color: INK,
