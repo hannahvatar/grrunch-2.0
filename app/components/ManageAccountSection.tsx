@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '../lib/auth';
 import { deleteAccount, fetchProfile, Profile, saveProfile } from '../lib/profile';
@@ -116,6 +116,12 @@ function ManageAccountForm({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Anabelle, 2026-09-15: "Make delete account a destructive button
+  // also pair it with a confirmation modal" -- was a native
+  // Alert.alert, which reads as a plain OS dialog rather than matching
+  // the app's own DS. Same "standard RN bottom-sheet" pattern (Modal +
+  // Pressable backdrop) as GroceryListView.tsx's quantity editor.
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,32 +196,21 @@ function ManageAccountForm({
     router.replace({ pathname: '/login', params: { mode: 'signin' } });
   }
 
-  function handleDeleteAccount() {
-    Alert.alert(
-      'Delete your account?',
-      "This permanently deletes your account and everything saved to it. This can't be undone.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            setDeleteError(null);
-            const { error } = await deleteAccount();
-            setDeleting(false);
-            if (error) {
-              setDeleteError(error);
-              return;
-            }
-            await supabase.auth.signOut();
-            // mode:'signup' -- the account just deleted is gone, so
-            // returning here is starting fresh, not signing back in.
-            router.replace({ pathname: '/login', params: { mode: 'signup' } });
-          },
-        },
-      ]
-    );
+  async function confirmDeleteAccount() {
+    setDeleting(true);
+    setDeleteError(null);
+    const { error } = await deleteAccount();
+    setDeleting(false);
+    if (error) {
+      setConfirmDeleteVisible(false);
+      setDeleteError(error);
+      return;
+    }
+    setConfirmDeleteVisible(false);
+    await supabase.auth.signOut();
+    // mode:'signup' -- the account just deleted is gone, so
+    // returning here is starting fresh, not signing back in.
+    router.replace({ pathname: '/login', params: { mode: 'signup' } });
   }
 
   if (loading) {
@@ -319,13 +314,47 @@ function ManageAccountForm({
         <Text style={styles.signOutButtonText}>Sign out</Text>
       </Pressable>
       {deleteError && <Text style={styles.errorText}>{deleteError}</Text>}
-      <Pressable style={styles.deleteButton} onPress={handleDeleteAccount} disabled={deleting} hitSlop={8}>
+      {/* Real destructive button (Anabelle, 2026-09-15) -- was an
+          underlined text link, same white-fill/2px-ERROR-border/pill
+          treatment as MembershipStatus.tsx's own cancelTrialButton. */}
+      <Pressable style={styles.deleteButton} onPress={() => setConfirmDeleteVisible(true)} disabled={deleting}>
         {deleting ? (
           <ActivityIndicator color={ERROR} />
         ) : (
           <Text style={styles.deleteButtonText}>Delete account</Text>
         )}
       </Pressable>
+
+      {/* Confirmation modal -- standard RN bottom-sheet pattern
+          (transparent Modal + Pressable backdrop), same as
+          GroceryListView.tsx's quantity editor, instead of a native
+          Alert.alert that didn't match the app's own DS. */}
+      <Modal visible={confirmDeleteVisible} transparent animationType="fade" onRequestClose={() => setConfirmDeleteVisible(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setConfirmDeleteVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>Delete your account?</Text>
+            <Text style={styles.modalBody}>
+              This permanently deletes your account and everything saved to it. This can't be undone.
+            </Text>
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.modalKeepButton}
+                onPress={() => setConfirmDeleteVisible(false)}
+                disabled={deleting}
+              >
+                <Text style={styles.modalKeepButtonText}>Keep account</Text>
+              </Pressable>
+              <Pressable style={styles.modalDeleteButton} onPress={confirmDeleteAccount} disabled={deleting}>
+                {deleting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalDeleteButtonText}>Delete account</Text>
+                )}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -392,6 +421,69 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   signOutButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  deleteButton: { marginTop: 18, alignSelf: 'flex-start' },
-  deleteButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: ERROR, textDecorationLine: 'underline' },
+  // Real destructive button (Anabelle, 2026-09-15) -- was a plain
+  // underlined text link. Same white-fill/pill shape as signOutButton
+  // above, ERROR instead of INK for the border/text -- same
+  // secondary-destructive convention as MembershipStatus.tsx's own
+  // cancelTrialButton.
+  deleteButton: {
+    marginTop: 18,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: ERROR,
+    borderRadius: 24,
+  },
+  deleteButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: ERROR },
+  // Confirmation modal -- standard transparent-Modal bottom-sheet
+  // pattern (backdrop + centered card), same language as
+  // GroceryListView.tsx's own sheetBackdrop/sheet.
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 20,
+    padding: 24,
+    gap: 12,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  modalBody: { fontSize: 15, lineHeight: 21, color: INK },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  // White/INK-border -- the non-destructive, "nothing happens" choice,
+  // same visual weight as MembershipStatus.tsx's own "Keep trial".
+  modalKeepButton: {
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 24,
+  },
+  modalKeepButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Solid ERROR fill -- this is the actual irreversible confirm action,
+  // so it gets the strongest treatment on this card, distinct from the
+  // outline-style trigger button that opened this modal.
+  modalDeleteButton: {
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: ERROR,
+    borderWidth: 2,
+    borderColor: ERROR,
+    borderRadius: 24,
+  },
+  modalDeleteButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#fff' },
 });
