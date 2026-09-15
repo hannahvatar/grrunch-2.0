@@ -29,9 +29,12 @@ export default function SubscribedScreen() {
       icon={<CheckCircleIcon size={32} color="#111" strokeWidth={1.5} />}
       title={configured ? 'Welcome to Grrunch Plus' : 'Your free trial has started'}
       body={
+        // "unlimited saved recipes" dropped (Anabelle, 2026-09-15: Save/
+        // Favourite was shelved for v1 scope (PR #222) -- "make sure its
+        // not stated anywhere in the copy").
         configured
-          ? "You're all set. Every week you'll get new deal-focused recipes curated for you, plus unlimited saved recipes, full deals, and grocery lists."
-          : `You have ${TRIAL_DAYS} days of full access. Every week you'll get new deal-focused recipes curated for you, plus unlimited saved recipes, full deals, and grocery lists.`
+          ? "You're all set. Every week you'll get new deal-focused recipes curated for you, plus full deals and grocery lists."
+          : `You have ${TRIAL_DAYS} days of full access. Every week you'll get new deal-focused recipes curated for you, plus full deals and grocery lists.`
       }
       actions={[{ label: 'Start exploring', onPress: () => router.back() }]}
     />
