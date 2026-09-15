@@ -37,10 +37,11 @@ export default function NotificationsEmailScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Same bounce-back as notifications-push.tsx -- this screen is only
-  // ever meant to be reached via notifications.tsx's own guest gate.
+  // ever meant to be reached via Profile's Notifications accordion,
+  // itself hidden for a guest.
   useEffect(() => {
     if (!authLoading && isGuest) {
-      router.replace('/notifications');
+      router.back();
     }
   }, [authLoading, isGuest]);
 

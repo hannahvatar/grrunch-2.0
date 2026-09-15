@@ -5,9 +5,6 @@ import { ChevronRightIcon, XMarkIcon } from 'react-native-heroicons/outline';
 const SECTIONS = [
   'About',
   'How it works',
-  'Manage account',
-  'Payment',
-  'Notifications',
   'Get support',
   'Privacy',
   'Legal',
@@ -18,18 +15,23 @@ const SECTIONS = [
 // rather than expanding in place -- inline accordion was tried and
 // reverted (Anabelle's call, 2026-08-28: not the right pattern for a
 // native Settings menu, and made Manage account's real form cramped).
-// Every row now has real content. "About" still lands on the shared
-// settings-detail.tsx (title="About" special-cases in real copy there);
-// everything else is its own dedicated screen: manage-account.tsx (real
-// auth/profile data), payment.tsx (real subscription status, same
-// MembershipStatus component Profile's Membership section uses),
-// notifications.tsx (real notification_prefs, from a reference
-// screenshot), get-support.tsx (real FAQ + email-support composer, also
-// reached via SupportBubble.tsx's floating chat icon),
-// privacy-policy.tsx/legal.tsx (the same real Privacy Policy/Terms of Use
-// shown on index.tsx's first-run consent screen), how-it-works.tsx (the
-// deal-tag reference table, Anabelle's call 2026-08-28 -- "a very
-// important section").
+//
+// Manage account/Payment/Notifications moved out entirely (Anabelle,
+// 2026-09-15: "Manage my account, Payment and notification should be
+// moved to the profile page") -- Profile's own Membership/My stores
+// accordion pattern now covers all of it: Manage account and
+// Notifications became new accordion sections there
+// (app/(tabs)/profile.tsx), and Payment was dropped rather than
+// duplicated -- payment.tsx was already just Profile's own
+// MembershipStatus component with nothing else on the screen. Every
+// remaining row here has real content: "About" lands on the shared
+// settings-detail.tsx (title="About" special-cases in real copy
+// there); everything else is its own dedicated screen: get-support.tsx
+// (real FAQ + email-support composer, also reached via
+// SupportBubble.tsx's floating chat icon), privacy-policy.tsx/legal.tsx
+// (the same real Privacy Policy/Terms of Use shown on index.tsx's
+// first-run consent screen), how-it-works.tsx (the deal-tag reference
+// table, Anabelle's call 2026-08-28 -- "a very important section").
 export default function SettingsScreen() {
   return (
     <View style={styles.container}>
@@ -47,13 +49,7 @@ export default function SettingsScreen() {
             key={section}
             style={styles.row}
             onPress={() => {
-              if (section === 'Manage account') {
-                router.push('/manage-account');
-              } else if (section === 'Payment') {
-                router.push('/payment');
-              } else if (section === 'Notifications') {
-                router.push('/notifications');
-              } else if (section === 'Get support') {
+              if (section === 'Get support') {
                 router.push('/get-support');
               } else if (section === 'How it works') {
                 router.push('/how-it-works');
