@@ -28,14 +28,16 @@ export default function NotificationsPushScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // This screen is only ever meant to be reached via notifications.tsx's
-  // own guest gate -- a guest landing here directly (deep link, back/
-  // forward) would otherwise spin on fetchNotificationPrefs forever,
-  // since there's no session to fetch for. Bounce back rather than show
-  // a dead-end spinner.
+  // This screen is only ever meant to be reached via Profile's
+  // Notifications accordion, itself hidden for a guest (moved there
+  // from the old notifications.tsx screen, Anabelle 2026-09-15) -- a
+  // guest landing here directly (deep link, back/forward) would
+  // otherwise spin on fetchNotificationPrefs forever, since there's no
+  // session to fetch for. router.back() rather than a hardcoded target
+  // -- that old screen no longer exists to replace() to.
   useEffect(() => {
     if (!authLoading && isGuest) {
-      router.replace('/notifications');
+      router.back();
     }
   }, [authLoading, isGuest]);
 

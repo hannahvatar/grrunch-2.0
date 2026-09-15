@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   ChevronUpIcon,
   Cog6ToothIcon,
   LockClosedIcon,
@@ -11,11 +12,11 @@ import {
 } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../../components/AlertBanner';
+import { ManageAccountSection } from '../../components/ManageAccountSection';
 import { MembershipStatus } from '../../components/MembershipStatus';
 import { StoreSelectorModal } from '../../components/StoreSelectorModal';
 import { useAuth } from '../../lib/auth';
 import { type SelectedStore, useSelectedStores } from '../../lib/selectedStores';
-import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../lib/subscription';
 
 // GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx/stores.tsx/
@@ -56,9 +57,23 @@ function SectionHeader({
 }
 
 // No wireframe exists for this page yet (Anabelle, 2026-08-26: "design
-// it yourself"). Built out so far: Membership, My stores -- all real
-// data, no mocked content. Grocery list access lives in its own tab
-// (app/(tabs)/grocery.tsx).
+// it yourself"). Built out so far: Membership, My stores, Manage
+// account, Notifications -- all real data, no mocked content. Grocery
+// list access lives in its own tab (app/(tabs)/grocery.tsx).
+//
+// Manage account and Notifications moved here from Settings (Anabelle,
+// 2026-09-15: "Manage my account, Payment and notification should be
+// moved to the profile page") -- same accordion pattern as Membership/
+// My stores, rather than a separate pushed screen reached through the
+// gear icon. Payment was NOT given its own section here: payment.tsx
+// (the screen it used to live on) was already nothing but this same
+// screen's own MembershipStatus component -- moving it would have
+// meant a second, identical "Membership" section, not new content. The
+// three routes' old files (manage-account.tsx/payment.tsx/
+// notifications.tsx) are deleted, not just unlinked -- nothing else
+// referenced them (confirmed via a repo-wide grep) except
+// notifications-push.tsx/notifications-email.tsx, which Notifications
+// below still navigates to.
 //
 // Save/Favourite and the Companion recipes browse section were shelved
 // here (Anabelle, 2026-09-15: "priorize going faster on the market
@@ -96,6 +111,8 @@ export default function ProfileScreen() {
   // not a strict single-open accordion.
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [storesOpen, setStoresOpen] = useState(false);
+  const [manageAccountOpen, setManageAccountOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
     <View style={styles.gradient}>
@@ -237,19 +254,47 @@ export default function ProfileScreen() {
       </>
       )}
 
-      <View style={styles.sectionDivider} />
-
-      {/* Real supabase.auth.signOut() -- same call ManageAccountSection.tsx
-          already uses (reachable today via Settings > Manage account),
-          now also directly on Profile itself so it doesn't take a detour
-          through Settings to find. Tertiary pill -- same white-fill/
-          1.5px-INK-border convention as signup-nudge.tsx's own
-          tertiaryButton, not a destructive-red one: signing out isn't
-          data loss, just ending the session. */}
       {!isGuest && (
-        <Pressable style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
-          <Text style={styles.signOutButtonText}>Sign out</Text>
-        </Pressable>
+        <>
+          <View style={styles.sectionDivider} />
+          <SectionHeader
+            title="Manage account"
+            expanded={manageAccountOpen}
+            onToggle={() => setManageAccountOpen((v) => !v)}
+          />
+          {/* ManageAccountSection carries its own Sign out/Delete account
+              buttons (its "Security" sub-section) -- Profile no longer
+              needs a separate standalone Sign out button now that this
+              is here, so that one's removed rather than left duplicated. */}
+          {manageAccountOpen && <ManageAccountSection />}
+
+          <View style={styles.sectionDivider} />
+          <SectionHeader
+            title="Notifications"
+            expanded={notificationsOpen}
+            onToggle={() => setNotificationsOpen((v) => !v)}
+          />
+          {notificationsOpen && (
+            // Same two-row list as the old notifications.tsx screen --
+            // each row still pushes its own dedicated screen
+            // (notifications-push.tsx/notifications-email.tsx), which
+            // read/write public.users.notification_prefs
+            // (lib/notificationPrefs.ts). No guest branch needed here
+            // (unlike that old screen's own isGuest check) -- this whole
+            // section is already hidden for a guest by the wrapping
+            // !isGuest above.
+            <View style={styles.notificationsList}>
+              <Pressable style={styles.notificationRow} onPress={() => router.push('/notifications-push')}>
+                <Text style={styles.notificationRowText}>Push notifications</Text>
+                <ChevronRightIcon size={16} color={INK} />
+              </Pressable>
+              <Pressable style={styles.notificationRow} onPress={() => router.push('/notifications-email')}>
+                <Text style={styles.notificationRowText}>Email</Text>
+                <ChevronRightIcon size={16} color={INK} />
+              </Pressable>
+            </View>
+          )}
+        </>
       )}
     </ScrollView>
       {editingStore && (
@@ -308,9 +353,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sectionHint: { fontSize: 13, color: INK, marginTop: 6 },
-  // Between accordion sections, and before the sign-out button at the
-  // bottom -- not before My stores itself, since Membership above it
-  // isn't one of these collapsible sections.
+  // Between accordion sections -- not before My stores itself, since
+  // Membership above it isn't one of these collapsible sections.
   sectionDivider: { height: 1, backgroundColor: INK, marginTop: 12 },
   emptyState: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
   emptyStateText: { color: '#666', fontSize: 14 },
@@ -386,17 +430,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   upgradeRowButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  // Same shape/height/radius as signup-nudge.tsx's tertiaryButton --
-  // white fill, 1.5px INK border, 56pt pill.
-  signOutButton: {
-    marginTop: 24,
-    height: 56,
-    justifyContent: 'center',
+  // Notifications section (Anabelle, 2026-09-15, moved here from
+  // Settings) -- same row-list treatment as the old notifications.tsx
+  // screen's own styles.row/rowText.
+  notificationsList: { marginTop: 4 },
+  notificationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: INK,
-    borderRadius: 28,
+    borderBottomWidth: 1,
+    borderBottomColor: INK,
+    paddingVertical: 16,
   },
-  signOutButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  notificationRowText: { fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
 });
