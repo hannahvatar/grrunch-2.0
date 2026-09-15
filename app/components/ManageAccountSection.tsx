@@ -349,10 +349,10 @@ const styles = StyleSheet.create({
   // 2026-09-15) -- same white-fill/2px-INK-border card language as
   // MembershipStatus.tsx's trialCard, rather than plain subheadings
   // running directly into the peach background.
+  // Border dropped (Anabelle, 2026-09-15) -- borderless white card, was
+  // matching MembershipStatus.tsx's trialCard's 2px INK border.
   sectionCard: {
     backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
     borderRadius: 14,
     padding: 16,
   },
