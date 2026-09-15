@@ -2,10 +2,17 @@
 // Settings > Legal. Mirrors termsOfUse.ts's shape -- see legalContent.ts.
 import { bullets, LegalSection, text } from './legalContent';
 
-export const PRIVACY_POLICY_EFFECTIVE_DATE = 'August 4, 2026';
+// Bumped from August 4, 2026 alongside the legal entity disclosure
+// added below (Anabelle, 2026-09-15) -- a genuine content change to a
+// live legal document, not a cosmetic edit.
+export const PRIVACY_POLICY_EFFECTIVE_DATE = 'September 15, 2026';
 
+// Legal entity disclosure -- see termsOfUse.ts's own comment on this
+// same addition (Anabelle, 2026-09-15). Named here in the intro (this
+// is the document that actually needs to say who's responsible for
+// your data) and again in Contact Us (§14 below).
 export const PRIVACY_POLICY_INTRO =
-  'Grrunch ("Grrunch," "we," "our," or "us") respects your privacy. This Privacy Policy explains what information we collect, how we use it, when we share it, and the choices you have regarding your information.\n\n' +
+  'Grrunch, owned and operated by 17216891 Canada Inc. ("Grrunch," "we," "our," or "us"), respects your privacy. This Privacy Policy explains what information we collect, how we use it, when we share it, and the choices you have regarding your information.\n\n' +
   'This Privacy Policy applies to the Grrunch mobile application and related services (collectively, the "Service").\n\n' +
   'By using Grrunch, you agree to the practices described in this Privacy Policy.';
 
@@ -227,7 +234,7 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
     title: '14. Contact Us',
     blocks: [
       text('If you have questions about this Privacy Policy or wish to exercise your privacy rights, please contact us:'),
-      text('Grrunch\nEmail: privacy@grrunch.com'),
+      text('Grrunch, owned and operated by 17216891 Canada Inc.\nEmail: privacy@grrunch.com'),
     ],
   },
 ];

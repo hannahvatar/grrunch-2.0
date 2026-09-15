@@ -3,10 +3,22 @@
 // paragraphs and bullet lists, rendered in that order by LegalDocumentModal.
 import { bullets, LegalSection, text } from './legalContent';
 
-export const TERMS_OF_USE_EFFECTIVE_DATE = 'August 4, 2026';
+// Bumped from August 4, 2026 alongside the legal entity disclosure
+// added below (Anabelle, 2026-09-15) -- a genuine content change to a
+// live legal document, not a cosmetic edit.
+export const TERMS_OF_USE_EFFECTIVE_DATE = 'September 15, 2026';
 
+// Legal entity disclosure (Anabelle, 2026-09-15, mid-Apple-Developer-
+// Organization-enrollment: "i realize somewhere in the app it should
+// say that grrunch operates under 17216891 Canada Inc.") -- named here
+// in the intro (defines "Grrunch"/"we"/"our"/"us" as this entity from
+// the very first sentence) and again in Contact (§20 below), matching
+// the entity name that'll show as the seller on the App Store listing
+// once enrollment completes. Mirrored in privacyPolicy.ts's own intro/
+// Contact Us section -- that one matters more legally, since a privacy
+// policy is expected to name who's actually responsible for the data.
 export const TERMS_OF_USE_INTRO =
-  'Welcome to Grrunch ("Grrunch," "we," "our," or "us"). These Terms of Use ("Terms") govern your access to and use of the Grrunch mobile application and related services (collectively, the "Service").\n\n' +
+  'Welcome to Grrunch, owned and operated by 17216891 Canada Inc. ("Grrunch," "we," "our," or "us"). These Terms of Use ("Terms") govern your access to and use of the Grrunch mobile application and related services (collectively, the "Service").\n\n' +
   'By creating an account or using Grrunch, you agree to be bound by these Terms. If you do not agree, please do not use the Service.';
 
 export const TERMS_OF_USE_SECTIONS: LegalSection[] = [
@@ -241,7 +253,7 @@ export const TERMS_OF_USE_SECTIONS: LegalSection[] = [
     title: '20. Contact',
     blocks: [
       text('Questions regarding these Terms may be directed to:'),
-      text('Grrunch\nEmail: support@grrunch.com'),
+      text('Grrunch, owned and operated by 17216891 Canada Inc.\nEmail: support@grrunch.com'),
     ],
   },
 ];
