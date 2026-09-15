@@ -18,7 +18,6 @@ import { AnimatedSplashScreen } from '../components/AnimatedSplashScreen';
 import { SupportBubble } from '../components/SupportBubble';
 import { AuthProvider } from '../lib/auth';
 import { AnalyticsProvider, initSentry, wrapWithSentry } from '../lib/observability';
-import { SavedRecipesProvider } from '../lib/savedRecipes';
 import { SelectedDealsProvider } from '../lib/selectedDeals';
 import { SelectedMealsProvider } from '../lib/selectedMeals';
 import { SelectedStoresProvider } from '../lib/selectedStores';
@@ -167,62 +166,60 @@ function RootLayout() {
         <SubscriptionProvider>
           <PurchasesProvider>
             <SelectedStoresProvider>
-              <SavedRecipesProvider>
-                <SelectedMealsProvider>
-                  <SelectedDealsProvider>
-                    <Stack screenOptions={{ headerShown: false }}>
-                      <Stack.Screen name="index" />
-                      <Stack.Screen name="terms" />
-                      <Stack.Screen name="login" />
-                      <Stack.Screen name="location" />
-                      <Stack.Screen name="stores" />
-                      <Stack.Screen name="(tabs)" />
-                      <Stack.Screen name="dev-recipes" />
-                      <Stack.Screen name="dev-deals" />
-                      <Stack.Screen name="dev-cost" />
-                      <Stack.Screen name="settings" />
-                      <Stack.Screen name="settings-detail" />
-                      <Stack.Screen name="manage-account" />
-                      <Stack.Screen name="payment" />
-                      <Stack.Screen name="notifications" />
-                      <Stack.Screen name="notifications-push" />
-                      <Stack.Screen name="notifications-email" />
-                      <Stack.Screen name="get-support" />
-                      <Stack.Screen name="privacy-policy" />
-                      <Stack.Screen name="legal" />
-                      <Stack.Screen name="how-it-works" />
-                      <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />
-                      <Stack.Screen name="upgrade" options={{ presentation: 'modal', headerShown: false }} />
-                      <Stack.Screen name="subscribed" options={{ presentation: 'modal', headerShown: false }} />
-                      <Stack.Screen
-                        name="signup-nudge"
-                        options={{ presentation: 'modal', headerShown: false }}
-                      />
-                      <Stack.Screen name="error" options={{ presentation: 'modal', headerShown: false }} />
-                      <Stack.Screen name="offline" options={{ presentation: 'modal', headerShown: false }} />
-                      <Stack.Screen
-                        name="no-account"
-                        options={{ presentation: 'modal', headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="account-unavailable"
-                        options={{ presentation: 'modal', headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="account-deleted"
-                        options={{ presentation: 'modal', headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="access-revoked"
-                        options={{ presentation: 'modal', headerShown: false }}
-                      />
-                    </Stack>
-                    <AuthRedirect />
-                    <DeepLinkErrorRedirect />
-                    <SupportBubble />
-                  </SelectedDealsProvider>
-                </SelectedMealsProvider>
-              </SavedRecipesProvider>
+              <SelectedMealsProvider>
+                <SelectedDealsProvider>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="terms" />
+                    <Stack.Screen name="login" />
+                    <Stack.Screen name="location" />
+                    <Stack.Screen name="stores" />
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen name="dev-recipes" />
+                    <Stack.Screen name="dev-deals" />
+                    <Stack.Screen name="dev-cost" />
+                    <Stack.Screen name="settings" />
+                    <Stack.Screen name="settings-detail" />
+                    <Stack.Screen name="manage-account" />
+                    <Stack.Screen name="payment" />
+                    <Stack.Screen name="notifications" />
+                    <Stack.Screen name="notifications-push" />
+                    <Stack.Screen name="notifications-email" />
+                    <Stack.Screen name="get-support" />
+                    <Stack.Screen name="privacy-policy" />
+                    <Stack.Screen name="legal" />
+                    <Stack.Screen name="how-it-works" />
+                    <Stack.Screen name="recipe" options={{ presentation: 'modal', headerShown: false }} />
+                    <Stack.Screen name="upgrade" options={{ presentation: 'modal', headerShown: false }} />
+                    <Stack.Screen name="subscribed" options={{ presentation: 'modal', headerShown: false }} />
+                    <Stack.Screen
+                      name="signup-nudge"
+                      options={{ presentation: 'modal', headerShown: false }}
+                    />
+                    <Stack.Screen name="error" options={{ presentation: 'modal', headerShown: false }} />
+                    <Stack.Screen name="offline" options={{ presentation: 'modal', headerShown: false }} />
+                    <Stack.Screen
+                      name="no-account"
+                      options={{ presentation: 'modal', headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="account-unavailable"
+                      options={{ presentation: 'modal', headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="account-deleted"
+                      options={{ presentation: 'modal', headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="access-revoked"
+                      options={{ presentation: 'modal', headerShown: false }}
+                    />
+                  </Stack>
+                  <AuthRedirect />
+                  <DeepLinkErrorRedirect />
+                  <SupportBubble />
+                </SelectedDealsProvider>
+              </SelectedMealsProvider>
             </SelectedStoresProvider>
           </PurchasesProvider>
         </SubscriptionProvider>

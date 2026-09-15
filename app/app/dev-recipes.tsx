@@ -7,7 +7,6 @@ import { MealCard } from '../components/MealCard';
 import type { Meal } from '../lib/mealData';
 import { fetchAllRecipes } from '../lib/recipes';
 import { supabase } from '../lib/supabase';
-import { useSavedRecipes } from '../lib/savedRecipes';
 import { useSelectedMeals } from '../lib/selectedMeals';
 
 const INK = '#111';
@@ -27,7 +26,6 @@ const ACCENT = '#FFA955';
 // `expo export --no-dev`, etc.) -- this screen literally can't do
 // anything in a real build, even if someone finds the URL.
 export default function DevRecipesScreen() {
-  const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const [meals, setMeals] = useState<Meal[]>([]);
   // Anabelle: "reoder (just on this page) per newest first so its
@@ -170,9 +168,7 @@ export default function DevRecipesScreen() {
             <MealCard
               meal={meal}
               isSelected={selectedIds.has(meal.id)}
-              isSaved={savedIds.has(meal.id)}
               onToggleSelected={() => toggleSelected(meal.id)}
-              onToggleSaved={() => toggleSaved(meal.id)}
             />
           </View>
         ))}

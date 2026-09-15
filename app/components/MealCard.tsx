@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CakeIcon, CheckIcon, HeartIcon, LockClosedIcon, StarIcon } from 'react-native-heroicons/outline';
-import { HeartIcon as HeartIconSolid, StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
+import { CakeIcon, CheckIcon, LockClosedIcon, StarIcon } from 'react-native-heroicons/outline';
+import { StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
 
 import {
   formatGreatReferenceValueLabel,
@@ -19,22 +19,19 @@ const INK = '#111';
 interface MealCardProps {
   meal: Meal;
   isSelected: boolean;
-  isSaved: boolean;
   onToggleSelected: () => void;
-  onToggleSaved: () => void;
   // Guest-locked visual state for "Add to list" (Anabelle, 2026-09-07) --
   // optional and defaulting to false so dev-recipes.tsx (no auth context
   // at all) is unaffected. Purely presentational: the caller still decides
   // what onToggleSelected actually does when locked (meals.tsx routes to
-  // /upgrade instead of calling toggleSelected) -- same division of
-  // responsibility as onToggleSaved/handleToggleSaved's subscription gate.
+  // /upgrade instead of calling toggleSelected).
   locked?: boolean;
 }
 
 // One recipe card as shown on the Meals tab -- shared with app/dev-
 // recipes.tsx (a __DEV__-only, no-login recipe review screen) so a
 // recipe looks identical in both places and never drifts between them.
-export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggleSaved, locked }: MealCardProps) {
+export function MealCard({ meal, isSelected, onToggleSelected, locked }: MealCardProps) {
   return (
     <View style={styles.mealCardOuter}>
       <View pointerEvents="none" style={styles.mealCardShadow} />
@@ -51,13 +48,6 @@ export function MealCard({ meal, isSelected, isSaved, onToggleSelected, onToggle
               <Text style={styles.groceryConfirmBadgeText}>Added</Text>
             </View>
           )}
-          <Pressable style={styles.saveButton} onPress={onToggleSaved} hitSlop={8}>
-            {isSaved ? (
-              <HeartIconSolid size={20} color={INK} />
-            ) : (
-              <HeartIcon size={20} color={INK} strokeWidth={2} />
-            )}
-          </Pressable>
         </View>
         <View style={styles.mealCardBody}>
           <View style={styles.mealHeaderRow}>
@@ -198,36 +188,19 @@ const styles = StyleSheet.create({
   // than relying on auto-crop.
   mealImagePlaceholderPhoto: { height: 'auto', aspectRatio: 1402 / 824 },
   mealImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  // No border (Anabelle, 2026-09-11: this was unconditionally dashed --
-  // not gated on `locked` like groceryToggleButtonLocked below -- which
-  // read as a locked feature even for a subscribed/trial user; saving a
-  // recipe IS gated in meals.tsx's handleToggleSaved, but that gate
-  // routes to /upgrade instead of toggling, it doesn't need its own
-  // dashed-border indicator here. First tried swapping to a solid
-  // border, then decided no border reads cleanest against the white
-  // circle). Saved-heart color also changed from red (#e0245e) to INK,
-  // matching the outline heart's own color instead of introducing a
-  // one-off accent.
-  saveButton: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#ffffffcc',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   // Same light-green confirmation scheme as MembershipStatus.tsx's
   // "Free trial" badge (TRIAL_URGENCY_STYLES.success in lib/
   // subscription.tsx: bg #E8F5E9, icon/text #1E7B34) -- Anabelle,
   // 2026-09-11: "make it the same color schema than the confirmation
   // badge". Was a solid mid-green (#1E9E5A) fill with white text/icon.
+  // right: 14 (was 54) -- used to sit left of the save-heart button,
+  // which was removed (Anabelle, 2026-09-15: shelving Save/Favourite
+  // for v1 scope, see archive/saved-recipes-and-companion-v1) so this
+  // badge now takes the corner spot itself.
   groceryConfirmBadge: {
     position: 'absolute',
     top: 14,
-    right: 54,
+    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,

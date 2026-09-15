@@ -7,7 +7,6 @@ import { MealCard } from '../../components/MealCard';
 import type { Meal } from '../../lib/mealData';
 import { type MealSortMode, sortMealsByBestDeal, sortMealsByPrice } from '../../lib/mealScaling';
 import { fetchAllRecipes } from '../../lib/recipes';
-import { useSavedRecipes } from '../../lib/savedRecipes';
 import { useSelectedMeals } from '../../lib/selectedMeals';
 import { useSubscription } from '../../lib/subscription';
 
@@ -67,7 +66,6 @@ function eligibleMeals(allMeals: Meal[], sortMode: MealSortMode): Meal[] {
 }
 
 export default function MealsScreen() {
-  const { savedIds, toggleSaved } = useSavedRecipes();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { isSubscribed } = useSubscription();
 
@@ -75,14 +73,6 @@ export default function MealsScreen() {
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<MealSortMode>('bestDeal');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
-
-  function handleToggleSaved(mealId: string) {
-    if (!isSubscribed) {
-      router.push({ pathname: '/upgrade', params: { reason: 'save recipes' } });
-      return;
-    }
-    toggleSaved(mealId);
-  }
 
   // Membership-gated (Anabelle, 2026-09-09: "With a free account BUT NOT
   // MEMBERSHIP you CANT add to your grocery list") -- a deliberate
@@ -167,9 +157,7 @@ export default function MealsScreen() {
             key={meal.id}
             meal={meal}
             isSelected={selectedIds.has(meal.id)}
-            isSaved={savedIds.has(meal.id)}
             onToggleSelected={() => handleToggleSelected(meal.id)}
-            onToggleSaved={() => handleToggleSaved(meal.id)}
             // Matches handleToggleSelected's own gate -- the lock icon/
             // dashed border on "Add to list" now shows for any
             // non-subscriber, not just a guest.

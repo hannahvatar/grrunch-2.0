@@ -1,31 +1,21 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
-  CakeIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   Cog6ToothIcon,
-  EyeIcon,
   LockClosedIcon,
   PencilIcon,
 } from 'react-native-heroicons/outline';
-import { HeartIcon } from 'react-native-heroicons/solid';
 
 import { AlertBanner } from '../../components/AlertBanner';
 import { MembershipStatus } from '../../components/MembershipStatus';
 import { StoreSelectorModal } from '../../components/StoreSelectorModal';
-import { SubRecipeCard } from '../../components/SubRecipeCard';
-import { UpgradeCta } from '../../components/UpgradeCta';
 import { useAuth } from '../../lib/auth';
-import type { Meal, SubRecipe } from '../../lib/mealData';
-import { getRecipeImage } from '../../lib/recipeImages';
-import { fetchRecipesByIds } from '../../lib/recipes';
-import { useSavedRecipes } from '../../lib/savedRecipes';
 import { type SelectedStore, useSelectedStores } from '../../lib/selectedStores';
 import { supabase } from '../../lib/supabase';
-import { fetchSubRecipes } from '../../lib/subRecipes';
 import { useSubscription } from '../../lib/subscription';
 
 // GRRUNCH DS -- matches login.tsx/index.tsx/location.tsx/stores.tsx/
@@ -35,14 +25,11 @@ import { useSubscription } from '../../lib/subscription';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Membership / My stores / Saved recipes / Companion recipes are each
-// collapsible (Anabelle, 2026-08-27: "should probably be accordions" --
-// collapsed by default, independent of each other, not a strict
-// single-open accordion; Membership joined the rest 2026-09-11, having
-// briefly been the one section kept always-visible). Distinct from
-// Companion recipes' own EXISTING per-item accordion (SubRecipeCard,
-// isSubRecipeExpanded/toggleSubRecipe below) -- this is a second, outer
-// level of collapse on top of that one, for the whole section.
+// Membership / My stores are each collapsible (Anabelle, 2026-08-27:
+// "should probably be accordions" -- collapsed by default, independent
+// of each other, not a strict single-open accordion; Membership joined
+// My stores 2026-09-11, having briefly been the one section kept
+// always-visible).
 function SectionHeader({
   title,
   subtitle,
@@ -69,14 +56,23 @@ function SectionHeader({
 }
 
 // No wireframe exists for this page yet (Anabelle, 2026-08-26: "design
-// it yourself"). Built out so far: Membership, My stores, Saved
-// recipes, Companion recipes -- all real data, no mocked content.
-// Grocery list access lives in its own tab (app/(tabs)/grocery.tsx).
+// it yourself"). Built out so far: Membership, My stores -- all real
+// data, no mocked content. Grocery list access lives in its own tab
+// (app/(tabs)/grocery.tsx).
+//
+// Save/Favourite and the Companion recipes browse section were shelved
+// here (Anabelle, 2026-09-15: "priorize going faster on the market
+// versus multiplying the features... the main benefit of the app is
+// novelty and those freshly deal-curated recipes brought every week.
+// Saving recipes is a great add-on but not for a v01") -- the full
+// working feature (heart-save on a meal card, Saved recipes/Companion
+// recipes accordions here, the recipe page's generic/deal-free view for
+// a saved recipe) is preserved at the `archive/saved-recipes-and-
+// companion-v1` git tag for when this comes back. A single recipe's own
+// companion/sub-recipe section (app/recipe.tsx) is untouched -- only
+// this screen's member-only *browse-all* list of every companion recipe
+// is gone.
 export default function ProfileScreen() {
-  const { savedIds, toggleSaved } = useSavedRecipes();
-  const [savedMeals, setSavedMeals] = useState<Meal[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const { stores: myStores, loaded: storesLoaded, setStores: setMyStores } = useSelectedStores();
   // The single "My stores" row currently open in the Select-a-Store picker
   // -- null when the modal is closed. Tracking the whole row (not just an
@@ -100,42 +96,6 @@ export default function ProfileScreen() {
   // not a strict single-open accordion.
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [storesOpen, setStoresOpen] = useState(false);
-  const [savedOpen, setSavedOpen] = useState(false);
-  const [companionOpen, setCompanionOpen] = useState(false);
-
-  useEffect(() => {
-    fetchRecipesByIds(Array.from(savedIds))
-      .then(setSavedMeals)
-      .catch(() => setSavedMeals([]))
-      .finally(() => setLoading(false));
-  }, [savedIds]);
-
-  // Companion recipes -- member-only browse of the full shared
-  // sub_recipes table (Anabelle: "make a section in the profile...
-  // where users [member only] can access all the companion recipes"),
-  // distinct from a single recipe page's jump-linked companion section
-  // (app/recipe.tsx), which only ever shows the one relevant to that
-  // meal's own ingredients. Defaults each card collapsed -- unlike
-  // recipe.tsx's default-open (a jump-link lands you on the one you
-  // came for), this is a browse-all list that would otherwise dump
-  // every technique's full ingredients/instructions on screen at once.
-  const [subRecipes, setSubRecipes] = useState<SubRecipe[]>([]);
-  const [subRecipesLoading, setSubRecipesLoading] = useState(true);
-  const [expandedSubRecipes, setExpandedSubRecipes] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    fetchSubRecipes()
-      .then(setSubRecipes)
-      .catch(() => setSubRecipes([]))
-      .finally(() => setSubRecipesLoading(false));
-  }, []);
-
-  function isSubRecipeExpanded(title: string) {
-    return expandedSubRecipes[title] === true;
-  }
-  function toggleSubRecipe(title: string) {
-    setExpandedSubRecipes((prev) => ({ ...prev, [title]: !isSubRecipeExpanded(title) }));
-  }
 
   return (
     <View style={styles.gradient}>
@@ -278,121 +238,6 @@ export default function ProfileScreen() {
       )}
 
       <View style={styles.sectionDivider} />
-      <SectionHeader
-        title="Saved recipes"
-        subtitle="Recipes you've saved to cook again"
-        expanded={savedOpen}
-        onToggle={() => setSavedOpen((v) => !v)}
-      />
-      {savedOpen && (
-      <>
-      {!isSubscribed ? (
-        <UpgradeCta reason="save recipes" variant="outline" />
-      ) : loading ? (
-        <ActivityIndicator size="small" color="#111" style={styles.loadingIndicator} />
-      ) : savedMeals.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={[styles.emptyStateText, styles.savedEmptyStateText]}>
-            No saved recipes yet. Tap the ♡ on a meal in your plan to save it here.
-          </Text>
-        </View>
-      ) : (
-        // Anabelle, 2026-09-14: "the recipe should appear in individual
-        // white container and add a view icon so when user click on it
-        // it access the ful recipe" -- savedCard already navigated on
-        // tapping the name/meta text (kept, same as before); the new
-        // EyeIcon button is the explicit, discoverable affordance for
-        // that same action, same idea as MealCard's own separate "View
-        // recipe" button existing alongside a tappable card.
-        //
-        // Follow-up, same day: "These saved recipes will live over time
-        // so i want to make them recipe card thumb than their card
-        // detached from current info. Remove references to weekly
-        // deals also price per serving." price/serving is THIS week's
-        // deal-driven number (refresh_recipe_deal_tags(), recomputed
-        // weekly) -- showing it here read as a live promise for a
-        // recipe someone might reopen months later, long after this
-        // week's flyer prices (and even this exact deal match) are
-        // gone. Dropped it entirely; minutes is real recipe metadata,
-        // not deal-derived, so it stays. Added a real thumbnail
-        // (getRecipeImage, same helper/fallback pattern as MealCard's
-        // own image) so this reads as a recipe card, not a bare text
-        // row.
-        //
-        // One more follow-up: "I still see current items when i clikc
-        // on the view icon to see the recipe. I need to see a generic
-        // recipe" -- the recipe page itself still showed this week's
-        // price and per-ingredient deal tags/store links regardless of
-        // how you got there. Both navigations below now pass
-        // generic=true, which recipe.tsx reads to hide meal.price and
-        // every ingredient's dealTag/estimatedPrice/store-link (see its
-        // own header comment) -- MealCard.tsx/GroceryListView.tsx's own
-        // navigations to this same screen are untouched, so the Meals
-        // tab and grocery list still show the full, deal-aware page.
-        savedMeals.map((meal) => (
-          <View key={meal.id} style={styles.savedCard}>
-            <View style={styles.savedThumb}>
-              {getRecipeImage(meal.name) ? (
-                <Image source={getRecipeImage(meal.name)} style={styles.savedThumbImage} resizeMode="cover" />
-              ) : (
-                <CakeIcon size={22} color="#ccc" />
-              )}
-            </View>
-            <Pressable
-              style={styles.savedInfo}
-              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id, generic: 'true' } })}
-            >
-              <Text style={styles.savedName}>{meal.name}</Text>
-              <Text style={styles.savedMeta}>{meal.minutes} min</Text>
-            </Pressable>
-            <Pressable onPress={() => toggleSaved(meal.id)} hitSlop={8}>
-              <HeartIcon size={18} color="#e0245e" />
-            </Pressable>
-            <Pressable
-              style={styles.viewSavedButton}
-              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id, generic: 'true' } })}
-              accessibilityLabel="View recipe"
-              hitSlop={8}
-            >
-              <EyeIcon size={18} color={INK} />
-            </Pressable>
-          </View>
-        ))
-      )}
-      </>
-      )}
-
-      <View style={styles.sectionDivider} />
-      <SectionHeader
-        title="Companion recipes"
-        subtitle="Techniques and sides that pair with your meals"
-        expanded={companionOpen}
-        onToggle={() => setCompanionOpen((v) => !v)}
-      />
-      {companionOpen && (
-      <>
-      {!isSubscribed ? (
-        <UpgradeCta reason="browse companion recipes" variant="outline" />
-      ) : subRecipesLoading ? (
-        <ActivityIndicator size="small" color="#111" style={styles.loadingIndicator} />
-      ) : subRecipes.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>No companion recipes yet.</Text>
-        </View>
-      ) : (
-        <View style={styles.subRecipesList}>
-          {subRecipes.map((subRecipe) => (
-            <SubRecipeCard
-              key={subRecipe.title}
-              subRecipe={subRecipe}
-              expanded={isSubRecipeExpanded(subRecipe.title)}
-              onToggle={() => toggleSubRecipe(subRecipe.title)}
-            />
-          ))}
-        </View>
-      )}
-      </>
-      )}
 
       {/* Real supabase.auth.signOut() -- same call ManageAccountSection.tsx
           already uses (reachable today via Settings > Manage account),
@@ -463,19 +308,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sectionHint: { fontSize: 13, color: INK, marginTop: 6 },
-  // Between accordion sections only (My stores / Saved recipes / Companion
-  // recipes) -- not before My stores itself, since Membership above it
+  // Between accordion sections, and before the sign-out button at the
+  // bottom -- not before My stores itself, since Membership above it
   // isn't one of these collapsible sections.
   sectionDivider: { height: 1, backgroundColor: INK, marginTop: 12 },
-  loadingIndicator: { marginTop: 8 },
   emptyState: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 },
   emptyStateText: { color: '#666', fontSize: 14 },
-  // 16px, black (Anabelle, 2026-09-14) -- was 14px/#666, same as
-  // emptyStateText above. Scoped to just the Saved recipes empty state
-  // (an override layered on top of emptyStateText, not a change to that
-  // shared style) since My stores/Companion recipes' own empty states
-  // weren't part of this request.
-  savedEmptyStateText: { fontSize: 16, color: INK },
   smallLinkButton: { alignSelf: 'flex-start' },
   smallLinkButtonText: { color: '#111', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
   // Same offset-shadow card technique as app/stores.tsx's listCardOuter/
@@ -548,55 +386,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   upgradeRowButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  // White container (Anabelle, 2026-09-14) -- was transparent (just a
-  // thin #eee border on the screen's own peach background), so a row
-  // didn't visually read as its own card the way My stores'/Weekly
-  // Deals' own white cards do.
-  savedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
-  },
-  // Recipe-card thumbnail (Anabelle, 2026-09-14: "make them recipe card
-  // thumb") -- same getRecipeImage/CakeIcon-fallback pattern as
-  // MealCard's own image, just smaller for this compact row.
-  savedThumb: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  savedThumbImage: { width: '100%', height: '100%' },
-  savedInfo: { flex: 1 },
-  savedName: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  // Cook time only -- price/serving (THIS week's deal-driven number)
-  // was removed here (Anabelle, 2026-09-14: "detached from current
-  // info... remove references to weekly deals also price per
-  // serving") since a saved recipe is meant to be reopened long after
-  // this week's flyer prices are gone.
-  savedMeta: { fontSize: 13, color: '#888', marginTop: 2 },
-  // Explicit "view full recipe" affordance, same icon-only-circle shape
-  // as changeStoreButton above -- same action the card's own name/meta
-  // tap already triggers, just discoverable now instead of implicit.
-  viewSavedButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: INK,
-    borderRadius: 16,
-  },
-  subRecipesList: { gap: 12 },
   // Same shape/height/radius as signup-nudge.tsx's tertiaryButton --
   // white fill, 1.5px INK border, 56pt pill.
   signOutButton: {
