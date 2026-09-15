@@ -232,9 +232,16 @@ export default function UpgradeScreen() {
               {loading ? (
                 <ActivityIndicator color={INK} />
               ) : (
-                <Text style={styles.primaryButtonText}>
-                  {isGuest ? 'Start free trial' : 'Start 30-day free trial'}
-                </Text>
+                // Always "Start 30-day free trial" -- was shortened for a
+                // guest (who hits /login first, not the trial itself,
+                // before handlePrimaryAction's own isGuest branch), but
+                // the title right above this button already said "Start
+                // 30-day free trial" unconditionally, so the two were
+                // already inconsistent on this same screen. Anabelle,
+                // 2026-09-15, after asking for a differently-worded
+                // button elsewhere: "it should be consistent everywhere
+                // 'Start 30-day free trial'".
+                <Text style={styles.primaryButtonText}>Start 30-day free trial</Text>
               )}
             </Pressable>
             {configured && !isGuest && (
