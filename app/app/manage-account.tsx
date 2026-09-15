@@ -1,8 +1,10 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { XMarkIcon } from 'react-native-heroicons/outline';
 
 import { ManageAccountSection } from '../components/ManageAccountSection';
+import { Toast } from '../components/Toast';
 
 // Its own screen (pushed from settings.tsx), not an inline accordion --
 // Manage account holds a real multi-field form plus destructive actions
@@ -10,6 +12,14 @@ import { ManageAccountSection } from '../components/ManageAccountSection';
 // context rather than expanding inline in the Settings list (Anabelle's
 // call, 2026-08-28).
 export default function ManageAccountScreen() {
+  // Owned here, not by ManageAccountSection itself (Anabelle, 2026-09-15:
+  // "saving the changes/addition should trigger the confirmation toast
+  // component") -- Toast is rendered as a sibling of the ScrollView
+  // below, not nested inside it, so `position: absolute` floats it over
+  // the whole screen regardless of scroll position. ManageAccountSection
+  // just calls onSaved() right after a successful save.
+  const [showSavedToast, setShowSavedToast] = useState(false);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -20,8 +30,9 @@ export default function ManageAccountScreen() {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <ManageAccountSection />
+        <ManageAccountSection onSaved={() => setShowSavedToast(true)} />
       </ScrollView>
+      <Toast visible={showSavedToast} message="Saved." onHide={() => setShowSavedToast(false)} />
     </View>
   );
 }

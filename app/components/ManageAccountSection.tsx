@@ -44,7 +44,7 @@ const DIETARY_OPTIONS = [
 // this app's real auth is Apple/Google OAuth + email magic-link, there's no
 // password anywhere in that flow, so those rows would be fabricated
 // (Anabelle's call, 2026-08-28).
-export function ManageAccountSection() {
+export function ManageAccountSection({ onSaved }: { onSaved?: () => void } = {}) {
   const { session, isGuest } = useAuth();
 
   if (isGuest) {
@@ -58,7 +58,14 @@ export function ManageAccountSection() {
     );
   }
 
-  return <ManageAccountForm userId={session!.user.id} email={session!.user.email ?? null} provider={session!.user.app_metadata?.provider} />;
+  return (
+    <ManageAccountForm
+      userId={session!.user.id}
+      email={session!.user.email ?? null}
+      provider={session!.user.app_metadata?.provider}
+      onSaved={onSaved}
+    />
+  );
 }
 
 function providerLabel(provider: unknown): string {
@@ -82,7 +89,17 @@ const EMPTY_PROFILE: Profile = {
   dietaryPreferences: [],
 };
 
-function ManageAccountForm({ userId, email, provider }: { userId: string; email: string | null; provider: unknown }) {
+function ManageAccountForm({
+  userId,
+  email,
+  provider,
+  onSaved,
+}: {
+  userId: string;
+  email: string | null;
+  provider: unknown;
+  onSaved?: () => void;
+}) {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState<Profile>(EMPTY_PROFILE);
   const [firstName, setFirstName] = useState('');
@@ -97,7 +114,6 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
   const [dietaryPreferences, setDietaryPreferences] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -136,7 +152,6 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
   async function handleSave() {
     setSaving(true);
     setSaveError(null);
-    setSaveSuccess(false);
     // Anything that doesn't parse to a real positive number (blank,
     // "0", "abc") is treated the same as "not set" -- household size is
     // optional, so a bad/empty entry should just clear it, not block
@@ -158,7 +173,13 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
       return;
     }
     setSaved(nextProfile);
-    setSaveSuccess(true);
+    // Confirmation toast (Anabelle, 2026-09-15: "saving the changes/
+    // addition should trigger the confirmation toast component"),
+    // replacing the plain inline "Saved." text this used to be --
+    // rendered/owned by the screen (see app/manage-account.tsx), not
+    // this form, so it can float above the whole screen regardless of
+    // scroll position.
+    onSaved?.();
   }
 
   function handleSignOut() {
@@ -207,6 +228,21 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
 
   return (
     <View style={styles.wrap}>
+      {/* Anabelle, 2026-09-15: "This should be at the top after 'Manage
+          account' / Make Grrunch yours / Tell us a little more about
+          you so we can personalize your deals and recipes. / Then the
+          subsequent sections should have their titles: Personal info
+          and Grrunch preferences" -- a page-level intro framing BOTH
+          sections below, not just the new preferences one; none of the
+          fields it introduces are required, and the "Grrunch
+          preferences" ones don't drive any real personalization yet
+          (see the migration's own comment) -- this describes the
+          intent, not something already wired up. */}
+      <Text style={styles.introTitle}>Make Grrunch yours</Text>
+      <Text style={styles.sectionIntro}>
+        Tell us a little more about you so we can personalize your deals and recipes.
+      </Text>
+
       <Text style={styles.subheading}>Personal info</Text>
       {/* Split into First/Last (Anabelle, 2026-09-15), was one combined
           "Name" field -- two real columns (see the migration), not a
@@ -232,16 +268,7 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
 
       <View style={styles.divider} />
 
-      {/* Anabelle, 2026-09-15: "Make Grrunch yours / Tell us a little
-          more about you so we can personalize your deals and recipes."
-          -- all four fields below are optional, same as Name/Phone
-          above; none of them drive any real personalization yet (see
-          the migration's own comment) -- this intro describes the
-          intent, not something already wired up. */}
-      <Text style={styles.subheading}>Make Grrunch yours</Text>
-      <Text style={styles.sectionIntro}>
-        Tell us a little more about you so we can personalize your deals and recipes.
-      </Text>
+      <Text style={styles.subheading}>Grrunch preferences</Text>
       <View style={styles.field}>
         <Text style={styles.fieldLabel}>Postal code</Text>
         <InputField placeholder="Postal code" value={postalCode} onChangeText={setPostalCode} />
@@ -265,7 +292,6 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
       </View>
 
       {saveError && <Text style={styles.errorText}>{saveError}</Text>}
-      {saveSuccess && !dirty && <Text style={styles.successText}>Saved.</Text>}
       <Pressable
         style={[styles.saveButton, (!dirty || saving) && styles.saveButtonDisabled]}
         onPress={handleSave}
@@ -295,11 +321,16 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 12, gap: 12 },
+  // Page-level intro (Anabelle, 2026-09-15), sits above both "Personal
+  // info" and "Grrunch preferences" -- a size step up from subheading
+  // below (ExtraBold, not Bold) since it's this whole form's own
+  // welcoming headline, not a section label like those two.
+  introTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginBottom: 4 },
   subheading: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginBottom: 10 },
-  // "Grrunch preferences" section intro (Anabelle, 2026-09-15) -- sits
-  // between that subheading and its first field, same spacing rhythm as
-  // subheading's own marginBottom.
-  sectionIntro: { fontSize: 13, color: '#666', marginTop: -6, marginBottom: 12 },
+  // Sits right under introTitle, before "Personal info" -- negative
+  // marginTop pulls it in close under that title instead of the full
+  // gap:12 the wrap container's own spacing would otherwise add.
+  sectionIntro: { fontSize: 13, color: '#666', marginTop: -8, marginBottom: 4 },
   field: { marginBottom: 12 },
   fieldLabel: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, marginBottom: 6 },
   readOnlyField: {
@@ -312,7 +343,6 @@ const styles = StyleSheet.create({
   },
   readOnlyText: { fontSize: 16, color: '#666' },
   errorText: { fontSize: 13, color: ERROR, marginBottom: 8 },
-  successText: { fontSize: 13, color: '#2E7D32', marginBottom: 8 },
   saveButton: {
     height: 48,
     justifyContent: 'center',
