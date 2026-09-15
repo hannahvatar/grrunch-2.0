@@ -619,31 +619,46 @@ export type Database = {
         Row: {
           agreed_to_terms_at: string | null
           created_at: string
+          dietary_preferences: string[]
           email: string | null
-          full_name: string | null
+          first_name: string | null
+          household_size: number | null
           id: string
+          last_name: string | null
           notification_prefs: Json
           phone: string | null
+          postal_code: string | null
+          preferred_stores: string[]
           terms_version: string | null
         }
         Insert: {
           agreed_to_terms_at?: string | null
           created_at?: string
+          dietary_preferences?: string[]
           email?: string | null
-          full_name?: string | null
+          first_name?: string | null
+          household_size?: number | null
           id: string
+          last_name?: string | null
           notification_prefs?: Json
           phone?: string | null
+          postal_code?: string | null
+          preferred_stores?: string[]
           terms_version?: string | null
         }
         Update: {
           agreed_to_terms_at?: string | null
           created_at?: string
+          dietary_preferences?: string[]
           email?: string | null
-          full_name?: string | null
+          first_name?: string | null
+          household_size?: number | null
           id?: string
+          last_name?: string | null
           notification_prefs?: Json
           phone?: string | null
+          postal_code?: string | null
+          preferred_stores?: string[]
           terms_version?: string | null
         }
         Relationships: []

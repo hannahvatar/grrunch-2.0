@@ -5,12 +5,36 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 import { useAuth } from '../lib/auth';
 import { deleteAccount, fetchProfile, Profile, saveProfile } from '../lib/profile';
 import { supabase } from '../lib/supabase';
+import { ChipMultiSelect } from './ChipMultiSelect';
 import { InputField } from './InputField';
 import { SignInOrTrialPrompt } from './SignInOrTrialPrompt';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
 const ERROR = '#D0342C';
+
+// Same 5 chains named in lib/support.ts's own FAQ prose ("Save-On-Foods,
+// Real Canadian Superstore, No Frills, Safeway, and Walmart"). Not
+// imported from lib/dealZones.ts's ZONES_BY_CHAIN -- that map is real
+// zone-matching data for a different concern (nearest-flyer-zone
+// lookups); this is just a lightweight preference chip list that
+// happens to name the same chains, sourced independently on purpose so
+// the two stay decoupled.
+const STORE_CHAINS = ['Save-On-Foods', 'Real Canadian Superstore', 'No Frills', 'Safeway', 'Walmart'];
+
+// No filtering logic reads this yet (see the migration's own comment) --
+// a reasonable, common starting set, not tied to any existing recipe
+// tagging.
+const DIETARY_OPTIONS = [
+  'Vegetarian',
+  'Vegan',
+  'Gluten-free',
+  'Dairy-free',
+  'Nut-free',
+  'Halal',
+  'Kosher',
+  'Low-carb',
+];
 
 // Manage account's expanded content, inside settings.tsx's accordion row.
 // Real, wired up: personal info reads/writes public.users (see
@@ -20,7 +44,7 @@ const ERROR = '#D0342C';
 // this app's real auth is Apple/Google OAuth + email magic-link, there's no
 // password anywhere in that flow, so those rows would be fabricated
 // (Anabelle's call, 2026-08-28).
-export function ManageAccountSection() {
+export function ManageAccountSection({ onSaved }: { onSaved?: () => void } = {}) {
   const { session, isGuest } = useAuth();
 
   if (isGuest) {
@@ -34,7 +58,14 @@ export function ManageAccountSection() {
     );
   }
 
-  return <ManageAccountForm userId={session!.user.id} email={session!.user.email ?? null} provider={session!.user.app_metadata?.provider} />;
+  return (
+    <ManageAccountForm
+      userId={session!.user.id}
+      email={session!.user.email ?? null}
+      provider={session!.user.app_metadata?.provider}
+      onSaved={onSaved}
+    />
+  );
 }
 
 function providerLabel(provider: unknown): string {
@@ -44,14 +75,45 @@ function providerLabel(provider: unknown): string {
   return 'your account';
 }
 
-function ManageAccountForm({ userId, email, provider }: { userId: string; email: string | null; provider: unknown }) {
+// Default/empty shape, used both as fetchProfile's fallback and as the
+// initial "saved" baseline the dirty-check compares against -- one
+// definition instead of repeating this object literal at both call
+// sites (a mismatch between them would silently break the dirty check).
+const EMPTY_PROFILE: Profile = {
+  firstName: null,
+  lastName: null,
+  phone: null,
+  postalCode: null,
+  householdSize: null,
+  preferredStores: [],
+  dietaryPreferences: [],
+};
+
+function ManageAccountForm({
+  userId,
+  email,
+  provider,
+  onSaved,
+}: {
+  userId: string;
+  email: string | null;
+  provider: unknown;
+  onSaved?: () => void;
+}) {
   const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState<Profile>({ fullName: null, phone: null });
-  const [fullName, setFullName] = useState('');
+  const [saved, setSaved] = useState<Profile>(EMPTY_PROFILE);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+  // Grrunch preferences (Anabelle, 2026-09-15). householdSize is kept as
+  // a plain string while editing (same reasoning as phone -- it's a form
+  // field, not a live numeric value) and parsed on save.
+  const [postalCode, setPostalCode] = useState('');
+  const [householdSize, setHouseholdSize] = useState('');
+  const [preferredStores, setPreferredStores] = useState<string[]>([]);
+  const [dietaryPreferences, setDietaryPreferences] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -59,9 +121,14 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
     let cancelled = false;
     fetchProfile(userId).then(({ profile }) => {
       if (cancelled) return;
-      setSaved(profile ?? { fullName: null, phone: null });
-      setFullName(profile?.fullName ?? '');
+      setSaved(profile ?? EMPTY_PROFILE);
+      setFirstName(profile?.firstName ?? '');
+      setLastName(profile?.lastName ?? '');
       setPhone(profile?.phone ?? '');
+      setPostalCode(profile?.postalCode ?? '');
+      setHouseholdSize(profile?.householdSize != null ? String(profile.householdSize) : '');
+      setPreferredStores(profile?.preferredStores ?? []);
+      setDietaryPreferences(profile?.dietaryPreferences ?? []);
       setLoading(false);
     });
     return () => {
@@ -69,23 +136,50 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
     };
   }, [userId]);
 
-  const dirty = fullName !== (saved.fullName ?? '') || phone !== (saved.phone ?? '');
+  // Array-valued fields compared by contents, not reference -- values
+  // arriving from fetchProfile/saved are always fresh arrays, so a plain
+  // !== would always read dirty even with nothing actually changed.
+  const arraysDiffer = (a: string[], b: string[]) => a.length !== b.length || a.some((v) => !b.includes(v));
+  const dirty =
+    firstName !== (saved.firstName ?? '') ||
+    lastName !== (saved.lastName ?? '') ||
+    phone !== (saved.phone ?? '') ||
+    postalCode !== (saved.postalCode ?? '') ||
+    householdSize !== (saved.householdSize != null ? String(saved.householdSize) : '') ||
+    arraysDiffer(preferredStores, saved.preferredStores) ||
+    arraysDiffer(dietaryPreferences, saved.dietaryPreferences);
 
   async function handleSave() {
     setSaving(true);
     setSaveError(null);
-    setSaveSuccess(false);
-    const { error } = await saveProfile(userId, email, {
-      fullName: fullName.trim() || null,
+    // Anything that doesn't parse to a real positive number (blank,
+    // "0", "abc") is treated the same as "not set" -- household size is
+    // optional, so a bad/empty entry should just clear it, not block
+    // saving the rest of the form.
+    const parsedHouseholdSize = Number.parseInt(householdSize, 10);
+    const nextProfile: Profile = {
+      firstName: firstName.trim() || null,
+      lastName: lastName.trim() || null,
       phone: phone.trim() || null,
-    });
+      postalCode: postalCode.trim() || null,
+      householdSize: Number.isFinite(parsedHouseholdSize) && parsedHouseholdSize > 0 ? parsedHouseholdSize : null,
+      preferredStores,
+      dietaryPreferences,
+    };
+    const { error } = await saveProfile(userId, email, nextProfile);
     setSaving(false);
     if (error) {
       setSaveError(error);
       return;
     }
-    setSaved({ fullName: fullName.trim() || null, phone: phone.trim() || null });
-    setSaveSuccess(true);
+    setSaved(nextProfile);
+    // Confirmation toast (Anabelle, 2026-09-15: "saving the changes/
+    // addition should trigger the confirmation toast component"),
+    // replacing the plain inline "Saved." text this used to be --
+    // rendered/owned by the screen (see app/manage-account.tsx), not
+    // this form, so it can float above the whole screen regardless of
+    // scroll position.
+    onSaved?.();
   }
 
   function handleSignOut() {
@@ -134,10 +228,32 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
 
   return (
     <View style={styles.wrap}>
+      {/* Anabelle, 2026-09-15: "This should be at the top after 'Manage
+          account' / Make Grrunch yours / Tell us a little more about
+          you so we can personalize your deals and recipes. / Then the
+          subsequent sections should have their titles: Personal info
+          and Grrunch preferences" -- a page-level intro framing BOTH
+          sections below, not just the new preferences one; none of the
+          fields it introduces are required, and the "Grrunch
+          preferences" ones don't drive any real personalization yet
+          (see the migration's own comment) -- this describes the
+          intent, not something already wired up. */}
+      <Text style={styles.introTitle}>Make Grrunch yours</Text>
+      <Text style={styles.sectionIntro}>
+        Tell us a little more about you so we can personalize your deals and recipes.
+      </Text>
+
       <Text style={styles.subheading}>Personal info</Text>
+      {/* Split into First/Last (Anabelle, 2026-09-15), was one combined
+          "Name" field -- two real columns (see the migration), not a
+          client-side split/join of one string. */}
       <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Name</Text>
-        <InputField placeholder="Your name" value={fullName} onChangeText={setFullName} />
+        <Text style={styles.fieldLabel}>First name</Text>
+        <InputField placeholder="First name" value={firstName} onChangeText={setFirstName} />
+      </View>
+      <View style={styles.field}>
+        <Text style={styles.fieldLabel}>Last name</Text>
+        <InputField placeholder="Last name" value={lastName} onChangeText={setLastName} />
       </View>
       <View style={styles.field}>
         <Text style={styles.fieldLabel}>Phone number</Text>
@@ -149,8 +265,33 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
           <Text style={styles.readOnlyText}>{email ?? '—'}</Text>
         </View>
       </View>
+
+      <View style={styles.divider} />
+
+      <Text style={styles.subheading}>Grrunch preferences</Text>
+      <View style={styles.field}>
+        <Text style={styles.fieldLabel}>Postal code</Text>
+        <InputField placeholder="Postal code" value={postalCode} onChangeText={setPostalCode} />
+      </View>
+      <View style={styles.field}>
+        <Text style={styles.fieldLabel}>Household size</Text>
+        <InputField
+          placeholder="Household size"
+          keyboardType="number-pad"
+          value={householdSize}
+          onChangeText={setHouseholdSize}
+        />
+      </View>
+      <View style={styles.field}>
+        <Text style={styles.fieldLabel}>Preferred stores</Text>
+        <ChipMultiSelect options={STORE_CHAINS} values={preferredStores} onChange={setPreferredStores} />
+      </View>
+      <View style={styles.field}>
+        <Text style={styles.fieldLabel}>Dietary preferences</Text>
+        <ChipMultiSelect options={DIETARY_OPTIONS} values={dietaryPreferences} onChange={setDietaryPreferences} />
+      </View>
+
       {saveError && <Text style={styles.errorText}>{saveError}</Text>}
-      {saveSuccess && !dirty && <Text style={styles.successText}>Saved.</Text>}
       <Pressable
         style={[styles.saveButton, (!dirty || saving) && styles.saveButtonDisabled]}
         onPress={handleSave}
@@ -180,7 +321,16 @@ function ManageAccountForm({ userId, email, provider }: { userId: string; email:
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 12, gap: 12 },
+  // Page-level intro (Anabelle, 2026-09-15), sits above both "Personal
+  // info" and "Grrunch preferences" -- a size step up from subheading
+  // below (ExtraBold, not Bold) since it's this whole form's own
+  // welcoming headline, not a section label like those two.
+  introTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginBottom: 4 },
   subheading: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginBottom: 10 },
+  // Sits right under introTitle, before "Personal info" -- negative
+  // marginTop pulls it in close under that title instead of the full
+  // gap:12 the wrap container's own spacing would otherwise add.
+  sectionIntro: { fontSize: 13, color: '#666', marginTop: -8, marginBottom: 4 },
   field: { marginBottom: 12 },
   fieldLabel: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, marginBottom: 6 },
   readOnlyField: {
@@ -193,7 +343,6 @@ const styles = StyleSheet.create({
   },
   readOnlyText: { fontSize: 16, color: '#666' },
   errorText: { fontSize: 13, color: ERROR, marginBottom: 8 },
-  successText: { fontSize: 13, color: '#2E7D32', marginBottom: 8 },
   saveButton: {
     height: 48,
     justifyContent: 'center',
