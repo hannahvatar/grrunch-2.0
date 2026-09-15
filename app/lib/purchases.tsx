@@ -6,9 +6,31 @@ import { useAuth } from './auth';
 
 // The Grrunch Plus entitlement identifier -- created in the RevenueCat
 // dashboard, attached to the Apple/Google subscription products there.
-// One entitlement today (single paid tier), same as subscriptions.status
+// One entitlement today (single paid tier, now available on two billing
+// periods -- see the price constants below), same as subscriptions.status
 // only ever having one real "paid" state.
 const ENTITLEMENT_ID = 'grrunch_plus';
+
+// Single source of truth for the two real price points (Anabelle,
+// 2026-09-15: "Instead of offering a monthly price point i want to offer
+// also an annual price point. $7.99 monthly or $69.99 annual"). The
+// ACTUAL charged price always comes from the store via
+// offering.monthly/offering.annual (product.priceString) once RevenueCat
+// is configured -- these are ONLY the fallback display copy for the
+// unconfigured state (no REVENUECAT_API_KEY yet, or web) and for any
+// screen that wants to show a price before the offering has loaded.
+// Exported from here (not duplicated per-screen) specifically because
+// duplicating $5.99 across 4 files with no shared constant is exactly
+// how that number went stale in the first place -- every one of those
+// call sites now imports from here instead.
+export const MONTHLY_PRICE_DISPLAY = '$7.99';
+export const ANNUAL_PRICE_DISPLAY = '$69.99';
+// $69.99 / 12 = $5.8325 -> $5.83/mo equivalent. Recompute by hand if the
+// prices above ever change -- kept as a literal (not derived at runtime)
+// since this only backs display copy, not any real charge.
+export const ANNUAL_MONTHLY_EQUIVALENT_DISPLAY = '$5.83';
+// (7.99*12 - 69.99) / (7.99*12) = 27.0%, rounded.
+export const ANNUAL_SAVINGS_PCT = 27;
 
 // Public RevenueCat SDK keys -- safe to embed client-side (unlike a
 // secret/webhook key), same trust level as the Supabase anon key already
@@ -30,6 +52,14 @@ interface PurchasesContextValue {
   loading: boolean;
   offering: PurchasesOffering | null;
   isSubscribed: boolean;
+  // The specific package (monthly or annual) backing the customer's
+  // active entitlement, matched by product identifier -- null while
+  // still loading, not subscribed, or (rarely) if the active product
+  // isn't one of this offering's own packages. Lets a screen show the
+  // real plan/price a member is actually on instead of a guess -- see
+  // MembershipStatus.tsx, which used to hardcode "$5.99/mo" regardless
+  // of what was actually purchased.
+  activePackage: PurchasesPackage | null;
   purchase: (pkg: PurchasesPackage) => Promise<{ error: string | null }>;
   // restored tells the caller whether an entitlement was actually found,
   // not just whether the call itself succeeded -- Purchases.
@@ -45,6 +75,13 @@ const PurchasesContext = createContext<PurchasesContextValue | undefined>(undefi
 
 function isEntitled(info: CustomerInfo): boolean {
   return typeof info.entitlements.active[ENTITLEMENT_ID] !== 'undefined';
+}
+
+// The store product identifier that unlocked the active entitlement, if
+// any -- e.g. distinguishing the monthly product from the annual one, so
+// activePackage below can find the matching PurchasesPackage.
+function activeProductId(info: CustomerInfo): string | null {
+  return info.entitlements.active[ENTITLEMENT_ID]?.productIdentifier ?? null;
 }
 
 // react-native-purchases has no web implementation at all -- it's an
@@ -63,6 +100,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [activeProduct, setActiveProduct] = useState<string | null>(null);
 
   // Configure the SDK exactly once. Guests never call Purchases.logIn
   // below (RevenueCat tracks them under its own anonymous id until a
@@ -104,10 +142,16 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   // refetch the way subscriptions.tsx's DB-backed status does.
   useEffect(() => {
     if (!configured) return;
-    const listener = (info: CustomerInfo) => setIsSubscribed(isEntitled(info));
+    const listener = (info: CustomerInfo) => {
+      setIsSubscribed(isEntitled(info));
+      setActiveProduct(activeProductId(info));
+    };
     Purchases.addCustomerInfoUpdateListener(listener);
     Purchases.getCustomerInfo()
-      .then((info) => setIsSubscribed(isEntitled(info)))
+      .then((info) => {
+        setIsSubscribed(isEntitled(info));
+        setActiveProduct(activeProductId(info));
+      })
       .finally(() => setLoading(false));
     return () => {
       Purchases.removeCustomerInfoUpdateListener(listener);
@@ -125,6 +169,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       setIsSubscribed(isEntitled(customerInfo));
+      setActiveProduct(activeProductId(customerInfo));
       return { error: null };
     } catch (e: any) {
       if (e?.userCancelled) return { error: null };
@@ -137,14 +182,23 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       const info = await Purchases.restorePurchases();
       const restored = isEntitled(info);
       setIsSubscribed(restored);
+      setActiveProduct(activeProductId(info));
       return { error: null, restored };
     } catch (e: any) {
       return { error: e?.message ?? 'Could not restore purchases.', restored: false };
     }
   }
 
+  // Derived, not stored -- recomputed whenever the offering or the active
+  // product changes, rather than a third piece of state that could drift
+  // out of sync with either of them.
+  const activePackage =
+    offering?.availablePackages.find((p) => p.product.identifier === activeProduct) ?? null;
+
   return (
-    <PurchasesContext.Provider value={{ configured, loading, offering, isSubscribed, purchase, restore }}>
+    <PurchasesContext.Provider
+      value={{ configured, loading, offering, isSubscribed, activePackage, purchase, restore }}
+    >
       {children}
     </PurchasesContext.Provider>
   );
