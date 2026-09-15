@@ -24,13 +24,16 @@ const INK = '#111';
 
 // Real, already-gated features (every one of these is an actual
 // !isSubscribed check somewhere in the app today -- meals.tsx/recipe.tsx/
-// best-deals.tsx's grocery-list gates, profile.tsx's stores/saved-recipes
-// sections), not invented benefits. Deliberately no testimonials/review
-// counts here -- there's no real data for that yet, and fabricating some
-// would be actively dishonest, not just a placeholder.
+// best-deals.tsx's grocery-list gates, profile.tsx's stores section), not
+// invented benefits. Deliberately no testimonials/review counts here --
+// there's no real data for that yet, and fabricating some would be
+// actively dishonest, not just a placeholder.
+//
+// "Unlimited saved recipes" dropped (Anabelle, 2026-09-15: Save/
+// Favourite was shelved for v1 scope, PR #222 -- "make sure its not
+// stated anywhere in the copy").
 const FEATURES = [
   'Add recipes to your grocery list',
-  'Unlimited saved recipes',
   'Full deals in every category',
   'Curated, deal-focused recipes every week',
   'Choose your own stores',

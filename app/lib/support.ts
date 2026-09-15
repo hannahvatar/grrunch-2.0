@@ -1,3 +1,5 @@
+import { ANNUAL_PRICE_DISPLAY, MONTHLY_PRICE_DISPLAY } from './purchases';
+
 // Get support (Anabelle, 2026-08-28: live chat needs a real 3rd-party
 // provider she hasn't set up yet, so this is the email-only path for now
 // -- "Contact us" composes a real email via the device's own mail client
@@ -23,12 +25,18 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Do I need an account to use Grrunch?',
     answer:
-      "No, you can browse recipes and this week's deals as a guest, but without an account you can't add recipes to your grocery list, pick or edit your stores, save recipes to your favourites, see companion recipes, or see more than 3 of the week's recipes and 1 deal per category. A free account (still free, separate from membership) only unlocks managing your account settings and notification preferences. Everything else on that list needs membership.",
+      // "save recipes to your favourites, see companion recipes," dropped
+      // (Anabelle, 2026-09-15: Save/Favourite and the Companion recipes
+      // browse section were shelved for v1 scope, PR #222 -- "make sure
+      // its not stated anywhere in the copy").
+      "No, you can browse recipes and this week's deals as a guest, but without an account you can't add recipes to your grocery list, pick or edit your stores, or see more than 3 of the week's recipes and 1 deal per category. A free account (still free, separate from membership) only unlocks managing your account settings and notification preferences. Everything else on that list needs membership.",
   },
   {
     question: 'What does membership include?',
-    answer:
-      "A 30-day free trial, then $5.99/mo. It unlocks all of this week's recipes (not just 3), every deal in each category (not just one), unlimited saved recipes, companion recipes, building a grocery list, and choosing your own stores instead of the ones auto-selected from your location. Cancel anytime.",
+    // "unlimited saved recipes, companion recipes," dropped, same reason
+    // as above. Price also updated from the old flat $5.99/mo (PR #224:
+    // monthly $7.99 or annual $69.99).
+    answer: `A 30-day free trial, then ${MONTHLY_PRICE_DISPLAY}/mo or ${ANNUAL_PRICE_DISPLAY}/yr. It unlocks all of this week's recipes (not just 3), every deal in each category (not just one), building a grocery list, and choosing your own stores instead of the ones auto-selected from your location. Cancel anytime.`,
   },
   {
     question: 'How do I cancel my trial or membership?',

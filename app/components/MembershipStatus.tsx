@@ -54,7 +54,10 @@ export function MembershipStatus() {
   // both are one-tap-irreversible actions on this same destructive-red
   // treatment.
   function handleCancelTrial() {
-    Alert.alert('Cancel your trial?', "You'll lose access to grocery lists and saved recipes right away.", [
+    // "and saved recipes" dropped (Anabelle, 2026-09-15: Save/Favourite
+    // was shelved for v1 scope, PR #222 -- "make sure its not stated
+    // anywhere in the copy").
+    Alert.alert('Cancel your trial?', "You'll lose access to grocery lists right away.", [
       { text: 'Keep trial', style: 'cancel' },
       {
         text: 'Cancel trial',
@@ -147,8 +150,10 @@ export function MembershipStatus() {
               above, a lapsed member hasn't picked a plan yet (they may
               switch between monthly/annual on resubscribe), so /upgrade
               (which shows both real prices) is the right place for that
-              number, not a guess here. */}
-          <Text style={styles.membershipSubtitleLight}>Resubscribe to keep saving recipes</Text>
+              number, not a guess here. "...keep saving recipes" (this
+              copy's own original wording) dropped 2026-09-15, same as
+              every other Save/Favourite mention -- see PR #222. */}
+          <Text style={styles.membershipSubtitleLight}>Resubscribe to unlock the full app</Text>
         </View>
         <ChevronRightIcon size={18} color="#999" />
       </Pressable>

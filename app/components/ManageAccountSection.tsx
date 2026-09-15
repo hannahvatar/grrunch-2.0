@@ -25,8 +25,8 @@ export function ManageAccountSection() {
 
   if (isGuest) {
     // Manage account is gated on having an account at all, not just a
-    // subscription (Saved recipes/Companion recipes' UpgradeCta is), so a
-    // guest gets both real paths forward -- Anabelle's mockup, 2026-08-28.
+    // subscription (Grocery list's UpgradeCta is), so a guest gets both
+    // real paths forward -- Anabelle's mockup, 2026-08-28.
     return (
       <View style={styles.wrap}>
         <SignInOrTrialPrompt reason="manage your account" />

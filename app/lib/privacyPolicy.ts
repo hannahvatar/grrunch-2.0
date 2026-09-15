@@ -22,12 +22,15 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
     blocks: [
       text('Information You Provide'),
       text('When you use Grrunch, you may provide information including:'),
+      // "Saved recipes" dropped (Anabelle, 2026-09-15: Save/Favourite was
+      // shelved for v1 scope, PR #222 -- "make sure its not stated
+      // anywhere in the copy") -- this list should only name what
+      // Grrunch actually collects today, not a shelved feature.
       bullets([
         'Your name',
         'Email address',
         'Authentication information (such as Sign in with Apple or Google)',
         'Grocery lists',
-        'Saved recipes',
         'Favourite stores',
         'Shopping preferences',
         'Feedback or support requests',
