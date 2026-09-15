@@ -329,8 +329,11 @@ const styles = StyleSheet.create({
   subheading: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginBottom: 10 },
   // Sits right under introTitle, before "Personal info" -- negative
   // marginTop pulls it in close under that title instead of the full
-  // gap:12 the wrap container's own spacing would otherwise add.
-  sectionIntro: { fontSize: 13, color: '#666', marginTop: -8, marginBottom: 4 },
+  // gap:12 the wrap container's own spacing would otherwise add. 16px/
+  // INK (Anabelle, 2026-09-15) -- was 13px/#666, same muted secondary
+  // treatment as most other body copy on this screen, but the ask was
+  // for this specific line to read at full text weight/size instead.
+  sectionIntro: { fontSize: 16, color: INK, marginTop: -8, marginBottom: 4 },
   field: { marginBottom: 12 },
   fieldLabel: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, marginBottom: 6 },
   readOnlyField: {
