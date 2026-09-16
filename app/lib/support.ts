@@ -63,8 +63,20 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     question: 'How do I cancel my trial or membership?',
+    // Anabelle, 2026-09-16: "is the cancellation of trial or membership
+    // answer is accurate? How do email signup member cancel?" -- payment
+    // is RevenueCat/IAP-only and keys off session.user.id, so it's the
+    // same regardless of auth method (email/Apple/Google sign-in all
+    // alike, see purchases.tsx) -- that part was already right. What
+    // wasn't: RevenueCat's API keys aren't configured yet (Apple Dev
+    // enrollment still pending verification), so purchase() never runs
+    // right now -- "Start trial" instead falls back to a DB-only trial
+    // row in subscription.tsx, with nothing in App Store/Play Store to
+    // actually cancel. Anabelle's call: keep this describing the real
+    // end-state (IAP), just caveat today's in-app-only path until
+    // purchases actually go live.
     answer:
-      'From your Apple or Google account’s own subscription settings. That’s the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly.',
+      'Once membership goes live, from your Apple or Google account’s own subscription settings — the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly. Purchases aren’t live yet, though: right now trials are cancelled in the app instead, from Profile > Membership > Cancel trial.',
   },
   {
     question: 'Which stores does Grrunch cover?',
