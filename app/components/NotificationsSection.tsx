@@ -95,39 +95,41 @@ function NotificationsForm() {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.subheading}>Push</Text>
-      {CATEGORY_LABELS.map((c) => (
-        <CategoryToggleRow
-          key={c.key}
-          title={c.title}
-          description={c.description}
-          checked={draft.push[c.key]}
-          onToggle={() => togglePush(c.key)}
-        />
-      ))}
-
-      <View style={styles.divider} />
-
-      <Text style={styles.subheading}>Email</Text>
-      <View style={styles.subscribedRow}>
-        <Text style={styles.subscribedText}>Subscribed</Text>
-        <Switch
-          value={draft.emailSubscribed}
-          onValueChange={(v) => setDraft((prev) => ({ ...prev, emailSubscribed: v }))}
-          trackColor={{ false: '#ccc', true: INK }}
-          thumbColor="#fff"
-        />
+      <View style={styles.sectionCard}>
+        <Text style={styles.subheading}>Push</Text>
+        {CATEGORY_LABELS.map((c) => (
+          <CategoryToggleRow
+            key={c.key}
+            title={c.title}
+            description={c.description}
+            checked={draft.push[c.key]}
+            onToggle={() => togglePush(c.key)}
+          />
+        ))}
       </View>
-      {CATEGORY_LABELS.map((c) => (
-        <CategoryToggleRow
-          key={c.key}
-          title={c.title}
-          description={c.description}
-          checked={draft.email[c.key]}
-          onToggle={() => toggleEmailCategory(c.key)}
-          disabled={!draft.emailSubscribed}
-        />
-      ))}
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.subheading}>Email</Text>
+        <View style={styles.subscribedRow}>
+          <Text style={styles.subscribedText}>Subscribed</Text>
+          <Switch
+            value={draft.emailSubscribed}
+            onValueChange={(v) => setDraft((prev) => ({ ...prev, emailSubscribed: v }))}
+            trackColor={{ false: '#ccc', true: INK }}
+            thumbColor="#fff"
+          />
+        </View>
+        {CATEGORY_LABELS.map((c) => (
+          <CategoryToggleRow
+            key={c.key}
+            title={c.title}
+            description={c.description}
+            checked={draft.email[c.key]}
+            onToggle={() => toggleEmailCategory(c.key)}
+            disabled={!draft.emailSubscribed}
+          />
+        ))}
+      </View>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
       <Pressable
@@ -142,9 +144,17 @@ function NotificationsForm() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: 12, gap: 4 },
+  wrap: { marginTop: 12, gap: 16 },
+  // Same borderless white card as ManageAccountSection's sectionCard --
+  // Push and Email each get their own (Anabelle, 2026-09-16: "Push
+  // notifs and email notfi should be in their respective white
+  // containers"), replacing the plain hairline divider between them.
+  sectionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+  },
   subheading: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginBottom: 4 },
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 16 },
   subscribedRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
