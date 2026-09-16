@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronDownIcon, ChevronUpIcon, EnvelopeIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
+import { usePurchases } from '../lib/purchases';
 import { FAQ_ITEMS, SUPPORT_EMAIL } from '../lib/support';
 
 const ACCENT = '#FFA955';
@@ -15,6 +16,7 @@ const INK = '#111';
 // wouldn't actually connect to anyone.
 export default function GetSupportScreen() {
   const [openFaq, setOpenFaq] = useState<Set<number>>(new Set());
+  const { configured: purchasesConfigured } = usePurchases();
 
   function toggleFaq(index: number) {
     setOpenFaq((prev) => {
@@ -61,6 +63,7 @@ export default function GetSupportScreen() {
           {FAQ_ITEMS.map((item, i) => {
             const isOpen = openFaq.has(i);
             const isLast = i === FAQ_ITEMS.length - 1;
+            const answer = typeof item.answer === 'function' ? item.answer(purchasesConfigured) : item.answer;
             return (
               <View key={item.question} style={[styles.faqRow, isLast && styles.faqRowLast]}>
                 <Pressable style={styles.faqHeader} onPress={() => toggleFaq(i)} hitSlop={8}>
@@ -71,7 +74,7 @@ export default function GetSupportScreen() {
                     <ChevronDownIcon size={16} color={INK} />
                   )}
                 </Pressable>
-                {isOpen && <Text style={styles.faqAnswer}>{item.answer}</Text>}
+                {isOpen && <Text style={styles.faqAnswer}>{answer}</Text>}
               </View>
             );
           })}
