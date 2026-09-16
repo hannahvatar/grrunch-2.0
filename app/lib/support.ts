@@ -29,7 +29,15 @@ export const FAQ_ITEMS: FaqItem[] = [
       // (Anabelle, 2026-09-15: Save/Favourite and the Companion recipes
       // browse section were shelved for v1 scope, PR #222 -- "make sure
       // its not stated anywhere in the copy").
-      "No, you can browse recipes and this week's deals as a guest, but without an account you can't add recipes to your grocery list, pick or edit your stores, or see more than 3 of the week's recipes and 1 deal per category. A free account (still free, separate from membership) only unlocks managing your account settings and notification preferences. Everything else on that list needs membership.",
+      //
+      // "pick or edit your stores" corrected to "customize which stores
+      // you use" (Anabelle, 2026-09-16: "the answer to the first question
+      // is wrong") -- guests DO get stores picked for them (auto-selected
+      // from location, confirmed unconditionally in stores.tsx, no
+      // isSubscribed/isGuest gate at all); what's actually membership-only
+      // is changing/customizing them afterward (Profile > My stores'
+      // "Change" button, gated on isSubscribed).
+      "No, you can browse recipes and this week's deals as a guest, but without an account you can't add recipes to your grocery list, customize which stores you use (yours are auto-selected from your location), or see more than 3 of the week's recipes and 1 deal per category. A free account (still free, separate from membership) only unlocks managing your account settings and notification preferences. Everything else on that list needs membership.",
   },
   {
     question: 'What does membership include?',
