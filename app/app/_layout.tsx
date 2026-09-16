@@ -180,8 +180,6 @@ function RootLayout() {
                     <Stack.Screen name="dev-cost" />
                     <Stack.Screen name="settings" />
                     <Stack.Screen name="settings-detail" />
-                    <Stack.Screen name="notifications-push" />
-                    <Stack.Screen name="notifications-email" />
                     <Stack.Screen name="get-support" />
                     <Stack.Screen name="privacy-policy" />
                     <Stack.Screen name="legal" />

@@ -4,7 +4,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   ChevronUpIcon,
   Cog6ToothIcon,
   LockClosedIcon,
@@ -14,6 +13,7 @@ import {
 import { AlertBanner } from '../../components/AlertBanner';
 import { ManageAccountSection } from '../../components/ManageAccountSection';
 import { MembershipStatus } from '../../components/MembershipStatus';
+import { NotificationsSection } from '../../components/NotificationsSection';
 import { StoreSelectorModal } from '../../components/StoreSelectorModal';
 import { useAuth } from '../../lib/auth';
 import { type SelectedStore, useSelectedStores } from '../../lib/selectedStores';
@@ -69,11 +69,16 @@ function SectionHeader({
 // (the screen it used to live on) was already nothing but this same
 // screen's own MembershipStatus component -- moving it would have
 // meant a second, identical "Membership" section, not new content. The
-// three routes' old files (manage-account.tsx/payment.tsx/
-// notifications.tsx) are deleted, not just unlinked -- nothing else
-// referenced them (confirmed via a repo-wide grep) except
-// notifications-push.tsx/notifications-email.tsx, which Notifications
-// below still navigates to.
+// old manage-account.tsx/payment.tsx/notifications.tsx routes are
+// deleted, not just unlinked -- confirmed via a repo-wide grep that
+// nothing else referenced them.
+//
+// Notifications' own further nesting (a "Push notifications" row atop
+// this already-collapsible section) got flattened same-day: "Dont nest
+// Push notification into Notification. Make it Notification only" --
+// see NotificationsSection.tsx, which now shows both push and email
+// channels inline instead of drilling into two separate screens (now
+// also deleted, same reasoning).
 //
 // Save/Favourite and the Companion recipes browse section were shelved
 // here (Anabelle, 2026-09-15: "priorize going faster on the market
@@ -274,26 +279,18 @@ export default function ProfileScreen() {
             expanded={notificationsOpen}
             onToggle={() => setNotificationsOpen((v) => !v)}
           />
-          {notificationsOpen && (
-            // Same two-row list as the old notifications.tsx screen --
-            // each row still pushes its own dedicated screen
-            // (notifications-push.tsx/notifications-email.tsx), which
-            // read/write public.users.notification_prefs
-            // (lib/notificationPrefs.ts). No guest branch needed here
-            // (unlike that old screen's own isGuest check) -- this whole
-            // section is already hidden for a guest by the wrapping
-            // !isGuest above.
-            <View style={styles.notificationsList}>
-              <Pressable style={styles.notificationRow} onPress={() => router.push('/notifications-push')}>
-                <Text style={styles.notificationRowText}>Push notifications</Text>
-                <ChevronRightIcon size={16} color={INK} />
-              </Pressable>
-              <Pressable style={styles.notificationRow} onPress={() => router.push('/notifications-email')}>
-                <Text style={styles.notificationRowText}>Email</Text>
-                <ChevronRightIcon size={16} color={INK} />
-              </Pressable>
-            </View>
-          )}
+          {/* Anabelle, 2026-09-15: "Dont nest Push notification into
+              Notification. Make it Notification only" -- was a two-row
+              list (Push notifications/Email), each pushing its own
+              dedicated screen (a real extra nesting level on top of the
+              accordion this section already is). NotificationsSection
+              now shows both channels inline, one combined Save -- same
+              "no drill-down" treatment as this screen's own Manage
+              account section. No guest branch needed here (unlike that
+              component's own internal isGuest check, kept for when it's
+              used standalone) -- this whole section is already hidden
+              for a guest by the wrapping !isGuest above. */}
+          {notificationsOpen && <NotificationsSection />}
         </>
       )}
     </ScrollView>
@@ -430,17 +427,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   upgradeRowButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  // Notifications section (Anabelle, 2026-09-15, moved here from
-  // Settings) -- same row-list treatment as the old notifications.tsx
-  // screen's own styles.row/rowText.
-  notificationsList: { marginTop: 4 },
-  notificationRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: INK,
-    paddingVertical: 16,
-  },
-  notificationRowText: { fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
 });
