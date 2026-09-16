@@ -37,7 +37,22 @@ export const FAQ_ITEMS: FaqItem[] = [
       // isSubscribed/isGuest gate at all); what's actually membership-only
       // is changing/customizing them afterward (Profile > My stores'
       // "Change" button, gated on isSubscribed).
-      "No, you can browse recipes and this week's deals as a guest, but without an account you can't add recipes to your grocery list, customize which stores you use (yours are auto-selected from your location), or see more than 3 of the week's recipes and 1 deal per category. A free account (still free, separate from membership) only unlocks managing your account settings and notification preferences. Everything else on that list needs membership.",
+      //
+      // Rewritten again same day after Anabelle described her own mental
+      // model of the tiers (guest = brief browse then prompted to make an
+      // account; free account = the 3-recipe/1-deal tier; membership =
+      // everything) -- checked it against the real gating and it's a
+      // three-tier model, but not quite that one: guest and free account
+      // are actually capped identically everywhere (recipe.tsx/best-
+      // deals.tsx/meals.tsx all gate on isSubscribed, not isGuest) -- a
+      // free account's only actual addition is account/notification
+      // settings themselves. The "brief browse" instinct wasn't wrong
+      // though: there IS a guest-only, one-time, skippable "create a free
+      // account" nudge after viewing 3 distinct recipes (guestNudge.ts,
+      // triggered from recipe.tsx's handleClose) -- surfaced here since
+      // it's the real mechanic behind that instinct, just soft/skippable
+      // rather than a hard wall.
+      "No, you can browse as a guest, with the same limits as a free account: up to 3 of the week's recipes, 1 deal per category, no adding to your grocery list, and stores auto-selected from your location (not customizable). After you've viewed a few recipes as a guest, you'll get a one-time invite to create a free account — that's skippable, not required. A free account (still free, separate from membership) additionally lets you manage your account settings and notification preferences. Membership unlocks everything else: every recipe and deal, your grocery list, and choosing your own stores.",
   },
   {
     question: 'What does membership include?',
