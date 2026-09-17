@@ -245,16 +245,20 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   subscribeButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  // White container, not the old INK-filled pressable row (Anabelle,
-  // 2026-09-17: "make it a white container, remove the chevron and add
-  // a button 'subscribe' as a primary button in the container") -- same
-  // white/INK-border card language as trialCard above, with a real
-  // "Subscribe" button replacing the old tap-the-whole-row-to-navigate
-  // pattern (and its trailing chevron) now that the action is explicit.
+  // Not the old INK-filled pressable row (Anabelle, 2026-09-17: "make it
+  // a white container, remove the chevron and add a button 'subscribe'
+  // as a primary button in the container"), and not that white fill
+  // either any more -- transparent + dashed border instead, same follow-
+  // up call (2026-09-17): "There should be consistence and the subscribe
+  // container everywhere should be transparent with a dashed border",
+  // matching UpgradeCta.tsx's own card style. The Subscribe button below
+  // stays solid ACCENT -- it's the one real primary action in the card,
+  // unlike the card itself which is just the locked-state container.
   membershipExpiredCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: INK,
+    borderStyle: 'dashed',
     borderRadius: 14,
     padding: 14,
     gap: 12,

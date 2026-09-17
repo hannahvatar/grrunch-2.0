@@ -293,11 +293,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   groceryToggleButtonActive: { backgroundColor: INK },
-  // Guest-locked state -- same white-fill/dashed-border/lock-icon
-  // convention as profile.tsx's changeStoreButton and every other
-  // "next-to-feature" locked CTA, instead of the solid ACCENT fill that
-  // implies the action is immediately available.
-  groceryToggleButtonLocked: { backgroundColor: '#fff', borderStyle: 'dashed' },
+  // Guest-locked state -- transparent fill/dashed border/lock icon, same
+  // "subscribe container" convention as every other locked CTA in the
+  // app (Anabelle, 2026-09-17: "the subscribe container everywhere
+  // should be transparent with a dashed border" -- this one was white,
+  // not transparent), instead of the solid ACCENT fill that implies the
+  // action is immediately available.
+  groceryToggleButtonLocked: { backgroundColor: 'transparent', borderStyle: 'dashed' },
   groceryToggleButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   groceryToggleButtonTextActive: { color: '#fff' },
   recipeButton: {
