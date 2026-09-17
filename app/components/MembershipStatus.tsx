@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckBadgeIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import { LockClosedIcon, StarIcon } from 'react-native-heroicons/outline';
 
 import {
   ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
@@ -127,7 +127,7 @@ export function MembershipStatus() {
       </View>
     ) : (
       <View style={styles.membershipCard}>
-        <CheckBadgeIcon size={20} color={INK} />
+        <StarIcon size={20} color={INK} />
         <View style={styles.membershipTextBlock}>
           <Text style={styles.membershipTitle}>Grrunch Member</Text>
           <Text style={styles.membershipSubtitle}>
@@ -172,11 +172,21 @@ export function MembershipStatus() {
 }
 
 const styles = StyleSheet.create({
+  // White, solid 2px INK border -- same "modal treatment" card language
+  // as trialCard/mealCard/GroceryListView's emptyState (Anabelle,
+  // 2026-09-17, on seeing this still filled ACCENT: "Not sure about the
+  // UI if this Grrunch Member container. Make it white as usual with the
+  // black border with an icon that says more 'member' or 'premium'" --
+  // this card had never gotten the same 2026-09-11 white-fill pass every
+  // other status card here did; StarIcon replaces CheckBadgeIcon, which
+  // read more "verified" than "member"/"premium").
   membershipCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: ACCENT,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
     borderRadius: 14,
     padding: 14,
   },
