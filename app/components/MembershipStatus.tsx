@@ -166,16 +166,21 @@ export function MembershipStatus() {
             <Text style={styles.membershipTitle}>Grrunch Member</Text>
             {/* Billing cycle/renewal date, read-only -- real values once
                 purchases go live (RevenueCat's CustomerInfo, via
-                usePurchases' expirationDate/willRenew), "Manage in
-                Settings" fallback for as long as they're not configured
-                (see lib/purchases.tsx's own header comment on why this
-                can't be an in-app toggle). */}
+                usePurchases' expirationDate/willRenew); see
+                lib/purchases.tsx's own header comment on why this can't
+                be an in-app toggle. Placeholder fallback for as long as
+                they're not configured -- "Manage in Settings" (Anabelle,
+                2026-09-17: "i know its a placeholder but 'Manage is
+                settings' is inaccurate") wasn't just a placeholder that
+                needed real data, it was actively wrong: there's no
+                Settings screen this points to, and it duplicated the
+                real "Manage membership" button sitting right below it. */}
             <Text style={styles.membershipSubtitle}>
               {expirationDate
                 ? willRenew
                   ? `Renews ${formatRenewalDate(expirationDate)}`
                   : `Ends ${formatRenewalDate(expirationDate)}`
-                : 'Manage in Settings'}
+                : 'Active membership'}
             </Text>
           </View>
         </View>
