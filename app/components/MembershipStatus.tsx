@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LockClosedIcon, TrophyIcon } from 'react-native-heroicons/outline';
 
 import {
@@ -25,6 +25,22 @@ const INK = '#111';
 // "Delete account" there, now this card's "Cancel trial".
 const ERROR = '#D0342C';
 
+// Apple/Google don't let a third-party app cancel or toggle auto-renew
+// on a real store subscription directly -- only their own native
+// subscription-management screens can (same reason the FAQ's "How do I
+// cancel my trial or membership?" answer, app/lib/support.ts, routes
+// there once purchases go live). "Cancel membership" below deep-links
+// out to it instead of pretending to process a cancellation in-app.
+const MANAGE_SUBSCRIPTION_URL = Platform.select({
+  ios: 'https://apps.apple.com/account/subscriptions',
+  android: 'https://play.google.com/store/account/subscriptions',
+  default: 'https://apps.apple.com/account/subscriptions',
+});
+
+function formatRenewalDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 // Real subscription status card -- extracted from profile.tsx's
 // Membership section (Anabelle, 2026-08-28) so payment.tsx can show the
 // exact same real status instead of duplicating the isSubscribed/
@@ -34,7 +50,7 @@ const ERROR = '#D0342C';
 // what a guest should see differs by context (Manage account vs Payment).
 export function MembershipStatus() {
   const { status: subscriptionStatus, trialEndsAt, isSubscribed, cancelTrial } = useSubscription();
-  const { activePackage } = usePurchases();
+  const { activePackage, expirationDate, willRenew } = usePurchases();
   const [cancelling, setCancelling] = useState(false);
 
   // The real price/period the member is actually on, now that there are
@@ -73,6 +89,18 @@ export function MembershipStatus() {
         },
       },
     ]);
+  }
+
+  // No confirmation dialog first, unlike handleCancelTrial -- this
+  // doesn't itself cancel anything, just opens the real place that does
+  // (see MANAGE_SUBSCRIPTION_URL's header comment).
+  async function handleCancelMembership() {
+    const canOpen = await Linking.canOpenURL(MANAGE_SUBSCRIPTION_URL);
+    if (canOpen) {
+      Linking.openURL(MANAGE_SUBSCRIPTION_URL);
+    } else {
+      Alert.alert('Could not open subscription settings', "Manage your subscription from your device's Settings app.");
+    }
   }
 
   // 0 when trialEndsAt is already past -- isSubscribed being true here
@@ -127,13 +155,30 @@ export function MembershipStatus() {
       </View>
     ) : (
       <View style={styles.membershipCard}>
-        <TrophyIcon size={20} color={INK} />
-        <View style={styles.membershipTextBlock}>
-          <Text style={styles.membershipTitle}>Grrunch Member</Text>
-          <Text style={styles.membershipSubtitle}>
-            {activePriceLabel ? `${activePriceLabel} · Manage in Settings` : 'Manage in Settings'}
-          </Text>
+        <View style={styles.membershipCardRow}>
+          <TrophyIcon size={20} color={INK} />
+          <View style={styles.membershipTextBlock}>
+            <Text style={styles.membershipTitle}>Grrunch Member</Text>
+            {/* Billing cycle/renewal date, read-only -- real values once
+                purchases go live (RevenueCat's CustomerInfo, via
+                usePurchases' expirationDate/willRenew), "Manage in
+                Settings" fallback for as long as they're not configured
+                (see lib/purchases.tsx's own header comment on why this
+                can't be an in-app toggle). */}
+            <Text style={styles.membershipSubtitle}>
+              {activePriceLabel
+                ? willRenew && expirationDate
+                  ? `${activePriceLabel} · Renews ${formatRenewalDate(expirationDate)}`
+                  : expirationDate
+                    ? `${activePriceLabel} · Auto-renew off, ends ${formatRenewalDate(expirationDate)}`
+                    : `${activePriceLabel} · Manage in Settings`
+                : 'Manage in Settings'}
+            </Text>
+          </View>
         </View>
+        <Pressable style={styles.cancelMembershipButton} onPress={handleCancelMembership}>
+          <Text style={styles.cancelMembershipButtonText}>Cancel membership</Text>
+        </Pressable>
       </View>
     );
   }
@@ -172,28 +217,44 @@ export function MembershipStatus() {
 }
 
 const styles = StyleSheet.create({
-  // White, solid 2px INK border -- same "modal treatment" card language
-  // as trialCard/mealCard/GroceryListView's emptyState (Anabelle,
-  // 2026-09-17, on seeing this still filled ACCENT: "Not sure about the
-  // UI if this Grrunch Member container. Make it white as usual with the
-  // black border with an icon that says more 'member' or 'premium'" --
-  // this card had never gotten the same 2026-09-11 white-fill pass every
-  // other status card here did). Icon went CheckBadgeIcon (read
-  // "verified") -> StarIcon -> TrophyIcon (her immediate follow-up:
-  // "Use a medal for the icon" -- Heroicons, the only icon set in this
-  // app, has no literal medal glyph; TrophyIcon is the closest same-
-  // family "achievement/status" icon rather than pulling in a second
-  // icon library for one glyph).
+  // White, no border (Anabelle, 2026-09-17: "we should remove the black
+  // border on the grrunch member container" -- a same-day reversal of
+  // the border this card had just gotten a few messages earlier, on
+  // seeing it live: "Not sure about the UI if this Grrunch Member
+  // container. Make it white as usual with the black border with an
+  // icon that says more 'member' or 'premium'"). Icon went CheckBadgeIcon
+  // (read "verified") -> StarIcon -> TrophyIcon ("Use a medal for the
+  // icon" -- Heroicons, the only icon set in this app, has no literal
+  // medal glyph; TrophyIcon is the closest same-family "achievement/
+  // status" icon rather than pulling in a second icon library for one
+  // glyph). Now also carries real billing-cycle info and a "Cancel
+  // membership" button (same message: "i feel there should be like a
+  // toggle to select or not auto renew, details e.g. billing cycle and
+  // a cancel membership button" -- built as read-only billing details +
+  // a deep-link-out cancel button instead of an in-app auto-renew
+  // toggle, since Apple/Google don't let a third-party app control that
+  // directly for a real store subscription; see MANAGE_SUBSCRIPTION_URL
+  // above).
   membershipCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
     backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
     borderRadius: 14,
     padding: 14,
+    gap: 12,
   },
+  membershipCardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Same white/ERROR-border secondary-destructive treatment as
+  // cancelTrialButton below, full width since it stands alone here (no
+  // paired Subscribe button -- a member is already subscribed).
+  cancelMembershipButton: {
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: ERROR,
+    borderRadius: 24,
+  },
+  cancelMembershipButtonText: { color: ERROR, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // White, not ACCENT -- Anabelle's call (2026-09-11), the same white-fill
   // language as the app's other cards, rather than this being the one
   // filled-orange exception. Border added back (2026-09-14, her follow-up
