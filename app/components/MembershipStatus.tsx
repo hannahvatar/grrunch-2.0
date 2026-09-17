@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckBadgeIcon, ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import { CheckBadgeIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import {
   ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
@@ -139,24 +139,28 @@ export function MembershipStatus() {
 
   if (subscriptionStatus === 'trialing' || subscriptionStatus === 'expired') {
     return (
-      <Pressable
-        style={styles.membershipExpiredCard}
-        onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'renew your membership' } })}
-      >
-        <LockClosedIcon size={18} color="#fff" />
-        <View style={styles.membershipTextBlock}>
-          <Text style={styles.membershipTitleLight}>Your trial has ended</Text>
-          {/* No specific price here -- unlike the trialing/active states
-              above, a lapsed member hasn't picked a plan yet (they may
-              switch between monthly/annual on resubscribe), so /upgrade
-              (which shows both real prices) is the right place for that
-              number, not a guess here. "...keep saving recipes" (this
-              copy's own original wording) dropped 2026-09-15, same as
-              every other Save/Favourite mention -- see PR #222. */}
-          <Text style={styles.membershipSubtitleLight}>Resubscribe to unlock the full app</Text>
+      <View style={styles.membershipExpiredCard}>
+        <View style={styles.membershipExpiredRow}>
+          <LockClosedIcon size={18} color={INK} />
+          <View style={styles.membershipTextBlock}>
+            <Text style={styles.membershipTitle}>Your trial has ended</Text>
+            {/* No specific price here -- unlike the trialing/active states
+                above, a lapsed member hasn't picked a plan yet (they may
+                switch between monthly/annual on resubscribe), so /upgrade
+                (which shows both real prices) is the right place for that
+                number, not a guess here. "...keep saving recipes" (this
+                copy's own original wording) dropped 2026-09-15, same as
+                every other Save/Favourite mention -- see PR #222. */}
+            <Text style={styles.membershipSubtitle}>Subscribe to unlock the full app</Text>
+          </View>
         </View>
-        <ChevronRightIcon size={18} color="#999" />
-      </Pressable>
+        <Pressable
+          style={styles.subscribeButtonFull}
+          onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'renew your membership' } })}
+        >
+          <Text style={styles.subscribeButtonText}>Subscribe</Text>
+        </Pressable>
+      </View>
     );
   }
 
@@ -237,17 +241,31 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   subscribeButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // White container, not the old INK-filled pressable row (Anabelle,
+  // 2026-09-17: "make it a white container, remove the chevron and add
+  // a button 'subscribe' as a primary button in the container") -- same
+  // white/INK-border card language as trialCard above, with a real
+  // "Subscribe" button replacing the old tap-the-whole-row-to-navigate
+  // pattern (and its trailing chevron) now that the action is explicit.
   membershipExpiredCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: INK,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
     borderRadius: 14,
     padding: 14,
+    gap: 12,
+  },
+  membershipExpiredRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  subscribeButtonFull: {
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 24,
   },
   membershipTextBlock: { flex: 1 },
   membershipTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   membershipSubtitle: { fontSize: 12, color: '#5c3d1c', marginTop: 2 },
-  membershipTitleLight: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#fff' },
-  membershipSubtitleLight: { fontSize: 12, color: '#ccc', marginTop: 2 },
 });
