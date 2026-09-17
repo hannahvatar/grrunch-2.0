@@ -91,10 +91,15 @@ export function MembershipStatus() {
     ]);
   }
 
+  // "Manage membership" (not "Cancel membership" -- Anabelle's follow-up,
+  // 2026-09-17: "Then Manage membership deep-links to Apple's or
+  // Google's subscription-management screen. There, the user can
+  // cancel, change the plan, etc." -- the platform screen covers more
+  // than just cancelling, so the button shouldn't read as cancel-only).
   // No confirmation dialog first, unlike handleCancelTrial -- this
-  // doesn't itself cancel anything, just opens the real place that does
+  // doesn't itself change anything, just opens the real place that does
   // (see MANAGE_SUBSCRIPTION_URL's header comment).
-  async function handleCancelMembership() {
+  async function handleManageMembership() {
     const canOpen = await Linking.canOpenURL(MANAGE_SUBSCRIPTION_URL);
     if (canOpen) {
       Linking.openURL(MANAGE_SUBSCRIPTION_URL);
@@ -166,18 +171,16 @@ export function MembershipStatus() {
                 (see lib/purchases.tsx's own header comment on why this
                 can't be an in-app toggle). */}
             <Text style={styles.membershipSubtitle}>
-              {activePriceLabel
-                ? willRenew && expirationDate
-                  ? `${activePriceLabel} · Renews ${formatRenewalDate(expirationDate)}`
-                  : expirationDate
-                    ? `${activePriceLabel} · Auto-renew off, ends ${formatRenewalDate(expirationDate)}`
-                    : `${activePriceLabel} · Manage in Settings`
+              {expirationDate
+                ? willRenew
+                  ? `Renews ${formatRenewalDate(expirationDate)}`
+                  : `Ends ${formatRenewalDate(expirationDate)}`
                 : 'Manage in Settings'}
             </Text>
           </View>
         </View>
-        <Pressable style={styles.cancelMembershipButton} onPress={handleCancelMembership}>
-          <Text style={styles.cancelMembershipButtonText}>Cancel membership</Text>
+        <Pressable style={styles.manageMembershipButton} onPress={handleManageMembership}>
+          <Text style={styles.manageMembershipButtonText}>Manage membership</Text>
         </Pressable>
       </View>
     );
@@ -227,14 +230,17 @@ const styles = StyleSheet.create({
   // icon" -- Heroicons, the only icon set in this app, has no literal
   // medal glyph; TrophyIcon is the closest same-family "achievement/
   // status" icon rather than pulling in a second icon library for one
-  // glyph). Now also carries real billing-cycle info and a "Cancel
+  // glyph). Now also carries a real renewal date and a "Manage
   // membership" button (same message: "i feel there should be like a
   // toggle to select or not auto renew, details e.g. billing cycle and
-  // a cancel membership button" -- built as read-only billing details +
-  // a deep-link-out cancel button instead of an in-app auto-renew
-  // toggle, since Apple/Google don't let a third-party app control that
+  // a cancel membership button" -- built as a read-only renewal date +
+  // a deep-link-out button instead of an in-app auto-renew toggle,
+  // since Apple/Google don't let a third-party app control that
   // directly for a real store subscription; see MANAGE_SUBSCRIPTION_URL
-  // above).
+  // above. Her immediate follow-up simplified the copy to just "Grrunch
+  // Member / Renews [date] / Manage membership" -- dropped the price
+  // from the subtitle, and renamed Cancel -> Manage since the platform
+  // screen it opens covers changing plans too, not just cancelling).
   membershipCard: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -242,19 +248,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   membershipCardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  // Same white/ERROR-border secondary-destructive treatment as
-  // cancelTrialButton below, full width since it stands alone here (no
-  // paired Subscribe button -- a member is already subscribed).
-  cancelMembershipButton: {
+  // Neutral white/INK-border, not the ERROR-red cancelTrialButton uses
+  // below -- this button isn't cancel-only any more (Anabelle: "the
+  // user can cancel, change the plan, etc." on the platform screen it
+  // opens), so a red destructive treatment would overstate what tapping
+  // it actually does. Full width since it stands alone here (no paired
+  // Subscribe button -- a member is already subscribed).
+  manageMembershipButton: {
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
     borderWidth: 2,
-    borderColor: ERROR,
+    borderColor: INK,
     borderRadius: 24,
   },
-  cancelMembershipButtonText: { color: ERROR, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  manageMembershipButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // White, not ACCENT -- Anabelle's call (2026-09-11), the same white-fill
   // language as the app's other cards, rather than this being the one
   // filled-orange exception. Border added back (2026-09-14, her follow-up
