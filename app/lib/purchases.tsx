@@ -60,6 +60,18 @@ interface PurchasesContextValue {
   // MembershipStatus.tsx, which used to hardcode "$5.99/mo" regardless
   // of what was actually purchased.
   activePackage: PurchasesPackage | null;
+  // ISO date string the active entitlement next renews or expires on,
+  // and whether it's actually set to renew -- both straight from
+  // RevenueCat's CustomerInfo, null/false while not subscribed. Lets a
+  // screen show real billing-cycle details instead of a guess (Anabelle,
+  // 2026-09-17: Profile's member card should show "billing cycle... and
+  // a cancel membership button") -- there's deliberately no way to
+  // toggle willRenew from in here: Apple/Google don't let a third-party
+  // app control a store subscription's auto-renew state directly, only
+  // display it and deep-link out to the platform's own subscription
+  // management (see MembershipStatus.tsx's cancel button).
+  expirationDate: string | null;
+  willRenew: boolean;
   purchase: (pkg: PurchasesPackage) => Promise<{ error: string | null }>;
   // restored tells the caller whether an entitlement was actually found,
   // not just whether the call itself succeeded -- Purchases.
@@ -84,6 +96,14 @@ function activeProductId(info: CustomerInfo): string | null {
   return info.entitlements.active[ENTITLEMENT_ID]?.productIdentifier ?? null;
 }
 
+function activeExpirationDate(info: CustomerInfo): string | null {
+  return info.entitlements.active[ENTITLEMENT_ID]?.expirationDate ?? null;
+}
+
+function activeWillRenew(info: CustomerInfo): boolean {
+  return info.entitlements.active[ENTITLEMENT_ID]?.willRenew ?? false;
+}
+
 // react-native-purchases has no web implementation at all -- it's an
 // Apple/Google in-app-purchase SDK, and this product deliberately has no
 // web version to sell through (see this session's Stripe-vs-IAP
@@ -101,6 +121,18 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [activeProduct, setActiveProduct] = useState<string | null>(null);
+  const [expirationDate, setExpirationDate] = useState<string | null>(null);
+  const [willRenew, setWillRenew] = useState(false);
+
+  // One place to fan a fresh CustomerInfo out to all four pieces of
+  // state, instead of the same four setters repeated at every call site
+  // (the listener below, the initial fetch, purchase(), restore()).
+  function applyCustomerInfo(info: CustomerInfo) {
+    setIsSubscribed(isEntitled(info));
+    setActiveProduct(activeProductId(info));
+    setExpirationDate(activeExpirationDate(info));
+    setWillRenew(activeWillRenew(info));
+  }
 
   // Configure the SDK exactly once. Guests never call Purchases.logIn
   // below (RevenueCat tracks them under its own anonymous id until a
@@ -142,16 +174,10 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   // refetch the way subscriptions.tsx's DB-backed status does.
   useEffect(() => {
     if (!configured) return;
-    const listener = (info: CustomerInfo) => {
-      setIsSubscribed(isEntitled(info));
-      setActiveProduct(activeProductId(info));
-    };
+    const listener = (info: CustomerInfo) => applyCustomerInfo(info);
     Purchases.addCustomerInfoUpdateListener(listener);
     Purchases.getCustomerInfo()
-      .then((info) => {
-        setIsSubscribed(isEntitled(info));
-        setActiveProduct(activeProductId(info));
-      })
+      .then(applyCustomerInfo)
       .finally(() => setLoading(false));
     return () => {
       Purchases.removeCustomerInfoUpdateListener(listener);
@@ -168,8 +194,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   async function purchase(pkg: PurchasesPackage): Promise<{ error: string | null }> {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
-      setIsSubscribed(isEntitled(customerInfo));
-      setActiveProduct(activeProductId(customerInfo));
+      applyCustomerInfo(customerInfo);
       return { error: null };
     } catch (e: any) {
       if (e?.userCancelled) return { error: null };
@@ -181,8 +206,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     try {
       const info = await Purchases.restorePurchases();
       const restored = isEntitled(info);
-      setIsSubscribed(restored);
-      setActiveProduct(activeProductId(info));
+      applyCustomerInfo(info);
       return { error: null, restored };
     } catch (e: any) {
       return { error: e?.message ?? 'Could not restore purchases.', restored: false };
@@ -197,7 +221,17 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
 
   return (
     <PurchasesContext.Provider
-      value={{ configured, loading, offering, isSubscribed, activePackage, purchase, restore }}
+      value={{
+        configured,
+        loading,
+        offering,
+        isSubscribed,
+        activePackage,
+        expirationDate,
+        willRenew,
+        purchase,
+        restore,
+      }}
     >
       {children}
     </PurchasesContext.Provider>

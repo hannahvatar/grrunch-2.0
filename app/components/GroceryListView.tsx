@@ -390,7 +390,7 @@ export function GroceryListView() {
                 <Text style={styles.lockedText}>
                   Add recipes and deals to keep everything you need in one place.
                 </Text>
-                <UpgradeCta reason="build your grocery list" variant="outline" outlineFill="transparent" />
+                <UpgradeCta reason="build your grocery list" variant="outline" />
               </>
             ) : (
               <View style={styles.emptyState}>

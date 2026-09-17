@@ -4,6 +4,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'rea
 
 import { useAuth } from '../lib/auth';
 import { deleteAccount, fetchProfile, Profile, saveProfile } from '../lib/profile';
+import { usePurchases } from '../lib/purchases';
 import { supabase } from '../lib/supabase';
 import { ChipMultiSelect } from './ChipMultiSelect';
 import { InputField } from './InputField';
@@ -122,6 +123,18 @@ function ManageAccountForm({
   // the app's own DS. Same "standard RN bottom-sheet" pattern (Modal +
   // Pressable backdrop) as GroceryListView.tsx's quantity editor.
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  // Anabelle, 2026-09-17: "When user hit 'delete account', a modal
+  // pops: Cancel your membership first... Then, once Grrunch detects
+  // willRenew = false, Delete account can proceed to your normal
+  // deletion confirmation." Deleting the Grrunch account doesn't cancel
+  // a real Apple/Google subscription -- that keeps billing regardless,
+  // same reason MembershipStatus.tsx's "Manage membership" deep-links
+  // out instead of processing a cancellation itself -- so this blocks
+  // the real delete flow until willRenew reads false (a DB-only trial/
+  // active row has no real willRenew at all, defaults false in
+  // lib/purchases.tsx, so this never blocks in that unconfigured state).
+  const [membershipBlockVisible, setMembershipBlockVisible] = useState(false);
+  const { willRenew } = usePurchases();
 
   useEffect(() => {
     let cancelled = false;
@@ -211,6 +224,14 @@ function ManageAccountForm({
     // mode:'signup' -- the account just deleted is gone, so
     // returning here is starting fresh, not signing back in.
     router.replace({ pathname: '/login', params: { mode: 'signup' } });
+  }
+
+  function handleDeletePress() {
+    if (willRenew) {
+      setMembershipBlockVisible(true);
+      return;
+    }
+    setConfirmDeleteVisible(true);
   }
 
   if (loading) {
@@ -317,13 +338,41 @@ function ManageAccountForm({
       {/* Real destructive button (Anabelle, 2026-09-15) -- was an
           underlined text link, same white-fill/2px-ERROR-border/pill
           treatment as MembershipStatus.tsx's own cancelTrialButton. */}
-      <Pressable style={styles.deleteButton} onPress={() => setConfirmDeleteVisible(true)} disabled={deleting}>
+      <Pressable style={styles.deleteButton} onPress={handleDeletePress} disabled={deleting}>
         {deleting ? (
           <ActivityIndicator color={ERROR} />
         ) : (
           <Text style={styles.deleteButtonText}>Delete account</Text>
         )}
       </Pressable>
+
+      {/* Blocks the real delete flow while a real subscription would
+          keep renewing/billing after the account is gone -- see
+          handleDeletePress/willRenew above. Single acknowledgment
+          button, not Keep/Delete -- there's no delete choice to make
+          here yet, just a dead end until she cancels membership first. */}
+      <Modal
+        visible={membershipBlockVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMembershipBlockVisible(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setMembershipBlockVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>Cancel your membership first</Text>
+            <Text style={styles.modalBody}>
+              You have an active Grrunch membership. Cancel your membership before deleting your account to avoid
+              future charges.
+            </Text>
+            <Pressable
+              style={[styles.modalKeepButton, styles.modalSingleButton]}
+              onPress={() => setMembershipBlockVisible(false)}
+            >
+              <Text style={styles.modalKeepButtonText}>Got it</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Confirmation modal -- standard RN bottom-sheet pattern
           (transparent Modal + Pressable backdrop), same as
@@ -472,6 +521,12 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   modalKeepButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Overrides modalKeepButton's flex:1 for the membership-block modal's
+  // single "Got it" button -- flex:1 only makes sense paired with a
+  // second flex:1 button inside modalActions' row (real bug caught live:
+  // reused bare, outside that row, the button collapsed to almost no
+  // height since modalCard has no bounded height for flex:1 to fill).
+  modalSingleButton: { flex: 0 },
   // Solid ERROR fill -- this is the actual irreversible confirm action,
   // so it gets the strongest treatment on this card, distinct from the
   // outline-style trigger button that opened this modal.

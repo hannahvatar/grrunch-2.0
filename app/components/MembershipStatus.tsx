@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckBadgeIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LockClosedIcon, TrophyIcon } from 'react-native-heroicons/outline';
 
 import {
   ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
@@ -25,6 +25,22 @@ const INK = '#111';
 // "Delete account" there, now this card's "Cancel trial".
 const ERROR = '#D0342C';
 
+// Apple/Google don't let a third-party app cancel or toggle auto-renew
+// on a real store subscription directly -- only their own native
+// subscription-management screens can (same reason the FAQ's "How do I
+// cancel my trial or membership?" answer, app/lib/support.ts, routes
+// there once purchases go live). "Cancel membership" below deep-links
+// out to it instead of pretending to process a cancellation in-app.
+const MANAGE_SUBSCRIPTION_URL = Platform.select({
+  ios: 'https://apps.apple.com/account/subscriptions',
+  android: 'https://play.google.com/store/account/subscriptions',
+  default: 'https://apps.apple.com/account/subscriptions',
+});
+
+function formatRenewalDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 // Real subscription status card -- extracted from profile.tsx's
 // Membership section (Anabelle, 2026-08-28) so payment.tsx can show the
 // exact same real status instead of duplicating the isSubscribed/
@@ -34,7 +50,7 @@ const ERROR = '#D0342C';
 // what a guest should see differs by context (Manage account vs Payment).
 export function MembershipStatus() {
   const { status: subscriptionStatus, trialEndsAt, isSubscribed, cancelTrial } = useSubscription();
-  const { activePackage } = usePurchases();
+  const { activePackage, expirationDate, willRenew } = usePurchases();
   const [cancelling, setCancelling] = useState(false);
 
   // The real price/period the member is actually on, now that there are
@@ -73,6 +89,23 @@ export function MembershipStatus() {
         },
       },
     ]);
+  }
+
+  // "Manage membership" (not "Cancel membership" -- Anabelle's follow-up,
+  // 2026-09-17: "Then Manage membership deep-links to Apple's or
+  // Google's subscription-management screen. There, the user can
+  // cancel, change the plan, etc." -- the platform screen covers more
+  // than just cancelling, so the button shouldn't read as cancel-only).
+  // No confirmation dialog first, unlike handleCancelTrial -- this
+  // doesn't itself change anything, just opens the real place that does
+  // (see MANAGE_SUBSCRIPTION_URL's header comment).
+  async function handleManageMembership() {
+    const canOpen = await Linking.canOpenURL(MANAGE_SUBSCRIPTION_URL);
+    if (canOpen) {
+      Linking.openURL(MANAGE_SUBSCRIPTION_URL);
+    } else {
+      Alert.alert('Could not open subscription settings', "Manage your subscription from your device's Settings app.");
+    }
   }
 
   // 0 when trialEndsAt is already past -- isSubscribed being true here
@@ -127,13 +160,33 @@ export function MembershipStatus() {
       </View>
     ) : (
       <View style={styles.membershipCard}>
-        <CheckBadgeIcon size={20} color={INK} />
-        <View style={styles.membershipTextBlock}>
-          <Text style={styles.membershipTitle}>Grrunch Member</Text>
-          <Text style={styles.membershipSubtitle}>
-            {activePriceLabel ? `${activePriceLabel} · Manage in Settings` : 'Manage in Settings'}
-          </Text>
+        <View style={styles.membershipCardRow}>
+          <TrophyIcon size={20} color={INK} />
+          <View style={styles.membershipTextBlock}>
+            <Text style={styles.membershipTitle}>Grrunch Member</Text>
+            {/* Billing cycle/renewal date, read-only -- real values once
+                purchases go live (RevenueCat's CustomerInfo, via
+                usePurchases' expirationDate/willRenew); see
+                lib/purchases.tsx's own header comment on why this can't
+                be an in-app toggle. Placeholder fallback for as long as
+                they're not configured -- "Manage in Settings" (Anabelle,
+                2026-09-17: "i know its a placeholder but 'Manage is
+                settings' is inaccurate") wasn't just a placeholder that
+                needed real data, it was actively wrong: there's no
+                Settings screen this points to, and it duplicated the
+                real "Manage membership" button sitting right below it. */}
+            <Text style={styles.membershipSubtitle}>
+              {expirationDate
+                ? willRenew
+                  ? `Renews ${formatRenewalDate(expirationDate)}`
+                  : `Ends ${formatRenewalDate(expirationDate)}`
+                : 'Active membership'}
+            </Text>
+          </View>
         </View>
+        <Pressable style={styles.manageMembershipButton} onPress={handleManageMembership}>
+          <Text style={styles.manageMembershipButtonText}>Manage membership</Text>
+        </Pressable>
       </View>
     );
   }
@@ -172,14 +225,50 @@ export function MembershipStatus() {
 }
 
 const styles = StyleSheet.create({
+  // White, no border (Anabelle, 2026-09-17: "we should remove the black
+  // border on the grrunch member container" -- a same-day reversal of
+  // the border this card had just gotten a few messages earlier, on
+  // seeing it live: "Not sure about the UI if this Grrunch Member
+  // container. Make it white as usual with the black border with an
+  // icon that says more 'member' or 'premium'"). Icon went CheckBadgeIcon
+  // (read "verified") -> StarIcon -> TrophyIcon ("Use a medal for the
+  // icon" -- Heroicons, the only icon set in this app, has no literal
+  // medal glyph; TrophyIcon is the closest same-family "achievement/
+  // status" icon rather than pulling in a second icon library for one
+  // glyph). Now also carries a real renewal date and a "Manage
+  // membership" button (same message: "i feel there should be like a
+  // toggle to select or not auto renew, details e.g. billing cycle and
+  // a cancel membership button" -- built as a read-only renewal date +
+  // a deep-link-out button instead of an in-app auto-renew toggle,
+  // since Apple/Google don't let a third-party app control that
+  // directly for a real store subscription; see MANAGE_SUBSCRIPTION_URL
+  // above. Her immediate follow-up simplified the copy to just "Grrunch
+  // Member / Renews [date] / Manage membership" -- dropped the price
+  // from the subtitle, and renamed Cancel -> Manage since the platform
+  // screen it opens covers changing plans too, not just cancelling).
   membershipCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: ACCENT,
+    backgroundColor: '#fff',
     borderRadius: 14,
     padding: 14,
+    gap: 12,
   },
+  membershipCardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Neutral white/INK-border, not the ERROR-red cancelTrialButton uses
+  // below -- this button isn't cancel-only any more (Anabelle: "the
+  // user can cancel, change the plan, etc." on the platform screen it
+  // opens), so a red destructive treatment would overstate what tapping
+  // it actually does. Full width since it stands alone here (no paired
+  // Subscribe button -- a member is already subscribed).
+  manageMembershipButton: {
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 24,
+  },
+  manageMembershipButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // White, not ACCENT -- Anabelle's call (2026-09-11), the same white-fill
   // language as the app's other cards, rather than this being the one
   // filled-orange exception. Border added back (2026-09-14, her follow-up
@@ -245,16 +334,20 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   subscribeButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  // White container, not the old INK-filled pressable row (Anabelle,
-  // 2026-09-17: "make it a white container, remove the chevron and add
-  // a button 'subscribe' as a primary button in the container") -- same
-  // white/INK-border card language as trialCard above, with a real
-  // "Subscribe" button replacing the old tap-the-whole-row-to-navigate
-  // pattern (and its trailing chevron) now that the action is explicit.
+  // Not the old INK-filled pressable row (Anabelle, 2026-09-17: "make it
+  // a white container, remove the chevron and add a button 'subscribe'
+  // as a primary button in the container"), and not that white fill
+  // either any more -- transparent + dashed border instead, same follow-
+  // up call (2026-09-17): "There should be consistence and the subscribe
+  // container everywhere should be transparent with a dashed border",
+  // matching UpgradeCta.tsx's own card style. The Subscribe button below
+  // stays solid ACCENT -- it's the one real primary action in the card,
+  // unlike the card itself which is just the locked-state container.
   membershipExpiredCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: INK,
+    borderStyle: 'dashed',
     borderRadius: 14,
     padding: 14,
     gap: 12,

@@ -14,34 +14,33 @@ const INK = '#111';
 // before committing, rather than each one having its own logic.
 //
 // variant 'solid' (default) is Profile's Membership section (the page's
-// one real top-level "you're not a member" banner) -- white fill, solid
-// 2px INK border (Anabelle, 2026-09-15, on seeing this all-black: "i
-// didnt like it" -- was a solid #111 fill with white text, the one card
-// on the page that broke from the app's white-card/peach-bg/orange-accent
-// language). Now matches MembershipStatus.tsx's own trialCard shape too
-// (info block on top, a real button below), not just its colors --
-// Anabelle's immediate follow-up: "remove the chevron and add a primary
-// button at the bottom of the container with the label 'Start free
-// trial'". The whole card is no longer one big Pressable -- only the
-// button is, same explicit-affordance pattern the app already uses
+// one real top-level "you're not a member" banner) -- matches
+// MembershipStatus.tsx's own trialCard shape (info block on top, a real
+// button below): Anabelle, 2026-09-15, "remove the chevron and add a
+// primary button at the bottom of the container with the label 'Start
+// free trial'". The whole card is no longer one big Pressable -- only
+// the button is, same explicit-affordance pattern the app already uses
 // elsewhere (e.g. profile.tsx's viewSavedButton alongside a tappable
 // row) rather than an implicit whole-card tap.
 //
-// variant 'outline' is the next-to-feature dashed treatment used by
-// Grocery list's empty state -- unchanged by the above, still a single
-// tappable row with a trailing chevron, since that's a lighter-weight
-// secondary-section prompt, not the page's primary conversion moment.
-// outlineFill="transparent" lets Grocery list's version show the
-// screen's own peach background through instead of a white card
-// (Anabelle's call, same treatment Meals' own one-off unlockCard uses).
+// variant 'outline' is the next-to-feature treatment used by Grocery
+// list's empty state -- a single tappable row with a trailing chevron,
+// since that's a lighter-weight secondary-section prompt, not the page's
+// primary conversion moment.
+//
+// Both variants share the one `card` style below -- transparent fill,
+// dashed INK border (Anabelle, 2026-09-17: "There should be consistence
+// and the subscribe container everywhere should be transparent with a
+// dashed border"). Was a solid-bordered white fill for 'solid' and a
+// per-caller `outlineFill` prop (defaulting to white, only Grocery
+// list's own call site opted into transparent) for 'outline' -- same
+// look now everywhere, no prop needed to ask for it.
 export function UpgradeCta({
   reason,
   variant = 'solid',
-  outlineFill = 'white',
 }: {
   reason: string;
   variant?: 'solid' | 'outline';
-  outlineFill?: 'white' | 'transparent';
 }) {
   function goToUpgrade() {
     router.push({ pathname: '/upgrade', params: { reason } });
@@ -49,14 +48,7 @@ export function UpgradeCta({
 
   if (variant === 'outline') {
     return (
-      <Pressable
-        style={[
-          styles.card,
-          styles.outlineRow,
-          outlineFill === 'transparent' && styles.outlineTransparent,
-        ]}
-        onPress={goToUpgrade}
-      >
+      <Pressable style={[styles.card, styles.outlineRow]} onPress={goToUpgrade}>
         <LockClosedIcon size={18} color={INK} />
         <View style={styles.textBlock}>
           <Text style={styles.title}>Start 30-day free trial</Text>
@@ -97,23 +89,22 @@ export function UpgradeCta({
 }
 
 const styles = StyleSheet.create({
+  // Transparent + dashed, both variants -- see the header comment.
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: INK,
+    borderStyle: 'dashed',
     borderRadius: 14,
     padding: 14,
   },
-  // outline variant only -- a single tappable row (icon, text, chevron).
+  // outline variant only -- a single tappable row (icon, text, chevron),
+  // thinner border than the solid variant's card.
   outlineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     borderWidth: 1.5,
-    borderStyle: 'dashed',
-  },
-  outlineTransparent: {
-    backgroundColor: 'transparent',
   },
   // solid variant only -- the icon+text header row sits above its own
   // separate ctaButton, not inline with it.
