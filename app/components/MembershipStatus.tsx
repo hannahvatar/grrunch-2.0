@@ -13,6 +13,7 @@ import {
   getTrialDaysLeft,
   getTrialUrgencyTier,
   TRIAL_DAYS,
+  TRIAL_ENDED_MESSAGE,
   TRIAL_URGENCY_STYLES,
   useSubscription,
 } from '../lib/subscription';
@@ -143,15 +144,18 @@ export function MembershipStatus() {
         <View style={styles.membershipExpiredRow}>
           <LockClosedIcon size={18} color={INK} />
           <View style={styles.membershipTextBlock}>
-            <Text style={styles.membershipTitle}>Your trial has ended</Text>
-            {/* No specific price here -- unlike the trialing/active states
-                above, a lapsed member hasn't picked a plan yet (they may
-                switch between monthly/annual on resubscribe), so /upgrade
-                (which shows both real prices) is the right place for that
-                number, not a guess here. "...keep saving recipes" (this
-                copy's own original wording) dropped 2026-09-15, same as
-                every other Save/Favourite mention -- see PR #222. */}
-            <Text style={styles.membershipSubtitle}>Subscribe to unlock the full app</Text>
+            {/* Same exact sentence as NotificationBell.tsx's lapsed-trial
+                notification (Anabelle, 2026-09-17: "keep that same
+                sentence from the notification and apply to the container
+                in the membership section") -- both read TRIAL_ENDED_
+                MESSAGE from lib/subscription.tsx so they can't drift
+                apart in wording again. No specific price here -- unlike
+                the trialing/active states above, a lapsed member hasn't
+                picked a plan yet (they may switch between monthly/annual
+                on resubscribe), so /upgrade (which shows both real
+                prices) is the right place for that number, not a guess
+                here. */}
+            <Text style={styles.membershipTitle}>{TRIAL_ENDED_MESSAGE}</Text>
           </View>
         </View>
         <Pressable

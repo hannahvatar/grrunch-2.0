@@ -6,6 +6,7 @@ import { BellIcon } from 'react-native-heroicons/outline';
 import {
   getTrialDaysLeft,
   getTrialUrgencyTier,
+  TRIAL_ENDED_MESSAGE,
   TRIAL_URGENCY_STYLES,
   useSubscription,
 } from '../lib/subscription';
@@ -54,7 +55,7 @@ function useNotifications() {
       {
         key: 'trial-ended',
         tier: 'error' as const,
-        message: 'Your free trial has ended. Subscribe to keep enjoying Grrunch.',
+        message: TRIAL_ENDED_MESSAGE,
       },
     ];
   }
