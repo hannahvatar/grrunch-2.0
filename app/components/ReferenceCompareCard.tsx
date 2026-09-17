@@ -9,6 +9,8 @@ import {
   formatMoney,
   formatPctVsBenchmark,
   formatVerdictSentence,
+  IMPLAUSIBLE_BENCHMARK_RATIO,
+  isImplausibleBenchmark,
   splitReferenceUnit,
   type ComparisonOutcome,
 } from '../lib/referenceCompare';
@@ -17,6 +19,7 @@ import {
   fetchStaplePrices,
   fetchStatcanPrices,
   rankReferenceCandidates,
+  searchReferenceCandidates,
   type ReferenceCandidate,
   type ReferenceTier,
 } from '../lib/staplePrices';
@@ -57,13 +60,15 @@ interface ReferenceCompareCardProps {
   onUseAsOriginalPrice?: (value: number) => void;
 }
 
-// Shared reference-vs-flyer price comparison. Mounted in two places, on
-// purpose: inside dev-deals' review card (where the approve/reject
-// decision actually happens, prefilled from the deal being reviewed)
-// and on the standalone dev-cost screen (for an item that isn't in the
-// review queue at all). One engine, two doors -- the comparison math
-// lives in lib/referenceCompare.ts and is never reimplemented per
-// screen.
+// Shared reference-vs-flyer price comparison, mounted inside dev-deals'
+// review card. Used to live in a second, hand-rolled ~80%-duplicate copy
+// on a standalone dev-cost.tsx screen too -- that screen was merged into
+// dev-deals.tsx instead (Anabelle: "i feel they are doing the same
+// thing," which they structurally were) rather than kept as a second
+// door onto the same comparison engine. The search affordance and
+// implausible-benchmark guard below were dev-cost's two genuinely
+// distinct capabilities, ported in here so every caller gets them
+// instead of just one screen.
 export function ReferenceCompareCard({
   itemName,
   initialPrice,
@@ -81,6 +86,8 @@ export function ReferenceCompareCard({
   const [manualOpen, setManualOpen] = useState(false);
   const [manualPrice, setManualPrice] = useState('');
   const [manualUnit, setManualUnit] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [price, setPrice] = useState(initialPrice ?? '');
   const [quantity, setQuantity] = useState(initialQuantity ?? '');
@@ -103,11 +110,22 @@ export function ReferenceCompareCard({
   useEffect(() => {
     setConfirmed(null);
     setManualOpen(false);
+    setSearchOpen(false);
+    setSearchQuery('');
   }, [itemName]);
 
   const candidates = useMemo(
     () => (itemName.trim() ? rankReferenceCandidates(itemName, statcan, produce, staple) : []),
     [itemName, statcan, produce, staple]
+  );
+
+  // Deliberately looser than the ranked candidates above -- for
+  // re-adjusting a wrong auto-match by hand (Anabelle: "Can the STATCAN
+  // ITEM input could be a search field if i want to reajust the ref
+  // item"), not for unattended pricing.
+  const searchResults = useMemo(
+    () => (searchOpen ? searchReferenceCandidates(searchQuery, statcan, produce, staple) : []),
+    [searchOpen, searchQuery, statcan, produce, staple]
   );
 
   const reference =
@@ -117,11 +135,11 @@ export function ReferenceCompareCard({
         ? { name: confirmed.name, avgPrice: confirmed.avgPrice, unit: confirmed.unit }
         : null;
 
-  // Same engine dev-cost.tsx runs -- a reference row's free-text
-  // denomination ("750 grams", "per kilogram") is split into the
-  // price/per/unit triple compare() takes, so both screens normalize to
-  // the same per-100g / per-100ml / per-unit basis and can't disagree
-  // about whether something is a good price.
+  // Same engine every reference-price review runs through -- a reference
+  // row's free-text denomination ("750 grams", "per kilogram") is split
+  // into the price/per/unit triple compare() takes, so nothing
+  // normalizes to a different basis than the app's own recipe pricing
+  // does.
   const outcome: ComparisonOutcome | null =
     reference && price.trim() && quantity.trim()
       ? compare(parseFloat(price), quantity, unit, {
@@ -130,8 +148,14 @@ export function ReferenceCompareCard({
           ...splitReferenceUnit(reference.unit),
         })
       : null;
+  // Refuses to hand back an implausible benchmark rather than silently
+  // using one -- see isImplausibleBenchmark's own doc comment for the
+  // real incident (a unit mix-up that would've shown a fake "100% off"
+  // badge). The result card below still explains the comparison, just
+  // without the "Use as the original price" fill action.
+  const implausible = outcome?.ok ? isImplausibleBenchmark(outcome.comparison) : false;
   const fillValue =
-    outcome?.ok ? benchmarkCostForQuantity(outcome.comparison, quantity, unit) : undefined;
+    outcome?.ok && !implausible ? benchmarkCostForQuantity(outcome.comparison, quantity, unit) : undefined;
 
   function confirmManual() {
     const parsed = parseFloat(manualPrice);
@@ -176,6 +200,29 @@ export function ReferenceCompareCard({
           onPress={() => setConfirmed({ kind: 'table', candidate })}
         />
       ))}
+
+      {!searchOpen && (
+        <Pressable onPress={() => setSearchOpen(true)} hitSlop={8}>
+          <Text style={styles.link}>Search the reference tables</Text>
+        </Pressable>
+      )}
+      {searchOpen && (
+        <View style={styles.manualBox}>
+          <Text style={styles.fieldLabel}>Search StatCan / produce / staple tables</Text>
+          <InputField value={searchQuery} onChangeText={setSearchQuery} placeholder="e.g. ground beef" autoCapitalize="none" />
+          {searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+            <Text style={styles.note}>No reference table entries match "{searchQuery}".</Text>
+          )}
+          {searchResults.map((candidate) => (
+            <CandidateRow
+              key={`search-${candidate.source}-${candidate.name}`}
+              candidate={candidate}
+              selected={confirmed?.kind === 'table' && confirmed.candidate === candidate}
+              onPress={() => setConfirmed({ kind: 'table', candidate })}
+            />
+          ))}
+        </View>
+      )}
 
       {!manualOpen && (
         <Pressable onPress={() => setManualOpen(true)} hitSlop={8}>
@@ -228,7 +275,14 @@ export function ReferenceCompareCard({
       {!reference && <Text style={styles.note}>Confirm a reference above to compare.</Text>}
       {reference && !outcome && <Text style={styles.note}>Enter the price and quantity to compare.</Text>}
       {outcome && !outcome.ok && <Text style={styles.blocked}>{outcome.reason}</Text>}
-      {reference && outcome?.ok && (
+      {reference && outcome?.ok && implausible && (
+        <Text style={styles.blocked}>
+          This reference is {IMPLAUSIBLE_BENCHMARK_RATIO}x+ off the item's own price -- almost always a unit
+          mix-up (check UNIT above), not a real deal. Fix the unit, pick a different reference, or leave this
+          item's original price unknown instead of using this one.
+        </Text>
+      )}
+      {reference && outcome?.ok && !implausible && (
         <View style={[styles.resultCard, outcome.comparison.verdict === 'HIGHER' && styles.resultCardBad]}>
           <Text
             style={[
