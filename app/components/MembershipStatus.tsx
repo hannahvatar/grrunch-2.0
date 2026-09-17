@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LockClosedIcon, StarIcon } from 'react-native-heroicons/outline';
+import { LockClosedIcon, TrophyIcon } from 'react-native-heroicons/outline';
 
 import {
   ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
@@ -127,7 +127,7 @@ export function MembershipStatus() {
       </View>
     ) : (
       <View style={styles.membershipCard}>
-        <StarIcon size={20} color={INK} />
+        <TrophyIcon size={20} color={INK} />
         <View style={styles.membershipTextBlock}>
           <Text style={styles.membershipTitle}>Grrunch Member</Text>
           <Text style={styles.membershipSubtitle}>
@@ -178,8 +178,12 @@ const styles = StyleSheet.create({
   // UI if this Grrunch Member container. Make it white as usual with the
   // black border with an icon that says more 'member' or 'premium'" --
   // this card had never gotten the same 2026-09-11 white-fill pass every
-  // other status card here did; StarIcon replaces CheckBadgeIcon, which
-  // read more "verified" than "member"/"premium").
+  // other status card here did). Icon went CheckBadgeIcon (read
+  // "verified") -> StarIcon -> TrophyIcon (her immediate follow-up:
+  // "Use a medal for the icon" -- Heroicons, the only icon set in this
+  // app, has no literal medal glyph; TrophyIcon is the closest same-
+  // family "achievement/status" icon rather than pulling in a second
+  // icon library for one glyph).
   membershipCard: {
     flexDirection: 'row',
     alignItems: 'center',
