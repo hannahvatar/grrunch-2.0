@@ -22,6 +22,14 @@ export function getTrialDaysLeft(status: SubscriptionStatus, trialEndsAt: string
     : null;
 }
 
+// Shared by NotificationBell.tsx's lapsed-trial notification and
+// MembershipStatus.tsx's "Your trial has ended" card (Anabelle,
+// 2026-09-17: "keep that same sentence from the notification and apply
+// to the container in the membership section") -- one copy so the two
+// can't drift apart in wording the way MembershipStatus's own subtitle
+// briefly did.
+export const TRIAL_ENDED_MESSAGE = 'Your free trial has ended. Subscribe to keep enjoying Grrunch.';
+
 export type TrialUrgencyTier = 'success' | 'warning' | 'error';
 
 // Thresholds (Anabelle, 2026-09-11): >7 days is no-urgency success, 3-7

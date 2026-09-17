@@ -6,6 +6,7 @@ import { BellIcon } from 'react-native-heroicons/outline';
 import {
   getTrialDaysLeft,
   getTrialUrgencyTier,
+  TRIAL_ENDED_MESSAGE,
   TRIAL_URGENCY_STYLES,
   useSubscription,
 } from '../lib/subscription';
@@ -13,29 +14,52 @@ import {
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// First real notification source: an active trial. This is deliberately
-// scoped to one hardcoded case for now, not a general notifications
-// backend/table -- there's nothing else to notify about yet. `key`
-// includes the trial's current urgency tier (lib/subscription.tsx), not
-// just a flat 'trial' -- so as the trial moves from success -> warning ->
-// error it reads as a genuinely new notification and re-prompts, instead
-// of staying permanently dismissed once read once (Anabelle, 2026-09-11:
-// "the notification should prompt again" at intervals -- matching the
-// same thresholds as the progress bar's own color escalation, not a
-// separate schedule; badge colors below match that same escalation too).
+// First real notification source: an active trial, plus a second case
+// for one that's since lapsed (Anabelle, 2026-09-17: "When trial has
+// ended, there should be an error notification in the notification
+// panel encouraging the user to get a membership to continue enjoying
+// the app"). Both deliberately hardcoded here, not a general
+// notifications backend/table -- there's nothing else to notify about
+// yet. `key` includes the trial's current urgency tier (lib/
+// subscription.tsx) for the still-running case, not just a flat 'trial'
+// -- so as the trial moves from success -> warning -> error it reads as
+// a genuinely new notification and re-prompts, instead of staying
+// permanently dismissed once read once (Anabelle, 2026-09-11: "the
+// notification should prompt again" at intervals -- matching the same
+// thresholds as the progress bar's own color escalation, not a separate
+// schedule; badge colors below match that same escalation too).
 function useNotifications() {
   const { status, trialEndsAt, isSubscribed } = useSubscription();
   const onTrial = isSubscribed && status === 'trialing';
-  const tier = getTrialUrgencyTier(getTrialDaysLeft(status, trialEndsAt));
-  return onTrial
-    ? [
-        {
-          key: `trial-${tier}`,
-          tier,
-          message: "You're on a 30-day free trial. Subscribe now to keep your access once it ends.",
-        },
-      ]
-    : [];
+  if (onTrial) {
+    const tier = getTrialUrgencyTier(getTrialDaysLeft(status, trialEndsAt));
+    return [
+      {
+        key: `trial-${tier}`,
+        tier,
+        message: "You're on a 30-day free trial. Subscribe now to keep your access once it ends.",
+      },
+    ];
+  }
+  // A lapsed trial reads as status still 'trialing' with trial_ends_at
+  // now in the past (isSubscribed false), same condition
+  // MembershipStatus.tsx's own "Your trial has ended" card checks --
+  // 'expired' covers the same case once something actually sets that
+  // stored value. Always the 'error' tier outright (not derived from
+  // getTrialUrgencyTier, which would read a null daysLeft here as its
+  // default 'success' tier) since this genuinely is the worst state:
+  // access is already gone, not just running low.
+  const trialEnded = !isSubscribed && (status === 'trialing' || status === 'expired');
+  if (trialEnded) {
+    return [
+      {
+        key: 'trial-ended',
+        tier: 'error' as const,
+        message: TRIAL_ENDED_MESSAGE,
+      },
+    ];
+  }
+  return [];
 }
 
 // Lives in AppTopBar, next to the profile shortcut -- signed-in only,
