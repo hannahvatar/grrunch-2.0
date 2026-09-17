@@ -5,6 +5,7 @@ import { CheckIcon } from 'react-native-heroicons/outline';
 import { InputField } from '../components/InputField';
 import { ReferenceCompareCard } from '../components/ReferenceCompareCard';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { splitMultiItemName } from '../lib/dealNames';
 import { knownZonesForChain } from '../lib/dealZones';
 import { supabase } from '../lib/supabase';
 import type { Database, Tables } from '../types/database';
@@ -73,21 +74,28 @@ const ORIGINAL_PRICE_SOURCE_OPTIONS: { value: OriginalPriceSource; label: string
   { value: 'reference', label: 'Reference (we calculated it)' },
 ];
 
-// Every real multi-item cutout found this session (CARIBBEAN AVOCADOS
-// or OKRA, FREYBE LYONER SAUSAGE... OR MAPLE LEAF..., MCCAIN
-// SUPERFRIES or SPECIALTY FRIES... or POCKETS, PC WHOLE CREMINI or
-// WHITE MUSHROOMS, etc.) names both products joined by the standalone
-// word "or" -- the flyer's own "choose either X or Y at this price"
-// convention. The Duplicate button used to show on every row
-// regardless (there's no way to know from a photo alone), which read
-// as a false claim on the ~90% of rows that are single-item -- Anabelle
-// confirmed the "or"-joined pattern is the actual, only case where
-// duplicating is ever needed, so gate on it instead of showing
-// unconditionally. \bor\b (not a bare substring match) so this doesn't
-// false-positive on "Original", "Organic", "Orville", etc.
-const MULTI_ITEM_NAME_PATTERN = /\bor\b/i;
-function looksLikeMultiItemCutout(itemName: string): boolean {
-  return MULTI_ITEM_NAME_PATTERN.test(itemName);
+// One flyer cutout often prices several distinct products together
+// ("UNICO OLIVES 375 mL, CAPERS, 125 mL or HOT PEPPER RINGS, 750 mL").
+// splitMultiItemName (lib/dealNames.ts) is the single source of truth
+// for detecting and splitting these -- it supersedes an earlier, purely
+// regex-based `\bor\b` check that used to live here directly (that
+// simpler rule is still splitMultiItemName's own fallback for names
+// with no stated sizes, so nothing regresses).
+//
+// A chip entry is one real PRODUCT, not one curated_deals row -- for a
+// still-combined cutout, several chips point at the same underlying row
+// (until it's split into its own rows via "Split into N separate
+// items"), each labeled with its own product name rather than the raw
+// combined one. Ported from dev-cost.tsx's own chipEntries (deleted as
+// part of merging that screen into this one) -- built after Anabelle
+// kept seeing the same multi-item cutout offered once per product
+// instead of being told "you already handled 2 of these 3."
+interface DealChipEntry {
+  key: string;
+  label: string;
+  deal: CuratedDeal | null;
+  needsSplit: boolean;
+  extraCopy: boolean;
 }
 
 // Internal-only pricing review screen -- built after finding real
@@ -127,6 +135,12 @@ export default function DevDealsScreen() {
   // never labels it).
   const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Set only when the open row was reached via a still-combined
+  // multi-item chip -- prefills DealEditView's item name with the
+  // specific product that chip represents (e.g. "Hot Pepper Rings,
+  // 750 mL") instead of the raw, all-products-joined stored name, so
+  // renaming to match doesn't require retyping/copying it by hand.
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
 
   const loadDeals = () => {
     setLoading(true);
@@ -181,13 +195,37 @@ export default function DevDealsScreen() {
     );
   }
 
+  // Every item_name currently in the table -- lets both the list's chip
+  // grouping and the edit view's own "Split into N" calc agree on which
+  // of a multi-item cutout's products already exist as their own row
+  // somewhere (approved/renamed, possibly under a filter that hides it
+  // right now), so neither offers to create a row that already exists.
+  const allNames = new Set(deals.map((d) => d.item_name));
+
   const selectedDeal = deals.find((d) => d.id === selectedId) ?? null;
 
   if (selectedDeal) {
+    // How many of this cutout's real products (per splitMultiItemName)
+    // don't already have their own row ANYWHERE -- not a raw
+    // parts-minus-siblings count, which would still offer to "split"
+    // even when every product already exists elsewhere under its own
+    // name (a real case found live: two already-split rows plus one
+    // stray still-combined leftover -- that leftover needs rejecting,
+    // not one more row created for it).
+    const selectedParts = splitMultiItemName(selectedDeal.item_name);
+    const selectedSiblingCount = deals.filter((d) => d.item_name === selectedDeal.item_name).length;
+    const selectedRemainingParts = selectedParts.filter((part) => !allNames.has(part));
+    const missingSplitRows = Math.max(0, selectedRemainingParts.length - selectedSiblingCount);
+
     return (
       <DealEditView
         deal={selectedDeal}
-        onBack={() => setSelectedId(null)}
+        initialItemName={selectedLabel ?? undefined}
+        missingSplitRows={missingSplitRows}
+        onBack={() => {
+          setSelectedId(null);
+          setSelectedLabel(null);
+        }}
         onSaved={(updated) => {
           // Every status is visible somewhere in this screen now (the
           // status-tab filter, not this list, decides what's shown) --
@@ -196,14 +234,19 @@ export default function DevDealsScreen() {
           // this callback special-casing status transitions.
           setDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
           setSelectedId(null);
+          setSelectedLabel(null);
         }}
-        onDuplicated={(source, duplicate) => {
-          // Both rows come back with pricing_reviewed_at reset to null
-          // (see duplicate-curated-deal/index.ts) -- update the source
-          // in place, add the new duplicate, then jump straight into
-          // editing the duplicate (the obviously incomplete one).
-          setDeals((prev) => [...prev.map((d) => (d.id === source.id ? source : d)), duplicate]);
-          setSelectedId(duplicate.id);
+        onSplit={(source, duplicates) => {
+          // Every new row comes back with pricing_reviewed_at reset to
+          // null, same as the source (see duplicate-curated-deal/
+          // index.ts) -- update the source in place and append the new
+          // ones. Splitting into N>1 new rows has no single obvious
+          // "the new one" to jump into the way a single Duplicate used
+          // to, so this returns to the list -- the chip grouping below
+          // now shows each of them ready to rename individually.
+          setDeals((prev) => [...prev.map((d) => (d.id === source.id ? source : d)), ...duplicates]);
+          setSelectedId(null);
+          setSelectedLabel(null);
         }}
       />
     );
@@ -237,15 +280,80 @@ export default function DevDealsScreen() {
       if (!q) return true;
       return d.item_name.toLowerCase().includes(q) || d.chain_name.toLowerCase().includes(q);
     })
-    // Unreviewed-first, then alphabetical -- so the actual work queue
-    // (rows nobody has looked at yet) surfaces before already-confirmed
-    // rows even with the filter off.
+    // Unreviewed-first (alphabetical within that group -- browsing an
+    // untouched queue, alphabetical is as good an order as any). Already-
+    // reviewed rows sort most-recent-decision-first instead: "i approved
+    // unico olives 3 times its still there" (dev-cost.tsx, ported in with
+    // its merge) -- being able to jump straight back to the thing you
+    // just got wrong, with no separate queue/tab needed for it.
     .sort((a, b) => {
       const aReviewed = a.pricing_reviewed_at !== null;
       const bReviewed = b.pricing_reviewed_at !== null;
       if (aReviewed !== bReviewed) return aReviewed ? 1 : -1;
-      return a.item_name.localeCompare(b.item_name);
+      if (!aReviewed) return a.item_name.localeCompare(b.item_name);
+      return new Date(b.pricing_reviewed_at!).getTime() - new Date(a.pricing_reviewed_at!).getTime();
     });
+
+  // One chip per real PRODUCT, not one per curated_deals row -- a
+  // still-combined multi-item cutout ("X, 375 mL or Y, 750 mL") shows as
+  // separate chips for X and Y even though only one row exists for it
+  // so far, each pointing at that same row until it's actually split.
+  // allNames (defined above, next to selectedDeal) is the claimed-names
+  // source: a sibling already renamed/approved under its own single
+  // name should stop being offered here even if it no longer matches
+  // the current status/zone/search filters. Ported from dev-cost.tsx's
+  // own chipEntries.
+  const chipEntries: DealChipEntry[] = [];
+  {
+    const byName = new Map<string, CuratedDeal[]>();
+    for (const deal of filtered) {
+      const list = byName.get(deal.item_name);
+      if (list) list.push(deal);
+      else byName.set(deal.item_name, [deal]);
+    }
+    const seenNames = new Set<string>();
+    for (const deal of filtered) {
+      if (seenNames.has(deal.item_name)) continue;
+      seenNames.add(deal.item_name);
+
+      const siblings = (byName.get(deal.item_name) ?? [])
+        .slice()
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const parts = splitMultiItemName(deal.item_name);
+
+      if (parts.length === 1) {
+        for (const sibling of siblings) {
+          chipEntries.push({ key: sibling.id, label: sibling.item_name, deal: sibling, needsSplit: false, extraCopy: false });
+        }
+        continue;
+      }
+
+      const remainingParts = parts.filter((part) => !allNames.has(part));
+      remainingParts.forEach((part, index) => {
+        const sibling = siblings[index];
+        if (sibling) {
+          chipEntries.push({ key: sibling.id, label: part, deal: sibling, needsSplit: false, extraCopy: false });
+        } else {
+          chipEntries.push({
+            key: `${deal.id}-needs-split-${index}`,
+            label: `${part} · needs split`,
+            deal: null,
+            needsSplit: true,
+            extraCopy: false,
+          });
+        }
+      });
+      for (let index = remainingParts.length; index < siblings.length; index += 1) {
+        chipEntries.push({
+          key: siblings[index].id,
+          label: `${siblings[index].item_name} · extra copy`,
+          deal: siblings[index],
+          needsSplit: false,
+          extraCopy: true,
+        });
+      }
+    }
+  }
 
   // Computed against the tab-filtered set, not the full deals array --
   // "12 needs review · 3 not yet reviewed" while sitting on the
@@ -293,62 +401,92 @@ export default function DevDealsScreen() {
           <Text style={styles.filterLabel}>Only show not-yet-reviewed</Text>
         </Pressable>
 
-        {filtered.map((deal) => (
-          <Pressable key={deal.id} style={styles.dealRow} onPress={() => setSelectedId(deal.id)}>
-            {deal.image_url ? (
-              <Image source={{ uri: deal.image_url }} style={styles.dealThumb} resizeMode="cover" />
+        {chipEntries.map((entry) => (
+          <Pressable
+            key={entry.key}
+            style={[styles.dealRow, entry.needsSplit && styles.dealRowNeedsSplit]}
+            disabled={entry.needsSplit}
+            onPress={() => {
+              if (!entry.deal) return;
+              setSelectedId(entry.deal.id);
+              // Only prefill a different item name when this chip is a
+              // still-combined cutout's individual product -- an
+              // ordinary single-item row already IS its own label, and
+              // an extra-copy chip's label carries a "· extra copy"
+              // annotation that must never leak into the real,
+              // editable item name field (real bug caught live: it did,
+              // until this exclusion was added).
+              setSelectedLabel(entry.extraCopy || entry.label === entry.deal.item_name ? null : entry.label);
+            }}
+          >
+            {entry.deal?.image_url ? (
+              <Image source={{ uri: entry.deal.image_url }} style={styles.dealThumb} resizeMode="cover" />
             ) : (
               <View style={styles.dealThumb} />
             )}
             <View style={styles.dealRowInfo}>
               <Text style={styles.dealRowName} numberOfLines={2}>
-                {deal.item_name}
+                {entry.label}
               </Text>
-              <Text style={styles.dealRowStore}>{deal.chain_name}</Text>
-              <View style={styles.dealRowPriceLine}>
-                <Text style={styles.dealRowPrice}>
-                  {deal.price != null ? `$${deal.price.toFixed(2)}` : 'Unknown'}{' '}
-                  <Text style={styles.dealRowOriginal}>
-                    {deal.original_price != null ? `$${deal.original_price.toFixed(2)}` : 'Unknown'}
-                  </Text>
+              {entry.deal && (
+                <>
+                  <Text style={styles.dealRowStore}>{entry.deal.chain_name}</Text>
+                  <View style={styles.dealRowPriceLine}>
+                    <Text style={styles.dealRowPrice}>
+                      {entry.deal.price != null ? `$${entry.deal.price.toFixed(2)}` : 'Unknown'}{' '}
+                      <Text style={styles.dealRowOriginal}>
+                        {entry.deal.original_price != null ? `$${entry.deal.original_price.toFixed(2)}` : 'Unknown'}
+                      </Text>
+                    </Text>
+                    <View style={styles.unitBadge}>
+                      <Text style={styles.unitBadgeText}>{entry.deal.price_unit}</Text>
+                    </View>
+                    {/* Not shown when untagged -- most rows still are, and an
+                        empty/"No zone" badge on every single row would be
+                        more noise than signal. The zone filter above already
+                        covers "show me the untagged ones". */}
+                    {entry.deal.zone && (
+                      <View style={styles.zoneBadge}>
+                        <Text style={styles.zoneBadgeText}>{entry.deal.zone}</Text>
+                      </View>
+                    )}
+                    {/* Redundant once a specific status tab is active (the
+                        tab already says it) -- only shown on "All", where
+                        rows of every status are mixed together. */}
+                    {statusFilter === 'all' && (
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          entry.deal.status === 'approved' && styles.statusBadgeApproved,
+                          entry.deal.status === 'rejected' && styles.statusBadgeRejected,
+                        ]}
+                      >
+                        <Text style={styles.statusBadgeText}>{STATUS_LABELS[entry.deal.status]}</Text>
+                      </View>
+                    )}
+                    {entry.deal.pricing_reviewed_at === null && (
+                      <View style={styles.unreviewedBadge}>
+                        <Text style={styles.unreviewedBadgeText}>Not reviewed</Text>
+                      </View>
+                    )}
+                    {entry.extraCopy && (
+                      <View style={styles.unreviewedBadge}>
+                        <Text style={styles.unreviewedBadgeText}>Extra copy?</Text>
+                      </View>
+                    )}
+                  </View>
+                </>
+              )}
+              {entry.needsSplit && (
+                <Text style={styles.dealRowStore}>
+                  Open one of this cutout's other chips and use "Split into N separate items" first.
                 </Text>
-                <View style={styles.unitBadge}>
-                  <Text style={styles.unitBadgeText}>{deal.price_unit}</Text>
-                </View>
-                {/* Not shown when untagged -- most rows still are, and an
-                    empty/"No zone" badge on every single row would be
-                    more noise than signal. The zone filter above already
-                    covers "show me the untagged ones". */}
-                {deal.zone && (
-                  <View style={styles.zoneBadge}>
-                    <Text style={styles.zoneBadgeText}>{deal.zone}</Text>
-                  </View>
-                )}
-                {/* Redundant once a specific status tab is active (the
-                    tab already says it) -- only shown on "All", where
-                    rows of every status are mixed together. */}
-                {statusFilter === 'all' && (
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      deal.status === 'approved' && styles.statusBadgeApproved,
-                      deal.status === 'rejected' && styles.statusBadgeRejected,
-                    ]}
-                  >
-                    <Text style={styles.statusBadgeText}>{STATUS_LABELS[deal.status]}</Text>
-                  </View>
-                )}
-                {deal.pricing_reviewed_at === null && (
-                  <View style={styles.unreviewedBadge}>
-                    <Text style={styles.unreviewedBadgeText}>Not reviewed</Text>
-                  </View>
-                )}
-              </View>
+              )}
             </View>
           </Pressable>
         ))}
 
-        {filtered.length === 0 && <Text style={styles.emptyText}>No deals match.</Text>}
+        {chipEntries.length === 0 && <Text style={styles.emptyText}>No deals match.</Text>}
       </ScrollView>
     </View>
   );
@@ -356,13 +494,24 @@ export default function DevDealsScreen() {
 
 interface DealEditViewProps {
   deal: CuratedDeal;
+  // The specific product name to prefill Item name with, when this deal
+  // was opened via one chip of a still-combined multi-item cutout.
+  // undefined means "use deal.item_name as-is" (the ordinary case).
+  initialItemName?: string;
+  // How many of this cutout's real products (per splitMultiItemName)
+  // don't already have their own row anywhere -- computed by the parent
+  // (which has the full deals list) rather than here, so this view
+  // can't disagree with the list's own chip grouping about whether a
+  // product is "missing" or already exists elsewhere under its own
+  // name (see the parent's own comment on this calc).
+  missingSplitRows: number;
   onBack: () => void;
   onSaved: (deal: CuratedDeal) => void;
-  onDuplicated: (source: CuratedDeal, duplicate: CuratedDeal) => void;
+  onSplit: (source: CuratedDeal, duplicates: CuratedDeal[]) => void;
 }
 
-function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps) {
-  const [itemName, setItemName] = useState(deal.item_name);
+function DealEditView({ deal, initialItemName, missingSplitRows, onBack, onSaved, onSplit }: DealEditViewProps) {
+  const [itemName, setItemName] = useState(initialItemName ?? deal.item_name);
   const [price, setPrice] = useState(deal.price != null ? String(deal.price) : '');
   const [priceUnknown, setPriceUnknown] = useState(deal.price === null);
   const [originalPrice, setOriginalPrice] = useState(deal.original_price != null ? String(deal.original_price) : '');
@@ -612,31 +761,40 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
   // which immediately excludes it from refresh_recipe_deal_tags().
   const handleReject = () => submit({ reject: true });
 
-  const [duplicating, setDuplicating] = useState(false);
-  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const [splitting, setSplitting] = useState(false);
+  const [splitError, setSplitError] = useState<string | null>(null);
 
-  // For a cutout naming two distinct products sharing one photo/price
-  // (e.g. "BOURSIN CHEESE ... or MARCANGELO CHARCUTERIE ...") -- splits
-  // this row into two via the duplicate-curated-deal Edge Function,
-  // then jumps straight into editing the new copy (the most obviously
-  // incomplete one -- freshly copied, still has the combined name,
-  // needs renaming/re-pricing). The original stays in the list, also
-  // flagged "Not reviewed" again until its own name/price is confirmed.
-  async function handleDuplicate() {
-    setDuplicateError(null);
-    setDuplicating(true);
-    const { data, error: invokeError } = await supabase.functions.invoke<{
-      source?: CuratedDeal;
-      duplicate?: CuratedDeal;
-      error?: string;
-    }>('duplicate-curated-deal', { body: { deal_id: deal.id } });
-    setDuplicating(false);
-
-    if (invokeError || !data?.source || !data?.duplicate) {
-      setDuplicateError(data?.error ?? invokeError?.message ?? 'Duplicate failed.');
-      return;
+  // For a cutout naming several distinct products sharing one photo/
+  // price (e.g. "BOURSIN CHEESE ... or MARCANGELO CHARCUTERIE ...") --
+  // creates one new copy per still-missing product via the
+  // duplicate-curated-deal Edge Function (looped, since a 3-product
+  // cutout with only 1 row needs 2 new ones, not just 1). Replaces the
+  // old single-shot "Duplicate" button, which only ever made one copy
+  // regardless of how many products a cutout actually named. Returns to
+  // the list rather than jumping into one specific new row -- with N
+  // possibly >1, there's no single obvious "the new one" any more; the
+  // list's own chip grouping shows each of them ready to rename.
+  async function handleSplit() {
+    setSplitError(null);
+    setSplitting(true);
+    const duplicates: CuratedDeal[] = [];
+    let latestSource = deal;
+    for (let i = 0; i < missingSplitRows; i += 1) {
+      const { data, error: invokeError } = await supabase.functions.invoke<{
+        source?: CuratedDeal;
+        duplicate?: CuratedDeal;
+        error?: string;
+      }>('duplicate-curated-deal', { body: { deal_id: deal.id } });
+      if (invokeError || !data?.source || !data?.duplicate) {
+        setSplitError(data?.error ?? invokeError?.message ?? 'Split failed.');
+        setSplitting(false);
+        return;
+      }
+      latestSource = data.source;
+      duplicates.push(data.duplicate);
     }
-    onDuplicated(data.source, data.duplicate);
+    setSplitting(false);
+    onSplit(latestSource, duplicates);
   }
 
   return (
@@ -652,20 +810,22 @@ function DealEditView({ deal, onBack, onSaved, onDuplicated }: DealEditViewProps
         <InputField value={itemName} onChangeText={setItemName} placeholder="Item name" />
         <Text style={styles.editStore}>{deal.chain_name}</Text>
 
-        {looksLikeMultiItemCutout(itemName) && (
+        {missingSplitRows > 0 && (
           <>
             <Pressable
-              style={[styles.duplicateButton, duplicating && styles.saveButtonDisabled]}
-              onPress={handleDuplicate}
-              disabled={duplicating}
+              style={[styles.splitButton, splitting && styles.saveButtonDisabled]}
+              onPress={handleSplit}
+              disabled={splitting}
             >
-              {duplicating ? (
+              {splitting ? (
                 <ActivityIndicator color={INK} />
               ) : (
-                <Text style={styles.duplicateButtonText}>Duplicate -- this cutout looks like 2 items</Text>
+                <Text style={styles.splitButtonText}>
+                  Split into {missingSplitRows} separate item{missingSplitRows === 1 ? '' : 's'}
+                </Text>
               )}
             </Pressable>
-            {duplicateError && <Text style={styles.saveError}>{duplicateError}</Text>}
+            {splitError && <Text style={styles.saveError}>{splitError}</Text>}
           </>
         )}
 
@@ -926,6 +1086,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
   },
+  // A chip for a multi-item cutout's product that doesn't have its own
+  // row yet -- dashed/faded so it reads as "not openable yet" rather
+  // than a normal, tappable deal.
+  dealRowNeedsSplit: { borderStyle: 'dashed', opacity: 0.6 },
   dealThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealRowInfo: { flex: 1, gap: 2 },
   dealRowName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
@@ -951,10 +1115,10 @@ const styles = StyleSheet.create({
   backLink: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   editPhoto: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#F2F2F2' },
   editStore: { fontSize: 14, color: '#767676', marginTop: -8 },
-  // A structural action (splits the row in two), so it gets its own
-  // color rather than reusing the INK-outlined convention used
-  // elsewhere on this screen.
-  duplicateButton: {
+  // A structural action (creates new rows), so it gets its own color
+  // rather than reusing the INK-outlined convention used elsewhere on
+  // this screen.
+  splitButton: {
     alignSelf: 'flex-start',
     borderWidth: 1.5,
     borderColor: '#3B82F6',
@@ -963,7 +1127,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor: '#fff',
   },
-  duplicateButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#3B82F6' },
+  splitButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#3B82F6' },
   referenceCard: {
     backgroundColor: '#fff',
     borderWidth: 1.5,

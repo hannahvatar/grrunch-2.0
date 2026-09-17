@@ -248,7 +248,10 @@ export interface ReferenceCandidate {
   avgPrice: number;
   unit: string;
   source: ReferenceTier;
-  matchKind: 'engine' | 'variety';
+  // 'search' is never produced by rankReferenceCandidates below -- it's
+  // searchReferenceCandidates' own tag for a manually-found row, kept in
+  // the same union so both flow through one CandidateRow renderer.
+  matchKind: 'engine' | 'variety' | 'search';
   // Matched word count -- the same specificity measure the server's
   // "most specific wins" tie-break uses.
   specificity: number;
@@ -333,7 +336,10 @@ export function rankReferenceCandidates(
     }
   }
 
-  const kindRank = { engine: 0, variety: 1 } as const;
+  // 'search' never actually appears in candidates here (this function
+  // only ever produces 'engine'/'variety') -- included so the shared
+  // ReferenceCandidate['matchKind'] union type-checks without a cast.
+  const kindRank = { engine: 0, variety: 1, search: 2 } as const;
   candidates.sort((a, b) => {
     if (kindRank[a.matchKind] !== kindRank[b.matchKind]) return kindRank[a.matchKind] - kindRank[b.matchKind];
     if (a.specificity !== b.specificity) return b.specificity - a.specificity;
@@ -350,4 +356,48 @@ export function rankReferenceCandidates(
   if (enginePick) enginePick.isEnginePick = true;
 
   return candidates;
+}
+
+// Plain substring search across all three tiers, deliberately looser
+// than rankReferenceCandidates' strict word-subset rule above -- that
+// rule is right for pricing recipes unattended, but leaves a human
+// reviewer stuck whenever a flyer name is branded or worded differently
+// (Anabelle: "Can the STATCAN ITEM input could be a search field if i
+// want to reajust the ref item"). A reviewer reads the results and
+// picks one, so surfacing everything vaguely related beats applying the
+// engine's own conservative rule a second time. Extracted from
+// dev-cost.tsx's own former inline implementation of this exact query.
+export function searchReferenceCandidates(
+  query: string,
+  statcanPrices: StaplePrice[],
+  producePrices: StaplePrice[],
+  staplePrices: StaplePrice[],
+  limit = 8
+): ReferenceCandidate[] {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return [];
+
+  const tiers: Array<[StaplePrice[], ReferenceTier]> = [
+    [statcanPrices, 'statcan'],
+    [producePrices, 'produce'],
+    [staplePrices, 'staple'],
+  ];
+
+  const matches: ReferenceCandidate[] = [];
+  for (const [prices, source] of tiers) {
+    for (const price of prices) {
+      if (price.ingredientName.toLowerCase().includes(q)) {
+        matches.push({
+          name: price.ingredientName,
+          avgPrice: price.avgPrice,
+          unit: price.unit,
+          source,
+          matchKind: 'search',
+          specificity: 0,
+          isEnginePick: false,
+        });
+      }
+    }
+  }
+  return matches.slice(0, limit);
 }
