@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { CheckIcon, ChevronDownIcon } from 'react-native-heroicons/outline';
+import {
+  ActivityIndicator,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { CheckIcon, ChevronDownIcon, MagnifyingGlassPlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { InputField } from '../components/InputField';
 import { SegmentedControl } from '../components/SegmentedControl';
@@ -222,12 +233,6 @@ export default function DevDealsScreen() {
   // never labels it).
   const [zoneFilter, setZoneFilter] = useState<string>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Set only when the open row was reached via a still-combined
-  // multi-item chip -- prefills DealEditView's item name with the
-  // specific product that chip represents (e.g. "Hot Pepper Rings,
-  // 750 mL") instead of the raw, all-products-joined stored name, so
-  // renaming to match doesn't require retyping/copying it by hand.
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   // The cutout screen currently open (only for a cutout with more than
   // one product to review) -- a deal opened FROM it returns here on
   // back/save instead of all the way to the list.
@@ -295,13 +300,11 @@ export default function DevDealsScreen() {
       // Back to the cutout screen when the deal was opened from one
       // (selectedCutoutKey stays set), otherwise back to the list.
       setSelectedId(null);
-      setSelectedLabel(null);
     };
     return (
       <DealEditView
         key={selectedDeal.id}
         deal={selectedDeal}
-        initialItemName={selectedLabel ?? undefined}
         backLabel={selectedCutout ? '← Back to cutout' : '← Back to list'}
         onBack={closeDeal}
         onSaved={(updated) => {
@@ -322,15 +325,10 @@ export default function DevDealsScreen() {
         cutout={selectedCutout}
         onBack={() => setSelectedCutoutKey(null)}
         onOpenDeal={(deal) => setSelectedId(deal.id)}
-        onSplitOff={(source, duplicate, part) => {
-          // The copy arrives already named after this one product
-          // (duplicate-curated-deal's item_name) -- open it straight away
-          // for review. Only if it didn't (that function not yet
-          // redeployed) does the product name ride along as the name to
-          // save with the form.
-          setDeals((prev) => [...prev.map((d) => (d.id === source.id ? source : d)), duplicate]);
-          setSelectedId(duplicate.id);
-          setSelectedLabel(duplicate.item_name === part ? null : part);
+        onSplit={(source, duplicates) => {
+          // Stays on the cutout screen, which now lists every product as
+          // its own deal, ready to open and review one by one.
+          setDeals((prev) => [...prev.map((d) => (d.id === source.id ? source : d)), ...duplicates]);
         }}
       />
     );
@@ -523,7 +521,7 @@ interface CutoutViewProps {
   cutout: Cutout;
   onBack: () => void;
   onOpenDeal: (deal: CuratedDeal) => void;
-  onSplitOff: (source: CuratedDeal, duplicate: CuratedDeal, part: string) => void;
+  onSplit: (source: CuratedDeal, duplicates: CuratedDeal[]) => void;
 }
 
 // One flyer cutout with more than one product on it: the photo once,
@@ -533,25 +531,53 @@ interface CutoutViewProps {
 // doesn't have a deal yet. Replaces the old "Split into N separate
 // items" button inside the edit form, which made N anonymous copies
 // all still carrying the combined name for you to tell apart later.
-function CutoutView({ cutout, onBack, onOpenDeal, onSplitOff }: CutoutViewProps) {
-  const [splittingPart, setSplittingPart] = useState<string | null>(null);
-  const [splitError, setSplitError] = useState<string | null>(null);
+function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
   const photo = cutout.deals.find((d) => d.image_url)?.image_url ?? null;
 
-  async function splitOff(part: string, source: CuratedDeal) {
-    setSplitError(null);
-    setSplittingPart(part);
-    const { data, error: invokeError } = await supabase.functions.invoke<{
-      source?: CuratedDeal;
-      duplicate?: CuratedDeal;
-      error?: string;
-    }>('duplicate-curated-deal', { body: { deal_id: source.id, item_name: part } });
-    setSplittingPart(null);
-    if (invokeError || !data?.source || !data?.duplicate) {
-      setSplitError(data?.error ?? invokeError?.message ?? 'Could not add this product as its own deal.');
+  // The products still to split, grouped by the combined deal they come
+  // from (almost always just one).
+  const groups: { source: CuratedDeal; parts: string[] }[] = [];
+  for (const { part, source } of cutout.missingParts) {
+    const group = groups.find((g) => g.source.id === source.id);
+    if (group) group.parts.push(part);
+    else groups.push({ source, parts: [part] });
+  }
+
+  // Anabelle ("A"): each product's name is editable before splitting --
+  // the automatic split can't always tell where one product ends (it
+  // proposed "RAW, 51-70 PER LB 160 G" for Seaquest raw shrimp), and names
+  // are read-only once a deal exists. Keyed by source id, one entry per
+  // part, prefilled with the proposed name.
+  const [names, setNames] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(groups.map((g) => [g.source.id, g.parts]))
+  );
+  const [splittingId, setSplittingId] = useState<string | null>(null);
+  const [splitError, setSplitError] = useState<string | null>(null);
+
+  // One call per combined deal: the deal itself takes the first name and
+  // a copy is made for each of the others, so no combined "X or Y" row is
+  // left over to reject afterwards.
+  async function split(source: CuratedDeal) {
+    const edited = (names[source.id] ?? []).map((name) => name.trim());
+    if (edited.length === 0 || edited.some((name) => name === '')) {
+      setSplitError('Every product needs a name.');
       return;
     }
-    onSplitOff(data.source, data.duplicate, part);
+    setSplitError(null);
+    setSplittingId(source.id);
+    const { data, error: invokeError } = await supabase.functions.invoke<{
+      source?: CuratedDeal;
+      duplicates?: CuratedDeal[];
+      error?: string;
+    }>('duplicate-curated-deal', {
+      body: { deal_id: source.id, source_item_name: edited[0], new_item_names: edited.slice(1) },
+    });
+    setSplittingId(null);
+    if (invokeError || !data?.source || !data?.duplicates) {
+      setSplitError(await functionErrorMessage(invokeError, data?.error, 'Could not split this cutout.'));
+      return;
+    }
+    onSplit(data.source, data.duplicates);
   }
 
   return (
@@ -561,7 +587,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplitOff }: CutoutViewProps)
           <Text style={styles.backLink}>← Back to list</Text>
         </Pressable>
 
-        {photo && <Image source={{ uri: photo }} style={styles.editPhoto} resizeMode="contain" />}
+        {photo && <CutoutPhoto uri={photo} />}
         <Text style={styles.cutoutTitle}>{cutoutTitle(cutout)}</Text>
         <Text style={styles.editStore}>{cutout.deals[0].chain_name}</Text>
 
@@ -582,7 +608,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplitOff }: CutoutViewProps)
                   <Text style={styles.cutoutHint}>
                     {cutout.missingParts.length === 0
                       ? 'Every product on this cutout has its own deal now -- open this combined one and Reject it.'
-                      : 'Still lists several products -- add each one as its own deal below.'}
+                      : 'Still lists several products -- split it below.'}
                   </Text>
                 )}
               </View>
@@ -590,30 +616,90 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplitOff }: CutoutViewProps)
           );
         })}
 
-        {cutout.missingParts.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Not split yet</Text>
-            {cutout.missingParts.map(({ part, source }) => (
-              <View key={part} style={[styles.dealRow, styles.missingPartRow]}>
-                <Text style={[styles.dealRowName, styles.missingPartName]}>{part}</Text>
-                <Pressable
-                  style={[styles.splitButton, splittingPart !== null && styles.saveButtonDisabled]}
-                  onPress={() => splitOff(part, source)}
-                  disabled={splittingPart !== null}
-                >
-                  {splittingPart === part ? (
-                    <ActivityIndicator color="#3B82F6" />
-                  ) : (
-                    <Text style={styles.splitButtonText}>Add as its own deal</Text>
-                  )}
-                </Pressable>
-              </View>
+        {groups.map(({ source, parts }) => (
+          <View key={source.id} style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>
+              {parts.length === 1 ? 'Name this deal' : `Split into ${parts.length} deals`}
+            </Text>
+            <Text style={styles.note}>
+              {parts.length === 1
+                ? 'Check the name before it becomes the deal\'s name.'
+                : 'Check each product\'s name -- fix any that are cut off or missing the brand or size.'}
+            </Text>
+            {parts.map((part, index) => (
+              <InputField
+                key={`${source.id}-${index}`}
+                value={names[source.id]?.[index] ?? part}
+                onChangeText={(text) =>
+                  setNames((prev) => {
+                    const next = [...(prev[source.id] ?? parts)];
+                    next[index] = text;
+                    return { ...prev, [source.id]: next };
+                  })
+                }
+                placeholder="Product name"
+                // Wraps instead of cutting off a long flyer name -- the
+                // whole point here is to read it in full before splitting.
+                multiline
+                scrollEnabled={false}
+                style={styles.splitNameInput}
+              />
             ))}
-            {splitError && <Text style={styles.saveError}>{splitError}</Text>}
-          </>
-        )}
+            <Pressable
+              style={[styles.splitButton, splittingId !== null && styles.saveButtonDisabled]}
+              onPress={() => split(source)}
+              disabled={splittingId !== null}
+            >
+              {splittingId === source.id ? (
+                <ActivityIndicator color="#3B82F6" />
+              ) : (
+                <Text style={styles.splitButtonText}>
+                  {parts.length === 1 ? 'Use this name' : `Split into ${parts.length} deals`}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        ))}
+        {splitError && <Text style={styles.saveError}>{splitError}</Text>}
       </ScrollView>
     </View>
+  );
+}
+
+// The cutout photo, tappable to open full screen -- Anabelle: "Could there
+// be a way for me to click on the image and see a close up preview of the
+// cutout? So i can verify the copy and most of the time its too small".
+// Full screen it fills the width; pinch (or double-tap) to zoom further
+// uses ScrollView's own zoom, which is iOS-only -- elsewhere it's still
+// shown at full-screen size. The X closes it.
+function CutoutPhoto({ uri }: { uri: string }) {
+  const [open, setOpen] = useState(false);
+  const { width, height } = useWindowDimensions();
+  return (
+    <>
+      <Pressable onPress={() => setOpen(true)} accessibilityRole="imagebutton" accessibilityLabel="Enlarge cutout">
+        <Image source={{ uri }} style={styles.editPhoto} resizeMode="contain" />
+        <View style={styles.zoomHint} pointerEvents="none">
+          <MagnifyingGlassPlusIcon size={18} color="#fff" strokeWidth={2} />
+        </View>
+      </Pressable>
+      <Modal visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
+        <View style={styles.viewer}>
+          <ScrollView
+            maximumZoomScale={4}
+            minimumZoomScale={1}
+            centerContent
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+          >
+            <Image source={{ uri }} style={{ width, height }} resizeMode="contain" />
+          </ScrollView>
+          <Pressable style={styles.viewerClose} onPress={() => setOpen(false)} hitSlop={12} accessibilityLabel="Close">
+            <XMarkIcon size={22} color={INK} strokeWidth={2} />
+          </Pressable>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -666,11 +752,6 @@ function Dropdown({ options, value, onChange, menuAlign = 'left' }: DropdownProp
 
 interface DealEditViewProps {
   deal: CuratedDeal;
-  // The specific product name to save, when this deal was just split off
-  // a multi-product cutout and still carries the combined flyer name
-  // (only happens with a copy made before duplicate-curated-deal learned
-  // to name copies itself). undefined means "use deal.item_name as-is".
-  initialItemName?: string;
   // "← Back to cutout" when opened from a cutout screen, so it's clear
   // where back goes.
   backLabel: string;
@@ -845,10 +926,10 @@ type ReferenceDecision = 'undecided' | 'approved' | 'rejected';
 // "quantity is an estimate", zone picker, price-source picker) is gone
 // from the screen -- whatever is already stored for those is sent back
 // unchanged on save.
-function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: DealEditViewProps) {
+function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
   // Anabelle: "The name should be fetched from the cutout and displayed
   // as is" -- a title, never an input.
-  const itemName = initialItemName ?? deal.item_name;
+  const itemName = deal.item_name;
 
   // 1 -- Cutout price. Shown as text; the fields only open behind "Fix
   // it" (or straight away when no price was captured at all).
@@ -1083,7 +1164,7 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
           <Text style={styles.backLink}>{backLabel}</Text>
         </Pressable>
 
-        {deal.image_url && <Image source={{ uri: deal.image_url }} style={styles.editPhoto} resizeMode="contain" />}
+        {deal.image_url && <CutoutPhoto uri={deal.image_url} />}
         {/* Anabelle: "Make the name of the store underneath the cutout and
             in a black tag" -- and the zone "the same way", when the
             price only applies to one. Display only. */}
@@ -1541,11 +1622,8 @@ const styles = StyleSheet.create({
   productCountBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   cutoutTitle: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   sectionTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginTop: 8 },
+  splitNameInput: { borderRadius: 20, textAlignVertical: 'top' },
   cutoutHint: { fontSize: 12, color: '#D0342C', marginTop: 4 },
-  // A product the cutout lists that has no deal of its own yet -- dashed
-  // so it reads as "not a deal yet", with its one action right on it.
-  missingPartRow: { borderStyle: 'dashed', alignItems: 'center' },
-  missingPartName: { flex: 1 },
   dealThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealRowInfo: { flex: 1, gap: 2 },
   dealRowName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
@@ -1569,6 +1647,23 @@ const styles = StyleSheet.create({
   statusBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   emptyText: { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 24 },
   backLink: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  zoomHint: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    backgroundColor: 'rgba(17,17,17,0.7)',
+    borderRadius: 999,
+    padding: 8,
+  },
+  viewer: { flex: 1, backgroundColor: '#000' },
+  viewerClose: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    padding: 10,
+  },
   editPhoto: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#F2F2F2' },
   nameTitle: { fontSize: 22, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   // Same borderless white card as NotificationsSection/ManageAccountSection.
