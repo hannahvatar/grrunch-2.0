@@ -55,7 +55,7 @@ const TAG_ROWS: TagRow[] = [
     source: "Scraped straight from this week's official flyer.",
   },
   {
-    tag: '12% below',
+    tag: 'Up to 12% below',
     tagBg: '#EDE7FE',
     tagColor: '#6B46C1',
     meaning: "Not a flyer sale, but priced well below what this item typically costs.",

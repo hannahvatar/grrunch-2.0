@@ -7,8 +7,16 @@
 // airtable)".
 //
 // Client contract:
-//   POST { deal_id: string (uuid) }
+//   POST { deal_id: string (uuid), item_name?: string }
 //   -> 200 { source: CuratedDealRow, duplicate: CuratedDealRow }
+//
+// item_name (optional) names the copy -- dev-deals.tsx's cutout screen
+// passes the one product it's splitting off, taken straight from the
+// flyer's own combined text (lib/dealNames.ts splitMultiItemName).
+// Anabelle: "The name should be fetched from the cutout and displayed
+// as is" -- the review screen no longer lets a name be typed by hand, so
+// the copy has to arrive already named. Omitted, the copy keeps the
+// source's name (the original behavior).
 //
 // A fresh INSERT, not an extension of update-curated-deal-pricing --
 // insert is a different concern from that function's update-only,
@@ -34,11 +42,11 @@
 //     both need to show "Not reviewed" in the list until each is
 //     confirmed/renamed on its own.
 //
-// Doesn't touch status or usage -- both rows keep whatever the source
-// had (dev-deals.tsx now lists every status, so both stay visible
-// while awaiting individual review regardless; a full price/name/
-// classification mistake on either can still be corrected or rejected
-// afterward via update-curated-deal-pricing, same as any other row).
+// The copy always starts as status='pending' -- it's a product nobody
+// has reviewed yet, so it lands in dev-deals' "Needs review" queue
+// rather than inheriting an approved source's status and going live to
+// shoppers before it's been looked at. The source row's status and
+// every row's usage are untouched.
 //
 // The local CuratedDealRow type below used to be missing
 // original_price_source/fragment_by_weight/used_in_recipe -- those
@@ -111,6 +119,7 @@ interface Database {
 
 interface RequestBody {
   deal_id?: unknown;
+  item_name?: unknown;
 }
 
 function validationError(message: string) {
@@ -126,9 +135,12 @@ export default {
       return validationError("Request body must be valid JSON.");
     }
 
-    const { deal_id } = body;
+    const { deal_id, item_name } = body;
     if (typeof deal_id !== "string" || deal_id.length === 0) {
       return validationError("deal_id is required.");
+    }
+    if (item_name !== undefined && (typeof item_name !== "string" || item_name.trim() === "")) {
+      return validationError("item_name, when given, must be a non-blank string.");
     }
 
     // ctx.supabaseAdmin bypasses RLS -- curated_deals only grants
@@ -151,6 +163,8 @@ export default {
       .from("curated_deals")
       .insert({
         ...copyable,
+        ...(typeof item_name === "string" ? { item_name: item_name.trim() } : {}),
+        status: "pending",
         airtable_record_id: null,
         pricing_reviewed_at: null,
       })

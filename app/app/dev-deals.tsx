@@ -1,12 +1,25 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { CheckIcon } from 'react-native-heroicons/outline';
+import { CheckIcon, ChevronDownIcon } from 'react-native-heroicons/outline';
 
 import { InputField } from '../components/InputField';
-import { ReferenceCompareCard } from '../components/ReferenceCompareCard';
 import { SegmentedControl } from '../components/SegmentedControl';
-import { splitMultiItemName } from '../lib/dealNames';
-import { knownZonesForChain } from '../lib/dealZones';
+import { sizeFromItemName, splitMultiItemName } from '../lib/dealNames';
+import {
+  benchmarkCostForQuantity,
+  compare,
+  formatMoney,
+  IMPLAUSIBLE_BENCHMARK_RATIO,
+  isImplausibleBenchmark,
+  splitReferenceUnit,
+} from '../lib/referenceCompare';
+import {
+  fetchStatcanPrices,
+  rankReferenceCandidates,
+  searchReferenceCandidates,
+  type ReferenceCandidate,
+  type StaplePrice,
+} from '../lib/staplePrices';
 import { supabase } from '../lib/supabase';
 import type { Database, Tables } from '../types/database';
 
@@ -14,7 +27,11 @@ const INK = '#111';
 
 type CuratedDeal = Tables<'curated_deals'>;
 type PriceUnit = Database['public']['Enums']['deal_price_unit'];
-type PackageWeightSource = 'label' | 'measured' | 'estimated';
+// See supabase/migrations/20260812000000_curated_deals_original_price_source.sql
+// -- 'flyer' means original_price is a real price the store printed;
+// 'reference' means it's a StatCan/human-researched comparison price WE
+// derived, never printed anywhere. The live app never shows a
+// 'reference' one as a strikethrough "was $X" -- see lib/curatedDeals.ts.
 type OriginalPriceSource = 'flyer' | 'reference';
 type DealUsage = 'recipes' | 'deals';
 type StatusFilter = 'pending' | 'approved' | 'rejected' | 'all';
@@ -30,7 +47,7 @@ type StatusFilter = 'pending' | 'approved' | 'rejected' | 'all';
 // start: "recipe only... vs deals only".
 const USAGE_OPTIONS: { value: DealUsage; label: string }[] = [
   { value: 'recipes', label: 'Use in recipes' },
-  { value: 'deals', label: "Don't use in recipes" },
+  { value: 'deals', label: 'Deals section only' },
 ];
 
 // Anabelle: "why do I approve deals twice: in Airtable and in the page
@@ -49,54 +66,119 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
 // SegmentedControl value (it's typed <T extends string>).
 const NO_ZONE = '__no_zone__';
 
-const PRICE_UNIT_OPTIONS: { value: PriceUnit; label: string }[] = [
-  { value: 'package', label: 'Package' },
-  { value: 'each', label: 'Each' },
-  { value: 'lb', label: 'lb' },
+// The unit half of "Price is per [quantity] [unit]" on the item page.
+type PerUnit = 'g' | 'kg' | 'lb' | 'each';
+const PER_UNIT_OPTIONS: { value: PerUnit; label: string }[] = [
+  { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
-  { value: '100g', label: '100g' },
+  { value: 'lb', label: 'lb' },
+  { value: 'each', label: 'each' },
 ];
+const GRAMS_PER_LB = 453.592;
 
-const PACKAGE_WEIGHT_SOURCE_OPTIONS: { value: PackageWeightSource; label: string }[] = [
-  { value: 'label', label: 'Label' },
-  { value: 'measured', label: 'Measured' },
-  { value: 'estimated', label: 'Estimated' },
-];
-
-// See supabase/migrations/20260812000000_curated_deals_original_price_source.sql
-// -- 'flyer' means original_price is a real price the store printed;
-// 'reference' means it's a StatCan/human-researched comparison price WE
-// derived for a price-only produce item, never printed anywhere. The
-// live app never shows a 'reference' one as a strikethrough "was $X" --
-// see app/lib/curatedDeals.ts.
-const ORIGINAL_PRICE_SOURCE_OPTIONS: { value: OriginalPriceSource; label: string }[] = [
-  { value: 'flyer', label: 'Flyer (store printed it)' },
-  { value: 'reference', label: 'Reference (we calculated it)' },
-];
-
-// One flyer cutout often prices several distinct products together
-// ("UNICO OLIVES 375 mL, CAPERS, 125 mL or HOT PEPPER RINGS, 750 mL").
-// splitMultiItemName (lib/dealNames.ts) is the single source of truth
-// for detecting and splitting these -- it supersedes an earlier, purely
-// regex-based `\bor\b` check that used to live here directly (that
-// simpler rule is still splitMultiItemName's own fallback for names
-// with no stated sizes, so nothing regresses).
-//
-// A chip entry is one real PRODUCT, not one curated_deals row -- for a
-// still-combined cutout, several chips point at the same underlying row
-// (until it's split into its own rows via "Split into N separate
-// items"), each labeled with its own product name rather than the raw
-// combined one. Ported from dev-cost.tsx's own chipEntries (deleted as
-// part of merging that screen into this one) -- built after Anabelle
-// kept seeing the same multi-item cutout offered once per product
-// instead of being told "you already handled 2 of these 3."
-interface DealChipEntry {
-  key: string;
-  label: string;
-  deal: CuratedDeal | null;
-  needsSplit: boolean;
-  extraCopy: boolean;
+// "per 1 lb" / "per 1 kg" are rates (price_unit lb/kg); any other amount
+// ("per 665 g", "per 5 lb") is a whole package of that weight (price_unit
+// package + package_weight_g). A blank amount in grams is a package of
+// unknown size.
+function toStoredPrice(qty: number | null, unit: PerUnit): { priceUnit: PriceUnit; weightG: number | null } {
+  if (unit === 'each') return { priceUnit: 'each', weightG: null };
+  if (unit === 'lb') {
+    return qty === null || qty === 1 ? { priceUnit: 'lb', weightG: null } : { priceUnit: 'package', weightG: Math.round(qty * GRAMS_PER_LB) };
+  }
+  if (unit === 'kg') {
+    return qty === null || qty === 1 ? { priceUnit: 'kg', weightG: null } : { priceUnit: 'package', weightG: Math.round(qty * 1000) };
+  }
+  return { priceUnit: 'package', weightG: qty === null ? null : Math.round(qty) };
 }
+
+// The stored pair, back as what the "Price is per" row shows.
+function fromStoredPrice(deal: CuratedDeal): { qty: string; unit: PerUnit } {
+  if (deal.price_unit === 'lb') return { qty: '1', unit: 'lb' };
+  if (deal.price_unit === 'kg') return { qty: '1', unit: 'kg' };
+  if (deal.price_unit === '100g') return { qty: '100', unit: 'g' };
+  if (deal.price_unit === 'each') return { qty: '', unit: 'each' };
+  return { qty: deal.package_weight_g != null ? String(deal.package_weight_g) : '', unit: 'g' };
+}
+
+// One card per flyer CUTOUT, not per curated_deals row -- Anabelle:
+// "ok let's do one card per cutout but then it means inside the card i
+// may have more than one product to review". Replaces the old per-
+// product chips (ported from dev-cost.tsx), which showed a multi-item
+// cutout as several look-alike cards, one of them a dashed, untappable
+// "· needs split" placeholder you had to fix from a DIFFERENT card.
+//
+// Rows split off one cutout (duplicate-curated-deal copies every field,
+// image_url included) share the same photo, and different cutouts never
+// do (checked against live data: 243 rows -> 220 cutouts, 12 with more
+// than one row) -- so chain + image_url is the cutout's identity. A row
+// with no photo is always its own cutout.
+interface Cutout {
+  key: string;
+  // Oldest first -- the original synced row, then any split-off copies.
+  deals: CuratedDeal[];
+  // Products a still-combined name lists (per splitMultiItemName,
+  // lib/dealNames.ts) that don't have a row of their own in this cutout
+  // yet -- each offered as "Add as its own deal" on the cutout screen.
+  // `source` is the combined row that product would be copied from.
+  missingParts: { part: string; source: CuratedDeal }[];
+}
+
+function cutoutKeyFor(deal: CuratedDeal): string {
+  return deal.image_url ? `${deal.chain_name}|${deal.image_url}` : deal.id;
+}
+
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function isCombinedName(name: string): boolean {
+  return splitMultiItemName(name).length > 1;
+}
+
+function buildCutouts(deals: CuratedDeal[]): Map<string, Cutout> {
+  const byKey = new Map<string, CuratedDeal[]>();
+  for (const deal of deals) {
+    const key = cutoutKeyFor(deal);
+    const list = byKey.get(key);
+    if (list) list.push(deal);
+    else byKey.set(key, [deal]);
+  }
+
+  const cutouts = new Map<string, Cutout>();
+  for (const [key, list] of byKey) {
+    const sorted = list.slice().sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    // Case-insensitive -- a split-off row renamed "Organic Green grapes"
+    // still claims the flyer's "Organic Green Grapes".
+    const claimed = new Set(sorted.map((d) => normalizeName(d.item_name)));
+    const missingParts: Cutout['missingParts'] = [];
+    for (const deal of sorted) {
+      const parts = splitMultiItemName(deal.item_name);
+      if (parts.length < 2) continue;
+      for (const part of parts) {
+        if (claimed.has(normalizeName(part))) continue;
+        claimed.add(normalizeName(part));
+        missingParts.push({ part, source: deal });
+      }
+    }
+    cutouts.set(key, { key, deals: sorted, missingParts });
+  }
+  return cutouts;
+}
+
+// What a cutout's list card calls itself: the flyer's own combined text
+// when a row still carries it (that IS the cutout's name), otherwise
+// each split-off product's name joined together.
+function cutoutTitle(cutout: Cutout): string {
+  if (cutout.deals.length === 1) return cutout.deals[0].item_name;
+  const combined = cutout.deals.find((d) => isCombinedName(d.item_name));
+  return combined ? combined.item_name : cutout.deals.map((d) => d.item_name).join(' · ');
+}
+
+const STATUS_LABELS: Record<CuratedDeal['status'], string> = {
+  pending: 'Needs review',
+  approved: 'Approved',
+  rejected: 'Rejected',
+};
 
 // Internal-only pricing review screen -- built after finding real
 // pricing bugs in curated_deals this session (a per-lb flyer rate
@@ -120,12 +202,6 @@ export default function DevDealsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
-  // Defaults false now that 'pending' is the common weekly state for a
-  // fresh candidate -- forcing this on by default risked hiding a
-  // pending row that has stale carried-forward pricing metadata but a
-  // genuinely new price this week. The "Needs review" status tab does
-  // the primary narrowing instead.
-  const [onlyUnreviewed, setOnlyUnreviewed] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   // 'all' (default) shows every row regardless of zone. Anabelle,
   // 2026-09-14: "Can Airtable show the deals in their different zone for
@@ -141,6 +217,10 @@ export default function DevDealsScreen() {
   // 750 mL") instead of the raw, all-products-joined stored name, so
   // renaming to match doesn't require retyping/copying it by hand.
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  // The cutout screen currently open (only for a cutout with more than
+  // one product to review) -- a deal opened FROM it returns here on
+  // back/save instead of all the way to the list.
+  const [selectedCutoutKey, setSelectedCutoutKey] = useState<string | null>(null);
 
   const loadDeals = () => {
     setLoading(true);
@@ -195,58 +275,51 @@ export default function DevDealsScreen() {
     );
   }
 
-  // Every item_name currently in the table -- lets both the list's chip
-  // grouping and the edit view's own "Split into N" calc agree on which
-  // of a multi-item cutout's products already exist as their own row
-  // somewhere (approved/renamed, possibly under a filter that hides it
-  // right now), so neither offers to create a row that already exists.
-  const allNames = new Set(deals.map((d) => d.item_name));
-
+  const cutouts = buildCutouts(deals);
   const selectedDeal = deals.find((d) => d.id === selectedId) ?? null;
+  const selectedCutout = selectedCutoutKey ? (cutouts.get(selectedCutoutKey) ?? null) : null;
 
   if (selectedDeal) {
-    // How many of this cutout's real products (per splitMultiItemName)
-    // don't already have their own row ANYWHERE -- not a raw
-    // parts-minus-siblings count, which would still offer to "split"
-    // even when every product already exists elsewhere under its own
-    // name (a real case found live: two already-split rows plus one
-    // stray still-combined leftover -- that leftover needs rejecting,
-    // not one more row created for it).
-    const selectedParts = splitMultiItemName(selectedDeal.item_name);
-    const selectedSiblingCount = deals.filter((d) => d.item_name === selectedDeal.item_name).length;
-    const selectedRemainingParts = selectedParts.filter((part) => !allNames.has(part));
-    const missingSplitRows = Math.max(0, selectedRemainingParts.length - selectedSiblingCount);
-
+    const closeDeal = () => {
+      // Back to the cutout screen when the deal was opened from one
+      // (selectedCutoutKey stays set), otherwise back to the list.
+      setSelectedId(null);
+      setSelectedLabel(null);
+    };
     return (
       <DealEditView
+        key={selectedDeal.id}
         deal={selectedDeal}
         initialItemName={selectedLabel ?? undefined}
-        missingSplitRows={missingSplitRows}
-        onBack={() => {
-          setSelectedId(null);
-          setSelectedLabel(null);
-        }}
+        backLabel={selectedCutout ? '← Back to cutout' : '← Back to list'}
+        onBack={closeDeal}
         onSaved={(updated) => {
           // Every status is visible somewhere in this screen now (the
           // status-tab filter, not this list, decides what's shown) --
           // just replace the row in place; the active statusFilter
-          // naturally hides it if it no longer matches, instead of
-          // this callback special-casing status transitions.
+          // naturally hides it if it no longer matches.
           setDeals((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-          setSelectedId(null);
-          setSelectedLabel(null);
+          closeDeal();
         }}
-        onSplit={(source, duplicates) => {
-          // Every new row comes back with pricing_reviewed_at reset to
-          // null, same as the source (see duplicate-curated-deal/
-          // index.ts) -- update the source in place and append the new
-          // ones. Splitting into N>1 new rows has no single obvious
-          // "the new one" to jump into the way a single Duplicate used
-          // to, so this returns to the list -- the chip grouping below
-          // now shows each of them ready to rename individually.
-          setDeals((prev) => [...prev.map((d) => (d.id === source.id ? source : d)), ...duplicates]);
-          setSelectedId(null);
-          setSelectedLabel(null);
+      />
+    );
+  }
+
+  if (selectedCutout) {
+    return (
+      <CutoutView
+        cutout={selectedCutout}
+        onBack={() => setSelectedCutoutKey(null)}
+        onOpenDeal={(deal) => setSelectedId(deal.id)}
+        onSplitOff={(source, duplicate, part) => {
+          // The copy arrives already named after this one product
+          // (duplicate-curated-deal's item_name) -- open it straight away
+          // for review. Only if it didn't (that function not yet
+          // redeployed) does the product name ride along as the name to
+          // save with the form.
+          setDeals((prev) => [...prev.map((d) => (d.id === source.id ? source : d)), duplicate]);
+          setSelectedId(duplicate.id);
+          setSelectedLabel(duplicate.item_name === part ? null : part);
         }}
       />
     );
@@ -254,12 +327,15 @@ export default function DevDealsScreen() {
 
   const statusScoped = deals.filter((d) => statusFilter === 'all' || d.status === statusFilter);
 
-  // Options are built from whatever zones actually appear in the current
-  // status tab, not a hardcoded list -- stays correct as more deals get
+  // Options are built from whatever zones actually appear across every
+  // loaded deal, not a hardcoded list -- stays correct as more deals get
   // tagged (or as ZONES_BY_CHAIN in lib/dealZones.ts grows) with no edits
-  // needed here.
+  // needed here. Deliberately not scoped to the current status tab: the
+  // dropdown is always shown now (Anabelle: "the zone dropdown should
+  // always be shown"), so its choices shouldn't shift or empty out just
+  // from switching tabs.
   const presentZones = Array.from(
-    new Set(statusScoped.map((d) => d.zone).filter((z): z is string => z !== null))
+    new Set(deals.map((d) => d.zone).filter((z): z is string => z !== null))
   ).sort();
   const zoneOptions: { value: string; label: string }[] = [
     { value: 'all', label: 'All zones' },
@@ -267,104 +343,43 @@ export default function DevDealsScreen() {
     { value: NO_ZONE, label: 'No zone tag' },
   ];
 
-  const zoneScoped = statusScoped.filter((d) => {
-    if (zoneFilter === 'all') return true;
-    if (zoneFilter === NO_ZONE) return d.zone === null;
-    return d.zone === zoneFilter;
-  });
+  // No separate "only show not-yet-reviewed" checkbox any more --
+  // Anabelle: "its redundant with the chip". The "Needs review" status
+  // tab is the one place that narrows to the work queue.
+  const q = search.trim().toLowerCase();
+  const matchesFilters = (d: CuratedDeal) =>
+    (statusFilter === 'all' || d.status === statusFilter) &&
+    (zoneFilter === 'all' || (zoneFilter === NO_ZONE ? d.zone === null : d.zone === zoneFilter)) &&
+    (!q || d.item_name.toLowerCase().includes(q) || d.chain_name.toLowerCase().includes(q));
 
-  const filtered = zoneScoped
-    .filter((d) => !onlyUnreviewed || d.pricing_reviewed_at === null)
-    .filter((d) => {
-      const q = search.trim().toLowerCase();
-      if (!q) return true;
-      return d.item_name.toLowerCase().includes(q) || d.chain_name.toLowerCase().includes(q);
-    })
+  // A cutout shows when ANY of its deals matches the tab/zone/search --
+  // it's opened as a whole, so its other products (whatever their
+  // status) stay visible as context on the cutout screen.
+  const visibleCutouts = Array.from(cutouts.values())
+    .filter((c) => c.deals.some(matchesFilters))
     // Unreviewed-first (alphabetical within that group -- browsing an
     // untouched queue, alphabetical is as good an order as any). Already-
-    // reviewed rows sort most-recent-decision-first instead: "i approved
-    // unico olives 3 times its still there" (dev-cost.tsx, ported in with
-    // its merge) -- being able to jump straight back to the thing you
-    // just got wrong, with no separate queue/tab needed for it.
+    // reviewed cutouts sort most-recent-decision-first instead: "i
+    // approved unico olives 3 times its still there" (dev-cost.tsx,
+    // ported in with its merge) -- being able to jump straight back to
+    // the thing you just got wrong, with no separate queue/tab for it.
+    .map((c) => {
+      const unreviewed = c.deals.some((d) => d.pricing_reviewed_at === null);
+      const lastReviewed = Math.max(
+        ...c.deals.map((d) => (d.pricing_reviewed_at ? new Date(d.pricing_reviewed_at).getTime() : 0))
+      );
+      return { cutout: c, title: cutoutTitle(c), unreviewed, lastReviewed };
+    })
     .sort((a, b) => {
-      const aReviewed = a.pricing_reviewed_at !== null;
-      const bReviewed = b.pricing_reviewed_at !== null;
-      if (aReviewed !== bReviewed) return aReviewed ? 1 : -1;
-      if (!aReviewed) return a.item_name.localeCompare(b.item_name);
-      return new Date(b.pricing_reviewed_at!).getTime() - new Date(a.pricing_reviewed_at!).getTime();
+      if (a.unreviewed !== b.unreviewed) return a.unreviewed ? -1 : 1;
+      if (a.unreviewed) return a.title.localeCompare(b.title);
+      return b.lastReviewed - a.lastReviewed;
     });
-
-  // One chip per real PRODUCT, not one per curated_deals row -- a
-  // still-combined multi-item cutout ("X, 375 mL or Y, 750 mL") shows as
-  // separate chips for X and Y even though only one row exists for it
-  // so far, each pointing at that same row until it's actually split.
-  // allNames (defined above, next to selectedDeal) is the claimed-names
-  // source: a sibling already renamed/approved under its own single
-  // name should stop being offered here even if it no longer matches
-  // the current status/zone/search filters. Ported from dev-cost.tsx's
-  // own chipEntries.
-  const chipEntries: DealChipEntry[] = [];
-  {
-    const byName = new Map<string, CuratedDeal[]>();
-    for (const deal of filtered) {
-      const list = byName.get(deal.item_name);
-      if (list) list.push(deal);
-      else byName.set(deal.item_name, [deal]);
-    }
-    const seenNames = new Set<string>();
-    for (const deal of filtered) {
-      if (seenNames.has(deal.item_name)) continue;
-      seenNames.add(deal.item_name);
-
-      const siblings = (byName.get(deal.item_name) ?? [])
-        .slice()
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      const parts = splitMultiItemName(deal.item_name);
-
-      if (parts.length === 1) {
-        for (const sibling of siblings) {
-          chipEntries.push({ key: sibling.id, label: sibling.item_name, deal: sibling, needsSplit: false, extraCopy: false });
-        }
-        continue;
-      }
-
-      const remainingParts = parts.filter((part) => !allNames.has(part));
-      remainingParts.forEach((part, index) => {
-        const sibling = siblings[index];
-        if (sibling) {
-          chipEntries.push({ key: sibling.id, label: part, deal: sibling, needsSplit: false, extraCopy: false });
-        } else {
-          chipEntries.push({
-            key: `${deal.id}-needs-split-${index}`,
-            label: `${part} · needs split`,
-            deal: null,
-            needsSplit: true,
-            extraCopy: false,
-          });
-        }
-      });
-      for (let index = remainingParts.length; index < siblings.length; index += 1) {
-        chipEntries.push({
-          key: siblings[index].id,
-          label: `${siblings[index].item_name} · extra copy`,
-          deal: siblings[index],
-          needsSplit: false,
-          extraCopy: true,
-        });
-      }
-    }
-  }
 
   // Computed against the tab-filtered set, not the full deals array --
   // "12 needs review · 3 not yet reviewed" while sitting on the
   // Approved tab would read as nonsense otherwise.
   const unreviewedCount = statusScoped.filter((d) => d.pricing_reviewed_at === null).length;
-
-  const STATUS_LABELS: Record<CuratedDeal['status'], string> = {
-    pending: 'Needs review',
-    approved: 'Approved',
-    rejected: 'Rejected',
-  };
 
   return (
     <View style={styles.container}>
@@ -377,170 +392,448 @@ export default function DevDealsScreen() {
           {statusScoped.length} deal{statusScoped.length === 1 ? '' : 's'} · {unreviewedCount} not yet reviewed
         </Text>
 
-        <SegmentedControl options={STATUS_FILTER_OPTIONS} value={statusFilter} onChange={setStatusFilter} />
+        <SegmentedControl wrap options={STATUS_FILTER_OPTIONS} value={statusFilter} onChange={setStatusFilter} />
 
-        {/* Only worth showing once more than one real zone exists in
-            this tab -- with a single zone (or none at all) the filter
-            has nothing to actually narrow. */}
-        {presentZones.length > 0 && (
-          <SegmentedControl options={zoneOptions} value={zoneFilter} onChange={setZoneFilter} />
-        )}
+        {/* Anabelle: "it should be on the same row as the search on its
+            right side". zIndex lives on this row (not just the Dropdown
+            inside it) since it's the row that's the sibling of the deal
+            rows the open menu overlaps -- see Dropdown's own comment. */}
+        <View style={styles.searchRow}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search by item or store..."
+            placeholderTextColor="#999"
+            style={[styles.searchInput, styles.searchInputFlex]}
+          />
+          <Dropdown options={zoneOptions} value={zoneFilter} onChange={setZoneFilter} menuAlign="right" />
+        </View>
 
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search by item or store..."
-          placeholderTextColor="#999"
-          style={styles.searchInput}
-        />
-
-        <Pressable style={styles.filterRow} onPress={() => setOnlyUnreviewed((v) => !v)}>
-          <View style={[styles.checkbox, onlyUnreviewed && styles.checkboxChecked]}>
-            {onlyUnreviewed && <CheckIcon size={12} color="#fff" />}
-          </View>
-          <Text style={styles.filterLabel}>Only show not-yet-reviewed</Text>
-        </Pressable>
-
-        {chipEntries.map((entry) => (
-          <Pressable
-            key={entry.key}
-            style={[styles.dealRow, entry.needsSplit && styles.dealRowNeedsSplit]}
-            disabled={entry.needsSplit}
-            onPress={() => {
-              if (!entry.deal) return;
-              setSelectedId(entry.deal.id);
-              // Only prefill a different item name when this chip is a
-              // still-combined cutout's individual product -- an
-              // ordinary single-item row already IS its own label, and
-              // an extra-copy chip's label carries a "· extra copy"
-              // annotation that must never leak into the real,
-              // editable item name field (real bug caught live: it did,
-              // until this exclusion was added).
-              setSelectedLabel(entry.extraCopy || entry.label === entry.deal.item_name ? null : entry.label);
-            }}
-          >
-            {entry.deal?.image_url ? (
-              <Image source={{ uri: entry.deal.image_url }} style={styles.dealThumb} resizeMode="cover" />
-            ) : (
-              <View style={styles.dealThumb} />
-            )}
-            <View style={styles.dealRowInfo}>
-              <Text style={styles.dealRowName} numberOfLines={2}>
-                {entry.label}
-              </Text>
-              {entry.deal && (
-                <>
-                  <Text style={styles.dealRowStore}>{entry.deal.chain_name}</Text>
+        {visibleCutouts.map(({ cutout, title, unreviewed }) => {
+          const single = cutout.deals.length === 1 && cutout.missingParts.length === 0;
+          const deal = cutout.deals[0];
+          return (
+            <Pressable
+              key={cutout.key}
+              style={styles.dealRow}
+              onPress={() => {
+                // A plain one-product cutout has nothing to choose
+                // between -- straight to its edit form, like before.
+                if (single) setSelectedId(deal.id);
+                else setSelectedCutoutKey(cutout.key);
+              }}
+            >
+              {deal.image_url ? (
+                <Image source={{ uri: deal.image_url }} style={styles.dealThumb} resizeMode="cover" />
+              ) : (
+                <View style={styles.dealThumb} />
+              )}
+              <View style={styles.dealRowInfo}>
+                <Text style={styles.dealRowName} numberOfLines={2}>
+                  {title}
+                </Text>
+                <Text style={styles.dealRowStore}>{deal.chain_name}</Text>
+                {single ? (
+                  <DealPriceLine deal={deal} showStatus={statusFilter === 'all'} />
+                ) : (
                   <View style={styles.dealRowPriceLine}>
-                    <Text style={styles.dealRowPrice}>
-                      {entry.deal.price != null ? `$${entry.deal.price.toFixed(2)}` : 'Unknown'}{' '}
-                      <Text style={styles.dealRowOriginal}>
-                        {entry.deal.original_price != null ? `$${entry.deal.original_price.toFixed(2)}` : 'Unknown'}
+                    <View style={styles.productCountBadge}>
+                      <Text style={styles.productCountBadgeText}>
+                        {cutout.deals.length} deal{cutout.deals.length === 1 ? '' : 's'}
                       </Text>
-                    </Text>
-                    <View style={styles.unitBadge}>
-                      <Text style={styles.unitBadgeText}>{entry.deal.price_unit}</Text>
                     </View>
-                    {/* Not shown when untagged -- most rows still are, and an
-                        empty/"No zone" badge on every single row would be
-                        more noise than signal. The zone filter above already
-                        covers "show me the untagged ones". */}
-                    {entry.deal.zone && (
-                      <View style={styles.zoneBadge}>
-                        <Text style={styles.zoneBadgeText}>{entry.deal.zone}</Text>
+                    {cutout.missingParts.length > 0 && (
+                      <View style={styles.unreviewedBadge}>
+                        <Text style={styles.unreviewedBadgeText}>{cutout.missingParts.length} not split yet</Text>
                       </View>
                     )}
-                    {/* Redundant once a specific status tab is active (the
-                        tab already says it) -- only shown on "All", where
-                        rows of every status are mixed together. */}
-                    {statusFilter === 'all' && (
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          entry.deal.status === 'approved' && styles.statusBadgeApproved,
-                          entry.deal.status === 'rejected' && styles.statusBadgeRejected,
-                        ]}
-                      >
-                        <Text style={styles.statusBadgeText}>{STATUS_LABELS[entry.deal.status]}</Text>
-                      </View>
-                    )}
-                    {entry.deal.pricing_reviewed_at === null && (
+                    {unreviewed && (
                       <View style={styles.unreviewedBadge}>
                         <Text style={styles.unreviewedBadgeText}>Not reviewed</Text>
                       </View>
                     )}
-                    {entry.extraCopy && (
-                      <View style={styles.unreviewedBadge}>
-                        <Text style={styles.unreviewedBadgeText}>Extra copy?</Text>
-                      </View>
-                    )}
                   </View>
-                </>
-              )}
-              {entry.needsSplit && (
-                <Text style={styles.dealRowStore}>
-                  Open one of this cutout's other chips and use "Split into N separate items" first.
-                </Text>
-              )}
-            </View>
-          </Pressable>
-        ))}
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
 
-        {chipEntries.length === 0 && <Text style={styles.emptyText}>No deals match.</Text>}
+        {visibleCutouts.length === 0 && <Text style={styles.emptyText}>No deals match.</Text>}
       </ScrollView>
+    </View>
+  );
+}
+
+// Price, original price, unit, zone and review badges for one deal --
+// shared by the list's one-product cards and the cutout screen's rows.
+function DealPriceLine({ deal, showStatus }: { deal: CuratedDeal; showStatus: boolean }) {
+  return (
+    <View style={styles.dealRowPriceLine}>
+      <Text style={styles.dealRowPrice}>
+        {deal.price != null ? `$${deal.price.toFixed(2)}` : 'Unknown'}{' '}
+        <Text style={styles.dealRowOriginal}>
+          {deal.original_price != null ? `$${deal.original_price.toFixed(2)}` : 'Unknown'}
+        </Text>
+      </Text>
+      <View style={styles.unitBadge}>
+        <Text style={styles.unitBadgeText}>{deal.price_unit}</Text>
+      </View>
+      {/* Not shown when untagged -- most rows still are, and an
+          empty/"No zone" badge on every single row would be more noise
+          than signal. The zone filter already covers "show me the
+          untagged ones". */}
+      {deal.zone && (
+        <View style={styles.zoneBadge}>
+          <Text style={styles.zoneBadgeText}>{deal.zone}</Text>
+        </View>
+      )}
+      {showStatus && (
+        <View
+          style={[
+            styles.statusBadge,
+            deal.status === 'approved' && styles.statusBadgeApproved,
+            deal.status === 'rejected' && styles.statusBadgeRejected,
+          ]}
+        >
+          <Text style={styles.statusBadgeText}>{STATUS_LABELS[deal.status]}</Text>
+        </View>
+      )}
+      {deal.pricing_reviewed_at === null && (
+        <View style={styles.unreviewedBadge}>
+          <Text style={styles.unreviewedBadgeText}>Not reviewed</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+interface CutoutViewProps {
+  cutout: Cutout;
+  onBack: () => void;
+  onOpenDeal: (deal: CuratedDeal) => void;
+  onSplitOff: (source: CuratedDeal, duplicate: CuratedDeal, part: string) => void;
+}
+
+// One flyer cutout with more than one product on it: the photo once,
+// then every deal already made from it (each reviewed on its own, like
+// Airtable's setup -- "You need to duplicate the cutout and have me
+// review the items individually"), then any product it lists that
+// doesn't have a deal yet. Replaces the old "Split into N separate
+// items" button inside the edit form, which made N anonymous copies
+// all still carrying the combined name for you to tell apart later.
+function CutoutView({ cutout, onBack, onOpenDeal, onSplitOff }: CutoutViewProps) {
+  const [splittingPart, setSplittingPart] = useState<string | null>(null);
+  const [splitError, setSplitError] = useState<string | null>(null);
+  const photo = cutout.deals.find((d) => d.image_url)?.image_url ?? null;
+
+  async function splitOff(part: string, source: CuratedDeal) {
+    setSplitError(null);
+    setSplittingPart(part);
+    const { data, error: invokeError } = await supabase.functions.invoke<{
+      source?: CuratedDeal;
+      duplicate?: CuratedDeal;
+      error?: string;
+    }>('duplicate-curated-deal', { body: { deal_id: source.id, item_name: part } });
+    setSplittingPart(null);
+    if (invokeError || !data?.source || !data?.duplicate) {
+      setSplitError(data?.error ?? invokeError?.message ?? 'Could not add this product as its own deal.');
+      return;
+    }
+    onSplitOff(data.source, data.duplicate, part);
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Pressable onPress={onBack} hitSlop={8}>
+          <Text style={styles.backLink}>← Back to list</Text>
+        </Pressable>
+
+        {photo && <Image source={{ uri: photo }} style={styles.editPhoto} resizeMode="contain" />}
+        <Text style={styles.cutoutTitle}>{cutoutTitle(cutout)}</Text>
+        <Text style={styles.editStore}>{cutout.deals[0].chain_name}</Text>
+
+        <Text style={styles.sectionTitle}>Deals from this cutout</Text>
+        {cutout.deals.map((deal) => {
+          const combined = isCombinedName(deal.item_name);
+          return (
+            <Pressable key={deal.id} style={styles.dealRow} onPress={() => onOpenDeal(deal)}>
+              <View style={styles.dealRowInfo}>
+                <Text style={styles.dealRowName}>{deal.item_name}</Text>
+                <DealPriceLine deal={deal} showStatus />
+                {/* A row still carrying the flyer's combined "X or Y"
+                    name once every product has its own deal is a
+                    leftover (e.g. the live "Prepared In-Store Cooked or
+                    Raw Shrimp Grillers") -- it double-counts the deal
+                    while approved. */}
+                {combined && deal.status !== 'rejected' && (
+                  <Text style={styles.cutoutHint}>
+                    {cutout.missingParts.length === 0
+                      ? 'Every product on this cutout has its own deal now -- open this combined one and Reject it.'
+                      : 'Still lists several products -- add each one as its own deal below.'}
+                  </Text>
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
+
+        {cutout.missingParts.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Not split yet</Text>
+            {cutout.missingParts.map(({ part, source }) => (
+              <View key={part} style={[styles.dealRow, styles.missingPartRow]}>
+                <Text style={[styles.dealRowName, styles.missingPartName]}>{part}</Text>
+                <Pressable
+                  style={[styles.splitButton, splittingPart !== null && styles.saveButtonDisabled]}
+                  onPress={() => splitOff(part, source)}
+                  disabled={splittingPart !== null}
+                >
+                  {splittingPart === part ? (
+                    <ActivityIndicator color="#3B82F6" />
+                  ) : (
+                    <Text style={styles.splitButtonText}>Add as its own deal</Text>
+                  )}
+                </Pressable>
+              </View>
+            ))}
+            {splitError && <Text style={styles.saveError}>{splitError}</Text>}
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+interface DropdownProps {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  // Which edge the open menu lines up with -- 'right' when the pill sits
+  // at the right edge of the screen, so the menu doesn't run off it.
+  menuAlign?: 'left' | 'right';
+}
+
+// Anabelle: "The zones chips should be in a dropdown as all these chips
+// for me is confusing" -- a single pill showing the current choice,
+// opening a menu, instead of a SegmentedControl row that scrolls off
+// screen once a chain has several zones. Same pill/menu look as the
+// Meals tab's sort dropdown (app/(tabs)/meals.tsx). The root View's
+// zIndex is load-bearing on web (see that file's headerRow comment):
+// it has to sit on the element that's a sibling of what the open menu
+// overlaps, or the menu paints underneath the rows below it.
+function Dropdown({ options, value, onChange, menuAlign = 'left' }: DropdownProps) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+  return (
+    <View style={styles.dropdown}>
+      <Pressable style={styles.dropdownPill} onPress={() => setOpen((v) => !v)}>
+        <Text style={styles.dropdownPillText}>{selected?.label ?? 'Choose...'}</Text>
+        <ChevronDownIcon size={16} color={INK} strokeWidth={2} />
+      </Pressable>
+      {open && (
+        <View style={[styles.dropdownMenu, menuAlign === 'right' ? styles.dropdownMenuRight : styles.dropdownMenuLeft]}>
+          {options.map((option) => (
+            <Pressable
+              key={option.value}
+              style={styles.dropdownMenuItem}
+              onPress={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              <Text style={styles.dropdownMenuItemText}>{option.label}</Text>
+              {option.value === value && <CheckIcon size={16} color={INK} strokeWidth={2} />}
+            </Pressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 interface DealEditViewProps {
   deal: CuratedDeal;
-  // The specific product name to prefill Item name with, when this deal
-  // was opened via one chip of a still-combined multi-item cutout.
-  // undefined means "use deal.item_name as-is" (the ordinary case).
+  // The specific product name to save, when this deal was just split off
+  // a multi-product cutout and still carries the combined flyer name
+  // (only happens with a copy made before duplicate-curated-deal learned
+  // to name copies itself). undefined means "use deal.item_name as-is".
   initialItemName?: string;
-  // How many of this cutout's real products (per splitMultiItemName)
-  // don't already have their own row anywhere -- computed by the parent
-  // (which has the full deals list) rather than here, so this view
-  // can't disagree with the list's own chip grouping about whether a
-  // product is "missing" or already exists elsewhere under its own
-  // name (see the parent's own comment on this calc).
-  missingSplitRows: number;
+  // "← Back to cutout" when opened from a cutout screen, so it's clear
+  // where back goes.
+  backLabel: string;
   onBack: () => void;
   onSaved: (deal: CuratedDeal) => void;
-  onSplit: (source: CuratedDeal, duplicates: CuratedDeal[]) => void;
 }
 
-function DealEditView({ deal, initialItemName, missingSplitRows, onBack, onSaved, onSplit }: DealEditViewProps) {
-  const [itemName, setItemName] = useState(initialItemName ?? deal.item_name);
-  const [price, setPrice] = useState(deal.price != null ? String(deal.price) : '');
-  const [priceUnknown, setPriceUnknown] = useState(deal.price === null);
-  const [originalPrice, setOriginalPrice] = useState(deal.original_price != null ? String(deal.original_price) : '');
-  const [originalPriceUnknown, setOriginalPriceUnknown] = useState(deal.original_price === null);
-  const [priceUnit, setPriceUnit] = useState<PriceUnit>(deal.price_unit);
-  const [packageWeightG, setPackageWeightG] = useState(deal.package_weight_g != null ? String(deal.package_weight_g) : '');
-  const [packageWeightSource, setPackageWeightSource] = useState<PackageWeightSource | null>(
-    (deal.package_weight_g_source as PackageWeightSource | null) ?? null
+// What a price is FOR, as the quantity/unit pair lib/referenceCompare.ts
+// normalizes against, plus how to say it after a "$X / ". A lb/kg/100g
+// price is a RATE, so the comparable quantity is one of that rate's own
+// units and package size is deliberately ignored (pairing a per-lb price
+// with a 700 g package would read as a far better deal than it is). A
+// package price is the whole flat price, so its size -- stored, or read
+// off the flyer name as a last resort -- is the honest quantity.
+function priceBasis(
+  unit: PriceUnit,
+  deal: CuratedDeal,
+  itemName: string,
+  // The package size in grams as currently entered in "Fix it" (starts
+  // as the stored package_weight_g) -- wins over anything read off the
+  // name.
+  packageWeightG: number | null
+): { quantity: string; unit: string; label: string; sizeNote?: string } {
+  if (unit === 'lb') return { quantity: '1', unit: 'lb', label: 'lb' };
+  if (unit === 'kg') return { quantity: '1', unit: 'kg', label: 'kg' };
+  if (unit === '100g') return { quantity: '100', unit: 'g', label: '100 g' };
+  if (unit === 'each') return { quantity: '1', unit: 'ea', label: 'each' };
+  if (packageWeightG) {
+    return { quantity: String(packageWeightG), unit: 'g', label: `${packageWeightG} g` };
+  }
+  if (deal.package_volume_ml) {
+    return { quantity: String(deal.package_volume_ml), unit: 'ml', label: `package (${deal.package_volume_ml} ml)` };
+  }
+  // Read off the flyer name as a last resort, labelled plain "package"
+  // (the title already shows the cutout's own size text). For a size
+  // RANGE the LARGEST size is used -- Anabelle: "when the cutout offers a
+  // range e.g. 584 gr to 665 gr, I will always pick the upper number".
+  // That makes the saved percentage a best case, which is why every
+  // shopper-facing badge says "Up to" (lib/curatedDeals.ts's
+  // formatRealDiscountLabel / formatGreatReferenceValueLabel). sizeNote
+  // says which size was used, next to the conversion.
+  const range = itemName.match(RANGE_SIZE);
+  if (range) {
+    const rangeUnit = RANGE_UNITS[range[3].toLowerCase()];
+    if (rangeUnit) {
+      return {
+        quantity: range[2],
+        unit: rangeUnit,
+        label: 'package',
+        sizeNote: `${range[2]} ${rangeUnit}, largest size on the cutout`,
+      };
+    }
+  }
+  const size = sizeFromItemName(itemName);
+  if (size) return { quantity: size.quantity, unit: size.unit, label: 'package', sizeNote: `${size.quantity} ${size.unit}` };
+  return { quantity: '1', unit: 'ea', label: 'package' };
+}
+
+// "584-665 G", "150/220 g", "295 – 411 g" -- a flyer cutout covering
+// several package sizes at one price.
+const RANGE_SIZE = /(\d+(?:\.\d+)?)\s*[-–/]\s*(\d+(?:\.\d+)?)\s*(kg|g|ml|l)\b/i;
+const RANGE_UNITS: Record<string, string> = { kg: 'kg', g: 'g', ml: 'ml', l: 'L' };
+
+type ConvertedReference =
+  | { ok: true; value: number; pctVsReference: number; implausible: boolean }
+  | { ok: false; reason: string };
+
+// A reference price restated for the SAME quantity the cutout price is
+// for -- e.g. StatCan's "$18.39 per kilogram" becomes $8.34 for a
+// per-lb deal. Anabelle: "Convert so the unit are matching e.g. here the
+// price is per lbs so show the conversion if needed." Same engine
+// (compare + benchmarkCostForQuantity) the app's own pricing uses, so
+// the number saved as original_price is exactly what's shown here.
+function convertReference(
+  dealPrice: number,
+  priceUnit: PriceUnit,
+  basis: { quantity: string; unit: string },
+  reference: { price: number; unit: string }
+): ConvertedReference {
+  const referenceUnit = splitReferenceUnit(reference.unit);
+  // A reference priced per package/item ("Red Baron pizza $2.97 / 1
+  // package") compares straight against a per-package or per-item deal,
+  // one for one -- never via the package's weight, which would be a
+  // weight-vs-count mismatch compare() rightly refuses.
+  const compareBasis =
+    referenceUnit.unit === 'ea' && (priceUnit === 'package' || priceUnit === 'each')
+      ? { quantity: '1', unit: 'ea' }
+      : basis;
+  const outcome = compare(dealPrice, compareBasis.quantity, compareBasis.unit, {
+    kind: 'reference',
+    price: reference.price,
+    ...referenceUnit,
+  });
+  if (!outcome.ok) return outcome;
+  const value = benchmarkCostForQuantity(outcome.comparison, compareBasis.quantity, compareBasis.unit);
+  if (value === undefined) return { ok: false, reason: "Couldn't convert this reference to the cutout's unit." };
+  return {
+    ok: true,
+    value,
+    pctVsReference: outcome.comparison.differencePct,
+    // See isImplausibleBenchmark's doc comment -- 5x+ off is a unit
+    // mix-up, never a real deal, so it can't be approved as-is.
+    implausible: isImplausibleBenchmark(outcome.comparison),
+  };
+}
+
+// Whether the StatCan reference on screen has been approved or rejected
+// yet. Undecided leaves whatever reference price is already saved alone.
+type ReferenceDecision = 'undecided' | 'approved' | 'rejected';
+
+// Internal-only pricing review for one deal. Laid out in the order
+// Anabelle reviews a deal in (2026-09-18):
+//   1. the cutout's price per quantity, e.g. "$8.99 / lb"
+//   2. the cutout's previous price, when it prints one
+//   3. otherwise, a StatCan reference price converted to the same unit
+//   4. approve that reference -- or reject it and search StatCan for
+//      the right item ("here would be frozen pizza")
+//   5. whether recipes may use this deal (or it's Deals-section only)
+//   6. reject the deal altogether, or save it
+// Only two kinds of comparison exist (Anabelle: "there should only be 2
+// options for reference price"): the cutout's own previous price, or
+// StatCan -- the produce/staple tables and hand-typed references are no
+// longer offered here.
+// Everything else the old long form asked (package size and its source,
+// "quantity is an estimate", zone picker, price-source picker) is gone
+// from the screen -- whatever is already stored for those is sent back
+// unchanged on save.
+function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: DealEditViewProps) {
+  // Anabelle: "The name should be fetched from the cutout and displayed
+  // as is" -- a title, never an input.
+  const itemName = initialItemName ?? deal.item_name;
+
+  // 1 -- Cutout price. Shown as text; the fields only open behind "Fix
+  // it" (or straight away when no price was captured at all).
+  const [fixingPrice, setFixingPrice] = useState(deal.price === null);
+  const [priceText, setPriceText] = useState(deal.price != null ? String(deal.price) : '');
+  // "Price is per [quantity] [unit]" -- Anabelle: "Price on the cutout:
+  // 4 / Price is per gr / Input: 665gr". Mapped onto the stored
+  // price_unit + package_weight_g pair by toStoredPrice below.
+  const initialPer = fromStoredPrice(deal);
+  const [perQtyText, setPerQtyText] = useState(initialPer.qty);
+  const [perUnit, setPerUnit] = useState<PerUnit>(initialPer.unit);
+
+  // 2 -- The cutout's own previous price, when it prints one. Only a
+  // 'flyer'-sourced original price counts -- a 'reference' one is ours.
+  const [previousText, setPreviousText] = useState(
+    deal.original_price != null && deal.original_price_source === 'flyer' ? String(deal.original_price) : ''
   );
-  const [quantityEstimated, setQuantityEstimated] = useState(deal.quantity_estimated);
-  const [originalPriceSource, setOriginalPriceSource] = useState<OriginalPriceSource>(
-    deal.original_price_source as OriginalPriceSource
-  );
+
+  // 3/4 -- StatCan reference.
+  const [decision, setDecision] = useState<ReferenceDecision>('undecided');
+  const [statcan, setStatcan] = useState<StaplePrice[] | null>(null);
+  const [statcanError, setStatcanError] = useState(false);
+  // A StatCan item picked by hand from search, replacing the automatic
+  // match when that one searched the wrong word.
+  const [pickedReference, setPickedReference] = useState<ReferenceCandidate | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchStatcanPrices()
+      .then(setStatcan)
+      .catch(() => setStatcanError(true));
+  }, []);
+
+  // 5 -- Recipes or Deals section only.
   const [usage, setUsage] = useState<DealUsage>(deal.usage as DealUsage);
-  // NO_ZONE stands in for null -- SegmentedControl's value is typed
-  // <T extends string>. Options are just this ONE deal's own chain's
-  // known zones (lib/dealZones.ts's knownZonesForChain) plus NO_ZONE, so
-  // there's no way to save a typo'd value that would silently fail to
-  // match a real shopper's store later.
-  const [zone, setZone] = useState<string>(deal.zone ?? NO_ZONE);
   // Generic category tags (e.g. "chicken breast", "beans") checked by
   // refresh_recipe_deal_tags()'s keyword fallback pass when a recipe
   // ingredient's own name doesn't exactly match this deal's real flyer
-  // name -- see 20260808040000_deal_keyword_matches.sql. Used to only
-  // ever be set during the separate Airtable review pass; folded in
-  // here now that that step is gone (Anabelle: "how can we make it
-  // like prime raised without antibiotics boneless skinless chicken
-  // breasts could match 'chicken breasts'"). keywordInput holds the
-  // in-progress text before it's committed to a chip.
+  // name -- see 20260808040000_deal_keyword_matches.sql (Anabelle: "how
+  // can we make it like prime raised without antibiotics boneless
+  // skinless chicken breasts could match 'chicken breasts'"). Only shown
+  // under "Use in recipes", the only case they do anything.
   const [keywordMatches, setKeywordMatches] = useState<string[]>(deal.keyword_matches ?? []);
   const [keywordInput, setKeywordInput] = useState('');
   function addKeyword() {
@@ -552,160 +845,106 @@ function DealEditView({ deal, initialItemName, missingSplitRows, onBack, onSaved
   function removeKeyword(target: string) {
     setKeywordMatches((prev) => prev.filter((k) => k !== target));
   }
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [prefillChecked, setPrefillChecked] = useState(false);
 
-  // One-time, read-only convenience: if this deal already has a
-  // measured/estimated package weight on file for NUTRITION purposes
-  // (deal_item_nutrition_reference, matched by exact item_name -- same
-  // convention refresh_recipe_deal_tags() itself uses), pre-fill the
-  // pricing package_weight_g field from it as a starting point, freely
-  // overwritable. No schema coupling -- this is a one-way read only;
-  // see the plan's rationale for why package_weight_g isn't reused
-  // directly from that table.
-  useEffect(() => {
-    if (packageWeightG || prefillChecked) return;
-    setPrefillChecked(true);
-    supabase
-      .from('deal_item_nutrition_reference')
-      .select('package_grams, package_grams_source')
-      .eq('item_name', deal.item_name)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.package_grams != null) {
-          setPackageWeightG(String(data.package_grams));
-          if (data.package_grams_source === 'label' || data.package_grams_source === 'estimated') {
-            setPackageWeightSource(data.package_grams_source);
-          }
-        }
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deal.item_name]);
+  const parsedPrice = priceText.trim() === '' ? null : parseFloat(priceText);
+  const priceNum = parsedPrice !== null && Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : null;
+  const parsedPrevious = previousText.trim() === '' ? null : parseFloat(previousText);
+  const previousNum =
+    parsedPrevious !== null && Number.isFinite(parsedPrevious) && parsedPrevious > 0 ? parsedPrevious : null;
+  const parsedQty = perQtyText.trim() === '' ? null : parseFloat(perQtyText);
+  const perQty = parsedQty !== null && Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : null;
+  const { priceUnit, weightG } = toStoredPrice(perQty, perUnit);
+  const basis = priceBasis(priceUnit, deal, itemName, weightG);
+  // What the quantity field suggests when empty in grams: the size read
+  // off the name (the largest one, for a range) -- see priceBasis.
+  const nameBasis = priceBasis('package', deal, itemName, null);
+  const qtyPlaceholder = perUnit === 'g' && nameBasis.unit === 'g' ? nameBasis.quantity : '1';
 
-  // The reference-price lookup that used to live here (a
-  // find_reference_price() RPC printing one match, read-only) is now
-  // ReferenceCompareCard below -- same job, but it offers every
-  // plausible reference for confirmation instead of asserting one, and
-  // converts both sides to the same quantity so "is $2.99/750 g better
-  // than $3.29/kg" stops being mental arithmetic done mid-review
-  // (Anabelle's spec: "Standardize ref price to flyer diplayed cost and
-  // quanitty to measure up if the deal is good or not"). Deliberately
-  // NOT kept alongside the new card: two reference lookups on one
-  // screen, each with its own matching rule, is exactly the drift this
-  // codebase keeps having to undo.
+  // The StatCan item shown for approval: one picked from search, else
+  // the automatic match (the pick the app's own pricing engine would
+  // make, else the best-ranked one).
+  const autoMatches = statcan ? rankReferenceCandidates(itemName, statcan, [], []) : [];
+  const autoMatch = autoMatches.find((c) => c.isEnginePick) ?? autoMatches[0] ?? null;
+  const reference = pickedReference ?? autoMatch;
+  const converted =
+    reference && priceNum !== null
+      ? convertReference(priceNum, priceUnit, basis, { price: reference.avgPrice, unit: reference.unit })
+      : null;
+  const canApprove = converted?.ok === true && !converted.implausible;
+  // Search opens by itself when the match is rejected or nothing matched.
+  const showSearch = searchOpen || decision === 'rejected' || (statcan !== null && !reference);
+  const searchResults = statcan && showSearch ? searchReferenceCandidates(searchQuery, statcan, [], []) : [];
 
-  // What this deal's stored price is a price FOR -- the pair the
-  // reference has to be normalized against. A lb/kg/100g deal's price
-  // is a RATE, so the comparable quantity is one of that rate's own
-  // units (1 lb, 1 kg, 100 g) and package weight is deliberately
-  // ignored: pairing a per-lb price with a 700 g package weight would
-  // compare a per-pound rate against the cost of a whole package and
-  // read as a far better deal than it is. A package/each deal's price
-  // is the whole flat price, so its real package weight (when known) is
-  // the honest quantity, falling back to a bare "1 package" when it
-  // genuinely isn't known.
-  const isRatePriced = priceUnit === 'lb' || priceUnit === 'kg' || priceUnit === '100g';
-  const observedQuantity = isRatePriced ? (priceUnit === '100g' ? '100' : '1') : packageWeightG || '1';
-  const observedUnit = isRatePriced
-    ? priceUnit === '100g'
-      ? 'g'
-      : priceUnit
-    : packageWeightG
-      ? 'g'
-      : 'package';
+  // A reference price saved on an earlier review -- kept as-is unless a
+  // StatCan reference is approved or rejected this time.
+  const savedReference =
+    deal.original_price != null && deal.original_price_source === 'reference' ? deal.original_price : null;
+  // The saved reference was worked out for the quantity as STORED -- once
+  // "Price is per" changes it no longer describes the same amount, so the
+  // note says so instead of relabelling it with the new quantity.
+  const storedBasis = priceBasis(deal.price_unit, deal, itemName, deal.package_weight_g);
+  const quantityChanged =
+    priceUnit !== deal.price_unit || (priceUnit === 'package' && weightG !== deal.package_weight_g);
 
-  // Package weight is always stored/sent in grams, but this field only
-  // ever shows up when price_unit is lb/kg/100g (see the `priceUnit !==
-  // 'package' && priceUnit !== 'each'` guard below) -- i.e. exactly when
-  // someone has just told the form the PRICE is per lb. It's reasonable to
-  // assume that also makes this field lb-aware, but it doesn't: price_unit
-  // (how the price is denominated) and package_weight_g (how big the whole
-  // labeled package is, for the "$X for the whole bag" badge) are separate
-  // fields entirely. Rather than requiring everyone to do the lb->g
-  // conversion by hand, accept a unit suffix here directly -- a bare
-  // number is still grams (unchanged), but "5 lbs"/"5 lb"/"5 pounds" or
-  // "2.3 kg" convert automatically. Anything else that doesn't parse
-  // cleanly is a real error, not a silent truncation: parseFloat("5 lbs")
-  // used to quietly become the number 5 (five GRAMS), discarding "lbs"
-  // with no warning -- this is what actually triggered the
-  // "too small to be real" backend error, not the lb price_unit selection.
-  function parsePackageWeightGrams(raw: string): { grams: number | null } | { error: string } {
-    const trimmed = raw.trim();
-    if (trimmed === '') return { grams: null };
-
-    const lbMatch = trimmed.match(/^([\d.]+)\s*(lbs?|pounds?)$/i);
-    if (lbMatch) {
-      const lbs = parseFloat(lbMatch[1]);
-      if (Number.isNaN(lbs)) return { error: `Could not read "${raw}" as a weight.` };
-      return { grams: Math.round(lbs * 453.592) };
+  // What original_price/original_price_source get saved as, from
+  // whichever of steps 2-4 applies.
+  function resolvedOriginal(): { value: number | null; source: OriginalPriceSource } {
+    if (previousNum !== null) return { value: previousNum, source: 'flyer' };
+    if (decision === 'approved' && converted?.ok && !converted.implausible) {
+      return { value: converted.value, source: 'reference' };
     }
-
-    const kgMatch = trimmed.match(/^([\d.]+)\s*kg$/i);
-    if (kgMatch) {
-      const kg = parseFloat(kgMatch[1]);
-      if (Number.isNaN(kg)) return { error: `Could not read "${raw}" as a weight.` };
-      return { grams: Math.round(kg * 1000) };
-    }
-
-    const gMatch = trimmed.match(/^([\d.]+)\s*g(?:rams?)?$/i);
-    if (gMatch) {
-      const g = parseFloat(gMatch[1]);
-      if (Number.isNaN(g)) return { error: `Could not read "${raw}" as a weight.` };
-      return { grams: g };
-    }
-
-    if (/^[\d.]+$/.test(trimmed)) {
-      return { grams: parseFloat(trimmed) };
-    }
-
-    return {
-      error: `Could not read "${raw}" as a package weight -- enter a number in grams, or add a unit (e.g. "900", "5 lbs", "2.3 kg").`,
-    };
+    if (decision === 'undecided' && savedReference !== null) return { value: savedReference, source: 'reference' };
+    // Nothing to compare against -- saved as unknown (no deal badge).
+    return { value: null, source: deal.original_price_source as OriginalPriceSource };
   }
 
-  // Shared by both Save and Reject -- a reject action still saves
-  // whatever price/quantity fields were filled in at the same time
-  // (see the Edge Function's own comment), so both buttons go through
-  // the same validation/body-building, differing only in the trailing
-  // `reject` flag.
   function buildBody(): { body: Record<string, unknown> } | { error: string } {
-    const trimmedName = itemName.trim();
-    const priceNum = priceUnknown ? null : parseFloat(price);
-    const originalPriceNum = originalPriceUnknown ? null : parseFloat(originalPrice);
-    const weightResult = parsePackageWeightGrams(packageWeightG);
-    if ('error' in weightResult) {
-      return { error: weightResult.error };
+    if (priceText.trim() !== '' && priceNum === null) {
+      return { error: 'The cutout price must be a positive number (or blank if unknown).' };
     }
-    const weightNum = weightResult.grams;
-
-    if (trimmedName === '') {
-      return { error: 'Item name cannot be blank.' };
+    if (previousText.trim() !== '' && previousNum === null) {
+      return { error: 'The previous price must be a positive number (or blank if the cutout shows none).' };
     }
-    if (priceNum !== null && (Number.isNaN(priceNum) || priceNum < 0)) {
-      return { error: 'Price must be blank/unknown or a non-negative number.' };
+    // Same floor as update-curated-deal-pricing's own check (and the
+    // curated_deals_package_weight_g_sane constraint) -- no real package
+    // weighs under 10 g, so that's always a wrong unit.
+    if (perQtyText.trim() !== '' && perQty === null) {
+      return { error: 'The quantity the price is for must be a positive number.' };
     }
-    if (originalPriceNum !== null && (Number.isNaN(originalPriceNum) || originalPriceNum < 0)) {
-      return { error: 'Original price must be blank/unknown or a non-negative number.' };
+    if (weightG !== null && weightG < 10) {
+      return { error: 'That quantity is under 10 g -- no real package is that small, so check the unit.' };
     }
-    if (weightNum !== null && weightNum <= 0) {
-      return { error: 'Package weight must be blank or a positive number.' };
-    }
-
+    const original = resolvedOriginal();
     return {
       body: {
         deal_id: deal.id,
-        item_name: trimmedName,
+        item_name: itemName,
         price: priceNum,
-        original_price: originalPriceNum,
+        original_price: original.value,
+        original_price_source: original.source,
         price_unit: priceUnit,
-        package_weight_g: weightNum,
-        package_weight_g_source: weightNum === null ? null : packageWeightSource,
-        quantity_estimated: quantityEstimated,
-        original_price_source: originalPriceSource,
         usage,
         keyword_matches: keywordMatches,
-        zone: zone === NO_ZONE ? null : zone,
+        // Only a per-package price uses a package size; for any other
+        // unit the stored one is sent back untouched. A size typed here
+        // was read off the cutout, hence 'label'.
+        package_weight_g: priceUnit === 'package' ? weightG : deal.package_weight_g,
+        package_weight_g_source:
+          priceUnit !== 'package'
+            ? deal.package_weight_g === null
+              ? null
+              : deal.package_weight_g_source
+            : weightG === null
+              ? null
+              : weightG === deal.package_weight_g
+                ? deal.package_weight_g_source
+                : 'label',
+        // No longer asked on this screen -- sent back exactly as stored.
+        quantity_estimated: deal.quantity_estimated,
+        zone: deal.zone,
       },
     };
   }
@@ -727,18 +966,13 @@ function DealEditView({ deal, initialItemName, missingSplitRows, onBack, onSaved
 
     if (invokeError || !data?.deal) {
       // supabase-js's own invoke() only populates `data` for a 2xx
-      // response -- for a non-2xx one (a real validation error, e.g.
-      // this function's own hand-written messages, or a Postgres
-      // constraint violation like the package_weight_g sanity check)
-      // `data` comes back null and invokeError.message is just its
-      // generic "Edge Function returned a non-2xx status code" wrapper
-      // text, not the actual body this function DOES send. Real bug,
-      // caught live (Anabelle: "i keep getting this error" -- the
-      // generic text told her nothing about why a genuinely small
-      // package_weight_g got rejected). FunctionsHttpError exposes the
-      // raw Response on .context -- read its real JSON body when
-      // present, falling back to the generic text only if that itself
-      // fails for some other reason.
+      // response -- for a non-2xx one (this function's own hand-written
+      // validation messages, or a Postgres constraint violation) `data`
+      // comes back null and invokeError.message is just the generic
+      // "Edge Function returned a non-2xx status code" text. Real bug,
+      // caught live (Anabelle: "i keep getting this error").
+      // FunctionsHttpError exposes the raw Response on .context -- read
+      // its real JSON body when present.
       let message = data?.error ?? invokeError?.message ?? 'Save failed.';
       const context = (invokeError as { context?: Response } | undefined)?.context;
       if (context && typeof context.json === 'function') {
@@ -761,271 +995,258 @@ function DealEditView({ deal, initialItemName, missingSplitRows, onBack, onSaved
   // which immediately excludes it from refresh_recipe_deal_tags().
   const handleReject = () => submit({ reject: true });
 
-  const [splitting, setSplitting] = useState(false);
-  const [splitError, setSplitError] = useState<string | null>(null);
-
-  // For a cutout naming several distinct products sharing one photo/
-  // price (e.g. "BOURSIN CHEESE ... or MARCANGELO CHARCUTERIE ...") --
-  // creates one new copy per still-missing product via the
-  // duplicate-curated-deal Edge Function (looped, since a 3-product
-  // cutout with only 1 row needs 2 new ones, not just 1). Replaces the
-  // old single-shot "Duplicate" button, which only ever made one copy
-  // regardless of how many products a cutout actually named. Returns to
-  // the list rather than jumping into one specific new row -- with N
-  // possibly >1, there's no single obvious "the new one" any more; the
-  // list's own chip grouping shows each of them ready to rename.
-  async function handleSplit() {
-    setSplitError(null);
-    setSplitting(true);
-    const duplicates: CuratedDeal[] = [];
-    let latestSource = deal;
-    for (let i = 0; i < missingSplitRows; i += 1) {
-      const { data, error: invokeError } = await supabase.functions.invoke<{
-        source?: CuratedDeal;
-        duplicate?: CuratedDeal;
-        error?: string;
-      }>('duplicate-curated-deal', { body: { deal_id: deal.id } });
-      if (invokeError || !data?.source || !data?.duplicate) {
-        setSplitError(data?.error ?? invokeError?.message ?? 'Split failed.');
-        setSplitting(false);
-        return;
-      }
-      latestSource = data.source;
-      duplicates.push(data.duplicate);
-    }
-    setSplitting(false);
-    onSplit(latestSource, duplicates);
-  }
-
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      {/* "handled": tapping a StatCan search result picks it on the first
+          tap, instead of the first tap only closing the keyboard. */}
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <Pressable onPress={onBack} hitSlop={8}>
-          <Text style={styles.backLink}>← Back to list</Text>
+          <Text style={styles.backLink}>{backLabel}</Text>
         </Pressable>
 
         {deal.image_url && <Image source={{ uri: deal.image_url }} style={styles.editPhoto} resizeMode="contain" />}
-
-        <Text style={styles.fieldLabel}>Item name</Text>
-        <InputField value={itemName} onChangeText={setItemName} placeholder="Item name" />
-        <Text style={styles.editStore}>{deal.chain_name}</Text>
-
-        {missingSplitRows > 0 && (
-          <>
-            <Pressable
-              style={[styles.splitButton, splitting && styles.saveButtonDisabled]}
-              onPress={handleSplit}
-              disabled={splitting}
-            >
-              {splitting ? (
-                <ActivityIndicator color={INK} />
-              ) : (
-                <Text style={styles.splitButtonText}>
-                  Split into {missingSplitRows} separate item{missingSplitRows === 1 ? '' : 's'}
-                </Text>
-              )}
-            </Pressable>
-            {splitError && <Text style={styles.saveError}>{splitError}</Text>}
-          </>
-        )}
-
-        {/* Anabelle: "confusing... if in the deals we do have the original
-            and discount price from the flyer but you also add the statcan
-            reference. Only show the statcan reference when we dont have it
-            from merchant" -- when the flyer already prints a real original
-            price, that IS the comparison; a StatCan/produce/staple hint
-            alongside it is redundant noise, not a second opinion worth
-            seeing. Gated on the live "Unknown" checkbox (originalPriceUnknown),
-            not the persisted deal.original_price, so typing in a real
-            flyer price hides the hint immediately without needing to save
-            first. */}
-        {/* Anabelle: "confusing... if in the deals we do have the original
-            and discount price from the flyer but you also add the statcan
-            reference. Only show the statcan reference when we dont have it
-            from merchant" -- unchanged: a flyer-printed original price IS
-            the comparison, and a reference alongside it is noise.
-            originalPriceSource === 'reference' is the second half of that
-            same rule rather than an exception to it: filling the field
-            FROM this card flips originalPriceUnknown false, which would
-            otherwise make the card (and with it, which reference that
-            number came from and at what quantity) disappear the instant
-            it was used. */}
-        {(originalPriceUnknown || originalPriceSource === 'reference') && (
-          <View style={styles.referenceCard}>
-            <Text style={styles.referenceCardTitle}>
-              {originalPriceUnknown
-                ? 'No flyer original price -- compare against a reference'
-                : 'Original price came from this reference comparison'}
-            </Text>
-            {/* Prefilled from this deal's own numbers as they stood when
-                the card mounted (keyed on deal.id, so switching deals
-                starts clean). Every field stays editable -- editing
-                package weight or price unit afterwards doesn't re-seed
-                the card, since re-seeding would silently discard a
-                reference she'd already confirmed. */}
-            <ReferenceCompareCard
-              key={deal.id}
-              itemName={itemName}
-              initialPrice={priceUnknown ? '' : price}
-              initialQuantity={observedQuantity}
-              initialUnit={observedUnit}
-              onUseAsOriginalPrice={(value) => {
-                setOriginalPrice(value.toFixed(2));
-                setOriginalPriceUnknown(false);
-                // A computed comparison price is by definition not one
-                // the store printed -- setting this together with the
-                // value is what keeps the app from ever showing it as a
-                // struck-through "was $X" (see lib/curatedDeals.ts
-                // isReferencePriced).
-                setOriginalPriceSource('reference');
-              }}
-            />
+        {/* Anabelle: "Make the name of the store underneath the cutout and
+            in a black tag" -- and the zone "the same way", when the
+            price only applies to one. Display only. */}
+        <View style={styles.tagRow}>
+          <View style={styles.storeTag}>
+            <Text style={styles.storeTagText}>{deal.chain_name}</Text>
           </View>
-        )}
-
-        <Text style={styles.fieldLabel}>Price</Text>
-        <InputField
-          value={priceUnknown ? '' : price}
-          onChangeText={setPrice}
-          keyboardType="decimal-pad"
-          placeholder={priceUnknown ? 'Unknown' : '0.00'}
-          disabled={priceUnknown}
-        />
-        <Pressable style={styles.filterRow} onPress={() => setPriceUnknown((v) => !v)}>
-          <View style={[styles.checkbox, priceUnknown && styles.checkboxChecked]}>
-            {priceUnknown && <CheckIcon size={12} color="#fff" />}
-          </View>
-          <Text style={styles.filterLabel}>Price is unknown</Text>
-        </Pressable>
-
-        <Text style={styles.fieldLabel}>Original price</Text>
-        <InputField
-          value={originalPriceUnknown ? '' : originalPrice}
-          onChangeText={setOriginalPrice}
-          keyboardType="decimal-pad"
-          placeholder={originalPriceUnknown ? 'Unknown' : '0.00'}
-          disabled={originalPriceUnknown}
-        />
-        <Pressable style={styles.filterRow} onPress={() => setOriginalPriceUnknown((v) => !v)}>
-          <View style={[styles.checkbox, originalPriceUnknown && styles.checkboxChecked]}>
-            {originalPriceUnknown && <CheckIcon size={12} color="#fff" />}
-          </View>
-          <Text style={styles.filterLabel}>Original price is unknown</Text>
-        </Pressable>
-
-        <Text style={styles.fieldLabel}>Where did the original price come from?</Text>
-        <SegmentedControl
-          options={ORIGINAL_PRICE_SOURCE_OPTIONS}
-          value={originalPriceSource}
-          onChange={setOriginalPriceSource}
-        />
-
-        <Text style={styles.fieldLabel}>Should recipe generation use this ingredient?</Text>
-        <SegmentedControl options={USAGE_OPTIONS} value={usage} onChange={setUsage} />
-
-        {/* Anabelle, 2026-09-14: "Can Airtable show the deals in their
-            different zone for me to approve instead?" -- this price only
-            applies where this chain's flyer said so; options are just
-            THIS deal's own chain's known zones (never freeform text, so
-            a typo can't silently break the shopper-side match in
-            lib/dealZones.ts) plus "No zone tag" for the common case
-            where it isn't known to differ. Never shown to a shopper
-            anywhere -- purely for your own review. */}
-        {knownZonesForChain(deal.chain_name).length > 0 && (
-          <>
-            <Text style={styles.fieldLabel}>Which zone does this price apply to?</Text>
-            <SegmentedControl
-              options={[
-                ...knownZonesForChain(deal.chain_name).map((z) => ({ value: z, label: z })),
-                { value: NO_ZONE, label: 'No zone tag' },
-              ]}
-              value={zone}
-              onChange={setZone}
-            />
-          </>
-        )}
-
-        {/* Anabelle: "Chicken, Beans & Corny Things is missing 2 matched
-            ingredients: chicken and beans... how can we make it like
-            prime raised without antibiotics boneless skinless chicken
-            breasts could match 'chicken breasts'". A recipe ingredient
-            matches this deal if its exact name matches OR any keyword
-            here has every word present in the ingredient's name (plural-
-            tolerant) -- see refresh_recipe_deal_tags()'s keyword
-            fallback pass. Keep keywords generic/category-level (e.g.
-            "chicken breast", "beans"), not the deal's own brand name --
-            that's what lets differently-branded deals across future
-            weeks all share the same keyword. */}
-        <Text style={styles.fieldLabel}>Keywords for recipe matching (e.g. "chicken breast", "beans")</Text>
-        <View style={styles.keywordRow}>
-          <View style={styles.keywordInputWrap}>
-            <InputField
-              value={keywordInput}
-              onChangeText={setKeywordInput}
-              placeholder="Add a keyword"
-              onSubmitEditing={addKeyword}
-              returnKeyType="done"
-            />
-          </View>
-          <Pressable style={styles.addKeywordButton} onPress={addKeyword}>
-            <Text style={styles.addKeywordButtonText}>Add</Text>
-          </Pressable>
+          {deal.zone && (
+            <View style={styles.storeTag}>
+              <Text style={styles.storeTagText}>{deal.zone}</Text>
+            </View>
+          )}
         </View>
-        {keywordMatches.length > 0 && (
-          <View style={styles.keywordChipsRow}>
-            {keywordMatches.map((keyword) => (
-              <Pressable key={keyword} style={styles.keywordChip} onPress={() => removeKeyword(keyword)}>
-                <Text style={styles.keywordChipText}>{keyword}</Text>
-                <Text style={styles.keywordChipRemove}>✕</Text>
+
+        <Text style={styles.nameTitle}>{itemName}</Text>
+
+        {/* 1 -- Cutout price. Each step sits in its own white card
+            (Anabelle: "Make the cutout price section in its own white
+            container" / "StatCan reference section also"). */}
+        <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>Cutout price</Text>
+          {!fixingPrice && (
+            <>
+              <Text style={styles.bigPrice}>
+                {priceNum !== null ? `${formatMoney(priceNum)} / ${basis.label}` : 'No price saved'}
+              </Text>
+              {/* Tertiary treatment -- same white-fill/1.5px-INK pill as
+                  signup-nudge.tsx's tertiaryButton, not a bare link. */}
+              <Pressable style={styles.tertiaryButton} onPress={() => setFixingPrice(true)}>
+                <Text style={styles.tertiaryButtonText}>Price is wrong? Fix it</Text>
               </Pressable>
-            ))}
+            </>
+          )}
+          {fixingPrice && (
+            <>
+              <Text style={styles.fieldLabel}>Price on the cutout</Text>
+              <InputField value={priceText} onChangeText={setPriceText} keyboardType="decimal-pad" placeholder="0.00" />
+              <Text style={styles.fieldLabel}>Price is per</Text>
+              <View style={styles.perRow}>
+                {perUnit !== 'each' && (
+                  <View style={styles.keywordInputWrap}>
+                    <InputField
+                      value={perQtyText}
+                      onChangeText={setPerQtyText}
+                      keyboardType="decimal-pad"
+                      placeholder={qtyPlaceholder}
+                    />
+                  </View>
+                )}
+                <Dropdown
+                  options={PER_UNIT_OPTIONS}
+                  value={perUnit}
+                  onChange={(value) => setPerUnit(value as PerUnit)}
+                  menuAlign="right"
+                />
+              </View>
+              <Text style={styles.fieldLabel}>Previous price on the cutout (leave blank if none)</Text>
+              <InputField value={previousText} onChangeText={setPreviousText} keyboardType="decimal-pad" placeholder="0.00" />
+              <Pressable style={styles.tertiaryButton} onPress={() => setFixingPrice(false)}>
+                <Text style={styles.tertiaryButtonText}>Done</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+
+        {/* 2 -- Previous price, only when the cutout prints one */}
+        {!fixingPrice && previousNum !== null && (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>Previous price</Text>
+            <Text style={styles.bigPrice}>
+              {formatMoney(previousNum)} / {basis.label}
+            </Text>
+            {priceNum !== null && (
+              <Text style={previousNum > priceNum ? styles.verdictGood : styles.verdictBad}>
+                {previousNum > priceNum
+                  ? `${Math.round((1 - priceNum / previousNum) * 100)}% off`
+                  : 'Not lower than the previous price'}
+              </Text>
+            )}
           </View>
         )}
 
-        <Text style={styles.fieldLabel}>What is the price denominated in?</Text>
-        <SegmentedControl options={PRICE_UNIT_OPTIONS} value={priceUnit} onChange={setPriceUnit} />
-
-        {priceUnit !== 'package' && priceUnit !== 'each' && (
-          <>
-            <Text style={styles.fieldLabel}>
-              How big is the whole package? Leave blank if genuinely bulk/loose. This is separate from the price unit
-              above -- grams by default, or type lb/kg directly (e.g. "5 lbs").
-            </Text>
-            <InputField
-              value={packageWeightG}
-              onChangeText={setPackageWeightG}
-              keyboardType="default"
-              placeholder='e.g. 900 or "5 lbs"'
-            />
-            {packageWeightG.trim() !== '' && (
+        {/* 3/4 -- StatCan reference, only when there's no previous price */}
+        {previousNum === null && (
+          <View style={styles.sectionCard}>
+            <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>StatCan reference</Text>
+            {priceNum === null ? (
+              <Text style={styles.note}>Add the cutout price first -- the reference is compared against it.</Text>
+            ) : statcanError ? (
+              <Text style={styles.note}>Couldn't load the StatCan table. Check the dev server/console.</Text>
+            ) : statcan === null ? (
+              <ActivityIndicator color={INK} />
+            ) : (
               <>
-                <Text style={styles.fieldLabel}>Where did that weight come from?</Text>
-                <SegmentedControl
-                  options={PACKAGE_WEIGHT_SOURCE_OPTIONS}
-                  value={packageWeightSource}
-                  onChange={setPackageWeightSource}
-                />
+                {reference ? (
+                  <View style={[styles.panel, decision === 'approved' && styles.panelApproved]}>
+                    <Text style={styles.referenceName}>{reference.name}</Text>
+                    <Text style={styles.referenceRaw}>
+                      {/* StatCan stores "per kilogram" as well as "390 grams" -- drop
+                          the "per" so it doesn't read "/ per kilogram". */}
+                      {formatMoney(reference.avgPrice)} / {reference.unit.replace(/^per\s+/i, '')}
+                    </Text>
+                    <ConvertedReferenceLine
+                      converted={converted}
+                      basisLabel={basis.sizeNote ? `${basis.label} (${basis.sizeNote})` : basis.label}
+                      rawPrice={reference.avgPrice}
+                    />
+                    {decision === 'approved' ? (
+                      <View style={styles.refActionRow}>
+                        <View style={styles.approvedPill}>
+                          <CheckIcon size={14} color="#fff" strokeWidth={2.5} />
+                          <Text style={styles.approvedPillText}>Reference approved</Text>
+                        </View>
+                        <Pressable onPress={() => setDecision('undecided')} hitSlop={8}>
+                          <Text style={styles.textLink}>Undo</Text>
+                        </Pressable>
+                      </View>
+                    ) : decision === 'rejected' ? (
+                      <Pressable onPress={() => setDecision('undecided')} hitSlop={8}>
+                        <Text style={styles.textLink}>Rejected -- undo</Text>
+                      </Pressable>
+                    ) : (
+                      <View style={styles.refActionRow}>
+                        <Pressable style={styles.refRejectButton} onPress={() => setDecision('rejected')}>
+                          <Text style={styles.refRejectButtonText}>Reject</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.refApproveButton, !canApprove && styles.saveButtonDisabled]}
+                          disabled={!canApprove}
+                          onPress={() => setDecision('approved')}
+                        >
+                          <Text style={styles.refApproveButtonText}>Approve</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <Text style={styles.note}>No StatCan item matches this name -- search for the right one below.</Text>
+                )}
+
+                {/* Anabelle: "Sometimes you dont look for the correct items in
+                    statcan e.g. here would be frozen pizza. So if i see you
+                    have not search the correct word, i should be able to
+                    look it up". Picking a result replaces the item above,
+                    ready to approve. */}
+                {!showSearch && (
+                  <Pressable onPress={() => setSearchOpen(true)} hitSlop={8}>
+                    <Text style={styles.textLink}>Not the right item? Search StatCan</Text>
+                  </Pressable>
+                )}
+                {showSearch && (
+                  <View style={styles.panel}>
+                    <Text style={styles.fieldLabel}>Search StatCan</Text>
+                    <InputField
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholder='e.g. "frozen pizza"'
+                      autoCapitalize="none"
+                    />
+                    {searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                      <Text style={styles.note}>No StatCan item contains "{searchQuery.trim()}".</Text>
+                    )}
+                    {searchResults.map((result) => (
+                      <Pressable
+                        key={`${result.name}-${result.unit}`}
+                        style={styles.searchResult}
+                        onPress={() => {
+                          setPickedReference(result);
+                          setDecision('undecided');
+                          setSearchOpen(false);
+                          setSearchQuery('');
+                        }}
+                      >
+                        <Text style={styles.referenceName}>{result.name}</Text>
+                        <Text style={styles.note}>
+                          {formatMoney(result.avgPrice)} / {result.unit.replace(/^per\s+/i, '')}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+
+                {savedReference !== null && decision === 'undecided' && (
+                  <Text style={quantityChanged ? styles.verdictBad : styles.note}>
+                    {quantityChanged
+                      ? `Currently saved: ${formatMoney(savedReference)} / ${storedBasis.label}, worked out for the old quantity -- approve a StatCan reference to update it.`
+                      : `Currently saved: ${formatMoney(savedReference)} / ${storedBasis.label} -- kept unless you approve or reject a reference.`}
+                  </Text>
+                )}
+                {decision === 'rejected' && (
+                  <Text style={styles.note}>
+                    Saving now leaves this deal with no comparison price (no deal badge) -- pick the right StatCan item
+                    above instead.
+                  </Text>
+                )}
               </>
+            )}
+          </View>
+        )}
+
+        {/* 5 -- Recipes or Deals section only */}
+        <Text style={styles.sectionTitle}>Use in recipes?</Text>
+        <SegmentedControl wrap options={USAGE_OPTIONS} value={usage} onChange={setUsage} />
+        {usage === 'recipes' && (
+          <>
+            <Text style={styles.fieldLabel}>Keywords for recipe matching (e.g. "chicken breast", "beans")</Text>
+            <View style={styles.keywordRow}>
+              <View style={styles.keywordInputWrap}>
+                <InputField
+                  value={keywordInput}
+                  onChangeText={setKeywordInput}
+                  placeholder="Add a keyword"
+                  onSubmitEditing={addKeyword}
+                  returnKeyType="done"
+                />
+              </View>
+              <Pressable style={styles.addKeywordButton} onPress={addKeyword}>
+                <Text style={styles.addKeywordButtonText}>Add</Text>
+              </Pressable>
+            </View>
+            {keywordMatches.length > 0 && (
+              <View style={styles.keywordChipsRow}>
+                {keywordMatches.map((keyword) => (
+                  <Pressable key={keyword} style={styles.keywordChip} onPress={() => removeKeyword(keyword)}>
+                    <Text style={styles.keywordChipText}>{keyword}</Text>
+                    <Text style={styles.keywordChipRemove}>✕</Text>
+                  </Pressable>
+                ))}
+              </View>
             )}
           </>
         )}
 
-        <Pressable style={styles.filterRow} onPress={() => setQuantityEstimated((v) => !v)}>
-          <View style={[styles.checkbox, quantityEstimated && styles.checkboxChecked]}>
-            {quantityEstimated && <CheckIcon size={12} color="#fff" />}
-          </View>
-          <Text style={styles.filterLabel}>Quantity is an estimate, not stated on the flyer</Text>
-        </Pressable>
-
+        {/* 6 -- Reject the deal, or save it */}
         {saveError && <Text style={styles.saveError}>{saveError}</Text>}
-
         <View style={styles.actionRow}>
           <Pressable
             style={[styles.rejectButton, saving && styles.saveButtonDisabled]}
             onPress={handleReject}
             disabled={saving}
           >
-            <Text style={styles.rejectButtonText}>Reject</Text>
+            <Text style={styles.rejectButtonText}>Reject deal</Text>
           </Pressable>
           <Pressable
             style={[styles.saveButton, saving && styles.saveButtonDisabled]}
@@ -1037,6 +1258,52 @@ function DealEditView({ deal, initialItemName, missingSplitRows, onBack, onSaved
         </View>
       </ScrollView>
     </View>
+  );
+}
+
+// "= $8.34 / lb" under a reference priced in a different unit, then the
+// verdict -- or why it can't be compared.
+function ConvertedReferenceLine({
+  converted,
+  basisLabel,
+  rawPrice,
+}: {
+  converted: ConvertedReference | null;
+  basisLabel: string;
+  rawPrice: number | null;
+}) {
+  if (!converted) return null;
+  if (!converted.ok) return <Text style={styles.verdictBad}>{converted.reason}</Text>;
+  // Same number either way (e.g. per package vs per package) -- nothing
+  // was converted, so don't print it twice.
+  const convertedDiffers = rawPrice === null || Math.abs(converted.value - rawPrice) >= 0.005;
+  return (
+    <>
+      {convertedDiffers && (
+        <Text style={styles.referenceConverted}>
+          = {formatMoney(converted.value)} / {basisLabel}
+        </Text>
+      )}
+      <ReferenceVerdict converted={converted} />
+    </>
+  );
+}
+
+function ReferenceVerdict({ converted }: { converted: Extract<ConvertedReference, { ok: true }> }) {
+  if (converted.implausible) {
+    return (
+      <Text style={styles.verdictBad}>
+        This reference is {IMPLAUSIBLE_BENCHMARK_RATIO}x+ the cutout price -- almost always a unit mix-up, so it
+        can't be approved.
+      </Text>
+    );
+  }
+  const pct = Math.round(converted.pctVsReference);
+  if (pct === 0) return <Text style={styles.note}>Same as the reference.</Text>;
+  return (
+    <Text style={pct < 0 ? styles.verdictGood : styles.verdictBad}>
+      Cutout is {Math.abs(pct)}% {pct < 0 ? 'below' : 'above'} the reference
+    </Text>
   );
 }
 
@@ -1064,6 +1331,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     fontSize: 15,
   },
+  dropdown: { alignSelf: 'flex-start', zIndex: 20 },
+  dropdownPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  dropdownPillText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    marginTop: 6,
+    minWidth: 220,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: INK,
+    borderRadius: 14,
+    paddingVertical: 4,
+    zIndex: 10,
+    elevation: 4,
+  },
+  dropdownMenuLeft: { left: 0 },
+  dropdownMenuRight: { right: 0 },
+  dropdownMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  dropdownMenuItemText: { fontSize: 14, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, flex: 1 },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 20 },
+  searchInputFlex: { flex: 1 },
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   checkbox: {
     width: 20,
@@ -1086,10 +1392,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
   },
-  // A chip for a multi-item cutout's product that doesn't have its own
-  // row yet -- dashed/faded so it reads as "not openable yet" rather
-  // than a normal, tappable deal.
-  dealRowNeedsSplit: { borderStyle: 'dashed', opacity: 0.6 },
+  productCountBadge: { backgroundColor: '#F2F2F2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  productCountBadgeText: { fontSize: 11, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  cutoutTitle: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  sectionTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginTop: 8 },
+  cutoutHint: { fontSize: 12, color: '#D0342C', marginTop: 4 },
+  // A product the cutout lists that has no deal of its own yet -- dashed
+  // so it reads as "not a deal yet", with its one action right on it.
+  missingPartRow: { borderStyle: 'dashed', alignItems: 'center' },
+  missingPartName: { flex: 1 },
   dealThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealRowInfo: { flex: 1, gap: 2 },
   dealRowName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
@@ -1114,6 +1425,64 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 24 },
   backLink: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   editPhoto: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#F2F2F2' },
+  nameTitle: { fontSize: 22, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // Same borderless white card as NotificationsSection/ManageAccountSection.
+  sectionCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 8 },
+  sectionTitleInCard: { marginTop: 0 },
+  tertiaryButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+  },
+  tertiaryButtonText: { color: INK, fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  perRow: { flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 20 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  bigPrice: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  textLink: { fontSize: 14, color: INK, textDecorationLine: 'underline' },
+  note: { fontSize: 13, color: '#767676' },
+  panel: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#C7C7C7',
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+  },
+  panelApproved: { borderColor: '#1B7F3B', borderWidth: 2 },
+  referenceName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  searchResult: { borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingVertical: 8, gap: 2 },
+  referenceRaw: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  referenceConverted: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  verdictGood: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#1B7F3B' },
+  verdictBad: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#D0342C' },
+  refActionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  refApproveButton: { backgroundColor: INK, borderRadius: 999, paddingVertical: 10, paddingHorizontal: 18 },
+  refApproveButtonText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  refRejectButton: {
+    borderWidth: 1.5,
+    borderColor: '#D0342C',
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    backgroundColor: '#fff',
+  },
+  refRejectButtonText: { color: '#D0342C', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  approvedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1B7F3B',
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  approvedPillText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  storeTag: { alignSelf: 'flex-start', backgroundColor: INK, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  storeTagText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#fff' },
   editStore: { fontSize: 14, color: '#767676', marginTop: -8 },
   // A structural action (creates new rows), so it gets its own color
   // rather than reusing the INK-outlined convention used elsewhere on
@@ -1128,17 +1497,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   splitButtonText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#3B82F6' },
-  referenceCard: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#96E696',
-    borderRadius: 12,
-    padding: 12,
-    gap: 4,
-  },
-  referenceCardTitle: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  referenceCardPrice: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  referenceCardNote: { fontSize: 12, color: '#767676' },
   fieldLabel: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, marginTop: 4 },
   keywordRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   keywordInputWrap: { flex: 1 },
