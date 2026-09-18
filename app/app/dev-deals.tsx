@@ -18,7 +18,6 @@ import {
   fetchStatcanPrices,
   rankReferenceCandidates,
   searchReferenceCandidates,
-  type ReferenceCandidate,
   type StaplePrice,
 } from '../lib/staplePrices';
 import { supabase } from '../lib/supabase';
@@ -801,6 +800,30 @@ function convertReference(
   };
 }
 
+// The reference shown for approval: a StatCan item (matched or searched),
+// or an AI estimate (aiReasoning set) when StatCan has nothing comparable.
+type ShownReference = { name: string; avgPrice: number; unit: string; aiReasoning?: string };
+
+// supabase-js's invoke() only fills `data` on a 2xx -- for a non-2xx the
+// real message is in the Response on the error's .context (see submit()).
+async function functionErrorMessage(
+  invokeError: unknown,
+  dataError: string | undefined,
+  fallback: string
+): Promise<string> {
+  let message = dataError ?? (invokeError as { message?: string } | null)?.message ?? fallback;
+  const context = (invokeError as { context?: Response } | null)?.context;
+  if (context && typeof context.json === 'function') {
+    try {
+      const body = (await context.json()) as { error?: string };
+      if (body?.error) message = body.error;
+    } catch {
+      // Body wasn't JSON (or already consumed) -- keep the fallback above.
+    }
+  }
+  return message;
+}
+
 // Whether the StatCan reference on screen has been approved or rejected
 // yet. Undecided leaves whatever reference price is already saved alone.
 type ReferenceDecision = 'undecided' | 'approved' | 'rejected';
@@ -850,7 +873,52 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
   const [statcanError, setStatcanError] = useState(false);
   // A StatCan item picked by hand from search, replacing the automatic
   // match when that one searched the wrong word.
-  const [pickedReference, setPickedReference] = useState<ReferenceCandidate | null>(null);
+  const [pickedReference, setPickedReference] = useState<ShownReference | null>(null);
+  // What the AI is asked to price -- starts as the deal's own name, but
+  // editable (Anabelle: "Any ways I could input myself the exact wording
+  // of the item to AI estimate?").
+  const [aiQuery, setAiQuery] = useState(itemName);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Anabelle: "If statcan doesnt have a reference i think i want to be able
+  // to input an ai one" -- asks Claude (estimate-reference-price) for this
+  // item's average retail price in BC, StatCan-style. The result is
+  // approved or rejected exactly like a StatCan item, and saved the same
+  // way once approved.
+  async function getAiEstimate() {
+    const query = aiQuery.trim();
+    if (query === '') {
+      setAiError('Enter the item to estimate.');
+      return;
+    }
+    setAiError(null);
+    setAiLoading(true);
+    // No store name -- the estimate is a BC-wide average like StatCan's,
+    // not this store's shelf price (see the function's header comment).
+    const { data, error: invokeError } = await supabase.functions.invoke<{
+      price?: number;
+      quantity?: number;
+      unit?: string;
+      reasoning?: string;
+      error?: string;
+    }>('estimate-reference-price', { body: { item_name: query } });
+    setAiLoading(false);
+    if (invokeError || !data?.price || !data.quantity || !data.unit) {
+      setAiError(await functionErrorMessage(invokeError, data?.error, 'Could not get an AI estimate.'));
+      return;
+    }
+    setPickedReference({
+      name: query,
+      avgPrice: data.price,
+      // "each" -> "1 ea", which splitReferenceUnit reads as a count.
+      unit: `${data.quantity} ${data.unit === 'each' ? 'ea' : data.unit}`,
+      aiReasoning: data.reasoning,
+    });
+    setDecision('undecided');
+    setSearchOpen(false);
+    setSearchQuery('');
+  }
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -899,7 +967,8 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
   // make, else the best-ranked one).
   const autoMatches = statcan ? rankReferenceCandidates(itemName, statcan, [], []) : [];
   const autoMatch = autoMatches.find((c) => c.isEnginePick) ?? autoMatches[0] ?? null;
-  const reference = pickedReference ?? autoMatch;
+  const reference: ShownReference | null = pickedReference ?? autoMatch;
+  const referenceLabel = reference?.aiReasoning !== undefined ? 'the AI estimate' : 'StatCan';
   const converted =
     reference && priceNum !== null
       ? convertReference(priceNum, priceUnit, basis, { price: reference.avgPrice, unit: reference.unit })
@@ -990,25 +1059,10 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
     setSaving(false);
 
     if (invokeError || !data?.deal) {
-      // supabase-js's own invoke() only populates `data` for a 2xx
-      // response -- for a non-2xx one (this function's own hand-written
-      // validation messages, or a Postgres constraint violation) `data`
-      // comes back null and invokeError.message is just the generic
-      // "Edge Function returned a non-2xx status code" text. Real bug,
-      // caught live (Anabelle: "i keep getting this error").
-      // FunctionsHttpError exposes the raw Response on .context -- read
-      // its real JSON body when present.
-      let message = data?.error ?? invokeError?.message ?? 'Save failed.';
-      const context = (invokeError as { context?: Response } | undefined)?.context;
-      if (context && typeof context.json === 'function') {
-        try {
-          const body = (await context.json()) as { error?: string };
-          if (body?.error) message = body.error;
-        } catch {
-          // Body wasn't JSON (or already consumed) -- keep the fallback above.
-        }
-      }
-      setSaveError(message);
+      // Real bug, caught live (Anabelle: "i keep getting this error") --
+      // the generic non-2xx text told her nothing; functionErrorMessage
+      // reads the function's own message instead.
+      setSaveError(await functionErrorMessage(invokeError, data?.error, 'Save failed.'));
       return;
     }
     onSaved(data.deal);
@@ -1115,7 +1169,9 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
         {/* 3/4 -- StatCan reference, only when there's no previous price */}
         {previousNum === null && (
           <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>StatCan reference</Text>
+            <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>
+              {reference?.aiReasoning !== undefined ? 'AI reference' : 'StatCan reference'}
+            </Text>
             {priceNum === null ? (
               <Text style={styles.note}>Add the cutout price first -- the reference is compared against it.</Text>
             ) : statcanError ? (
@@ -1130,18 +1186,21 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
                         exterior border of the table") -- it sits straight in
                         the white card. */}
                     <View style={styles.referenceBlock}>
+                      {/* For an AI estimate, the wording it was asked to price. */}
                       <Text style={styles.referenceName}>{reference.name}</Text>
                       <ReferenceComparisonTable
+                        referenceLabel={referenceLabel}
                         referencePrice={reference.avgPrice}
                         referenceUnit={reference.unit}
                         cutoutPrice={priceNum}
                         converted={converted}
                       />
+                      {reference.aiReasoning ? <Text style={styles.note}>{reference.aiReasoning}</Text> : null}
                     </View>
                     {/* The result and the decision sit outside the table
                         (Anabelle: "move 'Cutout is 51...' and the buttons
                         outside of the table"). */}
-                    <ComparisonResult converted={converted} />
+                    <ComparisonResult converted={converted} referenceLabel={referenceLabel} />
                     {decision === 'approved' ? (
                       <View style={styles.refActionRow}>
                         <View style={styles.approvedPill}>
@@ -1210,13 +1269,30 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
                         </Text>
                       </Pressable>
                     ))}
+                    {/* For when StatCan has nothing comparable (Anabelle, on
+                        extra lean ground beef vs StatCan's plain "Ground
+                        beef"). */}
+                    <Text style={styles.fieldLabel}>No match? AI estimate for</Text>
+                    <InputField value={aiQuery} onChangeText={setAiQuery} placeholder="Item to estimate" />
+                    <Pressable
+                      style={[styles.tertiaryButton, aiLoading && styles.saveButtonDisabled]}
+                      onPress={getAiEstimate}
+                      disabled={aiLoading}
+                    >
+                      {aiLoading ? (
+                        <ActivityIndicator color={INK} />
+                      ) : (
+                        <Text style={styles.tertiaryButtonText}>Get AI estimate</Text>
+                      )}
+                    </Pressable>
+                    {aiError && <Text style={styles.saveError}>{aiError}</Text>}
                   </View>
                 )}
 
                 {decision === 'rejected' && (
                   <Text style={styles.note}>
                     Saving now leaves this deal with no comparison price (no deal badge) -- pick the right StatCan item
-                    above instead.
+                    or get an AI estimate instead.
                   </Text>
                 )}
               </>
@@ -1297,11 +1373,13 @@ function shortUnit(unit: string): string {
 // normalized to the same basis (per 100 g / 100 ml / each) so they can be
 // compared at a glance; the percentage as the footer row.
 function ReferenceComparisonTable({
+  referenceLabel,
   referencePrice,
   referenceUnit,
   cutoutPrice,
   converted,
 }: {
+  referenceLabel: string;
   referencePrice: number;
   referenceUnit: string;
   cutoutPrice: number;
@@ -1316,7 +1394,7 @@ function ReferenceComparisonTable({
           <Text style={styles.tableHeader}>Cutout</Text>
         </View>
         <View style={[styles.tableCell, styles.tableCellRight]}>
-          <Text style={styles.tableHeader}>StatCan</Text>
+          <Text style={styles.tableHeader}>{referenceLabel === 'StatCan' ? 'StatCan' : 'AI estimate'}</Text>
         </View>
       </View>
       <View style={[styles.tableRow, styles.tableRowDivider]}>
@@ -1353,12 +1431,18 @@ function ReferenceComparisonTable({
 
 // The comparison's outcome, shown under the table: the percentage, or
 // why the reference can't be approved.
-function ComparisonResult({ converted }: { converted: ConvertedReference | null }) {
+function ComparisonResult({
+  converted,
+  referenceLabel,
+}: {
+  converted: ConvertedReference | null;
+  referenceLabel: string;
+}) {
   if (!converted?.ok) return null;
   if (converted.implausible) {
     return (
       <Text style={styles.verdictBad}>
-        StatCan is {IMPLAUSIBLE_BENCHMARK_RATIO}x+ the cutout price -- almost always a unit mix-up, so it can't be
+        {referenceLabel} is {IMPLAUSIBLE_BENCHMARK_RATIO}x+ the cutout price -- almost always a unit mix-up, so it can't be
         approved. Check "Price is per".
       </Text>
     );
@@ -1373,7 +1457,9 @@ function ComparisonResult({ converted }: { converted: ConvertedReference | null 
   return (
     <View style={[styles.resultTag, great ? styles.resultTagGreat : styles.resultTagFair]}>
       <Text style={[styles.resultTagText, great ? styles.resultTagTextGreat : styles.resultTagTextFair]}>
-        {pct === 0 ? 'Same as StatCan' : `Cutout is ${Math.abs(pct)}% ${pct < 0 ? 'below' : 'above'} StatCan`}
+        {pct === 0
+          ? `Same as ${referenceLabel}`
+          : `Cutout is ${Math.abs(pct)}% ${pct < 0 ? 'below' : 'above'} ${referenceLabel}`}
       </Text>
     </View>
   );
