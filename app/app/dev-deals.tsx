@@ -4,6 +4,7 @@ import { CheckIcon, ChevronDownIcon } from 'react-native-heroicons/outline';
 
 import { InputField } from '../components/InputField';
 import { SegmentedControl } from '../components/SegmentedControl';
+import { isGreatReferenceValue } from '../lib/curatedDeals';
 import { sizeFromItemName, splitMultiItemName } from '../lib/dealNames';
 import {
   benchmarkCostForQuantity,
@@ -91,13 +92,24 @@ function toStoredPrice(qty: number | null, unit: PerUnit): { priceUnit: PriceUni
   return { priceUnit: 'package', weightG: qty === null ? null : Math.round(qty) };
 }
 
-// The stored pair, back as what the "Price is per" row shows.
-function fromStoredPrice(deal: CuratedDeal): { qty: string; unit: PerUnit } {
+// The stored pair, back as what the "Price is per" row shows. A package
+// with no stored size starts from the size on the flyer name (the largest
+// one, for a range) as a real value, not a placeholder -- Anabelle: "why
+// i still see 'package' when i manually input the gr and quantity". A
+// grey placeholder "665" looked filled in while the price line and the
+// saved row still said "package".
+function fromStoredPrice(deal: CuratedDeal, itemName: string): { qty: string; unit: PerUnit } {
   if (deal.price_unit === 'lb') return { qty: '1', unit: 'lb' };
   if (deal.price_unit === 'kg') return { qty: '1', unit: 'kg' };
   if (deal.price_unit === '100g') return { qty: '100', unit: 'g' };
   if (deal.price_unit === 'each') return { qty: '', unit: 'each' };
-  return { qty: deal.package_weight_g != null ? String(deal.package_weight_g) : '', unit: 'g' };
+  if (deal.package_weight_g != null) return { qty: String(deal.package_weight_g), unit: 'g' };
+  const fromName = priceBasis('package', deal, itemName, null);
+  if (fromName.unit === 'g') return { qty: fromName.quantity, unit: 'g' };
+  // In grams even for "1 KG" -- "per 1 kg" would save as a per-kg rate,
+  // not a 1 kg package (see toStoredPrice).
+  if (fromName.unit === 'kg') return { qty: String(Math.round(parseFloat(fromName.quantity) * 1000)), unit: 'g' };
+  return { qty: '', unit: 'g' };
 }
 
 // One card per flyer CUTOUT, not per curated_deals row -- Anabelle:
@@ -724,8 +736,22 @@ const RANGE_SIZE = /(\d+(?:\.\d+)?)\s*[-–/]\s*(\d+(?:\.\d+)?)\s*(kg|g|ml|l)\b/
 const RANGE_UNITS: Record<string, string> = { kg: 'kg', g: 'g', ml: 'ml', l: 'L' };
 
 type ConvertedReference =
-  | { ok: true; value: number; pctVsReference: number; implausible: boolean }
+  | {
+      ok: true;
+      value: number;
+      pctVsReference: number;
+      implausible: boolean;
+      // Both prices restated on the same basis (per 100 g / 100 ml / each)
+      // -- the "normalized" row of the comparison table.
+      cutoutPerBasis: number;
+      referencePerBasis: number;
+      basisLabel: string;
+      // What the cutout price is for, as compared: "665 g", "1 lb", "each".
+      cutoutQuantityLabel: string;
+    }
   | { ok: false; reason: string };
+
+const BASIS_LABELS: Record<string, string> = { '100g': '100 g', '100ml': '100 ml', ea: 'each' };
 
 // A reference price restated for the SAME quantity the cutout price is
 // for -- e.g. StatCan's "$18.39 per kilogram" becomes $8.34 for a
@@ -763,6 +789,15 @@ function convertReference(
     // See isImplausibleBenchmark's doc comment -- 5x+ off is a unit
     // mix-up, never a real deal, so it can't be approved as-is.
     implausible: isImplausibleBenchmark(outcome.comparison),
+    cutoutPerBasis: outcome.comparison.itemPerBasis,
+    referencePerBasis: outcome.comparison.benchmarkPerBasis,
+    basisLabel: BASIS_LABELS[outcome.comparison.basisLabel] ?? outcome.comparison.basisLabel,
+    cutoutQuantityLabel:
+      compareBasis.unit === 'ea'
+        ? compareBasis.quantity === '1'
+          ? 'each'
+          : `${compareBasis.quantity} ea`
+        : `${compareBasis.quantity} ${compareBasis.unit}`,
   };
 }
 
@@ -799,7 +834,7 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
   // "Price is per [quantity] [unit]" -- Anabelle: "Price on the cutout:
   // 4 / Price is per gr / Input: 665gr". Mapped onto the stored
   // price_unit + package_weight_g pair by toStoredPrice below.
-  const initialPer = fromStoredPrice(deal);
+  const initialPer = fromStoredPrice(deal, itemName);
   const [perQtyText, setPerQtyText] = useState(initialPer.qty);
   const [perUnit, setPerUnit] = useState<PerUnit>(initialPer.unit);
 
@@ -858,10 +893,6 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
   const perQty = parsedQty !== null && Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : null;
   const { priceUnit, weightG } = toStoredPrice(perQty, perUnit);
   const basis = priceBasis(priceUnit, deal, itemName, weightG);
-  // What the quantity field suggests when empty in grams: the size read
-  // off the name (the largest one, for a range) -- see priceBasis.
-  const nameBasis = priceBasis('package', deal, itemName, null);
-  const qtyPlaceholder = perUnit === 'g' && nameBasis.unit === 'g' ? nameBasis.quantity : '1';
 
   // The StatCan item shown for approval: one picked from search, else
   // the automatic match (the pick the app's own pricing engine would
@@ -882,12 +913,6 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
   // StatCan reference is approved or rejected this time.
   const savedReference =
     deal.original_price != null && deal.original_price_source === 'reference' ? deal.original_price : null;
-  // The saved reference was worked out for the quantity as STORED -- once
-  // "Price is per" changes it no longer describes the same amount, so the
-  // note says so instead of relabelling it with the new quantity.
-  const storedBasis = priceBasis(deal.price_unit, deal, itemName, deal.package_weight_g);
-  const quantityChanged =
-    priceUnit !== deal.price_unit || (priceUnit === 'package' && weightG !== deal.package_weight_g);
 
   // What original_price/original_price_source get saved as, from
   // whichever of steps 2-4 applies.
@@ -1050,7 +1075,7 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
                       value={perQtyText}
                       onChangeText={setPerQtyText}
                       keyboardType="decimal-pad"
-                      placeholder={qtyPlaceholder}
+                      placeholder="1"
                     />
                   </View>
                 )}
@@ -1100,22 +1125,27 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
             ) : (
               <>
                 {reference ? (
-                  <View style={[styles.panel, decision === 'approved' && styles.panelApproved]}>
-                    <Text style={styles.referenceName}>{reference.name}</Text>
-                    <Text style={styles.referenceRaw}>
-                      {/* StatCan stores "per kilogram" as well as "390 grams" -- drop
-                          the "per" so it doesn't read "/ per kilogram". */}
-                      {formatMoney(reference.avgPrice)} / {reference.unit.replace(/^per\s+/i, '')}
-                    </Text>
-                    <ConvertedReferenceLine
-                      converted={converted}
-                      basisLabel={basis.sizeNote ? `${basis.label} (${basis.sizeNote})` : basis.label}
-                      rawPrice={reference.avgPrice}
-                    />
+                  <>
+                    {/* No grey outline around the table (Anabelle: "remove the
+                        exterior border of the table") -- it sits straight in
+                        the white card. */}
+                    <View style={styles.referenceBlock}>
+                      <Text style={styles.referenceName}>{reference.name}</Text>
+                      <ReferenceComparisonTable
+                        referencePrice={reference.avgPrice}
+                        referenceUnit={reference.unit}
+                        cutoutPrice={priceNum}
+                        converted={converted}
+                      />
+                    </View>
+                    {/* The result and the decision sit outside the table
+                        (Anabelle: "move 'Cutout is 51...' and the buttons
+                        outside of the table"). */}
+                    <ComparisonResult converted={converted} />
                     {decision === 'approved' ? (
                       <View style={styles.refActionRow}>
                         <View style={styles.approvedPill}>
-                          <CheckIcon size={14} color="#fff" strokeWidth={2.5} />
+                          <CheckIcon size={14} color="#1E7B34" strokeWidth={2.5} />
                           <Text style={styles.approvedPillText}>Reference approved</Text>
                         </View>
                         <Pressable onPress={() => setDecision('undecided')} hitSlop={8}>
@@ -1140,7 +1170,7 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
                         </Pressable>
                       </View>
                     )}
-                  </View>
+                  </>
                 ) : (
                   <Text style={styles.note}>No StatCan item matches this name -- search for the right one below.</Text>
                 )}
@@ -1148,13 +1178,9 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
                 {/* Anabelle: "Sometimes you dont look for the correct items in
                     statcan e.g. here would be frozen pizza. So if i see you
                     have not search the correct word, i should be able to
-                    look it up". Picking a result replaces the item above,
-                    ready to approve. */}
-                {!showSearch && (
-                  <Pressable onPress={() => setSearchOpen(true)} hitSlop={8}>
-                    <Text style={styles.textLink}>Not the right item? Search StatCan</Text>
-                  </Pressable>
-                )}
+                    look it up". Search opens once the match is rejected (or
+                    when nothing matched); picking a result replaces the item
+                    above, ready to approve. */}
                 {showSearch && (
                   <View style={styles.panel}>
                     <Text style={styles.fieldLabel}>Search StatCan</Text>
@@ -1187,13 +1213,6 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
                   </View>
                 )}
 
-                {savedReference !== null && decision === 'undecided' && (
-                  <Text style={quantityChanged ? styles.verdictBad : styles.note}>
-                    {quantityChanged
-                      ? `Currently saved: ${formatMoney(savedReference)} / ${storedBasis.label}, worked out for the old quantity -- approve a StatCan reference to update it.`
-                      : `Currently saved: ${formatMoney(savedReference)} / ${storedBasis.label} -- kept unless you approve or reject a reference.`}
-                  </Text>
-                )}
                 {decision === 'rejected' && (
                   <Text style={styles.note}>
                     Saving now leaves this deal with no comparison price (no deal badge) -- pick the right StatCan item
@@ -1261,49 +1280,102 @@ function DealEditView({ deal, initialItemName, backLabel, onBack, onSaved }: Dea
   );
 }
 
-// "= $8.34 / lb" under a reference priced in a different unit, then the
-// verdict -- or why it can't be compared.
-function ConvertedReferenceLine({
+// StatCan stores a denomination as free text -- "390 grams", "per
+// kilogram". Shortened for display: "390 g", "kg".
+function shortUnit(unit: string): string {
+  return unit
+    .replace(/^per\s+/i, '')
+    .replace(/\bkilograms?\b/i, 'kg')
+    .replace(/\bgrams?\b/i, 'g')
+    .replace(/\bmillilit(?:re|er)s?\b/i, 'ml')
+    .replace(/\blit(?:re|er)s?\b/i, 'L')
+    .replace(/\bpounds?\b/i, 'lb');
+}
+
+// The comparison as a small table (Anabelle, 2026-09-18): the cutout on
+// the left, StatCan on the right; each price as published, then both
+// normalized to the same basis (per 100 g / 100 ml / each) so they can be
+// compared at a glance; the percentage as the footer row.
+function ReferenceComparisonTable({
+  referencePrice,
+  referenceUnit,
+  cutoutPrice,
   converted,
-  basisLabel,
-  rawPrice,
 }: {
+  referencePrice: number;
+  referenceUnit: string;
+  cutoutPrice: number;
   converted: ConvertedReference | null;
-  basisLabel: string;
-  rawPrice: number | null;
 }) {
   if (!converted) return null;
   if (!converted.ok) return <Text style={styles.verdictBad}>{converted.reason}</Text>;
-  // Same number either way (e.g. per package vs per package) -- nothing
-  // was converted, so don't print it twice.
-  const convertedDiffers = rawPrice === null || Math.abs(converted.value - rawPrice) >= 0.005;
   return (
-    <>
-      {convertedDiffers && (
-        <Text style={styles.referenceConverted}>
-          = {formatMoney(converted.value)} / {basisLabel}
-        </Text>
-      )}
-      <ReferenceVerdict converted={converted} />
-    </>
+    <View style={styles.table}>
+      <View style={styles.tableRow}>
+        <View style={styles.tableCell}>
+          <Text style={styles.tableHeader}>Cutout</Text>
+        </View>
+        <View style={[styles.tableCell, styles.tableCellRight]}>
+          <Text style={styles.tableHeader}>StatCan</Text>
+        </View>
+      </View>
+      <View style={[styles.tableRow, styles.tableRowDivider]}>
+        <View style={styles.tableCell}>
+          <Text style={styles.tableLabel}>Price</Text>
+          <Text style={styles.tableValue}>
+            {formatMoney(cutoutPrice)} / {converted.cutoutQuantityLabel}
+          </Text>
+        </View>
+        <View style={[styles.tableCell, styles.tableCellRight]}>
+          <Text style={styles.tableLabel}>Price</Text>
+          <Text style={styles.tableValue}>
+            {formatMoney(referencePrice)} / {shortUnit(referenceUnit)}
+          </Text>
+        </View>
+      </View>
+      <View style={[styles.tableRow, styles.tableRowDivider]}>
+        <View style={styles.tableCell}>
+          <Text style={styles.tableLabel}>Per {converted.basisLabel}</Text>
+          <Text style={styles.tableValue}>
+            {formatMoney(converted.cutoutPerBasis)} / {converted.basisLabel}
+          </Text>
+        </View>
+        <View style={[styles.tableCell, styles.tableCellRight]}>
+          <Text style={styles.tableLabel}>Per {converted.basisLabel}</Text>
+          <Text style={styles.tableValue}>
+            {formatMoney(converted.referencePerBasis)} / {converted.basisLabel}
+          </Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
-function ReferenceVerdict({ converted }: { converted: Extract<ConvertedReference, { ok: true }> }) {
+// The comparison's outcome, shown under the table: the percentage, or
+// why the reference can't be approved.
+function ComparisonResult({ converted }: { converted: ConvertedReference | null }) {
+  if (!converted?.ok) return null;
   if (converted.implausible) {
     return (
       <Text style={styles.verdictBad}>
-        This reference is {IMPLAUSIBLE_BENCHMARK_RATIO}x+ the cutout price -- almost always a unit mix-up, so it
-        can't be approved.
+        StatCan is {IMPLAUSIBLE_BENCHMARK_RATIO}x+ the cutout price -- almost always a unit mix-up, so it can't be
+        approved. Check "Price is per".
       </Text>
     );
   }
   const pct = Math.round(converted.pctVsReference);
-  if (pct === 0) return <Text style={styles.note}>Same as the reference.</Text>;
+  // Same colors as the tag this deal gets on a recipe (MealCard's
+  // greatValueBadge / fairPriceBadge) -- Anabelle: "make the cutout result
+  // a tag that is the same color as the tag that would appear in the
+  // recipe". Same rule too: isGreatReferenceValue() decides purple
+  // ("Up to N% below") vs orange ("Fair price").
+  const great = isGreatReferenceValue(-converted.pctVsReference, 'reference');
   return (
-    <Text style={pct < 0 ? styles.verdictGood : styles.verdictBad}>
-      Cutout is {Math.abs(pct)}% {pct < 0 ? 'below' : 'above'} the reference
-    </Text>
+    <View style={[styles.resultTag, great ? styles.resultTagGreat : styles.resultTagFair]}>
+      <Text style={[styles.resultTagText, great ? styles.resultTagTextGreat : styles.resultTagTextFair]}>
+        {pct === 0 ? 'Same as StatCan' : `Cutout is ${Math.abs(pct)}% ${pct < 0 ? 'below' : 'above'} StatCan`}
+      </Text>
+    </View>
   );
 }
 
@@ -1370,19 +1442,6 @@ const styles = StyleSheet.create({
   dropdownMenuItemText: { fontSize: 14, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, flex: 1 },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 20 },
   searchInputFlex: { flex: 1 },
-  filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
-  filterLabel: { fontSize: 14, color: INK },
   dealRow: {
     flexDirection: 'row',
     gap: 12,
@@ -1452,11 +1511,24 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
   },
-  panelApproved: { borderColor: '#1B7F3B', borderWidth: 2 },
+  referenceBlock: { gap: 6 },
   referenceName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   searchResult: { borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingVertical: 8, gap: 2 },
-  referenceRaw: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  referenceConverted: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // No outer border (Anabelle) -- only the dividers between cells.
+  table: { overflow: 'hidden' },
+  tableRow: { flexDirection: 'row' },
+  tableRowDivider: { borderTopWidth: 1, borderTopColor: '#E5E5E5' },
+  tableCell: { flex: 1, paddingVertical: 10, paddingHorizontal: 12, gap: 2 },
+  tableCellRight: { borderLeftWidth: 1, borderLeftColor: '#E5E5E5' },
+  tableHeader: { fontSize: 13, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  tableLabel: { fontSize: 12, color: '#767676' },
+  tableValue: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  resultTag: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+  resultTagGreat: { backgroundColor: '#EDE7FE' },
+  resultTagFair: { backgroundColor: '#FFEAD4' },
+  resultTagText: { fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  resultTagTextGreat: { color: '#6B46C1' },
+  resultTagTextFair: { color: '#FF7A2A' },
   verdictGood: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#1B7F3B' },
   verdictBad: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#D0342C' },
   refActionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
@@ -1471,16 +1543,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   refRejectButtonText: { color: '#D0342C', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // The app's confirmation green (Toast.tsx / MembershipStatus / MealCard's
+  // "Added" badge: bg #E8F5E9, icon/text #1E7B34) -- Anabelle: "match the
+  // color schema of the approval badge to our confirmation badge green".
   approvedPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#1B7F3B',
+    backgroundColor: '#E8F5E9',
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  approvedPillText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  approvedPillText: { color: '#1E7B34', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeTag: { alignSelf: 'flex-start', backgroundColor: INK, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
   storeTagText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#fff' },
   editStore: { fontSize: 14, color: '#767676', marginTop: -8 },
@@ -1514,7 +1589,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F2F2F2',
+    backgroundColor: '#fff',
     borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 12,
