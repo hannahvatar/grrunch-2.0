@@ -72,6 +72,15 @@ export function showsRealDiscount(discountPct: number, source: OriginalPriceSour
   return discountPct >= MIN_DISPLAYED_DISCOUNT_PCT && !isReferencePriced(source);
 }
 
+// ALWAYS "Up to" -- Anabelle: "when the cutout offers a range e.g. 584
+// gr to 665 gr, I will always pick the upper number. This will affect
+// the percentage ... when we say 43% off, it should ALWAYS be preceded
+// with 'Up to'". One shared label so no badge (MealCard's used to say a
+// bare "N% off") can drop the qualifier again.
+export function formatRealDiscountLabel(discountPct: number): string {
+  return `Up to ${Math.round(discountPct)}% off`;
+}
+
 // A reference-sourced item meaningfully below its own reference price
 // is worth calling out as more than a neutral "Fair price" -- but it
 // must never look like showsRealDiscount()'s "Up to N% off" badge,
@@ -91,9 +100,11 @@ export function isGreatReferenceValue(discountPct: number, source: OriginalPrice
 // starting price the store set; this is a comparison against an
 // external average, phrased so it can never be misread as the former.
 // No trailing "avg." (Anabelle's call) -- the badge's own purple color
-// already distinguishes it from a real discount claim.
+// already distinguishes it from a real discount claim. "Up to" for the
+// same reason as formatRealDiscountLabel: a size range is reviewed at its
+// largest size, so the percentage is the best case.
 export function formatGreatReferenceValueLabel(discountPct: number): string {
-  return `${Math.round(discountPct)}% below`;
+  return `Up to ${Math.round(discountPct)}% below`;
 }
 
 // Muted annotation shown in place of a strikethrough original price

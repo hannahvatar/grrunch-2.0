@@ -25,6 +25,7 @@ import {
   formatComparePriceLabel,
   formatDealBadgePrice,
   formatGreatReferenceValueLabel,
+  formatRealDiscountLabel,
   isGreatReferenceValue,
   isReferencePriced,
   showsRealDiscount,
@@ -397,7 +398,7 @@ export function IngredientRow({
       {dealTag &&
         (showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
           <View style={styles.discountBadge}>
-            <Text style={styles.discountBadgeText}>Up to {dealTag.discountPct}% off</Text>
+            <Text style={styles.discountBadgeText}>{formatRealDiscountLabel(dealTag.discountPct)}</Text>
           </View>
         ) : isGreatReferenceValue(dealTag.discountPct, dealTag.originalPriceSource) ? (
           <View style={styles.greatValueBadge}>
@@ -455,7 +456,7 @@ export function IngredientRow({
         {dealTag &&
           (showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
             <View style={styles.dealDiscountBadge}>
-              <Text style={styles.dealDiscountBadgeText}>Up to {dealTag.discountPct}% off</Text>
+              <Text style={styles.dealDiscountBadgeText}>{formatRealDiscountLabel(dealTag.discountPct)}</Text>
             </View>
           ) : isGreatReferenceValue(dealTag.discountPct, dealTag.originalPriceSource) ? (
             <View style={styles.dealGreatValueBadge}>

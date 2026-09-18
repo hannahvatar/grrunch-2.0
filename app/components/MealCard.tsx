@@ -5,6 +5,7 @@ import { StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
 
 import {
   formatGreatReferenceValueLabel,
+  formatRealDiscountLabel,
   isGreatReferenceValue,
   showsRealDiscount,
   toTitleCase,
@@ -101,7 +102,7 @@ export function MealCard({ meal, isSelected, onToggleSelected, locked }: MealCar
                 <View key={dealTag.name} style={styles.dealTagRow}>
                   {showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
                     <View style={styles.dealTagBadge}>
-                      <Text style={styles.dealTagBadgeText}>{dealTag.discountPct}% off</Text>
+                      <Text style={styles.dealTagBadgeText}>{formatRealDiscountLabel(dealTag.discountPct)}</Text>
                     </View>
                   ) : isGreatReferenceValue(dealTag.discountPct, dealTag.originalPriceSource) ? (
                     <View style={styles.greatValueBadge}>

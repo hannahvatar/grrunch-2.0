@@ -11,6 +11,11 @@ interface SegmentedControlProps<T extends string> {
   options: SegmentedControlOption<T>[];
   value: T | null;
   onChange: (value: T) => void;
+  // Wrap onto extra rows instead of scrolling horizontally -- opt-in so
+  // every option stays visible on a narrow screen (Anabelle, dev-deals:
+  // "Make the chips wrap so i see them all on narrow screens"), without
+  // changing the scrolling row other screens (upgrade.tsx) rely on.
+  wrap?: boolean;
 }
 
 // A row of pill buttons, one selected at a time -- the app has no
@@ -21,23 +26,28 @@ interface SegmentedControlProps<T extends string> {
 // Switch that wouldn't match the rest of the design system.
 // ScrollView'd horizontally since a 5-option row (price_unit) doesn't
 // reliably fit a phone-width screen at a legible tap-target size.
-export function SegmentedControl<T extends string>({ options, value, onChange }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ options, value, onChange, wrap = false }: SegmentedControlProps<T>) {
+  const pills = (
+    <View style={[styles.row, wrap && styles.rowWrap]}>
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <Pressable
+            key={option.value}
+            style={[styles.pill, selected && styles.pillSelected]}
+            onPress={() => onChange(option.value)}
+          >
+            <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  if (wrap) return pills;
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
-      <View style={styles.row}>
-        {options.map((option) => {
-          const selected = option.value === value;
-          return (
-            <Pressable
-              key={option.value}
-              style={[styles.pill, selected && styles.pillSelected]}
-              onPress={() => onChange(option.value)}
-            >
-              <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{option.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {pills}
     </ScrollView>
   );
 }
@@ -45,6 +55,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
 const styles = StyleSheet.create({
   scroll: { flexGrow: 0 },
   row: { flexDirection: 'row', gap: 8 },
+  rowWrap: { flexWrap: 'wrap' },
   pill: {
     paddingVertical: 10,
     paddingHorizontal: 16,

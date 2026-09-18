@@ -15,6 +15,7 @@ import {
   fetchAllDeals,
   formatComparePriceLabel,
   formatGreatReferenceValueLabel,
+  formatRealDiscountLabel,
   groupDealsByCategory,
   isGreatReferenceValue,
   isReferencePriced,
@@ -223,9 +224,7 @@ export default function BestDealsScreen() {
                                 own default (non-stacked) priceEl. */}
                             {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
                               <View style={styles.dealBadge}>
-                                <Text style={styles.dealBadgeText}>
-                                  Up to {Math.round(deal.discountPct)}% off
-                                </Text>
+                                <Text style={styles.dealBadgeText}>{formatRealDiscountLabel(deal.discountPct)}</Text>
                               </View>
                             ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
                               <View style={styles.dealGreatValueBadge}>
