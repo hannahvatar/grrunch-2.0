@@ -15,13 +15,23 @@ name: Sync weekly deals
 # (UTC-7, roughly Mar-Nov) but only 5pm PST (UTC-8, Nov-Mar) the rest of
 # the year. Revisit this cron if that hour of drift matters once winter
 # hits.
+#
+# Schedule PAUSED 2026-09-18 -- manual runs only for now. Anabelle: "i
+# dont necessarily want the automation just yet. We will trigger another
+# round manually to test the whole flow." To turn it back on, restore:
+#   schedule:
+#     - cron: '0 1 * * 5'
 on:
-  schedule:
-    - cron: '0 1 * * 5'
-  # Lets this be triggered by hand from the Actions tab or `gh workflow
-  # run`, e.g. to verify a change to this workflow without waiting for
-  # Thursday.
-  workflow_dispatch: {}
+  # Triggered by hand from the Actions tab ("Run workflow") or
+  # `gh workflow run sync-weekly-deals.yml`. force=true re-imports even
+  # when Airtable has no newer flyer week than curated_deals (the script
+  # otherwise skips -- a re-import wipes that week's dev-deals review).
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Re-import even if Airtable has no new flyer week (wipes that week''s review)'
+        type: boolean
+        default: false
 
 jobs:
   sync:
@@ -40,4 +50,5 @@ jobs:
           AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SYNC_FORCE: ${{ inputs.force && '1' || '0' }}
         run: python3 sync_weekly_deals.py
