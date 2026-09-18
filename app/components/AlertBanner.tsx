@@ -14,7 +14,10 @@ interface AlertBannerProps {
   variant: AlertVariant;
   title: string;
   description?: string;
-  onDismiss: () => void;
+  // Optional: a banner with no onDismiss has no X -- for a notice that
+  // should stay until the condition behind it goes away (e.g. the
+  // "fresh deals are on the way" banner while the live week is expired).
+  onDismiss?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -46,9 +49,11 @@ export function AlertBanner({ variant, title, description, onDismiss, style }: A
         <Text style={[styles.title, { color: strong }]}>{title}</Text>
         {description && <Text style={[styles.description, { color: muted }]}>{description}</Text>}
       </View>
-      <Pressable onPress={onDismiss} hitSlop={8}>
-        <XMarkIcon size={16} color={strong} />
-      </Pressable>
+      {onDismiss && (
+        <Pressable onPress={onDismiss} hitSlop={8}>
+          <XMarkIcon size={16} color={strong} />
+        </Pressable>
+      )}
     </View>
   );
 }

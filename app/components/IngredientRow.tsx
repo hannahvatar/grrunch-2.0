@@ -30,8 +30,10 @@ import {
   isReferencePriced,
   showsRealDiscount,
 } from '../lib/curatedDeals';
+import { useLiveWeekExpired } from '../lib/liveWeek';
 import type { DealTag } from '../lib/mealData';
 import { computeDealPackageCount } from '../lib/unitConversion';
+import { ExpiredBadge } from './ExpiredBadge';
 import { ArrowOutwardIcon } from './MaterialSymbols';
 
 const INK = '#111';
@@ -171,6 +173,9 @@ export function IngredientRow({
   quantity,
   unit,
 }: IngredientRowProps) {
+  // Last week's flyers have ended and the next week isn't published yet
+  // (lib/liveWeek.ts) -- the deal's price stays, its badge becomes Expired.
+  const weekExpired = useLiveWeekExpired();
   // stackedLayout only -- text is always "<quantity> <rest of
   // description>" for a deal item (e.g. "1 package Prime raised...",
   // see lib/recipes.ts describeDealPackage/describeQuantityText, which
@@ -396,7 +401,9 @@ export function IngredientRow({
         </Text>
       )}
       {dealTag &&
-        (showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
+        (weekExpired ? (
+          <ExpiredBadge />
+        ) : showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
           <View style={styles.discountBadge}>
             <Text style={styles.discountBadgeText}>{formatRealDiscountLabel(dealTag.discountPct)}</Text>
           </View>
@@ -454,7 +461,9 @@ export function IngredientRow({
           )}
         </View>
         {dealTag &&
-          (showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
+          (weekExpired ? (
+            <ExpiredBadge />
+          ) : showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
             <View style={styles.dealDiscountBadge}>
               <Text style={styles.dealDiscountBadgeText}>{formatRealDiscountLabel(dealTag.discountPct)}</Text>
             </View>

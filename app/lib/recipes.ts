@@ -263,7 +263,13 @@ function mapRowToMeal(
   };
 }
 
-export async function fetchAllRecipes(): Promise<Meal[]> {
+// 'next' reads the DRAFT week instead of the live one (dev-recipes.tsx's
+// "Next week" view, 20260918 weekly publish): recipe prices/deal tags
+// computed against the draft deals (draft_deal_tags / draft_price), and
+// featured_next as the featured flag. Shoppers always get 'live'.
+export type RecipeWeek = 'live' | 'next';
+
+export async function fetchAllRecipes(week: RecipeWeek = 'live'): Promise<Meal[]> {
   const [{ data, error }, statcanPrices, producePrices, staplePrices, subRecipes] = await Promise.all([
     supabase.from('recipes').select('*'),
     fetchStatcanPrices(),
@@ -272,7 +278,17 @@ export async function fetchAllRecipes(): Promise<Meal[]> {
     fetchSubRecipes(),
   ]);
   if (error) throw error;
-  return (data ?? []).map((row) => mapRowToMeal(row, statcanPrices, producePrices, staplePrices, subRecipes));
+  return (data ?? []).map((row) =>
+    mapRowToMeal(
+      week === 'next'
+        ? { ...row, deal_tags: row.draft_deal_tags, price: row.draft_price, featured: row.featured_next }
+        : row,
+      statcanPrices,
+      producePrices,
+      staplePrices,
+      subRecipes
+    )
+  );
 }
 
 export async function fetchRecipeById(id: string): Promise<Meal | null> {

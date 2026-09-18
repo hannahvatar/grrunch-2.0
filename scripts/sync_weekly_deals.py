@@ -1,8 +1,10 @@
 """Weekly deal sync: Airtable (AI-classified deal candidates, minus the
-review agents' own obvious-junk rejects) -> Supabase curated_deals as
-'pending', then recompute every recipe's deal_tags against the fresh
-data. Anabelle: "why do I approve deals twice: in Airtable and in the
-page dev-deals" -- her one human review (approve/correct/reject, and
+review agents' own obvious-junk rejects) -> Supabase curated_deals as a
+DRAFT week ('pending', published=false), then price every recipe against
+that draft (recipes.draft_deal_tags). The live week stays as-is until
+publish_week() swaps the reviewed draft in (dev-deals "Publish week").
+Anabelle: "why do I approve deals twice: in Airtable and in the page
+dev-deals" -- her one human review (approve/correct/reject, and
 confirm/correct the recipes/deals/both usage classification) now
 happens entirely in app/app/dev-deals.tsx, not in Airtable. Run this
 after the week's flyer candidates have been scanned into Airtable.
@@ -343,6 +345,10 @@ def sync_curated_deals(records):
             # forward, on purpose (a stale approval shouldn't silently
             # bless THIS week's fresh price without a human glance).
             "status": "pending",
+            # The DRAFT week (supabase/migrations/20260918010000_weekly_
+            # publish.sql): invisible to shoppers until publish_week()
+            # promotes it, so last week stays live during review.
+            "published": False,
             # Passthrough of Airtable's own "recipes/deals/both"
             # classification -- just the starting point, not the final
             # word: freely re-correctable in dev-deals.tsx from here on
@@ -454,10 +460,14 @@ def sync_curated_deals(records):
         print(f"dropped {dropped} zone-duplicate row(s) (same chain+item+price from multiple zones)")
     rows = list(best_by_key.values())
 
-    # Wipe last week's synced rows, then insert this week's full set --
-    # curated_deals is explicitly this-week-only, never an accumulating history
+    # Replace the previous DRAFT only, then insert this week's full set as
+    # the new draft. The live (published) week is never touched here --
+    # publish_week() swaps it out once the draft has been reviewed (see
+    # supabase/migrations/20260918010000_weekly_publish.sql). Before the
+    # weekly publish step this deleted every row, which emptied shoppers'
+    # Weekly Deals the moment the sync ran.
     del_req = urllib.request.Request(
-        f"{SUPABASE_URL}/rest/v1/curated_deals?id=neq.00000000-0000-0000-0000-000000000000",
+        f"{SUPABASE_URL}/rest/v1/curated_deals?published=eq.false",
         method="DELETE",
         headers={
             "apikey": SERVICE_ROLE,
@@ -466,7 +476,7 @@ def sync_curated_deals(records):
         },
     )
     with urllib.request.urlopen(del_req) as resp:
-        print("wiped previous week's rows:", resp.status)
+        print("replaced the previous draft week's rows:", resp.status)
 
     body = json.dumps(rows).encode("utf-8")
     req = urllib.request.Request(
@@ -880,6 +890,9 @@ def resolve_produce_gaps():
                     "flyer_valid_to": valid_to,
                     "image_url": image_url,
                     "status": "approved",
+                    # Joins the draft week like every other synced row --
+                    # no longer shopper-visible the instant it's resolved.
+                    "published": False,
                     "airtable_record_id": g["id"],
                 }
                 deal_req = urllib.request.Request(
@@ -975,9 +988,11 @@ def resolve_staple_gaps():
 
 
 def refresh_deal_tags():
+    # Prices recipes against the DRAFT week (recipes.draft_deal_tags /
+    # draft_price) -- the live prices only change on publish_week().
     req = urllib.request.Request(
         f"{SUPABASE_URL}/rest/v1/rpc/refresh_recipe_deal_tags",
-        data=b"{}", method="POST",
+        data=json.dumps({"p_published": False}).encode("utf-8"), method="POST",
         headers={
             "apikey": SERVICE_ROLE,
             "Authorization": f"Bearer {SERVICE_ROLE}",
@@ -985,7 +1000,7 @@ def refresh_deal_tags():
         },
     )
     with urllib.request.urlopen(req) as resp:
-        print("refreshed recipe deal_tags:", resp.status)
+        print("refreshed draft recipe deal_tags:", resp.status)
 
 
 if __name__ == "__main__":
@@ -1006,4 +1021,4 @@ if __name__ == "__main__":
     flag_produce_gaps(usable)  # re-flags fresh against this week's actual data
     resolve_staple_gaps()
     refresh_deal_tags()
-    print("Done -- curated_deals and every recipe's deal_tags now reflect this week's approved deals.")
+    print("Done -- this week is loaded as a DRAFT. Review it in dev-deals, build recipes in dev-recipes, then Publish week.")

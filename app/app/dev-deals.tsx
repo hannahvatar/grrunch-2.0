@@ -66,6 +66,15 @@ const USAGE_OPTIONS: { value: DealUsage; label: string }[] = [
 // whole review (approve/correct/reject) now happens here. Every
 // candidate syncs in as 'pending' (see scripts/sync_weekly_deals.py),
 // so that's the default tab -- the actual weekly work queue.
+// Live week = what shoppers see now (published). Next week = the draft
+// the weekly sync loads, reviewed here, then made live all at once by
+// "Publish week" (supabase/migrations/20260918010000_weekly_publish.sql).
+type DealWeek = 'next' | 'live';
+const WEEK_OPTIONS: { value: DealWeek; label: string }[] = [
+  { value: 'next', label: 'Next week (draft)' },
+  { value: 'live', label: 'Live week' },
+];
+
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'pending', label: 'Needs review' },
   { value: 'approved', label: 'Approved' },
@@ -243,6 +252,9 @@ export default function DevDealsScreen() {
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
+  // null until chosen: defaults to the draft when there is one, else live.
+  const [weekChoice, setWeekChoice] = useState<DealWeek | null>(null);
+  const [featuredNextCount, setFeaturedNextCount] = useState(0);
   // 'all' (default) shows every row regardless of zone. Anabelle,
   // 2026-09-14: "Can Airtable show the deals in their different zone for
   // me to approve instead?" -- this is that, for her own weekly review
@@ -258,6 +270,13 @@ export default function DevDealsScreen() {
 
   const loadDeals = () => {
     setLoading(true);
+    // How many recipes are featured for next week -- shown in the Publish
+    // card so it's clear what goes live with the deals.
+    supabase
+      .from('recipes')
+      .select('id', { count: 'exact', head: true })
+      .eq('featured_next', true)
+      .then(({ count }) => setFeaturedNextCount(count ?? 0));
     // The direct table query used to be scoped .eq('status', 'approved')
     // -- but the only RLS policy on curated_deals ("approved
     // curated_deals are publicly readable") applies to the SAME
@@ -309,7 +328,11 @@ export default function DevDealsScreen() {
     );
   }
 
-  const cutouts = buildCutouts(deals);
+  const hasDraft = deals.some((d) => !d.published);
+  const week: DealWeek = weekChoice ?? (hasDraft ? 'next' : 'live');
+  const weekDeals = deals.filter((d) => d.published === (week === 'live'));
+
+  const cutouts = buildCutouts(weekDeals);
   const selectedDeal = deals.find((d) => d.id === selectedId) ?? null;
   const selectedCutout = selectedCutoutKey ? (cutouts.get(selectedCutoutKey) ?? null) : null;
 
@@ -352,7 +375,7 @@ export default function DevDealsScreen() {
     );
   }
 
-  const statusScoped = deals.filter((d) => statusFilter === 'all' || d.status === statusFilter);
+  const statusScoped = weekDeals.filter((d) => statusFilter === 'all' || d.status === statusFilter);
 
   // Options are built from whatever zones actually appear across every
   // loaded deal, not a hardcoded list -- stays correct as more deals get
@@ -415,6 +438,25 @@ export default function DevDealsScreen() {
           <Text style={styles.devBannerText}>DEV ONLY -- pricing review, no login</Text>
         </View>
         <Text style={styles.title}>Deal Pricing Review</Text>
+        <SegmentedControl wrap options={WEEK_OPTIONS} value={week} onChange={setWeekChoice} />
+        {week === 'next' &&
+          (hasDraft ? (
+            <PublishWeekCard
+              draftDeals={weekDeals}
+              featuredNextCount={featuredNextCount}
+              onPublished={() => {
+                setWeekChoice('live');
+                loadDeals();
+              }}
+            />
+          ) : (
+            <View style={styles.sectionCard}>
+              <Text style={styles.note}>
+                No draft week yet. New flyers load here as a draft when the weekly sync runs (GitHub → Actions → Sync
+                weekly deals → Run workflow).
+              </Text>
+            </View>
+          ))}
         <Text style={styles.subtitle}>
           {statusScoped.length} deal{statusScoped.length === 1 ? '' : 's'} · {unreviewedCount} not yet reviewed
         </Text>
@@ -718,6 +760,84 @@ function CutoutPhoto({ uri }: { uri: string }) {
         </View>
       </Modal>
     </>
+  );
+}
+
+// "Publish week" (Anabelle, 2026-09-18: review ~200 deals and build 12
+// recipes as a draft, then make it all live together -- by hand for now).
+// Two taps: Publish week, then an inline confirm that spells out what
+// happens, before calling the publish-week Edge Function.
+function PublishWeekCard({
+  draftDeals,
+  featuredNextCount,
+  onPublished,
+}: {
+  draftDeals: CuratedDeal[];
+  featuredNextCount: number;
+  onPublished: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+
+  const approved = draftDeals.filter((d) => d.status === 'approved').length;
+  const pending = draftDeals.filter((d) => d.status === 'pending').length;
+  const flyerDates = draftDeals.filter((d) => d.product_url !== '');
+  const from = flyerDates.map((d) => d.flyer_valid_from).sort()[0];
+  const to = flyerDates.map((d) => d.flyer_valid_to).sort().reverse()[0];
+
+  async function publish() {
+    setPublishError(null);
+    setPublishing(true);
+    const { data, error: invokeError } = await supabase.functions.invoke<{
+      deals_published?: number;
+      error?: string;
+    }>('publish-week', { body: {} });
+    setPublishing(false);
+    if (invokeError || typeof data?.deals_published !== 'number') {
+      setPublishError(await functionErrorMessage(invokeError, data?.error, 'Could not publish the week.'));
+      return;
+    }
+    setConfirming(false);
+    onPublished();
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>
+        Draft week{from && to ? ` · ${from} to ${to}` : ''}
+      </Text>
+      <Text style={styles.note}>
+        {approved} approved · {pending} still need review · {featuredNextCount} recipe
+        {featuredNextCount === 1 ? '' : 's'} featured for next week
+      </Text>
+      {!confirming ? (
+        <Pressable
+          style={[styles.publishButton, approved === 0 && styles.saveButtonDisabled]}
+          disabled={approved === 0}
+          onPress={() => setConfirming(true)}
+        >
+          <Text style={styles.publishButtonText}>Publish week</Text>
+        </Pressable>
+      ) : (
+        <>
+          <Text style={styles.publishConfirmText}>
+            {approved} deal{approved === 1 ? '' : 's'} and {featuredNextCount} featured recipe
+            {featuredNextCount === 1 ? '' : 's'} go live now, and last week's deals are removed.
+            {pending > 0 ? ` The ${pending} deal${pending === 1 ? '' : 's'} still in review won't show.` : ''}
+          </Text>
+          <View style={styles.publishConfirmRow}>
+            <Pressable style={styles.tertiaryButton} onPress={() => setConfirming(false)} disabled={publishing}>
+              <Text style={styles.tertiaryButtonText}>Cancel</Text>
+            </Pressable>
+            <Pressable style={[styles.publishButton, publishing && styles.saveButtonDisabled]} onPress={publish} disabled={publishing}>
+              {publishing ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishButtonText}>Yes, publish now</Text>}
+            </Pressable>
+          </View>
+        </>
+      )}
+      {publishError && <Text style={styles.saveError}>{publishError}</Text>}
+    </View>
   );
 }
 
@@ -1706,6 +1826,18 @@ const styles = StyleSheet.create({
   },
   tertiaryButtonText: { color: INK, fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   perRow: { flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 20 },
+  publishButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: INK,
+    borderRadius: 999,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    minWidth: 140,
+    alignItems: 'center',
+  },
+  publishButtonText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  publishConfirmText: { fontSize: 14, color: INK },
+  publishConfirmRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   bigPrice: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   textLink: { fontSize: 14, color: INK, textDecorationLine: 'underline' },

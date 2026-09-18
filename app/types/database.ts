@@ -63,6 +63,7 @@ export type Database = {
           price_unit: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at: string | null
           product_url: string
+          published: boolean
           quantity_estimated: boolean
           reviewed_at: string | null
           reviewed_by: string | null
@@ -94,6 +95,7 @@ export type Database = {
           price_unit?: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at?: string | null
           product_url: string
+          published?: boolean
           quantity_estimated?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -125,6 +127,7 @@ export type Database = {
           price_unit?: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at?: string | null
           product_url?: string
+          published?: boolean
           quantity_estimated?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -228,6 +231,27 @@ export type Database = {
         }
         Relationships: []
       }
+      published_week: {
+        Row: {
+          flyer_valid_from: string
+          flyer_valid_to: string
+          id: number
+          published_at: string
+        }
+        Insert: {
+          flyer_valid_from: string
+          flyer_valid_to: string
+          id?: number
+          published_at?: string
+        }
+        Update: {
+          flyer_valid_from?: string
+          flyer_valid_to?: string
+          id?: number
+          published_at?: string
+        }
+        Relationships: []
+      }
       recipe_ratings: {
         Row: {
           created_at: string
@@ -266,7 +290,10 @@ export type Database = {
           calories: number | null
           created_at: string
           deal_tags: Json | null
+          draft_deal_tags: Json
+          draft_price: number | null
           featured: boolean
+          featured_next: boolean
           id: string
           ingredients: Json
           instructions: Json
@@ -286,7 +313,10 @@ export type Database = {
           calories?: number | null
           created_at?: string
           deal_tags?: Json | null
+          draft_deal_tags?: Json
+          draft_price?: number | null
           featured?: boolean
+          featured_next?: boolean
           id?: string
           ingredients: Json
           instructions: Json
@@ -306,7 +336,10 @@ export type Database = {
           calories?: number | null
           created_at?: string
           deal_tags?: Json | null
+          draft_deal_tags?: Json
+          draft_price?: number | null
           featured?: boolean
+          featured_next?: boolean
           id?: string
           ingredients?: Json
           instructions?: Json
@@ -735,6 +768,13 @@ export type Database = {
           source: string
         }[]
       }
+      flyer_week_of: {
+        Args: { p_published: boolean }
+        Returns: {
+          valid_from: string
+          valid_to: string
+        }[]
+      }
       normalize_words: { Args: { txt: string }; Returns: string[] }
       parse_unit_amount: {
         Args: { quantity: string; unit_text: string }
@@ -746,11 +786,24 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      publish_week: {
+        Args: never
+        Returns: {
+          deals_published: number
+          deals_still_pending: number
+          recipes_featured: number
+          week_from: string
+          week_to: string
+        }[]
+      }
       reference_match_score: {
         Args: { ing_words: string[]; staple_words: string[] }
         Returns: number
       }
-      refresh_recipe_deal_tags: { Args: never; Returns: undefined }
+      refresh_recipe_deal_tags: {
+        Args: { p_published?: boolean }
+        Returns: undefined
+      }
       refresh_recipe_nutrition: { Args: never; Returns: undefined }
       refresh_recipe_rating: {
         Args: { target_recipe_id: string }

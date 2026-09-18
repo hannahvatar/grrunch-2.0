@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
+import { AlertBanner } from '../../components/AlertBanner';
 import { MealCard } from '../../components/MealCard';
+import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeekExpired } from '../../lib/liveWeek';
 import type { Meal } from '../../lib/mealData';
 import { type MealSortMode, sortMealsByBestDeal, sortMealsByPrice } from '../../lib/mealScaling';
 import { fetchAllRecipes } from '../../lib/recipes';
@@ -68,6 +70,9 @@ function eligibleMeals(allMeals: Meal[], sortMode: MealSortMode): Meal[] {
 export default function MealsScreen() {
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { isSubscribed } = useSubscription();
+  // Last week's flyers have ended but this week isn't published yet --
+  // see lib/liveWeek.ts.
+  const weekExpired = useLiveWeekExpired();
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,6 +147,10 @@ export default function MealsScreen() {
             )}
           </View>
         </View>
+
+        {weekExpired && (
+          <AlertBanner variant="info" title={FRESH_DEALS_BANNER_TITLE} description={FRESH_DEALS_BANNER_BODY} />
+        )}
 
         {sortedMeals.length === 0 && (
           <View style={styles.emptyState}>

@@ -172,6 +172,7 @@ interface Database {
           original_price_source: OriginalPriceSource;
           usage: DealUsage;
           zone: string | null;
+          published: boolean;
         };
         Insert: never;
         Update: {
@@ -197,7 +198,7 @@ interface Database {
     };
     Views: Record<string, never>;
     Functions: {
-      refresh_recipe_deal_tags: { Args: Record<string, never>; Returns: void };
+      refresh_recipe_deal_tags: { Args: { p_published?: boolean }; Returns: void };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
@@ -410,8 +411,11 @@ export default {
     // to the function's own console (visible in the Supabase dashboard)
     // instead; the next successful save/migration-triggered refresh
     // still catches up any recipe this one missed.
+    // Re-prices only the week this deal belongs to (20260918 weekly
+    // publish): saving a DRAFT deal updates recipes.draft_deal_tags for
+    // dev-recipes' "Next week" view, never the live prices shoppers see.
     EdgeRuntime.waitUntil(
-      ctx.supabaseAdmin.rpc("refresh_recipe_deal_tags").then(({ error: refreshError }) => {
+      ctx.supabaseAdmin.rpc("refresh_recipe_deal_tags", { p_published: updated.published }).then(({ error: refreshError }) => {
         if (refreshError) {
           console.error("refresh_recipe_deal_tags failed after deal save:", deal_id, refreshError.message);
         }
