@@ -137,6 +137,40 @@ def fetch_airtable_records():
     return fetch_airtable_table("Deals")
 
 
+def newest_synced_flyer_week():
+    """Newest flyer_valid_from already in curated_deals from the main
+    flyer path, or None if the table is empty. Produce-gap rows are left
+    out (product_url='' is resolve_produce_gaps()'s own fingerprint) --
+    they don't come from a flyer week of their own."""
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/curated_deals?select=flyer_valid_from&product_url=neq."
+        "&order=flyer_valid_from.desc&limit=1",
+        headers={"apikey": SERVICE_ROLE, "Authorization": f"Bearer {SERVICE_ROLE}"},
+    )
+    with urllib.request.urlopen(req) as resp:
+        rows = json.loads(resp.read())
+    return rows[0]["flyer_valid_from"] if rows else None
+
+
+def has_new_flyer_week(records):
+    """Whether Airtable holds a newer flyer week than curated_deals does.
+
+    The sync wipes curated_deals and reloads it from Airtable, so running
+    it with no new flyers scanned in re-imports the SAME week as fresh
+    'pending' rows -- throwing away that week's review in dev-deals.tsx
+    (splits, prices, references, approvals). Found 2026-09-18, the day the
+    Thursday GitHub Actions run (.github/workflows/sync-weekly-deals.yml)
+    first got working secrets while Airtable still held only the
+    2026-08-13 week; the next scheduled run would have wiped it."""
+    airtable_weeks = [r["fields"].get("flyer_valid_from") for r in records]
+    airtable_newest = max((w for w in airtable_weeks if w), default=None)
+    synced_newest = newest_synced_flyer_week()
+    print(f"newest flyer week -- Airtable: {airtable_newest}, curated_deals: {synced_newest}")
+    if airtable_newest is None:
+        return False
+    return synced_newest is None or airtable_newest > synced_newest
+
+
 def wipe_airtable_table(table_name):
     """Deletes every record in an Airtable table. Airtable's batch delete
     takes at most 10 record ids per request."""
@@ -956,6 +990,11 @@ def refresh_deal_tags():
 
 if __name__ == "__main__":
     records = fetch_airtable_records()
+    # SYNC_FORCE=1 re-imports even the same week (e.g. after fixing rows in
+    # Airtable on purpose) -- it still wipes that week's review.
+    if not has_new_flyer_week(records) and os.environ.get("SYNC_FORCE") != "1":
+        print("No new flyer week in Airtable -- skipped, nothing changed. Set SYNC_FORCE=1 to re-import anyway.")
+        raise SystemExit(0)
     usable = sync_curated_deals(records)
     resolve_produce_gaps()  # pull in any prices filled in since last run first,
     # so nothing approved-but-not-yet-processed is lost to the wipe below --
