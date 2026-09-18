@@ -78,28 +78,43 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
 const NO_ZONE = '__no_zone__';
 
 // The unit half of "Price is per [quantity] [unit]" on the item page.
-type PerUnit = 'g' | 'kg' | 'lb' | 'each';
+// ml / L added for liquids (Anabelle: "we are missing ml from the
+// dropdown quantity units", on Unico capers 125 mL / pepper rings 750 mL)
+// -- saved as package_volume_ml, which recipe pricing already reads.
+type PerUnit = 'g' | 'kg' | 'lb' | 'ml' | 'L' | 'each';
 const PER_UNIT_OPTIONS: { value: PerUnit; label: string }[] = [
   { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
   { value: 'lb', label: 'lb' },
+  { value: 'ml', label: 'ml' },
+  { value: 'L', label: 'L' },
   { value: 'each', label: 'each' },
 ];
 const GRAMS_PER_LB = 453.592;
 
 // "per 1 lb" / "per 1 kg" are rates (price_unit lb/kg); any other amount
 // ("per 665 g", "per 5 lb") is a whole package of that weight (price_unit
-// package + package_weight_g). A blank amount in grams is a package of
-// unknown size.
-function toStoredPrice(qty: number | null, unit: PerUnit): { priceUnit: PriceUnit; weightG: number | null } {
-  if (unit === 'each') return { priceUnit: 'each', weightG: null };
+// package + package_weight_g). ml / L is always a package of that volume
+// (package + package_volume_ml) -- there's no per-litre rate unit. A blank
+// amount in grams or ml is a package of unknown size.
+function toStoredPrice(
+  qty: number | null,
+  unit: PerUnit
+): { priceUnit: PriceUnit; weightG: number | null; volumeMl: number | null } {
+  if (unit === 'each') return { priceUnit: 'each', weightG: null, volumeMl: null };
   if (unit === 'lb') {
-    return qty === null || qty === 1 ? { priceUnit: 'lb', weightG: null } : { priceUnit: 'package', weightG: Math.round(qty * GRAMS_PER_LB) };
+    return qty === null || qty === 1
+      ? { priceUnit: 'lb', weightG: null, volumeMl: null }
+      : { priceUnit: 'package', weightG: Math.round(qty * GRAMS_PER_LB), volumeMl: null };
   }
   if (unit === 'kg') {
-    return qty === null || qty === 1 ? { priceUnit: 'kg', weightG: null } : { priceUnit: 'package', weightG: Math.round(qty * 1000) };
+    return qty === null || qty === 1
+      ? { priceUnit: 'kg', weightG: null, volumeMl: null }
+      : { priceUnit: 'package', weightG: Math.round(qty * 1000), volumeMl: null };
   }
-  return { priceUnit: 'package', weightG: qty === null ? null : Math.round(qty) };
+  if (unit === 'ml') return { priceUnit: 'package', weightG: null, volumeMl: qty === null ? null : Math.round(qty) };
+  if (unit === 'L') return { priceUnit: 'package', weightG: null, volumeMl: qty === null ? null : Math.round(qty * 1000) };
+  return { priceUnit: 'package', weightG: qty === null ? null : Math.round(qty), volumeMl: null };
 }
 
 // The stored pair, back as what the "Price is per" row shows. A package
@@ -114,11 +129,14 @@ function fromStoredPrice(deal: CuratedDeal, itemName: string): { qty: string; un
   if (deal.price_unit === '100g') return { qty: '100', unit: 'g' };
   if (deal.price_unit === 'each') return { qty: '', unit: 'each' };
   if (deal.package_weight_g != null) return { qty: String(deal.package_weight_g), unit: 'g' };
-  const fromName = priceBasis('package', deal, itemName, null);
+  if (deal.package_volume_ml != null) return { qty: String(deal.package_volume_ml), unit: 'ml' };
+  const fromName = priceBasis('package', deal, itemName, null, null);
   if (fromName.unit === 'g') return { qty: fromName.quantity, unit: 'g' };
   // In grams even for "1 KG" -- "per 1 kg" would save as a per-kg rate,
   // not a 1 kg package (see toStoredPrice).
   if (fromName.unit === 'kg') return { qty: String(Math.round(parseFloat(fromName.quantity) * 1000)), unit: 'g' };
+  if (fromName.unit === 'ml') return { qty: fromName.quantity, unit: 'ml' };
+  if (fromName.unit === 'L') return { qty: String(Math.round(parseFloat(fromName.quantity) * 1000)), unit: 'ml' };
   return { qty: '', unit: 'g' };
 }
 
@@ -773,7 +791,9 @@ function priceBasis(
   // The package size in grams as currently entered in "Fix it" (starts
   // as the stored package_weight_g) -- wins over anything read off the
   // name.
-  packageWeightG: number | null
+  packageWeightG: number | null,
+  // Same, for a liquid's package size in ml (package_volume_ml).
+  packageVolumeMl: number | null
 ): { quantity: string; unit: string; label: string; sizeNote?: string } {
   if (unit === 'lb') return { quantity: '1', unit: 'lb', label: 'lb' };
   if (unit === 'kg') return { quantity: '1', unit: 'kg', label: 'kg' };
@@ -782,8 +802,8 @@ function priceBasis(
   if (packageWeightG) {
     return { quantity: String(packageWeightG), unit: 'g', label: `${packageWeightG} g` };
   }
-  if (deal.package_volume_ml) {
-    return { quantity: String(deal.package_volume_ml), unit: 'ml', label: `package (${deal.package_volume_ml} ml)` };
+  if (packageVolumeMl) {
+    return { quantity: String(packageVolumeMl), unit: 'ml', label: `${packageVolumeMl} ml` };
   }
   // Read off the flyer name as a last resort, labelled plain "package"
   // (the title already shows the cutout's own size text). For a size
@@ -1040,8 +1060,8 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
     parsedPrevious !== null && Number.isFinite(parsedPrevious) && parsedPrevious > 0 ? parsedPrevious : null;
   const parsedQty = perQtyText.trim() === '' ? null : parseFloat(perQtyText);
   const perQty = parsedQty !== null && Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : null;
-  const { priceUnit, weightG } = toStoredPrice(perQty, perUnit);
-  const basis = priceBasis(priceUnit, deal, itemName, weightG);
+  const { priceUnit, weightG, volumeMl } = toStoredPrice(perQty, perUnit);
+  const basis = priceBasis(priceUnit, deal, itemName, weightG, volumeMl);
 
   // The StatCan item shown for approval: one picked from search, else
   // the automatic match (the pick the app's own pricing engine would
@@ -1092,6 +1112,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
     if (weightG !== null && weightG < 10) {
       return { error: 'That quantity is under 10 g -- no real package is that small, so check the unit.' };
     }
+    if (volumeMl !== null && volumeMl < 5) {
+      return { error: 'That quantity is under 5 ml -- no real package is that small, so check the unit.' };
+    }
     const original = resolvedOriginal();
     return {
       body: {
@@ -1117,6 +1140,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
               : weightG === deal.package_weight_g
                 ? deal.package_weight_g_source
                 : 'label',
+        // A package is priced by weight OR volume -- whichever unit was
+        // picked; the other is cleared.
+        package_volume_ml: priceUnit === 'package' ? volumeMl : deal.package_volume_ml,
         // No longer asked on this screen -- sent back exactly as stored.
         quantity_estimated: deal.quantity_estimated,
         zone: deal.zone,

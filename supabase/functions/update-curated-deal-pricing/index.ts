@@ -16,6 +16,7 @@
 //     price_unit: 'package' | 'each' | 'lb' | 'kg' | '100g',
 //     package_weight_g: number | null,
 //     package_weight_g_source: 'label' | 'measured' | 'estimated' | null,
+//     package_volume_ml?: number | null,
 //     quantity_estimated: boolean,
 //     original_price_source: 'flyer' | 'reference',
 //     usage: 'recipes' | 'deals' | 'both',
@@ -24,6 +25,13 @@
 //     zone?: string | null,
 //   }
 //   -> 200 { deal: CuratedDealRow }
+//
+// package_volume_ml (optional; omitted = leave the stored value alone)
+// is the liquid counterpart of package_weight_g -- dev-deals.tsx's
+// "Price is per [qty] [ml|L]" (Anabelle: "we are missing ml from the
+// dropdown quantity units", on Unico capers 125 mL / pepper rings 750 mL).
+// The column already existed and recipe pricing already reads it; only
+// this review path couldn't set it.
 //
 // keyword_matches: human-curated generic-category tags (e.g. "chicken
 // breast", "beans") checked by refresh_recipe_deal_tags()'s keyword
@@ -158,6 +166,7 @@ interface Database {
           price_unit: DealPriceUnit;
           package_weight_g: number | null;
           package_weight_g_source: PackageWeightSource | null;
+          package_volume_ml: number | null;
           quantity_estimated: boolean;
           pricing_reviewed_at: string | null;
           original_price_source: OriginalPriceSource;
@@ -172,6 +181,7 @@ interface Database {
           price_unit?: DealPriceUnit;
           package_weight_g?: number | null;
           package_weight_g_source?: PackageWeightSource | null;
+          package_volume_ml?: number | null;
           quantity_estimated?: boolean;
           pricing_reviewed_at?: string | null;
           original_price_source?: OriginalPriceSource;
@@ -202,6 +212,7 @@ interface RequestBody {
   price_unit?: unknown;
   package_weight_g?: unknown;
   package_weight_g_source?: unknown;
+  package_volume_ml?: unknown;
   quantity_estimated?: unknown;
   original_price_source?: unknown;
   usage?: unknown;
@@ -236,6 +247,7 @@ export default {
       price_unit,
       package_weight_g,
       package_weight_g_source,
+      package_volume_ml,
       quantity_estimated,
       original_price_source,
       usage,
@@ -283,6 +295,15 @@ export default {
         !PACKAGE_WEIGHT_SOURCES.includes(package_weight_g_source as PackageWeightSource))
     ) {
       return validationError(`package_weight_g_source must be null or one of: ${PACKAGE_WEIGHT_SOURCES.join(", ")}.`);
+    }
+    if (
+      package_volume_ml !== undefined &&
+      package_volume_ml !== null &&
+      (typeof package_volume_ml !== "number" || package_volume_ml < 5)
+    ) {
+      return validationError(
+        "package_volume_ml must be null or a number of millilitres (5 or more) -- if you meant litres, convert first (1 L = 1000 ml).",
+      );
     }
     if (typeof quantity_estimated !== "boolean") {
       return validationError("quantity_estimated must be a boolean.");
@@ -348,6 +369,7 @@ export default {
         price_unit: price_unit as DealPriceUnit,
         package_weight_g: package_weight_g as number | null,
         package_weight_g_source: package_weight_g_source as PackageWeightSource | null,
+        ...(package_volume_ml !== undefined ? { package_volume_ml: package_volume_ml as number | null } : {}),
         quantity_estimated,
         original_price_source: original_price_source as OriginalPriceSource,
         usage: usage as DealUsage,
