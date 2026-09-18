@@ -22,8 +22,11 @@ import {
   selectVisibleDeals,
   showsRealDiscount,
 } from '../../lib/curatedDeals';
+import { AlertBanner } from '../../components/AlertBanner';
+import { ExpiredBadge } from '../../components/ExpiredBadge';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
+import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeekExpired } from '../../lib/liveWeek';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSelectedStores } from '../../lib/selectedStores';
 import { useSubscription } from '../../lib/subscription';
@@ -60,6 +63,9 @@ export default function BestDealsScreen() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const { selectedDealIds, toggleDealSelected } = useSelectedDeals();
   const { stores: myStores } = useSelectedStores();
+  // Last week's flyers have ended but this week isn't published yet --
+  // see lib/liveWeek.ts.
+  const weekExpired = useLiveWeekExpired();
 
   // Excludes a deal only when it's actually zone-tagged AND that tag
   // disagrees with the zone the user's own selected store (for that same
@@ -128,9 +134,15 @@ export default function BestDealsScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Weekly Deals</Text>
-        <Text style={styles.tagline}>We checked this week's flyers. These deals made the cut.</Text>
+        {weekExpired && (
+          <AlertBanner variant="info" title={FRESH_DEALS_BANNER_TITLE} description={FRESH_DEALS_BANNER_BODY} />
+        )}
+        {!weekExpired && (
+          <Text style={styles.tagline}>We checked this week's flyers. These deals made the cut.</Text>
+        )}
         <Text style={styles.subtitle}>
-          {deals.length} deal{deals.length === 1 ? '' : 's'} this week · {categories.length} categor
+          {deals.length} deal{deals.length === 1 ? '' : 's'} {weekExpired ? "from last week's flyers" : 'this week'} ·{' '}
+          {categories.length} categor
           {categories.length === 1 ? 'y' : 'ies'}
         </Text>
 
@@ -222,7 +234,9 @@ export default function BestDealsScreen() {
                                 discount/great-value/fair-price badge, now
                                 inline beside the price like IngredientRow's
                                 own default (non-stacked) priceEl. */}
-                            {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
+                            {weekExpired ? (
+                              <ExpiredBadge />
+                            ) : showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
                               <View style={styles.dealBadge}>
                                 <Text style={styles.dealBadgeText}>{formatRealDiscountLabel(deal.discountPct)}</Text>
                               </View>

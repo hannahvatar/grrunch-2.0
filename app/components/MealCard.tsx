@@ -10,7 +10,9 @@ import {
   showsRealDiscount,
   toTitleCase,
 } from '../lib/curatedDeals';
+import { useLiveWeekExpired } from '../lib/liveWeek';
 import type { Meal } from '../lib/mealData';
+import { ExpiredBadge } from './ExpiredBadge';
 import { AvocadoBeanIcon, RestaurantIcon } from './MaterialSymbols';
 import { getRecipeImage } from '../lib/recipeImages';
 
@@ -27,12 +29,18 @@ interface MealCardProps {
   // what onToggleSelected actually does when locked (meals.tsx routes to
   // /upgrade instead of calling toggleSelected).
   locked?: boolean;
+  // Overrides the live-week expiry (lib/liveWeek.ts) -- dev-recipes' "Next
+  // week" view passes false, since those prices come from the fresh draft
+  // deals, not last week's.
+  dealsExpired?: boolean;
 }
 
 // One recipe card as shown on the Meals tab -- shared with app/dev-
 // recipes.tsx (a __DEV__-only, no-login recipe review screen) so a
 // recipe looks identical in both places and never drifts between them.
-export function MealCard({ meal, isSelected, onToggleSelected, locked }: MealCardProps) {
+export function MealCard({ meal, isSelected, onToggleSelected, locked, dealsExpired }: MealCardProps) {
+  const weekExpired = useLiveWeekExpired();
+  const expired = dealsExpired ?? weekExpired;
   return (
     <View style={styles.mealCardOuter}>
       <View pointerEvents="none" style={styles.mealCardShadow} />
@@ -100,7 +108,9 @@ export function MealCard({ meal, isSelected, onToggleSelected, locked }: MealCar
             <View style={styles.dealTagsRow}>
               {meal.dealTags.map((dealTag) => (
                 <View key={dealTag.name} style={styles.dealTagRow}>
-                  {showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
+                  {expired ? (
+                    <ExpiredBadge />
+                  ) : showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) ? (
                     <View style={styles.dealTagBadge}>
                       <Text style={styles.dealTagBadgeText}>{formatRealDiscountLabel(dealTag.discountPct)}</Text>
                     </View>

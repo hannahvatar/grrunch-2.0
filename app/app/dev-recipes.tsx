@@ -4,13 +4,23 @@ import { StarIcon } from 'react-native-heroicons/outline';
 import { StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
 
 import { MealCard } from '../components/MealCard';
+import { SegmentedControl } from '../components/SegmentedControl';
 import type { Meal } from '../lib/mealData';
-import { fetchAllRecipes } from '../lib/recipes';
+import { fetchAllRecipes, type RecipeWeek } from '../lib/recipes';
 import { supabase } from '../lib/supabase';
 import { useSelectedMeals } from '../lib/selectedMeals';
 
 const INK = '#111';
 const ACCENT = '#FFA955';
+
+// Live week = what shoppers see now (recipes.featured, prices from the
+// published deals). Next week = the draft being built (featured_next,
+// prices from the draft deals) -- dev-deals' "Publish week" makes it live
+// (supabase/migrations/20260918010000_weekly_publish.sql).
+const WEEK_OPTIONS: { value: RecipeWeek; label: string }[] = [
+  { value: 'next', label: 'Next week (draft)' },
+  { value: 'live', label: 'Live week' },
+];
 
 // Internal-only recipe review screen -- every recipe, exactly as the
 // Meals tab renders it (same MealCard component), with no login and no
@@ -27,6 +37,7 @@ const ACCENT = '#FFA955';
 // anything in a real build, even if someone finds the URL.
 export default function DevRecipesScreen() {
   const { selectedIds, toggleSelected } = useSelectedMeals();
+  const [week, setWeek] = useState<RecipeWeek>('next');
   const [meals, setMeals] = useState<Meal[]>([]);
   // Anabelle: "reoder (just on this page) per newest first so its
   // easier for me to review recipes". fetchAllRecipes()'s Meal type
@@ -65,13 +76,13 @@ export default function DevRecipesScreen() {
       id?: string;
       featured?: boolean;
       error?: string;
-    }>('toggle-recipe-featured', { body: { recipe_id: meal.id, featured: nextFeatured } });
+    }>('toggle-recipe-featured', { body: { recipe_id: meal.id, featured: nextFeatured, week } });
     setTogglingIds((prev) => {
       const next = new Set(prev);
       next.delete(meal.id);
       return next;
     });
-    if (invokeError || typeof data?.featured !== 'boolean') {
+    if (invokeError || !data?.id) {
       // Revert -- and unwrap the real error message. Same gotcha as
       // dev-deals.tsx's own submit(): supabase-js only populates `data`
       // for a real 2xx response, so a validation error's actual message
@@ -92,8 +103,9 @@ export default function DevRecipesScreen() {
   }
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
-      fetchAllRecipes(),
+      fetchAllRecipes(week),
       supabase
         .from('recipes')
         .select('id, updated_at')
@@ -105,7 +117,7 @@ export default function DevRecipesScreen() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [week]);
 
   if (!__DEV__) {
     return (
@@ -147,7 +159,12 @@ export default function DevRecipesScreen() {
           <Text style={styles.devBannerText}>DEV ONLY -- no login, no free-tier limit</Text>
         </View>
         <Text style={styles.title}>All Recipes</Text>
-        <Text style={styles.subtitle}>Newest first</Text>
+        <SegmentedControl wrap options={WEEK_OPTIONS} value={week} onChange={setWeek} />
+        <Text style={styles.subtitle}>
+          {week === 'next'
+            ? `${meals.filter((m) => m.featured).length} featured for next week · prices from the draft deals · newest first`
+            : `${meals.filter((m) => m.featured).length} featured this week · live prices · newest first`}
+        </Text>
 
         {sorted.map((meal) => (
           <View key={meal.id} style={styles.recipeBlock}>
@@ -155,7 +172,15 @@ export default function DevRecipesScreen() {
               style={[styles.featureToggle, meal.featured && styles.featureToggleActive]}
               onPress={() => handleToggleFeatured(meal)}
               disabled={togglingIds.has(meal.id)}
-              accessibilityLabel={meal.featured ? 'Featured this week' : 'Feature this week'}
+              accessibilityLabel={
+                week === 'next'
+                  ? meal.featured
+                    ? 'Featured next week'
+                    : 'Feature next week'
+                  : meal.featured
+                    ? 'Featured this week'
+                    : 'Feature this week'
+              }
             >
               {togglingIds.has(meal.id) ? (
                 <ActivityIndicator size="small" color={meal.featured ? INK : '#888'} />
@@ -169,6 +194,7 @@ export default function DevRecipesScreen() {
               meal={meal}
               isSelected={selectedIds.has(meal.id)}
               onToggleSelected={() => toggleSelected(meal.id)}
+              dealsExpired={week === 'next' ? false : undefined}
             />
           </View>
         ))}
@@ -191,7 +217,7 @@ const styles = StyleSheet.create({
   },
   devBannerText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold', marginTop: -8 },
+  subtitle: { fontSize: 14, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   recipeBlock: { gap: 8 },
   featureToggle: {
     alignSelf: 'flex-start',

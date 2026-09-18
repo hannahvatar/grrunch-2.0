@@ -27,9 +27,9 @@ interface Database {
   public: {
     Tables: {
       recipes: {
-        Row: { id: string; featured: boolean };
+        Row: { id: string; featured: boolean; featured_next: boolean };
         Insert: never;
-        Update: { featured?: boolean };
+        Update: { featured?: boolean; featured_next?: boolean };
         Relationships: [];
       };
     };
@@ -43,6 +43,10 @@ interface Database {
 interface RequestBody {
   recipe_id?: unknown;
   featured?: unknown;
+  // 'live' (default) toggles recipes.featured -- what shoppers see now.
+  // 'next' toggles recipes.featured_next -- the set being built for the
+  // draft week, which publish_week() makes live (20260918 weekly publish).
+  week?: unknown;
 }
 
 function validationError(message: string) {
@@ -58,7 +62,7 @@ export default {
       return validationError("Request body must be valid JSON.");
     }
 
-    const { recipe_id, featured } = body;
+    const { recipe_id, featured, week = "live" } = body;
 
     if (typeof recipe_id !== "string" || recipe_id.length === 0) {
       return validationError("recipe_id is required.");
@@ -66,14 +70,17 @@ export default {
     if (typeof featured !== "boolean") {
       return validationError("featured must be a boolean.");
     }
+    if (week !== "live" && week !== "next") {
+      return validationError("week must be 'live' or 'next'.");
+    }
 
     // ctx.supabaseAdmin bypasses RLS -- see the header comment above for
     // why that's needed here.
     const { data: updated, error } = await ctx.supabaseAdmin
       .from("recipes")
-      .update({ featured })
+      .update(week === "next" ? { featured_next: featured } : { featured })
       .eq("id", recipe_id)
-      .select("id, featured")
+      .select("id, featured, featured_next")
       .single();
 
     if (error) {
