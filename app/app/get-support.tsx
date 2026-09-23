@@ -32,7 +32,7 @@ export default function GetSupportScreen() {
 
   async function handleContactUs() {
     if (!SUPPORT_EMAIL) {
-      Alert.alert('Not set up yet', "Email support isn't available yet — check back soon.");
+      Alert.alert('Not set up yet', "Email support isn't available yet. Check back soon.");
       return;
     }
     const url = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Grrunch support')}`;
