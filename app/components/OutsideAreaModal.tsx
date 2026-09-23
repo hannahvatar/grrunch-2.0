@@ -125,8 +125,10 @@ export function OutsideAreaModal({
               {/* Same link treatment as location.tsx's "Skip for now"
                   (16px SemiBold, INK, trailing arrow, no underline) --
                   Anabelle, 2026-09-23. */}
+              {/* Prefix on its own line -- all on one row is too wide
+                  for an iPhone and pushed the arrow onto a line alone. */}
+              <Text style={styles.retryPrefix}>Already in BC?</Text>
               <Pressable style={styles.retryButton} onPress={onRetryLocation} hitSlop={8}>
-                <Text style={styles.retryPrefix}>Already in BC?</Text>
                 <Text style={styles.retryText}>Try your location again</Text>
                 <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
               </Pressable>
@@ -171,14 +173,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  retryButton: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  retryPrefix: { fontSize: 16, color: INK },
+  retryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: -8 },
+  retryPrefix: { fontSize: 16, color: INK, textAlign: 'center', marginTop: 4 },
   retryText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });

@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { useAuth } from './auth';
 import { fetchProfile } from './profile';
@@ -75,12 +76,21 @@ export function useServiceArea() {
   // The device position behind a location-based answer (null when the
   // postal code decided it) -- passed along to the waitlist if they join.
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  // Location was denied and iOS/Android won't show the prompt again
+  // (canAskAgain false) -- only Settings can turn it back on, so the
+  // caller offers "Open Settings" instead of a button that silently does
+  // nothing (caught testing on the simulator, 2026-09-23).
+  const [locationBlocked, setLocationBlocked] = useState(false);
+  // Bumped when the app comes back to the foreground, to re-run the
+  // check after a trip to Settings.
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const statusFromLocation = useCallback(async (askPermission: boolean): Promise<ServiceAreaStatus> => {
     try {
       const permission = askPermission
         ? await Location.requestForegroundPermissionsAsync()
         : await Location.getForegroundPermissionsAsync();
+      setLocationBlocked(permission.status !== 'granted' && !permission.canAskAgain);
       if (permission.status !== 'granted') {
         return 'unknown';
       }
@@ -110,7 +120,14 @@ export function useServiceArea() {
     return () => {
       cancelled = true;
     };
-  }, [userId, statusFromLocation]);
+  }, [userId, statusFromLocation, refreshKey]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setRefreshKey((key) => key + 1);
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Explicit "Use my location" tap from the 'unknown' state -- the one
   // path here allowed to show the system permission prompt.
@@ -119,5 +136,5 @@ export function useServiceArea() {
     setStatus(await statusFromLocation(true));
   }, [statusFromLocation]);
 
-  return { status, coords, checkWithLocation };
+  return { status, coords, locationBlocked, checkWithLocation };
 }

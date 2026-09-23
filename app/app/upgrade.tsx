@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon, LockOpenIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
@@ -76,7 +76,7 @@ export default function UpgradeScreen() {
   // is only offered once the postal code or device location says BC (see
   // lib/serviceArea.ts). Guests aren't checked here: their button only
   // leads to /login, and they're checked on the way back.
-  const { status: areaStatus, coords: areaCoords, checkWithLocation } = useServiceArea();
+  const { status: areaStatus, coords: areaCoords, locationBlocked, checkWithLocation } = useServiceArea();
   const inServiceArea = isGuest || areaStatus === 'in';
   const [waitlistVisible, setWaitlistVisible] = useState(false);
   // Anabelle, 2026-09-15: "Instead of offering a monthly price point i
@@ -264,11 +264,23 @@ export default function UpgradeScreen() {
                 <AlertBanner
                   variant="info"
                   title="Grrunch is BC only for now"
-                  description="Use your location, or add a BC postal code in Manage account, to start your trial."
+                  description={
+                    locationBlocked
+                      ? 'Turn on location in Settings, or add a BC postal code in Manage account, to start your trial.'
+                      : 'Use your location, or add a BC postal code in Manage account, to start your trial.'
+                  }
                   style={styles.areaBanner}
                 />
-                <Pressable style={styles.secondaryButton} onPress={checkWithLocation}>
-                  <Text style={styles.secondaryButtonText}>Use my location</Text>
+                {/* Once location is denied the system prompt never
+                    shows again, so the only way back is Settings --
+                    same as location.tsx's own "Open Settings" button. */}
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={locationBlocked ? () => Linking.openSettings() : checkWithLocation}
+                >
+                  <Text style={styles.secondaryButtonText}>
+                    {locationBlocked ? 'Open Settings' : 'Use my location'}
+                  </Text>
                 </Pressable>
               </>
             )}
