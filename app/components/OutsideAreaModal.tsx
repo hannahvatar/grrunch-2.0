@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text } from 'react-native';
+import { ArrowRightIcon } from 'react-native-heroicons/outline';
 
 import { useAuth } from '../lib/auth';
 import { isValidEmail, joinWaitlist, WaitlistSource } from '../lib/waitlist';
@@ -121,12 +122,14 @@ export function OutsideAreaModal({
                   <Text style={styles.primaryButtonText}>Join the waitlist</Text>
                 )}
               </Pressable>
-              <Text style={styles.retryLine}>
-                Already in BC?{' '}
-                <Text style={styles.retryLink} onPress={onRetryLocation} suppressHighlighting>
-                  Try your location again
-                </Text>
-              </Text>
+              {/* Same link treatment as location.tsx's "Skip for now"
+                  (16px SemiBold, INK, trailing arrow, no underline) --
+                  Anabelle, 2026-09-23. */}
+              <Pressable style={styles.retryButton} onPress={onRetryLocation} hitSlop={8}>
+                <Text style={styles.retryPrefix}>Already in BC?</Text>
+                <Text style={styles.retryText}>Try your location again</Text>
+                <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
+              </Pressable>
             </>
           )}
         </Pressable>
@@ -168,6 +171,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  retryLine: { fontSize: 15, color: INK, textAlign: 'center' },
-  retryLink: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
+  retryButton: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  retryPrefix: { fontSize: 16, color: INK },
+  retryText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });
