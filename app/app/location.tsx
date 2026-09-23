@@ -97,7 +97,7 @@ export default function LocationScreen() {
         </View>
         <Text style={styles.title}>Find deals near you</Text>
         <Text style={styles.body}>
-          Grrunch can use your location to show nearby stores. This is optional — you can skip for now and
+          Grrunch can use your location to show nearby stores. This is optional. You can skip for now and
           turn it on anytime, right from here.
         </Text>
 
