@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { CheckIcon, LockOpenIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
+import { OutsideAreaModal } from '../components/OutsideAreaModal';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { useAuth } from '../lib/auth';
 import {
@@ -13,6 +14,7 @@ import {
   MONTHLY_PRICE_DISPLAY,
   usePurchases,
 } from '../lib/purchases';
+import { useServiceArea } from '../lib/serviceArea';
 import { useSubscription } from '../lib/subscription';
 
 type PlanPeriod = 'monthly' | 'annual';
@@ -69,6 +71,14 @@ export default function UpgradeScreen() {
   const { isGuest } = useAuth();
   const { isSubscribed: dbSubscribed, startTrial } = useSubscription();
   const { configured, offering, isSubscribed: purchasesSubscribed, purchase, restore } = usePurchases();
+  // BC only for now (Anabelle, 2026-09-23) -- the App Store can't limit a
+  // subscription below the country level, so the trial/purchase button
+  // is only offered once the postal code or device location says BC (see
+  // lib/serviceArea.ts). Guests aren't checked here: their button only
+  // leads to /login, and they're checked on the way back.
+  const { status: areaStatus, coords: areaCoords, checkWithLocation } = useServiceArea();
+  const inServiceArea = isGuest || areaStatus === 'in';
+  const [waitlistVisible, setWaitlistVisible] = useState(false);
   // Anabelle, 2026-09-15: "Instead of offering a monthly price point i
   // want to offer also an annual price point. $7.99 monthly or $69.99
   // annual" -- defaults to annual since it's the better deal (see
@@ -116,6 +126,9 @@ export default function UpgradeScreen() {
   async function handlePrimaryAction() {
     if (isGuest) {
       router.replace('/login');
+      return;
+    }
+    if (!inServiceArea) {
       return;
     }
     setError(null);
@@ -207,6 +220,7 @@ export default function UpgradeScreen() {
                 : `Then ${MONTHLY_PRICE_DISPLAY}/mo · Cancel anytime`}
           </Text>
         )}
+        {!alreadyMember && <Text style={styles.areaNote}>Available in British Columbia only</Text>}
         {error && (
           <AlertBanner
             variant="error"
@@ -227,14 +241,46 @@ export default function UpgradeScreen() {
         )}
         {!isSubscribed && (
           <View style={styles.actions}>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={handlePrimaryAction}
-              disabled={loading || restoring}
-            >
-              {loading ? (
-                <ActivityIndicator color={INK} />
-              ) : (
+            {!inServiceArea && areaStatus === 'checking' && <ActivityIndicator color={INK} />}
+            {/* Same wording as OutsideAreaModal (Anabelle, 2026-09-23);
+                the button opens that modal at its email step. */}
+            {!inServiceArea && areaStatus === 'outside' && (
+              <>
+                <AlertBanner
+                  variant="info"
+                  title="Grrunch isn’t in your area yet"
+                  description="We’re currently available in British Columbia, but we’re working on bringing Grrunch to the rest of Canada."
+                  style={styles.areaBanner}
+                />
+                <Pressable style={styles.primaryButton} onPress={() => setWaitlistVisible(true)}>
+                  <Text style={styles.primaryButtonText}>Join the waitlist</Text>
+                </Pressable>
+              </>
+            )}
+            {/* No postal code on the account and no location access --
+                ask for one rather than guessing either way. */}
+            {!inServiceArea && areaStatus === 'unknown' && (
+              <>
+                <AlertBanner
+                  variant="info"
+                  title="Grrunch is BC only for now"
+                  description="Use your location, or add a BC postal code in Manage account, to start your trial."
+                  style={styles.areaBanner}
+                />
+                <Pressable style={styles.secondaryButton} onPress={checkWithLocation}>
+                  <Text style={styles.secondaryButtonText}>Use my location</Text>
+                </Pressable>
+              </>
+            )}
+            {inServiceArea && (
+              <Pressable
+                style={styles.primaryButton}
+                onPress={handlePrimaryAction}
+                disabled={loading || restoring}
+              >
+                {loading ? (
+                  <ActivityIndicator color={INK} />
+                ) : (
                 // Always "Start 30-day free trial" -- was shortened for a
                 // guest (who hits /login first, not the trial itself,
                 // before handlePrimaryAction's own isGuest branch), but
@@ -244,9 +290,10 @@ export default function UpgradeScreen() {
                 // 2026-09-15, after asking for a differently-worded
                 // button elsewhere: "it should be consistent everywhere
                 // 'Start 30-day free trial'".
-                <Text style={styles.primaryButtonText}>Start 30-day free trial</Text>
-              )}
-            </Pressable>
+                  <Text style={styles.primaryButtonText}>Start 30-day free trial</Text>
+                )}
+              </Pressable>
+            )}
             {configured && !isGuest && (
               <Pressable onPress={handleRestore} disabled={loading || restoring} hitSlop={8}>
                 {restoring ? (
@@ -259,6 +306,17 @@ export default function UpgradeScreen() {
           </View>
         )}
       </View>
+      <OutsideAreaModal
+        visible={waitlistVisible}
+        onClose={() => setWaitlistVisible(false)}
+        onRetryLocation={() => {
+          setWaitlistVisible(false);
+          checkWithLocation();
+        }}
+        source="upgrade"
+        coords={areaCoords}
+        initialStep="email"
+      />
     </View>
   );
 }
@@ -357,5 +415,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // Same outline treatment as location.tsx's secondaryButton.
+  secondaryButton: {
+    alignSelf: 'stretch',
+    height: 56,
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
+    alignItems: 'center',
+  },
+  secondaryButtonText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
+  areaNote: { fontSize: 13, color: INK, marginTop: 4 },
+  areaBanner: { alignSelf: 'stretch' },
   restoreText: { fontSize: 13, color: '#767676', textDecorationLine: 'underline' },
 });

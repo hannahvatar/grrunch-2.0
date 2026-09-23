@@ -6,6 +6,8 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ArrowRightIcon, MapPinIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
+import { OutsideAreaModal } from '../components/OutsideAreaModal';
+import { isInBC } from '../lib/serviceArea';
 
 // GRRUNCH DS -- matches login.tsx/index.tsx's palette.
 const ACCENT = '#FFA955';
@@ -37,6 +39,10 @@ export default function LocationScreen() {
   const [statusMessage, setStatusMessage] = useState<{ title: string; description: string } | null>(null);
   const [permanentlyDenied, setPermanentlyDenied] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  // Set when the device location came back outside BC -- opens the
+  // "isn't in your area yet" waitlist modal, and is what gets stored
+  // (rounded) if they join.
+  const [outsideCoords, setOutsideCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   async function handleAllowLocation() {
     setStatusMessage(null);
@@ -60,6 +66,14 @@ export default function LocationScreen() {
         return;
       }
       const position = await Location.getCurrentPositionAsync({});
+      // BC only for now (Anabelle, 2026-09-23) -- stop here instead of
+      // forwarding coords that would only find stores outside the area
+      // the deals cover, and offer the waitlist instead. "Skip for now"
+      // still works, same as for anyone who declines location.
+      if (!isInBC(position.coords.latitude, position.coords.longitude)) {
+        setOutsideCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+        return;
+      }
       router.push({
         pathname: '/stores',
         params: {
@@ -123,6 +137,16 @@ export default function LocationScreen() {
           <Text style={styles.skipText}>Skip for now</Text>
           <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
         </Pressable>
+        <OutsideAreaModal
+          visible={outsideCoords !== null}
+          onClose={() => setOutsideCoords(null)}
+          onRetryLocation={() => {
+            setOutsideCoords(null);
+            handleAllowLocation();
+          }}
+          source="onboarding"
+          coords={outsideCoords}
+        />
       </View>
     </LinearGradient>
   );

@@ -696,6 +696,36 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          approx_lat: number | null
+          approx_lng: number | null
+          created_at: string
+          email: string
+          id: string
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          approx_lat?: number | null
+          approx_lng?: number | null
+          created_at?: string
+          email: string
+          id?: string
+          source: string
+          user_id?: string | null
+        }
+        Update: {
+          approx_lat?: number | null
+          approx_lng?: number | null
+          created_at?: string
+          email?: string
+          id?: string
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

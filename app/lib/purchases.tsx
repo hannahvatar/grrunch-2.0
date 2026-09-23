@@ -4,12 +4,17 @@ import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage } from 're
 
 import { useAuth } from './auth';
 
-// The Grrunch Plus entitlement identifier -- created in the RevenueCat
-// dashboard, attached to the Apple/Google subscription products there.
-// One entitlement today (single paid tier, now available on two billing
-// periods -- see the price constants below), same as subscriptions.status
-// only ever having one real "paid" state.
-const ENTITLEMENT_ID = 'grrunch_plus';
+// The Grrunch Membership entitlement identifier -- created in the
+// RevenueCat dashboard, attached to the Apple/Google subscription
+// products there. One entitlement today (single paid tier, now available
+// on two billing periods -- see the price constants below), same as
+// subscriptions.status only ever having one real "paid" state.
+// Deliberately named for the membership as a whole rather than a tier
+// (Anabelle, 2026-09-21): if basic/plus/premium levels ever land, they'd
+// be their own entitlements alongside this one, and a legacy
+// 'grrunch_plus' that actually meant "any subscriber" would read as one
+// of them. Must match the entitlement id in RevenueCat exactly.
+const ENTITLEMENT_ID = 'grrunch_membership';
 
 // Single source of truth for the two real price points (Anabelle,
 // 2026-09-15: "Instead of offering a monthly price point i want to offer
