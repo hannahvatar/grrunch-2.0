@@ -166,7 +166,7 @@ export default function ProfileScreen() {
       {storesLoaded && myStores.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
-            No stores yet — set your location to find nearby stores.
+            No stores yet. Set your location to find nearby stores.
           </Text>
           <Pressable style={styles.smallLinkButton} onPress={() => router.push('/location')}>
             <Text style={styles.smallLinkButtonText}>Set my location</Text>

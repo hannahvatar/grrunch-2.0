@@ -27,7 +27,7 @@ export interface FaqItem {
 // we are live and functional for all users" -- the real end-state
 // answer, once RevenueCat is actually configured and purchase() can run.
 const CANCEL_ANSWER_LIVE =
-  'From your Apple or Google account’s own subscription settings — the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly.';
+  'From your Apple or Google account’s own subscription settings, the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly.';
 
 // Today's reality: RevenueCat's keys aren't configured yet (Apple Dev
 // enrollment still pending verification), so purchase() never runs and
@@ -35,7 +35,7 @@ const CANCEL_ANSWER_LIVE =
 // in App Store/Play Store to cancel. Cancelling that trial is a real,
 // already-working in-app button instead (MembershipStatus.tsx).
 const CANCEL_ANSWER_PENDING =
-  'Once membership goes live, from your Apple or Google account’s own subscription settings — the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly. Purchases aren’t live yet, though: right now trials are cancelled in the app instead, from Profile > Membership > Cancel trial.';
+  'Once membership goes live, from your Apple or Google account’s own subscription settings, the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly. Purchases aren’t live yet, though: right now trials are cancelled in the app instead, from Profile > Membership > Cancel trial.';
 
 // Grounded in what's actually real about the app right now (matches
 // settings-detail.tsx's About copy / how-it-works.tsx / upgrade.tsx) --
@@ -71,7 +71,7 @@ export const FAQ_ITEMS: FaqItem[] = [
       // triggered from recipe.tsx's handleClose) -- surfaced here since
       // it's the real mechanic behind that instinct, just soft/skippable
       // rather than a hard wall.
-      "No, you can browse as a guest, with the same limits as a free account: up to 3 of the week's recipes, 1 deal per category, no adding to your grocery list, and stores auto-selected from your location (not customizable). After you've viewed a few recipes as a guest, you'll get a one-time invite to create a free account — that's skippable, not required. A free account (still free, separate from membership) additionally lets you manage your account settings and notification preferences. Membership unlocks everything else: every recipe and deal, your grocery list, and choosing your own stores.",
+      "No, you can browse as a guest, with the same limits as a free account: up to 3 of the week's recipes, 1 deal per category, no adding to your grocery list, and stores auto-selected from your location (not customizable). After you've viewed a few recipes as a guest, you'll get a one-time invite to create a free account. It's skippable, not required. A free account (still free, separate from membership) additionally lets you manage your account settings and notification preferences. Membership unlocks everything else: every recipe and deal, your grocery list, and choosing your own stores.",
   },
   {
     question: 'What does membership include?',
@@ -112,7 +112,7 @@ export const FAQ_ITEMS: FaqItem[] = [
       'Each one shows whether a price is a real flyer markdown, priced well below typical cost, a fair everyday price, or an estimate. See Settings > How it works for the full breakdown.',
   },
   {
-    question: "My store isn't the one I want — can I change it?",
+    question: "My store isn't the one I want. Can I change it?",
     answer:
       "Free accounts get stores auto-selected from your location. Members can choose their own from Profile > My stores.",
   },

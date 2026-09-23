@@ -45,7 +45,7 @@ export default function SettingsDetailScreen() {
         </ScrollView>
       ) : (
         <View style={styles.body}>
-          <Text style={styles.bodyText}>This isn't available yet — check back soon.</Text>
+          <Text style={styles.bodyText}>This isn't available yet. Check back soon.</Text>
         </View>
       )}
     </View>
