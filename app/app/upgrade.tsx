@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckIcon, LockOpenIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { CheckIcon, LockOpenIcon, MapPinIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
 import { OutsideAreaModal } from '../components/OutsideAreaModal';
@@ -100,6 +100,11 @@ export default function UpgradeScreen() {
   const [restoreInfo, setRestoreInfo] = useState<string | null>(null);
 
   const isSubscribed = configured ? purchasesSubscribed : dbSubscribed;
+  // Settled outside BC (and not already a member): the whole screen
+  // becomes the "isn't in your area yet" message instead of a trial
+  // pitch they can't act on (Anabelle, 2026-09-23) -- no feature list,
+  // plan picker or price, just the waitlist.
+  const showOutsideArea = !isGuest && !isSubscribed && areaStatus === 'outside';
   // offering.monthly/offering.annual are RevenueCat's own convenience
   // accessors for a package configured with that predefined period in
   // the dashboard -- falls back to the first available package if the
@@ -175,17 +180,29 @@ export default function UpgradeScreen() {
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <LockOpenIcon size={32} color={INK} strokeWidth={1.5} />
+          {showOutsideArea ? (
+            <MapPinIcon size={32} color={INK} strokeWidth={1.5} />
+          ) : (
+            <LockOpenIcon size={32} color={INK} strokeWidth={1.5} />
+          )}
         </View>
-        <Text style={styles.title}>{alreadyMember ? "You're a member" : 'Start 30-day free trial'}</Text>
+        <Text style={styles.title}>
+          {alreadyMember
+            ? "You're a member"
+            : showOutsideArea
+              ? 'Grrunch isn’t in your area yet'
+              : 'Start 30-day free trial'}
+        </Text>
         <Text style={styles.body}>
           {alreadyMember
             ? "You're already a Grrunch member. Manage your membership in Settings."
-            : reason
-              ? `Try Grrunch free for 30 days to ${reason}.`
-              : 'Try Grrunch free for 30 days.'}
+            : showOutsideArea
+              ? 'We’re currently available in British Columbia, but we’re working on bringing Grrunch to the rest of Canada.'
+              : reason
+                ? `Try Grrunch free for 30 days to ${reason}.`
+                : 'Try Grrunch free for 30 days.'}
         </Text>
-        {!alreadyMember && (
+        {!alreadyMember && !showOutsideArea && (
           <View style={styles.featureList}>
             {FEATURES.map((feature) => (
               <View key={feature} style={styles.featureRow}>
@@ -195,7 +212,7 @@ export default function UpgradeScreen() {
             ))}
           </View>
         )}
-        {!alreadyMember && (
+        {!alreadyMember && !showOutsideArea && (
           <View style={styles.planPicker}>
             <SegmentedControl
               options={[
@@ -207,7 +224,7 @@ export default function UpgradeScreen() {
             />
           </View>
         )}
-        {!alreadyMember && (
+        {!alreadyMember && !showOutsideArea && (
           <Text style={styles.priceNote}>
             {configured && pkg
               ? plan === 'annual'
@@ -220,7 +237,9 @@ export default function UpgradeScreen() {
                 : `Then ${MONTHLY_PRICE_DISPLAY}/mo · Cancel anytime`}
           </Text>
         )}
-        {!alreadyMember && <Text style={styles.areaNote}>Available in British Columbia only</Text>}
+        {!alreadyMember && !showOutsideArea && (
+          <Text style={styles.areaNote}>Available in British Columbia only</Text>
+        )}
         {error && (
           <AlertBanner
             variant="error"
@@ -242,20 +261,13 @@ export default function UpgradeScreen() {
         {!isSubscribed && (
           <View style={styles.actions}>
             {!inServiceArea && areaStatus === 'checking' && <ActivityIndicator color={INK} />}
-            {/* Same wording as OutsideAreaModal (Anabelle, 2026-09-23);
-                the button opens that modal at its email step. */}
-            {!inServiceArea && areaStatus === 'outside' && (
-              <>
-                <AlertBanner
-                  variant="info"
-                  title="Grrunch isn’t in your area yet"
-                  description="We’re currently available in British Columbia, but we’re working on bringing Grrunch to the rest of Canada."
-                  style={styles.areaBanner}
-                />
-                <Pressable style={styles.primaryButton} onPress={() => setWaitlistVisible(true)}>
-                  <Text style={styles.primaryButtonText}>Join the waitlist</Text>
-                </Pressable>
-              </>
+            {/* The title/body above already carry the message (same
+                wording as OutsideAreaModal); this opens that modal at its
+                email step. */}
+            {showOutsideArea && (
+              <Pressable style={styles.primaryButton} onPress={() => setWaitlistVisible(true)}>
+                <Text style={styles.primaryButtonText}>Join the waitlist</Text>
+              </Pressable>
             )}
             {/* No postal code on the account and no location access --
                 ask for one rather than guessing either way. */}

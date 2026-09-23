@@ -224,7 +224,7 @@ export default function StoresScreen() {
           <Text style={styles.title}>Stores near you</Text>
           <Text style={[styles.subtitle, !storesEditable && styles.subtitleInk]}>
             {storesEditable
-              ? 'Select the stores you want to track — you can refine this anytime in Profile settings.'
+              ? 'Select the stores you want to track. You can refine this anytime in Profile settings.'
               : precise
                 ? "Based on your location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."
                 : "Based on your approximate location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."}
