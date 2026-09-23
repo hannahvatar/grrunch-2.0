@@ -137,7 +137,13 @@ const BC_POLYGON: Array<[lng: number, lat: number]> = [
   [-115.2, 49.7], // near Cranbrook
   [-114.4, 49.0], // SE corner (near Waterton/US border)
   [-123.3, 49.0], // S border along the 49th parallel, west to the coast
-  [-123.5, 48.3], // southern Vancouver Island tip (Victoria area)
+  // Down Haro Strait and out Juan de Fuca -- was a single [-123.5, 48.3]
+  // point, which put the edge west of downtown Victoria (-123.37) and
+  // left most of Greater Victoria outside BC (caught 2026-09-23 testing
+  // the same polygon in app/lib/serviceArea.ts).
+  [-123.2, 48.7], // Haro Strait, east of Sidney (San Juan Islands stay US)
+  [-123.2, 48.25], // south of Victoria, mid-Juan de Fuca
+  [-124.0, 48.3], // Juan de Fuca, south of Sooke (Port Angeles stays US)
   [-125.0, 48.5], // west coast of Vancouver Island
   [-128.0, 50.0], // north Vancouver Island / Queen Charlotte Sound
   [-133.0, 54.0], // Haida Gwaii / north coast
