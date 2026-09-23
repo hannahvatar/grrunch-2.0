@@ -77,6 +77,15 @@ interface PurchasesContextValue {
   // management (see MembershipStatus.tsx's cancel button).
   expirationDate: string | null;
   willRenew: boolean;
+  // True while the active entitlement is in Apple/Google's free
+  // introductory period (the 1-month free trial on both products) --
+  // lets useSubscription() report 'trialing' vs 'active' from the store
+  // itself instead of the DB row (see lib/subscription.tsx).
+  isTrial: boolean;
+  // Whether this customer has EVER held the entitlement (active or
+  // since expired) -- distinguishes a lapsed member ('expired') from
+  // someone who never subscribed ('none').
+  hadEntitlement: boolean;
   purchase: (pkg: PurchasesPackage) => Promise<{ error: string | null }>;
   // restored tells the caller whether an entitlement was actually found,
   // not just whether the call itself succeeded -- Purchases.
@@ -128,6 +137,8 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   const [activeProduct, setActiveProduct] = useState<string | null>(null);
   const [expirationDate, setExpirationDate] = useState<string | null>(null);
   const [willRenew, setWillRenew] = useState(false);
+  const [isTrial, setIsTrial] = useState(false);
+  const [hadEntitlement, setHadEntitlement] = useState(false);
 
   // One place to fan a fresh CustomerInfo out to all four pieces of
   // state, instead of the same four setters repeated at every call site
@@ -137,6 +148,8 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     setActiveProduct(activeProductId(info));
     setExpirationDate(activeExpirationDate(info));
     setWillRenew(activeWillRenew(info));
+    setIsTrial(info.entitlements.active[ENTITLEMENT_ID]?.periodType === 'TRIAL');
+    setHadEntitlement(typeof info.entitlements.all[ENTITLEMENT_ID] !== 'undefined');
   }
 
   // Configure the SDK exactly once. Guests never call Purchases.logIn
@@ -234,6 +247,8 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
         activePackage,
         expirationDate,
         willRenew,
+        isTrial,
+        hadEntitlement,
         purchase,
         restore,
       }}

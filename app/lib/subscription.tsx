@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useEffect, useState } from 'react
 import { CheckCircleIcon, ExclamationTriangleIcon, XCircleIcon } from 'react-native-heroicons/outline';
 
 import { useAuth } from './auth';
+import { usePurchases } from './purchases';
 import { supabase } from './supabase';
 
 // Exported so MembershipStatus's days-left progress bar can compute its
@@ -149,12 +150,42 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     return { error: null };
   }
 
-  const isSubscribed =
+  const dbIsSubscribed =
     status === 'active' || (status === 'trialing' && !!trialEndsAt && new Date(trialEndsAt) > new Date());
+
+  // Once RevenueCat is configured (every native build, 2026-09-23),
+  // membership comes from the store entitlement itself, not this DB row:
+  // - it's current the moment a purchase finishes, where the row only
+  //   updates when the revenuecat-webhook lands a few seconds later (and
+  //   this provider only reads it once per session);
+  // - Apple's free month arrives on the row as status='trialing' with
+  //   expires_at, not trial_ends_at, which dbIsSubscribed above would
+  //   read as "not a member";
+  // - a DB-only trial row written straight through the API grants
+  //   nothing here, so it can't be used to skip paying.
+  // The DB row stays the server-side record (kept in sync by the
+  // webhook). The DB-only path below remains only for the web dev
+  // preview, where there's no in-app purchase SDK at all.
+  const purchases = usePurchases();
+  const fromStore = purchases.configured;
+  const storeStatus: SubscriptionStatus = purchases.isSubscribed
+    ? purchases.isTrial
+      ? 'trialing'
+      : 'active'
+    : purchases.hadEntitlement
+      ? 'expired'
+      : 'none';
 
   return (
     <SubscriptionContext.Provider
-      value={{ status, trialEndsAt, loading, isSubscribed, startTrial, cancelTrial }}
+      value={{
+        status: fromStore ? storeStatus : status,
+        trialEndsAt: fromStore ? (purchases.isTrial ? purchases.expirationDate : null) : trialEndsAt,
+        loading: fromStore ? purchases.loading : loading,
+        isSubscribed: fromStore ? purchases.isSubscribed : dbIsSubscribed,
+        startTrial,
+        cancelTrial,
+      }}
     >
       {children}
     </SubscriptionContext.Provider>

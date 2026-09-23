@@ -50,7 +50,7 @@ function formatRenewalDate(iso: string): string {
 // what a guest should see differs by context (Manage account vs Payment).
 export function MembershipStatus() {
   const { status: subscriptionStatus, trialEndsAt, isSubscribed, cancelTrial } = useSubscription();
-  const { activePackage, expirationDate, willRenew } = usePurchases();
+  const { configured: storeBilled, activePackage, expirationDate, willRenew } = usePurchases();
   const [cancelling, setCancelling] = useState(false);
 
   // The real price/period the member is actually on, now that there are
@@ -137,26 +137,39 @@ export function MembershipStatus() {
             ? `Then ${activePriceLabel} · Cancel anytime`
             : `Then ${MONTHLY_PRICE_DISPLAY}/mo or ${ANNUAL_PRICE_DISPLAY}/yr (${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo) · Cancel anytime`}
         </Text>
-        <View style={styles.trialCardActions}>
-          <Pressable
-            style={styles.cancelTrialButton}
-            onPress={handleCancelTrial}
-            disabled={cancelling}
-            hitSlop={4}
-          >
-            {cancelling ? (
-              <ActivityIndicator color={ERROR} />
-            ) : (
-              <Text style={styles.cancelTrialButtonText}>Cancel trial</Text>
-            )}
+        {/* A store (Apple/Google) free trial is a real subscription:
+            only the platform can cancel it, and they're already
+            subscribed, so "Cancel trial" (which only deletes our DB row)
+            and "Subscribe" would both be wrong -- same Manage membership
+            deep link as paying members get instead (2026-09-23). The
+            Cancel/Subscribe pair below is the DB-only trial on the web
+            dev preview. */}
+        {storeBilled ? (
+          <Pressable style={styles.manageMembershipButton} onPress={handleManageMembership}>
+            <Text style={styles.manageMembershipButtonText}>Manage membership</Text>
           </Pressable>
-          <Pressable
-            style={styles.subscribeButton}
-            onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'skip the rest of your trial' } })}
-          >
-            <Text style={styles.subscribeButtonText}>Subscribe</Text>
-          </Pressable>
-        </View>
+        ) : (
+          <View style={styles.trialCardActions}>
+            <Pressable
+              style={styles.cancelTrialButton}
+              onPress={handleCancelTrial}
+              disabled={cancelling}
+              hitSlop={4}
+            >
+              {cancelling ? (
+                <ActivityIndicator color={ERROR} />
+              ) : (
+                <Text style={styles.cancelTrialButtonText}>Cancel trial</Text>
+              )}
+            </Pressable>
+            <Pressable
+              style={styles.subscribeButton}
+              onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'skip the rest of your trial' } })}
+            >
+              <Text style={styles.subscribeButtonText}>Subscribe</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     ) : (
       <View style={styles.membershipCard}>
