@@ -86,7 +86,11 @@ interface PurchasesContextValue {
   // since expired) -- distinguishes a lapsed member ('expired') from
   // someone who never subscribed ('none').
   hadEntitlement: boolean;
-  purchase: (pkg: PurchasesPackage) => Promise<{ error: string | null }>;
+  // cancelled: the person closed Apple's/Google's sheet (or its sign-in)
+  // without buying -- not an error to show, but not a success either, so
+  // the caller must not move on to the "you're a member" screen (real
+  // bug caught in sandbox, 2026-09-23: a cancel landed on /subscribed).
+  purchase: (pkg: PurchasesPackage) => Promise<{ error: string | null; cancelled: boolean }>;
   // restored tells the caller whether an entitlement was actually found,
   // not just whether the call itself succeeded -- Purchases.
   // restorePurchases() resolves without error even when there's genuinely
@@ -209,14 +213,14 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       .catch(() => setOffering(null));
   }, [configured]);
 
-  async function purchase(pkg: PurchasesPackage): Promise<{ error: string | null }> {
+  async function purchase(pkg: PurchasesPackage): Promise<{ error: string | null; cancelled: boolean }> {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       applyCustomerInfo(customerInfo);
-      return { error: null };
+      return { error: null, cancelled: false };
     } catch (e: any) {
-      if (e?.userCancelled) return { error: null };
-      return { error: e?.message ?? 'Purchase failed. Please try again.' };
+      if (e?.userCancelled) return { error: null, cancelled: true };
+      return { error: e?.message ?? 'Purchase failed. Please try again.', cancelled: false };
     }
   }
 

@@ -147,10 +147,15 @@ export default function UpgradeScreen() {
       return;
     }
     setLoading(true);
-    const { error: actionError } = configured && pkg ? await purchase(pkg) : await startTrial();
+    const result = configured && pkg ? await purchase(pkg) : { ...(await startTrial()), cancelled: false };
     setLoading(false);
-    if (actionError) {
-      setError(actionError);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    // Closed Apple's/Google's sheet without buying -- stay here, nothing
+    // to announce.
+    if (result.cancelled) {
       return;
     }
     // replace, not push -- /subscribed's own "Start exploring" button
