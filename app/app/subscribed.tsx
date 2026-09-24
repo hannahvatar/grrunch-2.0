@@ -27,7 +27,7 @@ export default function SubscribedScreen() {
   return (
     <StatusScreen
       icon={<CheckCircleIcon size={32} color="#111" strokeWidth={1.5} />}
-      title={configured ? 'Welcome to Grrunch Plus' : 'Your free trial has started'}
+      title={configured ? 'Welcome to Grrunch Membership' : 'Your free trial has started'}
       body={
         // "unlimited saved recipes" dropped (Anabelle, 2026-09-15: Save/
         // Favourite was shelved for v1 scope (PR #222) -- "make sure its

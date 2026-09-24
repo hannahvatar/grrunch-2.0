@@ -137,12 +137,25 @@ export default function UpgradeScreen() {
       return;
     }
     setError(null);
+    // Native builds are always RevenueCat-configured: the only way in is
+    // a real store purchase (Apple/Google run the free month). If the
+    // offering didn't load, say so -- never fall back to the DB-only
+    // trial, which would hand out membership with no purchase behind it
+    // (2026-09-23). startTrial() remains only for the web dev preview.
+    if (configured && !pkg) {
+      setError("Membership plans couldn't load. Check your connection and try again.");
+      return;
+    }
     setLoading(true);
-    const { error: actionError } =
-      configured && pkg ? await purchase(pkg) : await startTrial();
+    const result = configured && pkg ? await purchase(pkg) : { ...(await startTrial()), cancelled: false };
     setLoading(false);
-    if (actionError) {
-      setError(actionError);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    // Closed Apple's/Google's sheet without buying -- stay here, nothing
+    // to announce.
+    if (result.cancelled) {
       return;
     }
     // replace, not push -- /subscribed's own "Start exploring" button

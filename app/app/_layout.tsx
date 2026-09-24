@@ -163,8 +163,8 @@ function RootLayout() {
     <SafeAreaProvider>
       <AnalyticsProvider>
       <AuthProvider>
-        <SubscriptionProvider>
-          <PurchasesProvider>
+        <PurchasesProvider>
+          <SubscriptionProvider>
             <SelectedStoresProvider>
               <SelectedMealsProvider>
                 <SelectedDealsProvider>
@@ -215,8 +215,8 @@ function RootLayout() {
                 </SelectedDealsProvider>
               </SelectedMealsProvider>
             </SelectedStoresProvider>
-          </PurchasesProvider>
-        </SubscriptionProvider>
+          </SubscriptionProvider>
+        </PurchasesProvider>
       </AuthProvider>
       </AnalyticsProvider>
       <StatusBar style="auto" />

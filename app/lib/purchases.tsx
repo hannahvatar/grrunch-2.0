@@ -77,7 +77,20 @@ interface PurchasesContextValue {
   // management (see MembershipStatus.tsx's cancel button).
   expirationDate: string | null;
   willRenew: boolean;
-  purchase: (pkg: PurchasesPackage) => Promise<{ error: string | null }>;
+  // True while the active entitlement is in Apple/Google's free
+  // introductory period (the 1-month free trial on both products) --
+  // lets useSubscription() report 'trialing' vs 'active' from the store
+  // itself instead of the DB row (see lib/subscription.tsx).
+  isTrial: boolean;
+  // Whether this customer has EVER held the entitlement (active or
+  // since expired) -- distinguishes a lapsed member ('expired') from
+  // someone who never subscribed ('none').
+  hadEntitlement: boolean;
+  // cancelled: the person closed Apple's/Google's sheet (or its sign-in)
+  // without buying -- not an error to show, but not a success either, so
+  // the caller must not move on to the "you're a member" screen (real
+  // bug caught in sandbox, 2026-09-23: a cancel landed on /subscribed).
+  purchase: (pkg: PurchasesPackage) => Promise<{ error: string | null; cancelled: boolean }>;
   // restored tells the caller whether an entitlement was actually found,
   // not just whether the call itself succeeded -- Purchases.
   // restorePurchases() resolves without error even when there's genuinely
@@ -128,6 +141,8 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   const [activeProduct, setActiveProduct] = useState<string | null>(null);
   const [expirationDate, setExpirationDate] = useState<string | null>(null);
   const [willRenew, setWillRenew] = useState(false);
+  const [isTrial, setIsTrial] = useState(false);
+  const [hadEntitlement, setHadEntitlement] = useState(false);
 
   // One place to fan a fresh CustomerInfo out to all four pieces of
   // state, instead of the same four setters repeated at every call site
@@ -137,6 +152,8 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     setActiveProduct(activeProductId(info));
     setExpirationDate(activeExpirationDate(info));
     setWillRenew(activeWillRenew(info));
+    setIsTrial(info.entitlements.active[ENTITLEMENT_ID]?.periodType === 'TRIAL');
+    setHadEntitlement(typeof info.entitlements.all[ENTITLEMENT_ID] !== 'undefined');
   }
 
   // Configure the SDK exactly once. Guests never call Purchases.logIn
@@ -196,14 +213,14 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       .catch(() => setOffering(null));
   }, [configured]);
 
-  async function purchase(pkg: PurchasesPackage): Promise<{ error: string | null }> {
+  async function purchase(pkg: PurchasesPackage): Promise<{ error: string | null; cancelled: boolean }> {
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       applyCustomerInfo(customerInfo);
-      return { error: null };
+      return { error: null, cancelled: false };
     } catch (e: any) {
-      if (e?.userCancelled) return { error: null };
-      return { error: e?.message ?? 'Purchase failed. Please try again.' };
+      if (e?.userCancelled) return { error: null, cancelled: true };
+      return { error: e?.message ?? 'Purchase failed. Please try again.', cancelled: false };
     }
   }
 
@@ -234,6 +251,8 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
         activePackage,
         expirationDate,
         willRenew,
+        isTrial,
+        hadEntitlement,
         purchase,
         restore,
       }}
