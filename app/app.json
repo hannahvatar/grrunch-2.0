@@ -10,7 +10,8 @@
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
-      "bundleIdentifier": "com.grrunch.app"
+      "bundleIdentifier": "com.grrunch.app",
+      "appleTeamId": "QZ8VY36A9G"
     },
     "android": {
       "adaptiveIcon": {
