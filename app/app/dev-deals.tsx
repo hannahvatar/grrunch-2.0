@@ -765,9 +765,9 @@ function CutoutPhoto({ uri }: { uri: string }) {
 
 // "Publish week" (Anabelle, 2026-09-18: review ~200 deals and build 12
 // recipes as a draft, then make it all live together). Since 2026-09-24
-// the button SCHEDULES the week for Saturday 12:00 am (Vancouver) --
-// last week closes Thursday 11:59 pm and shoppers see the "new deals are
-// coming" state on Friday. Publishing after Saturday midnight has
+// the button SCHEDULES the week for Thursday 12:00 pm (Vancouver) --
+// last week closes Wednesday 11:59 pm and shoppers see the "new deals
+// are coming" state Thursday morning. Publishing after Thursday noon has
 // already passed goes live right away. See the publish-week Edge Function.
 function formatVancouver(iso: string): string {
   return new Date(iso).toLocaleString('en-CA', {
@@ -863,7 +863,7 @@ function PublishWeekCard({
         <>
           <Text style={styles.publishConfirmText}>
             {approved} deal{approved === 1 ? '' : 's'} and {featuredNextCount} featured recipe
-            {featuredNextCount === 1 ? '' : 's'} go live Saturday at 12:00 am (right away if that has already
+            {featuredNextCount === 1 ? '' : 's'} go live Thursday at 12:00 pm (right away if that has already
             passed), replacing last week's deals.
             {pending > 0 ? ` The ${pending} deal${pending === 1 ? '' : 's'} still in review won't show.` : ''}
           </Text>

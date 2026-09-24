@@ -1,9 +1,9 @@
 // "Publish week" for app/app/dev-deals.tsx. Since 2026-09-24 (Anabelle's
-// weekly rhythm: close Thursday 11:59 pm, empty state Friday, new week
-// Saturday 12:00 am, Vancouver time) the button SCHEDULES the reviewed
+// weekly rhythm: close Wednesday 11:59 pm, empty state Thursday morning,
+// new week Thursday 12:00 pm, Vancouver time) the button SCHEDULES the reviewed
 // draft week instead of swapping it in instantly:
 //
-//   - public.schedule_publish_week() queues it for the Saturday 12:00 am
+//   - public.schedule_publish_week() queues it for the Thursday 12:00 pm
 //     after the live week closes, or publishes right away if that moment
 //     has already passed (a late publish during the empty state);
 //   - a pg_cron job (run_scheduled_publish, every 5 min) does the actual

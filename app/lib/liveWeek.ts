@@ -7,15 +7,15 @@ import { supabase } from './supabase';
 // supabase/migrations/20260918010000_weekly_publish.sql and
 // 20260924010000_weekly_cutoff_schedule.sql).
 //
-// Weekly rhythm (Anabelle, 2026-09-24), Vancouver time:
-//   - Thursday 11:59 pm: the week CLOSES (closesAt) -- Meals and Weekly
+// Weekly rhythm (Anabelle, 2026-09-24, revised same day), Vancouver time:
+//   - Wednesday 11:59 pm (when the flyers end): the week CLOSES (closesAt) -- Meals and Weekly
 //     Deals go to the "new deals are coming" empty state, the grocery list
 //     clears, and anyone browsing gets a modal (WeekClosedModal).
-//   - Saturday 12:00 am: the scheduled draft week goes live server-side;
+//   - Thursday 12:00 pm: the scheduled draft week goes live server-side;
 //     open apps pick it up here (publishedAt changes).
 //
 // `expired` (the flyers' own end date has passed) is kept for the grey
-// "Expired" deal badges in the day or so before the Thursday close.
+// "Expired" deal badges if the flyers' own end date ever falls before the close.
 export interface LiveWeek {
   validFrom: string;
   validTo: string;
@@ -76,7 +76,7 @@ export async function fetchLiveWeek(): Promise<LiveWeek | null> {
 // Kept current while the app is in use:
 //   - re-fetched whenever the app comes back to the foreground;
 //   - a timer flips `closed` at exactly closesAt, even with no fetch;
-//   - while closed, polled every minute to catch the Saturday publish.
+//   - while closed, polled every minute to catch the Thursday publish.
 let current: LiveWeek | null = null;
 let started = false;
 const listeners = new Set<(week: LiveWeek | null) => void>();

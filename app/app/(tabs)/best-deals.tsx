@@ -66,7 +66,7 @@ export default function BestDealsScreen() {
   const { stores: myStores } = useSelectedStores();
   // Last week's flyers have ended but this week isn't published yet --
   // see lib/liveWeek.ts.
-  // Friday gap: between the Thursday 11:59 pm close and the Saturday
+  // Weekly gap: between the Wednesday 11:59 pm close and the Thursday noon
   // publish, the whole screen is the "new deals are coming" state.
   const liveWeek = useLiveWeek();
   const weekExpired = liveWeek?.expired ?? false;

@@ -10,11 +10,11 @@ const INK = '#111';
 
 // Weekly handover side effects (Anabelle, 2026-09-24) -- mounted once in
 // app/_layout.tsx, inside the selection providers:
-//   - Thursday 11:59 pm close: clears the grocery list, and shows a modal
+//   - Wednesday 11:59 pm close: clears the grocery list, and shows a modal
 //     to anyone who was using the app at that moment so the screens
 //     don't just go empty under them. Someone opening the app during the
 //     gap sees the empty state instead -- no modal needed.
-//   - New week published (Saturday 12:00 am): clears the list again, since
+//   - New week published (Thursday 12:00 pm): clears the list again, since
 //     anything on it belongs to the week that just ended.
 //
 // Modal copy below is a PLACEHOLDER -- Anabelle is providing the design
@@ -46,7 +46,7 @@ export function WeekLifecycle() {
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>This week’s deals have ended</Text>
           <Text style={styles.body}>
-            New deals and recipes drop Saturday at 12:00 am. Your grocery list has been cleared for the new week.
+            New deals and recipes drop Thursday at 12:00 pm. Your grocery list has been cleared for the new week.
           </Text>
           <Pressable style={styles.button} onPress={() => setShowClosedModal(false)}>
             <Text style={styles.buttonText}>Got it</Text>

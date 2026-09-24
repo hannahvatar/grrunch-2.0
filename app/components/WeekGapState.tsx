@@ -2,8 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 
 const INK = '#111';
 
-// Friday "new deals are coming" state for Meals and Weekly Deals, shown
-// between the Thursday 11:59 pm close and the Saturday 12:00 am publish
+// "New deals are coming" state for Meals and Weekly Deals, shown between
+// the Wednesday 11:59 pm close and the Thursday 12:00 pm publish
 // (lib/liveWeek.ts, Anabelle 2026-09-24).
 //
 // PLACEHOLDER -- Anabelle wants this "exciting" and is providing the
@@ -12,8 +12,8 @@ const INK = '#111';
 export function WeekGapState({ screen }: { screen: 'meals' | 'deals' }) {
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>New {screen === 'meals' ? 'recipes' : 'deals'} drop Saturday</Text>
-      <Text style={styles.body}>This week’s flyers are in. Check back Saturday at 12:00 am.</Text>
+      <Text style={styles.title}>New {screen === 'meals' ? 'recipes' : 'deals'} drop Thursday at noon</Text>
+      <Text style={styles.body}>This week’s flyers are in and we’re picking the best ones. Check back Thursday at 12:00 pm.</Text>
     </View>
   );
 }
