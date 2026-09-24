@@ -13,8 +13,12 @@ name: Weekly flyer fetch
 # the real Vancouver time, runs whichever group is due, and skips a group
 # already fetched for that week -- so the extra firings do nothing.
 on:
-  schedule:
-    - cron: '0 4,5,7,8 * * 3'
+  # Schedule OFF until the weekly process is finalized (Anabelle,
+  # 2026-09-24: "I dont want to have automated run yet since we are
+  # still working on the process"). Manual runs only for now. To turn it
+  # on, restore:
+  #   schedule:
+  #     - cron: '0 4,5,7,8 * * 3'
   # By hand from the Actions tab ("Run workflow"), e.g. to re-run a group.
   workflow_dispatch:
     inputs:
