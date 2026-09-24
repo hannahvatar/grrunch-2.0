@@ -502,6 +502,9 @@ export default function DevDealsScreen() {
                   {title}
                 </Text>
                 <Text style={styles.dealRowStore}>{deal.chain_name}</Text>
+                {/* Why the weekly fetch picked it (scripts/
+                    weekly_flyer_fetch.py) -- judged at a glance. */}
+                {deal.pick_reason && <Text style={styles.pickReason}>{deal.pick_reason}</Text>}
                 {single ? (
                   <DealPriceLine deal={deal} showStatus={statusFilter === 'all'} />
                 ) : (
@@ -650,6 +653,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
         {photo && <CutoutPhoto uri={photo} />}
         <Text style={styles.cutoutTitle}>{cutoutTitle(cutout)}</Text>
         <Text style={styles.editStore}>{cutout.deals[0].chain_name}</Text>
+        {cutout.deals[0].pick_reason && <Text style={styles.pickReason}>{cutout.deals[0].pick_reason}</Text>}
 
         <Text style={styles.sectionTitle}>Deals from this cutout</Text>
         {cutout.deals.map((deal) => {
@@ -1326,6 +1330,7 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
         </View>
 
         <Text style={styles.nameTitle}>{itemName}</Text>
+        {deal.pick_reason && <Text style={styles.pickReason}>{deal.pick_reason}</Text>}
 
         {/* 1 -- Cutout price. Each step sits in its own white card
             (Anabelle: "Make the cutout price section in its own white
@@ -1774,6 +1779,7 @@ const styles = StyleSheet.create({
   dealRowInfo: { flex: 1, gap: 2 },
   dealRowName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   dealRowStore: { fontSize: 12, color: '#767676' },
+  pickReason: { fontSize: 12, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', marginTop: 2 },
   dealRowPriceLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' },
   dealRowPrice: { fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   dealRowOriginal: { fontSize: 12, fontWeight: '400', color: '#aaa', textDecorationLine: 'line-through' },

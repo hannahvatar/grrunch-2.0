@@ -9,13 +9,19 @@ curated_deals. Now one scheduled job, no Airtable in the deals path:
   1. Fetch the UPCOMING weekly flyer (not the one valid today) for every
      zone in flyer_zones.csv from Flipp -- the same source fetch_week.py
      used; the chains' own website flyers are Flipp embeds.
-  2. Claude picks the candidates, in two passes to keep cost down:
-       a. text only -- which of the ~250-500 items per chain are grocery
-          food worth reviewing; cleans names; suggests category and
-          recipes/deals usage;
-       b. image -- reads each picked item's flyer cutout for what Flipp's
-          data doesn't carry: the printed regular price, the unit
-          (/lb, /kg, /100g, each), and multi-buys ("2 for $5").
+  2. Claude picks the candidates in three passes (criteria: Anabelle,
+     2026-09-24, after a first test kept ~150-280 per chain):
+       a. text -- keeps grocery food only, cleans names, suggests
+          category and recipes/deals usage, and flags whether each item
+          is a good, versatile recipe ingredient in general;
+       b. image -- reads EVERY food item's flyer cutout for what Flipp's
+          data doesn't carry: the printed regular price / "save" badge,
+          the unit (/lb, /kg, /100g, each), and multi-buys ("2 for $5");
+       c. text -- the final pick, up to MAX_PER_CHAIN, each with its
+          reason: "Saving on flyer", "Good recipe ingredient", or
+          "AI estimate: looks low" (Claude's judgement, strongest few).
+     StatCan never qualifies a deal on its own (Anabelle: its matches
+     are often off) -- it stays reference info in dev-deals.
   3. Saves them into curated_deals as the DRAFT week ('pending',
      published=false) -- added per chain group, never wiping the other
      group or anything already reviewed -- and re-prices draft recipes.
@@ -105,6 +111,7 @@ MODEL = "claude-opus-5"
 PICK_CHUNK = 200       # items per text-selection request
 IMAGE_BATCH = 8        # cutouts per image-reading request
 MIN_ITEMS_WARN = 30
+MAX_PER_CHAIN = 80
 WAIT_FOR_FLYER_MIN = 40  # scheduled runs poll this long for a flyer not visible yet
 
 
@@ -166,8 +173,13 @@ def http_json(url, params=None, headers=None, data=None, method=None):
     if params:
         url = f"{url}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, data=data, method=method, headers=headers or FLIPP_HEADERS)
-    with urllib.request.urlopen(req, timeout=40) as resp:
-        body = resp.read()
+    try:
+        with urllib.request.urlopen(req, timeout=40) as resp:
+            body = resp.read()
+    except urllib.error.HTTPError as exc:
+        # Surface the server's own reason (PostgREST explains every 400).
+        detail = exc.read().decode("utf-8", "replace")[:500]
+        raise RuntimeError(f"{method or 'GET'} {url.split('?')[0]} -> {exc.code}: {detail}") from None
     return json.loads(body) if body else None
 
 
@@ -287,8 +299,9 @@ PICK_SCHEMA = {
                     "name": {"type": "string"},
                     "category": {"type": "string", "enum": CATEGORIES},
                     "usage": {"type": "string", "enum": ["recipes", "deals"]},
+                    "recipe_ingredient": {"type": "boolean"},
                 },
-                "required": ["id", "name", "category", "usage"],
+                "required": ["id", "name", "category", "usage", "recipe_ingredient"],
                 "additionalProperties": False,
             },
         }
@@ -297,7 +310,7 @@ PICK_SCHEMA = {
     "additionalProperties": False,
 }
 
-PICK_PROMPT = """You are preparing this week's grocery deal candidates for Grrunch, a British Columbia app that builds affordable home-cooked recipes from grocery flyer deals. A human reviews every candidate you choose, so choose the items worth a human's look and skip the rest.
+PICK_PROMPT = """You are sorting this week's grocery flyer for Grrunch, a British Columbia app that builds affordable home-cooked recipes from grocery flyer deals. This first pass only separates grocery food from everything else; a later step picks the best deals.
 
 Below is part of {chain}'s flyer: one item per line as `id | name | brand | price`. The price is the flyer's sale price when the flyer data has one; the pictures (which you don't see here) carry the rest.
 
@@ -307,6 +320,7 @@ For each item you keep:
 - name: a clean shopper-facing name -- brand plus product, normal capitalization, no trademark symbols, no size ranges or "up to" text (e.g. "PC® BLUE MENU® EXTRA LEAN CHICKEN BREASTS, up to 420 g" -> "PC Blue Menu Extra Lean Chicken Breasts").
 - category: the best fit from the allowed list.
 - usage: "recipes" when it's a cooking ingredient a recipe could be built around or use (proteins, produce, dairy, grains, sauces, bread...); "deals" when it's mainly eaten as-is (snacks, drinks, desserts, ready meals).
+- recipe_ingredient: true when it's a good, versatile ingredient for affordable home cooking in general -- the kind of thing many everyday recipes use (chicken thighs, ground beef, eggs, rice, pasta, canned tomatoes, onions, cheese, frozen vegetables). false for snacks, drinks, desserts, ready meals, and niche specialty items.
 
 Return only the items you keep.
 
@@ -343,8 +357,9 @@ READ_SCHEMA = {
                     "regular_price": NULLABLE_NUMBER,
                     "price_unit": {"type": "string", "enum": PRICE_UNITS},
                     "multi_buy_qty": NULLABLE_INT,
+                    "saving_text": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                 },
-                "required": ["id", "sale_price", "regular_price", "price_unit", "multi_buy_qty"],
+                "required": ["id", "sale_price", "regular_price", "price_unit", "multi_buy_qty", "saving_text"],
                 "additionalProperties": False,
             },
         }
@@ -358,7 +373,71 @@ READ_PROMPT = """Each image below is one product tile cut out of a {chain} groce
 - regular_price: the regular / "Reg." / "was" / "before" price only if the tile prints one, as a number. null if the tile shows no regular price -- never estimate one.
 - price_unit: what sale_price is per -- "lb", "kg" or "100g" when printed per weight; "each" when printed per item (e.g. "$1.99 ea"); otherwise "package".
 - multi_buy_qty: the count in a multi-buy ("2 for $5" -> 2); null otherwise.
+- saving_text: any saving the tile prints, copied short ("Reg. $12.99", "Save $3", "30% off", "2 for $5"); null if the tile shows no saving at all.
 Return one entry per id."""
+
+
+FINAL_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "picks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "reason": {"type": "string", "enum": ["saving_on_flyer", "good_recipe_ingredient", "ai_estimate_low"]},
+                },
+                "required": ["id", "reason"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["picks"],
+    "additionalProperties": False,
+}
+
+FINAL_PROMPT = """Pick this week's deal candidates from {chain}'s flyer for Grrunch, a British Columbia app that builds affordable home-cooked recipes from grocery deals. A human reviews every pick, so choose at most {limit} -- the ones most worth her time -- and skip the rest.
+
+Each line is one grocery food item: `id | name | sale price | printed saving | good recipe ingredient`.
+
+An item qualifies for one of three reasons, in this order of strength:
+1. saving_on_flyer -- the tile prints a real saving (regular/was price, "save" amount, % off, multi-buy). Prefer bigger savings.
+2. good_recipe_ingredient -- a good, versatile ingredient for affordable home cooking, at a sensible price.
+3. ai_estimate_low -- no printed saving and not a core recipe ingredient, but the price looks clearly low for BC in your judgement. Use this sparingly: only the strongest few.
+
+Give each pick the strongest reason that applies. If more than {limit} items qualify, keep the strongest: bigger savings and more useful ingredients first, and avoid near-duplicates (several flavours or sizes of the same product -> keep the best one or two).
+
+{lines}"""
+
+REASON_LABELS = {
+    "saving_on_flyer": "Saving on flyer",
+    "good_recipe_ingredient": "Good recipe ingredient",
+    "ai_estimate_low": "AI estimate: looks low",
+}
+
+
+def final_pick(client, chain, food, picks, readings):
+    lines = []
+    for e in food:
+        r = readings.get(e["id"], {})
+        price = to_number(e["price"]) or to_number(r.get("sale_price"))
+        if price is None:
+            continue
+        unit = r.get("price_unit") or "package"
+        price_text = f"${price:.2f}" + ("" if unit == "package" else f"/{unit}")
+        lines.append(
+            f"{e['id']} | {picks[e['id']]['name']} | {price_text} | {r.get('saving_text') or '-'} | "
+            f"{'yes' if picks[e['id']]['recipe_ingredient'] else 'no'}"
+        )
+    data = claude_json(client, FINAL_PROMPT.format(chain=chain, limit=MAX_PER_CHAIN, lines="\n".join(lines)),
+                       FINAL_SCHEMA)
+    valid = {e["id"] for e in food}
+    chosen = {}
+    for p in data["picks"]:
+        if p["id"] in valid and p["id"] not in chosen:
+            chosen[p["id"]] = p["reason"]
+    return dict(list(chosen.items())[:MAX_PER_CHAIN])
 
 
 def download(url):
@@ -462,6 +541,14 @@ def rehost(item_id, data, ctype):
         return None
 
 
+def pick_reason(reason, reading):
+    """What dev-deals shows as why Claude picked this candidate."""
+    label = REASON_LABELS[reason]
+    if reason == "saving_on_flyer" and reading.get("saving_text"):
+        return f"{label}: {reading['saving_text']}"
+    return label
+
+
 def to_number(value):
     try:
         return round(float(value), 2) if value not in (None, "") else None
@@ -469,11 +556,11 @@ def to_number(value):
         return None
 
 
-def build_rows(chain, entries, picks, readings, images, dates, all_zones, prior):
+def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones, prior):
     rows = []
     for e in entries:
         pick = picks.get(e["id"])
-        if not pick:
+        if not pick or e["id"] not in chosen:
             continue
         reading = readings.get(e["id"], {})
         price = to_number(e["price"]) or to_number(reading.get("sale_price"))
@@ -498,6 +585,14 @@ def build_rows(chain, entries, picks, readings, images, dates, all_zones, prior)
             "usage": pick["usage"],
             "price_unit": reading.get("price_unit") or "package",
             "bundle_count": qty if qty and qty > 1 else None,
+            # PostgREST bulk inserts need every row to have the same keys,
+            # so carried-forward fields are always present (first test
+            # run, 2026-09-24: a 400 on the mixed batch).
+            "package_weight_g": None,
+            "package_weight_g_source": None,
+            "fragment_by_weight": False,
+            "keyword_matches": [],
+            "pick_reason": pick_reason(chosen[e["id"]], reading),
         }
         carried = prior.get((chain, norm_name(pick["name"])))
         if carried:
@@ -601,12 +696,18 @@ def main():
                     problems.append(f"{chain} / {zone}: only {len(items)} items in the flyer -- worth a look")
             entries = merge_zones(chain, items_by_zone)
             picks = pick_candidates(client, chain, entries)
-            picked = [e for e in entries if e["id"] in picks]
-            readings, images = read_cutouts(client, chain, picked)
-            rows = build_rows(chain, entries, picks, readings, images, dates,
+            food = [e for e in entries if e["id"] in picks]
+            readings, images = read_cutouts(client, chain, food)
+            chosen = final_pick(client, chain, food, picks, readings)
+            rows = build_rows(chain, entries, picks, chosen, readings, images, dates,
                               [z["zone"] for z in zones], prior)
             all_rows.extend(rows)
-            summary.append(f"{chain}: {len(rows)} candidates ({len(entries)} flyer items, {len(zones)} zone(s))")
+            by_reason = {}
+            for reason in chosen.values():
+                by_reason[REASON_LABELS[reason]] = by_reason.get(REASON_LABELS[reason], 0) + 1
+            reasons = ", ".join(f"{n} {label.lower()}" for label, n in by_reason.items())
+            summary.append(f"{chain}: {len(chosen)} candidates ({reasons}) from {len(food)} food items "
+                           f"of {len(entries)} in the flyer")
             say(f"  {summary[-1]}")
         except Exception as exc:
             problems.append(f"{chain}: FAILED -- {exc}")
@@ -645,4 +746,13 @@ if __name__ == "__main__":
     SERVICE_ROLE = env("SUPABASE_SERVICE_ROLE_KEY", required=False) or ""
     if not (SUPABASE_URL and SERVICE_ROLE) and "--dry-run" not in sys.argv:
         sys.exit("Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY")
-    main()
+    try:
+        main()
+    except Exception as exc:
+        # Never fail silently -- the whole point of the email is that
+        # Anabelle doesn't have to check GitHub.
+        if "--dry-run" not in sys.argv:
+            send_email("Grrunch flyer fetch: FAILED",
+                       f"The weekly flyer fetch crashed and saved nothing:\n\n{exc}\n\n"
+                       "Details: GitHub > Actions > Weekly flyer fetch.")
+        raise
