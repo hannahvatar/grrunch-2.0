@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnimatedSplashScreen } from '../components/AnimatedSplashScreen';
+import { WeekLifecycle } from '../components/WeekLifecycle';
 import { SupportBubble } from '../components/SupportBubble';
 import { AuthProvider } from '../lib/auth';
 import { AnalyticsProvider, initSentry, wrapWithSentry } from '../lib/observability';
@@ -211,6 +212,7 @@ function RootLayout() {
                   </Stack>
                   <AuthRedirect />
                   <DeepLinkErrorRedirect />
+                  <WeekLifecycle />
                   <SupportBubble />
                 </SelectedDealsProvider>
               </SelectedMealsProvider>

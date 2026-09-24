@@ -6,6 +6,9 @@ import { createContext, ReactNode, useContext, useState } from 'react';
 interface SelectedDealsContextValue {
   selectedDealIds: Set<string>;
   toggleDealSelected: (id: string) => void;
+  // Empties the list -- used at the weekly close (components/
+  // WeekLifecycle.tsx), when last week's deals stop being available.
+  clearDealsSelected: () => void;
 }
 
 const SelectedDealsContext = createContext<SelectedDealsContextValue | undefined>(undefined);
@@ -25,8 +28,12 @@ export function SelectedDealsProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  function clearDealsSelected() {
+    setSelectedDealIds(new Set());
+  }
+
   return (
-    <SelectedDealsContext.Provider value={{ selectedDealIds, toggleDealSelected }}>
+    <SelectedDealsContext.Provider value={{ selectedDealIds, toggleDealSelected, clearDealsSelected }}>
       {children}
     </SelectedDealsContext.Provider>
   );

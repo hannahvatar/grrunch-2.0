@@ -26,7 +26,8 @@ import { AlertBanner } from '../../components/AlertBanner';
 import { ExpiredBadge } from '../../components/ExpiredBadge';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
-import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeekExpired } from '../../lib/liveWeek';
+import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
+import { WeekGapState } from '../../components/WeekGapState';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSelectedStores } from '../../lib/selectedStores';
 import { useSubscription } from '../../lib/subscription';
@@ -65,7 +66,11 @@ export default function BestDealsScreen() {
   const { stores: myStores } = useSelectedStores();
   // Last week's flyers have ended but this week isn't published yet --
   // see lib/liveWeek.ts.
-  const weekExpired = useLiveWeekExpired();
+  // Friday gap: between the Thursday 11:59 pm close and the Saturday
+  // publish, the whole screen is the "new deals are coming" state.
+  const liveWeek = useLiveWeek();
+  const weekExpired = liveWeek?.expired ?? false;
+  const weekClosed = liveWeek?.closed ?? false;
 
   // Excludes a deal only when it's actually zone-tagged AND that tag
   // disagrees with the zone the user's own selected store (for that same
@@ -92,12 +97,14 @@ export default function BestDealsScreen() {
     toggleDealSelected(dealId);
   }
 
+  // Re-fetched when a new week is published, so an open app shows the
+  // new deals without a restart.
   useEffect(() => {
     fetchAllDeals()
       .then(setAllDeals)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [liveWeek?.publishedAt]);
 
   function toggleCategory(category: string) {
     setExpandedCategories((prev) => {
@@ -109,6 +116,14 @@ export default function BestDealsScreen() {
       }
       return next;
     });
+  }
+
+  if (weekClosed) {
+    return (
+      <View style={styles.container}>
+        <WeekGapState screen="deals" />
+      </View>
+    );
   }
 
   if (loading) {

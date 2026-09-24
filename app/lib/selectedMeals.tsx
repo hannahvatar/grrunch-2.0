@@ -6,6 +6,9 @@ import { createContext, ReactNode, useContext, useState } from 'react';
 interface SelectedMealsContextValue {
   selectedIds: Set<string>;
   toggleSelected: (id: string) => void;
+  // Empties the list -- used at the weekly close (components/
+  // WeekLifecycle.tsx), when last week's recipes stop being available.
+  clearSelected: () => void;
 }
 
 const SelectedMealsContext = createContext<SelectedMealsContextValue | undefined>(undefined);
@@ -25,8 +28,12 @@ export function SelectedMealsProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  function clearSelected() {
+    setSelectedIds(new Set());
+  }
+
   return (
-    <SelectedMealsContext.Provider value={{ selectedIds, toggleSelected }}>
+    <SelectedMealsContext.Provider value={{ selectedIds, toggleSelected, clearSelected }}>
       {children}
     </SelectedMealsContext.Provider>
   );

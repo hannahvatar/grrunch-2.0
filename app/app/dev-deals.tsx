@@ -764,9 +764,22 @@ function CutoutPhoto({ uri }: { uri: string }) {
 }
 
 // "Publish week" (Anabelle, 2026-09-18: review ~200 deals and build 12
-// recipes as a draft, then make it all live together -- by hand for now).
-// Two taps: Publish week, then an inline confirm that spells out what
-// happens, before calling the publish-week Edge Function.
+// recipes as a draft, then make it all live together). Since 2026-09-24
+// the button SCHEDULES the week for Saturday 12:00 am (Vancouver) --
+// last week closes Thursday 11:59 pm and shoppers see the "new deals are
+// coming" state on Friday. Publishing after Saturday midnight has
+// already passed goes live right away. See the publish-week Edge Function.
+function formatVancouver(iso: string): string {
+  return new Date(iso).toLocaleString('en-CA', {
+    timeZone: 'America/Vancouver',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function PublishWeekCard({
   draftDeals,
   featuredNextCount,
@@ -779,6 +792,8 @@ function PublishWeekCard({
   const [confirming, setConfirming] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [scheduledFor, setScheduledFor] = useState<string | null>(null);
+  const [closesAt, setClosesAt] = useState<string | null>(null);
 
   const approved = draftDeals.filter((d) => d.status === 'approved').length;
   const pending = draftDeals.filter((d) => d.status === 'pending').length;
@@ -786,20 +801,37 @@ function PublishWeekCard({
   const from = flyerDates.map((d) => d.flyer_valid_from).sort()[0];
   const to = flyerDates.map((d) => d.flyer_valid_to).sort().reverse()[0];
 
-  async function publish() {
+  async function loadSchedule() {
+    const { data } = await supabase
+      .from('published_week')
+      .select('scheduled_publish_at, closes_at')
+      .maybeSingle();
+    setScheduledFor(data?.scheduled_publish_at ?? null);
+    setClosesAt(data?.closes_at ?? null);
+  }
+
+  useEffect(() => {
+    loadSchedule();
+  }, []);
+
+  async function publish(action: 'schedule' | 'cancel') {
     setPublishError(null);
     setPublishing(true);
     const { data, error: invokeError } = await supabase.functions.invoke<{
-      deals_published?: number;
+      published_now?: boolean;
+      scheduled_for?: string | null;
+      cancelled?: boolean;
       error?: string;
-    }>('publish-week', { body: {} });
+    }>('publish-week', { body: { action } });
     setPublishing(false);
-    if (invokeError || typeof data?.deals_published !== 'number') {
+    const ok = action === 'cancel' ? data?.cancelled === true : typeof data?.published_now === 'boolean';
+    if (invokeError || !ok) {
       setPublishError(await functionErrorMessage(invokeError, data?.error, 'Could not publish the week.'));
       return;
     }
     setConfirming(false);
-    onPublished();
+    await loadSchedule();
+    if (data?.published_now) onPublished();
   }
 
   return (
@@ -811,7 +843,15 @@ function PublishWeekCard({
         {approved} approved · {pending} still need review · {featuredNextCount} recipe
         {featuredNextCount === 1 ? '' : 's'} featured for next week
       </Text>
-      {!confirming ? (
+      {closesAt && <Text style={styles.note}>Live week closes {formatVancouver(closesAt)}</Text>}
+      {scheduledFor ? (
+        <>
+          <Text style={styles.publishConfirmText}>Scheduled to go live {formatVancouver(scheduledFor)}.</Text>
+          <Pressable style={styles.tertiaryButton} onPress={() => publish('cancel')} disabled={publishing}>
+            {publishing ? <ActivityIndicator color="#111" /> : <Text style={styles.tertiaryButtonText}>Cancel schedule</Text>}
+          </Pressable>
+        </>
+      ) : !confirming ? (
         <Pressable
           style={[styles.publishButton, approved === 0 && styles.saveButtonDisabled]}
           disabled={approved === 0}
@@ -823,15 +863,20 @@ function PublishWeekCard({
         <>
           <Text style={styles.publishConfirmText}>
             {approved} deal{approved === 1 ? '' : 's'} and {featuredNextCount} featured recipe
-            {featuredNextCount === 1 ? '' : 's'} go live now, and last week's deals are removed.
+            {featuredNextCount === 1 ? '' : 's'} go live Saturday at 12:00 am (right away if that has already
+            passed), replacing last week's deals.
             {pending > 0 ? ` The ${pending} deal${pending === 1 ? '' : 's'} still in review won't show.` : ''}
           </Text>
           <View style={styles.publishConfirmRow}>
             <Pressable style={styles.tertiaryButton} onPress={() => setConfirming(false)} disabled={publishing}>
               <Text style={styles.tertiaryButtonText}>Cancel</Text>
             </Pressable>
-            <Pressable style={[styles.publishButton, publishing && styles.saveButtonDisabled]} onPress={publish} disabled={publishing}>
-              {publishing ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishButtonText}>Yes, publish now</Text>}
+            <Pressable
+              style={[styles.publishButton, publishing && styles.saveButtonDisabled]}
+              onPress={() => publish('schedule')}
+              disabled={publishing}
+            >
+              {publishing ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishButtonText}>Yes, schedule it</Text>}
             </Pressable>
           </View>
         </>

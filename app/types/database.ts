@@ -237,18 +237,24 @@ export type Database = {
           flyer_valid_to: string
           id: number
           published_at: string
+          closes_at: string | null
+          scheduled_publish_at: string | null
         }
         Insert: {
           flyer_valid_from: string
           flyer_valid_to: string
           id?: number
           published_at?: string
+          closes_at?: string | null
+          scheduled_publish_at?: string | null
         }
         Update: {
           flyer_valid_from?: string
           flyer_valid_to?: string
           id?: number
           published_at?: string
+          closes_at?: string | null
+          scheduled_publish_at?: string | null
         }
         Relationships: []
       }

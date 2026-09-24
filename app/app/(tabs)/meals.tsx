@@ -5,7 +5,8 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon } from 're
 
 import { AlertBanner } from '../../components/AlertBanner';
 import { MealCard } from '../../components/MealCard';
-import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeekExpired } from '../../lib/liveWeek';
+import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
+import { WeekGapState } from '../../components/WeekGapState';
 import type { Meal } from '../../lib/mealData';
 import { type MealSortMode, sortMealsByBestDeal, sortMealsByPrice } from '../../lib/mealScaling';
 import { fetchAllRecipes } from '../../lib/recipes';
@@ -72,7 +73,11 @@ export default function MealsScreen() {
   const { isSubscribed } = useSubscription();
   // Last week's flyers have ended but this week isn't published yet --
   // see lib/liveWeek.ts.
-  const weekExpired = useLiveWeekExpired();
+  // Friday gap: between the Thursday 11:59 pm close and the Saturday
+  // publish, the whole screen is the "new deals are coming" state.
+  const liveWeek = useLiveWeek();
+  const weekExpired = liveWeek?.expired ?? false;
+  const weekClosed = liveWeek?.closed ?? false;
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +99,8 @@ export default function MealsScreen() {
     toggleSelected(mealId);
   }
 
+  // Re-fetched when a new week is published, so an open app shows the
+  // new recipes without a restart.
   useEffect(() => {
     fetchAllRecipes()
       .then(setAllMeals)
@@ -104,11 +111,19 @@ export default function MealsScreen() {
         });
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [liveWeek?.publishedAt]);
 
   const sortedMeals = eligibleMeals(allMeals, sortMode);
   const visibleMeals = isSubscribed ? sortedMeals : sortedMeals.slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = sortedMeals.length - visibleMeals.length;
+
+  if (weekClosed) {
+    return (
+      <View style={[styles.gradient, styles.container]}>
+        <WeekGapState screen="meals" />
+      </View>
+    );
+  }
 
   if (loading) {
     return (
