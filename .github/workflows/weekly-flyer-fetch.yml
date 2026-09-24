@@ -1,0 +1,57 @@
+name: Weekly flyer fetch
+
+# Fetches next week's flyers, has Claude pick the deal candidates, saves
+# them into the draft week for review in dev-deals, and emails a summary.
+# See scripts/weekly_flyer_fetch.py.
+#
+# Schedule (Anabelle, 2026-09-24), Vancouver time:
+#   Tuesday 9:00 pm    No Frills + Real Canadian Superstore
+#   Wednesday 12:00 am Save-On-Foods + Safeway + Walmart
+# GitHub cron is UTC-only, so this fires at every UTC hour those moments
+# can fall on across daylight saving (Wed 04:00/05:00 UTC for Tuesday
+# 9 pm, Wed 07:00/08:00 UTC for Wednesday midnight). The script checks
+# the real Vancouver time, runs whichever group is due, and skips a group
+# already fetched for that week -- so the extra firings do nothing.
+on:
+  schedule:
+    - cron: '0 4,5,7,8 * * 3'
+  # By hand from the Actions tab ("Run workflow"), e.g. to re-run a group.
+  workflow_dispatch:
+    inputs:
+      group:
+        description: 'Which chains to fetch'
+        type: choice
+        options: [tuesday, wednesday]
+        default: tuesday
+      force:
+        description: 'Run even if this week is already fetched (keeps rows already reviewed)'
+        type: boolean
+        default: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    # Up to 40 min waiting for a flyer that isn't visible yet, plus the
+    # Claude passes.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        working-directory: scripts
+        run: pip install -r requirements-flyers.txt
+      - name: Run weekly_flyer_fetch.py
+        working-directory: scripts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          NOTIFY_TO: admin@grrunch.com
+        run: >
+          python3 weekly_flyer_fetch.py
+          --group ${{ github.event_name == 'schedule' && 'auto' || inputs.group }}
+          ${{ inputs.force && '--force' || '' }}
