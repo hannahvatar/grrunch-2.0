@@ -2,10 +2,10 @@
 // Settings > Legal. Mirrors termsOfUse.ts's shape -- see legalContent.ts.
 import { bullets, LegalSection, text } from './legalContent';
 
-// Bumped from August 4, 2026 alongside the legal entity disclosure
-// added below (Anabelle, 2026-09-15) -- a genuine content change to a
-// live legal document, not a cosmetic edit.
-export const PRIVACY_POLICY_EFFECTIVE_DATE = 'September 15, 2026';
+// Bumped from September 15, 2026 for the Waitlist subsection in §1
+// (Anabelle, 2026-09-24) -- a genuine content change, same as the
+// earlier bump for the legal entity disclosure.
+export const PRIVACY_POLICY_EFFECTIVE_DATE = 'September 24, 2026';
 
 // Legal entity disclosure -- see termsOfUse.ts's own comment on this
 // same addition (Anabelle, 2026-09-15). Named here in the intro (this
@@ -55,6 +55,22 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
       text('If you choose to allow location access, Grrunch may use your location to:'),
       bullets(['show nearby grocery stores;', 'provide region-specific flyer deals;', 'improve shopping recommendations.']),
       text('You may disable location permissions at any time through your device settings.'),
+      // Waitlist sign-ups (Anabelle, 2026-09-24) -- people outside BC can
+      // leave an email without an account (components/OutsideAreaModal.tsx,
+      // public.waitlist). Covers marketing use too, matching the consent
+      // line shown in that modal (CASL requires it at sign-up).
+      text('Waitlist'),
+      text(
+        'If you are outside our current service area (British Columbia), you can choose to join our waitlist without creating an account. When you do, we collect:'
+      ),
+      bullets([
+        'your email address;',
+        'your approximate location (rounded to about 10 km), if you allowed location access.',
+      ]),
+      text(
+        'We use this to let you know when Grrunch becomes available in your area, to send you news and offers about Grrunch, and to understand where demand is coming from. We don’t sell it or share it with third parties for their own marketing.'
+      ),
+      text('You can unsubscribe at any time using the link in any email we send, or by writing to privacy@grrunch.com.'),
     ],
   },
   {
