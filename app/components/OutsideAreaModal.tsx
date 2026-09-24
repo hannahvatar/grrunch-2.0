@@ -122,6 +122,14 @@ export function OutsideAreaModal({
                   <Text style={styles.primaryButtonText}>Join the waitlist</Text>
                 )}
               </Pressable>
+              {/* Express consent for marketing email, shown right where
+                  they join (Canada's CASL) -- matches the Waitlist
+                  section of the Privacy Policy (Anabelle, 2026-09-24). */}
+              {step === 'email' && (
+                <Text style={styles.consentText}>
+                  We’ll also send occasional Grrunch news and offers. Unsubscribe anytime.
+                </Text>
+              )}
               {/* Same link treatment as location.tsx's "Skip for now"
                   (16px SemiBold, INK, trailing arrow, no underline) --
                   Anabelle, 2026-09-23. */}
@@ -173,6 +181,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  consentText: { fontSize: 13, lineHeight: 18, color: INK, textAlign: 'center', marginTop: -4 },
   retryButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: -8 },
   retryPrefix: { fontSize: 16, color: INK, textAlign: 'center', marginTop: 4 },
   retryText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
