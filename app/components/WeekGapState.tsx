@@ -3,9 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { nextDropAt, useLiveWeek } from '../lib/liveWeek';
-import { FlyerAnimation } from './FlyerAnimation';
-import { GroceryBagAnimation } from './GroceryBagAnimation';
-import { SauteAnimation } from './SauteAnimation';
+import { CauldronAnimation } from './CauldronAnimation';
 
 // GRRUNCH DS accent, same palette as the onboarding screen (app/index.tsx).
 const ACCENT = '#FFA955';
@@ -15,8 +13,8 @@ const INK = '#111';
 // shown between the Wednesday 11:59 pm close and the Thursday 12:00 pm
 // publish (lib/liveWeek.ts, Anabelle 2026-09-24). Anabelle, 2026-09-28:
 // an excited countdown with an animation like the onboarding screen.
-// Each screen gets the onboarding illustration that fits it; the list
-// gets its own bag animation in the same style.
+// The same simmering-cauldron animation on every screen (Anabelle, same
+// day).
 type Screen = 'meals' | 'deals' | 'list';
 
 const COPY: Record<Screen, { headline: string; body: string }> = {
@@ -116,13 +114,7 @@ export function WeekGapState({ screen }: { screen: Screen }) {
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.art}>
-          {screen === 'meals' ? (
-            <SauteAnimation active />
-          ) : screen === 'deals' ? (
-            <FlyerAnimation active />
-          ) : (
-            <GroceryBagAnimation active />
-          )}
+          <CauldronAnimation active />
         </View>
         <Text style={styles.headline}>{copy.headline}</Text>
         <Text style={styles.body}>{anyMinute ? 'New meals and deals are dropping any minute now.' : copy.body}</Text>
