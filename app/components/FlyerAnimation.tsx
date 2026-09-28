@@ -38,7 +38,7 @@ function IconBase({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StrawberriesIcon() {
+export function StrawberriesIcon() {
   return (
     <IconBase>
       <Path d="M24 9 L17.5 6 L24 3.5 L30.5 6 Z" fill="#96E696" />
@@ -53,7 +53,7 @@ function StrawberriesIcon() {
   );
 }
 
-function BeefIcon() {
+export function BeefIcon() {
   return (
     <IconBase>
       <Path
@@ -70,7 +70,7 @@ function BeefIcon() {
   );
 }
 
-function SoySauceIcon() {
+export function SoySauceIcon() {
   return (
     <IconBase>
       <Rect x={19.5} y={4.5} width={9} height={5.5} rx={1.5} fill="#FFA955" />
@@ -81,7 +81,7 @@ function SoySauceIcon() {
   );
 }
 
-function YogurtIcon() {
+export function YogurtIcon() {
   return (
     <IconBase>
       <Path d="M13 16 L35 16 L31 42.5 L17 42.5 Z" fill="#FFE9D4" />
@@ -91,7 +91,7 @@ function YogurtIcon() {
   );
 }
 
-function BroccoliIcon() {
+export function BroccoliIcon() {
   return (
     <IconBase>
       <Path d="M19.5 26 L19.5 42.5 L28.5 42.5 L28.5 26 Z" fill="#FFE9D4" />
@@ -103,7 +103,7 @@ function BroccoliIcon() {
   );
 }
 
-function CheeseIcon() {
+export function CheeseIcon() {
   return (
     <IconBase>
       <Path d="M8 35 L40 35 L40 14 Z" fill="#FFBF7F" />
@@ -113,7 +113,7 @@ function CheeseIcon() {
   );
 }
 
-function PizzaIcon() {
+export function PizzaIcon() {
   return (
     <IconBase>
       <Circle cx={24} cy={24} r={18} fill="#FFD4AA" />
@@ -125,7 +125,7 @@ function PizzaIcon() {
   );
 }
 
-function ChipsIcon() {
+export function ChipsIcon() {
   return (
     <IconBase>
       <Path d="M12.5 11 L35.5 11 L33.5 42.5 L14.5 42.5 Z" fill="#FFA955" />

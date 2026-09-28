@@ -7,11 +7,13 @@ import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItem
 import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
+import { useLiveWeek } from '../lib/liveWeek';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
 import { useSubscription } from '../lib/subscription';
 import { UpgradeCta } from './UpgradeCta';
+import { WeekGapState } from './WeekGapState';
 
 // Same visual language as the recipe page (app/recipe.tsx) -- peach
 // background, bold 2px-black-border white "modal treatment" cards, INK
@@ -99,6 +101,7 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 // happens to be at.
 export function GroceryListView() {
   const { isSubscribed } = useSubscription();
+  const weekClosed = useLiveWeek()?.closed ?? false;
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { selectedDealIds } = useSelectedDeals();
   const [rawSelectedMeals, setRawSelectedMeals] = useState<Meal[]>([]);
@@ -324,6 +327,17 @@ export function GroceryListView() {
   // lib/curatedDeals.ts's isReferencePriced()).
   const itemsWithDeal = items.filter((item) => item.dealTag && !isReferencePriced(item.dealTag.originalPriceSource));
   const dealItemCount = itemsWithDeal.length;
+
+  // Wednesday close to Thursday noon: the list was cleared at the close
+  // (WeekLifecycle.tsx), so show the countdown instead of the usual
+  // empty state.
+  if (weekClosed) {
+    return (
+      <View style={styles.container}>
+        <WeekGapState screen="list" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
