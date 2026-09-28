@@ -172,8 +172,8 @@ export function CauldronAnimation({ active }: { active: boolean }) {
   // smooth circle, not a diamond.
   const STEPS = 24;
   const circle = Array.from({ length: STEPS + 1 }, (_, i) => i / STEPS);
-  const spoonX = stir.interpolate({ inputRange: circle, outputRange: circle.map((t) => 40 * Math.sin(t * 2 * Math.PI)) });
-  const spoonY = stir.interpolate({ inputRange: circle, outputRange: circle.map((t) => 5 * Math.cos(t * 2 * Math.PI)) });
+  const spoonX = stir.interpolate({ inputRange: circle, outputRange: circle.map((t) => 48 * Math.sin(t * 2 * Math.PI)) });
+  const spoonY = stir.interpolate({ inputRange: circle, outputRange: circle.map((t) => 8 * Math.cos(t * 2 * Math.PI)) });
   const spoonTilt = stir.interpolate({
     inputRange: circle,
     outputRange: circle.map((t) => `${12 * Math.sin(t * 2 * Math.PI)}deg`),
