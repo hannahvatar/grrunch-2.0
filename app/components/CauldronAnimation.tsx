@@ -14,9 +14,11 @@ import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 // drifts up, and the fire underneath flickers.
 
 const INK = '#111';
-const POT = '#C090FF';
-const STEW = '#96E696';
-const STEW_LIGHT = '#C8F5C8';
+// Black pot, orange stew (Anabelle, 2026-09-28). The pot is a soft black
+// so its heavy black outline still reads.
+const POT = '#343837';
+const STEW = '#FF7B2A';
+const STEW_LIGHT = '#FFBF7F';
 const WOOD = '#FFBF7F';
 const FLAME = '#FF7B2A';
 const FLAME_CORE = '#FFD4AA';
@@ -53,7 +55,7 @@ function PotBack() {
       <Rect x={192} y={196} width={16} height={24} rx={4} fill={POT} />
       <Path d="M64 116 C58 176 96 212 150 212 C204 212 242 176 236 116 Z" fill={POT} />
       {/* Shine on the pot's belly. */}
-      <Path d="M84 142 C86 166 100 184 118 192" stroke="#E6D4FF" strokeWidth={5} />
+      <Path d="M84 142 C86 166 100 184 118 192" stroke="#6B6F6E" strokeWidth={5} />
       <Ellipse cx={150} cy={116} rx={90} ry={22} fill={POT} />
       <Ellipse cx={150} cy={118} rx={76} ry={15} fill={STEW} />
       <Path d="M104 118 C120 110 136 124 152 116 C168 108 184 122 198 116" stroke={STEW_LIGHT} strokeWidth={3} />
@@ -164,12 +166,18 @@ export function CauldronAnimation({ active }: { active: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Animated.Value refs are stable
   }, [active, reduceMotion]);
 
-  // The spoon's foot travels round an ellipse in the stew (sine on x,
-  // cosine on y), and the handle leans the way it's moving.
-  const circle = [0, 0.25, 0.5, 0.75, 1];
-  const spoonX = stir.interpolate({ inputRange: circle, outputRange: [0, 38, 0, -38, 0] });
-  const spoonY = stir.interpolate({ inputRange: circle, outputRange: [6, 0, -6, 0, 6] });
-  const spoonTilt = stir.interpolate({ inputRange: circle, outputRange: ['0deg', '14deg', '0deg', '-14deg', '0deg'] });
+  // The spoon's foot travels round a circle in the pot (seen from the
+  // side, so an ellipse the shape of the stew's surface), and the handle
+  // leans the way it's moving. Sampled at 24 points so the path is a
+  // smooth circle, not a diamond.
+  const STEPS = 24;
+  const circle = Array.from({ length: STEPS + 1 }, (_, i) => i / STEPS);
+  const spoonX = stir.interpolate({ inputRange: circle, outputRange: circle.map((t) => 40 * Math.sin(t * 2 * Math.PI)) });
+  const spoonY = stir.interpolate({ inputRange: circle, outputRange: circle.map((t) => 5 * Math.cos(t * 2 * Math.PI)) });
+  const spoonTilt = stir.interpolate({
+    inputRange: circle,
+    outputRange: circle.map((t) => `${12 * Math.sin(t * 2 * Math.PI)}deg`),
+  });
   const flameScale = flicker.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
   const flameScaleAlt = flicker.interpolate({ inputRange: [0, 1], outputRange: [1.15, 0.95] });
 
@@ -239,8 +247,8 @@ export function CauldronAnimation({ active }: { active: boolean }) {
       </Animated.View>
       {/* A little stew ripple that follows the spoon and hides its foot. */}
       <Animated.View style={[styles.ripple, { transform: [{ translateX: spoonX }, { translateY: spoonY }] }]}>
-        <Svg width={48} height={16} viewBox="0 0 48 16">
-          <Ellipse cx={24} cy={8} rx={22} ry={6.5} fill={STEW} stroke={INK} strokeWidth={2.4} />
+        <Svg width={56} height={20} viewBox="0 0 56 20">
+          <Ellipse cx={28} cy={10} rx={26} ry={8.5} fill={STEW} stroke={INK} strokeWidth={2.4} />
         </Svg>
       </Animated.View>
 
@@ -256,6 +264,6 @@ const styles = StyleSheet.create({
   abs: { position: 'absolute' },
   flame: { position: 'absolute', top: 206, transformOrigin: 'bottom' },
   // Spoon is 36x132; its bowl's centre (18, 116) sits on the surface.
-  spoon: { position: 'absolute', left: SURFACE_X - 18, top: SURFACE_Y - 116 + 6, transformOrigin: '50% 88%' },
-  ripple: { position: 'absolute', left: SURFACE_X - 24, top: SURFACE_Y + 6 - 8 },
+  spoon: { position: 'absolute', left: SURFACE_X - 18, top: SURFACE_Y - 116, transformOrigin: '50% 88%' },
+  ripple: { position: 'absolute', left: SURFACE_X - 28, top: SURFACE_Y + 6 - 9 },
 });
