@@ -14,11 +14,11 @@ import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 // drifts up, and the fire underneath flickers.
 
 const INK = '#111';
-// Black pot, orange stew (Anabelle, 2026-09-28). The pot is a soft black
+// Black pot, purple stew (Anabelle, 2026-09-28). The pot is a soft black
 // so its heavy black outline still reads.
 const POT = '#343837';
-const STEW = '#FF7B2A';
-const STEW_LIGHT = '#FFBF7F';
+const STEW = '#C090FF';
+const STEW_LIGHT = '#E6D4FF';
 const WOOD = '#FFBF7F';
 const FLAME = '#FF7B2A';
 const FLAME_CORE = '#FFD4AA';
