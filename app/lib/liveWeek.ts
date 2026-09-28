@@ -54,9 +54,13 @@ function isClosed(closesAt: string | null): boolean {
   return !!closesAt && Date.now() >= new Date(closesAt).getTime();
 }
 
-// EXPO_PUBLIC_PREVIEW_WEEK_GAP=1 in .env shows the Wednesday-to-Thursday
-// empty state in a dev build without closing the real week.
-const PREVIEW_WEEK_GAP = __DEV__ && process.env.EXPO_PUBLIC_PREVIEW_WEEK_GAP === '1';
+// Dev previews, set in .env (dev builds only, the real week is untouched):
+//   EXPO_PUBLIC_PREVIEW_WEEK_GAP=1        the Wednesday-to-Thursday empty state
+//   EXPO_PUBLIC_PREVIEW_WEEK_GAP=handover the whole handover, sped up: the
+//     "ends in" banner for 90 s, the close popup, then 3 min after launch a
+//     new week arrives (caught by the minute poll) with its popup.
+const PREVIEW = __DEV__ ? process.env.EXPO_PUBLIC_PREVIEW_WEEK_GAP : undefined;
+const PREVIEW_START = Date.now();
 
 export async function fetchLiveWeek(): Promise<LiveWeek | null> {
   const { data, error } = await supabase
@@ -64,21 +68,7 @@ export async function fetchLiveWeek(): Promise<LiveWeek | null> {
     .select('flyer_valid_from, flyer_valid_to, published_at, closes_at, scheduled_publish_at')
     .maybeSingle();
   if (error || !data) return null;
-  if (PREVIEW_WEEK_GAP) {
-    // Dev preview of the empty state: closed an hour ago, the usual
-    // Thursday noon drop still to come.
-    const closesAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    return {
-      validFrom: data.flyer_valid_from,
-      validTo: data.flyer_valid_to,
-      expired: false,
-      publishedAt: data.published_at,
-      closesAt,
-      closed: true,
-      scheduledPublishAt: null,
-    };
-  }
-  return {
+  const real: LiveWeek = {
     validFrom: data.flyer_valid_from,
     validTo: data.flyer_valid_to,
     expired: isFlyerWeekExpired(data.flyer_valid_to),
@@ -87,6 +77,19 @@ export async function fetchLiveWeek(): Promise<LiveWeek | null> {
     closed: isClosed(data.closes_at),
     scheduledPublishAt: data.scheduled_publish_at,
   };
+  if (PREVIEW === '1') {
+    // Closed an hour ago, the usual Thursday noon drop still to come.
+    return { ...real, expired: false, closesAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), closed: true, scheduledPublishAt: null };
+  }
+  if (PREVIEW === 'handover') {
+    const closesAt = new Date(PREVIEW_START + 90 * 1000).toISOString();
+    const dropAt = new Date(PREVIEW_START + 180 * 1000).toISOString();
+    if (Date.now() >= PREVIEW_START + 180 * 1000) {
+      return { ...real, expired: false, publishedAt: dropAt, closesAt: new Date(Date.now() + 7 * 86400000).toISOString(), closed: false, scheduledPublishAt: null };
+    }
+    return { ...real, expired: false, closesAt, closed: isClosed(closesAt), scheduledPublishAt: dropAt };
+  }
+  return real;
 }
 
 // One shared copy of the live week for the whole app -- MealCard and
@@ -99,9 +102,28 @@ export async function fetchLiveWeek(): Promise<LiveWeek | null> {
 //   - re-fetched whenever the app comes back to the foreground;
 //   - a timer flips `closed` at exactly closesAt, even with no fetch;
 //   - while closed, polled every minute to catch the Thursday publish.
-let current: LiveWeek | null = null;
+//
+// No swapping under someone's thumb (Anabelle, 2026-09-28: "it feels
+// abrupt"). The screens render `shown`, not `actual`. When the week closes
+// or a new week lands while the person is looking at the app, `shown`
+// stays put and `pending` says which popup to show (WeekLifecycle.tsx);
+// tapping it calls acknowledgeWeekChange() and only then do the screens
+// change. If the change happened while the app was in the background (or
+// it's the first load), there's nothing on screen to protect, so `shown`
+// just follows.
+export type WeekChange = 'closed' | 'newWeek';
+
+let actual: LiveWeek | null = null;
+let shown: LiveWeek | null = null;
+let pending: WeekChange | null = null;
+let loaded = false;
 let started = false;
-const listeners = new Set<(week: LiveWeek | null) => void>();
+// Changes within this long of coming back to the foreground count as
+// "happened while away" -- the refresh and an overdue close timer both
+// land just after the app wakes.
+const FOREGROUND_GRACE_MS = 3000;
+let activeSince = 0;
+const listeners = new Set<() => void>();
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -117,34 +139,65 @@ function sameWeek(a: LiveWeek | null, b: LiveWeek | null): boolean {
   );
 }
 
-function setCurrent(next: LiveWeek | null) {
-  if (sameWeek(current, next)) return;
-  current = next;
+function changeBetween(from: LiveWeek | null, to: LiveWeek | null): WeekChange | null {
+  if (!from || !to) return null;
+  if (from.publishedAt !== to.publishedAt) return 'newWeek';
+  if (!from.closed && to.closed) return 'closed';
+  return null;
+}
+
+function notify() {
+  listeners.forEach((listener) => listener());
+}
+
+function setActual(next: LiveWeek | null) {
+  const firstLoad = !loaded;
+  loaded = true;
+  if (!firstLoad && sameWeek(actual, next)) return;
+  actual = next;
   scheduleTimers();
-  listeners.forEach((listener) => listener(current));
+
+  const change = changeBetween(shown, next);
+  const away =
+    firstLoad || AppState.currentState !== 'active' || Date.now() - activeSince < FOREGROUND_GRACE_MS;
+  if (change && !away) {
+    pending = change;
+  } else if (!pending) {
+    shown = next;
+  } else if (away) {
+    shown = next;
+    pending = null;
+  }
+  notify();
+}
+
+export function acknowledgeWeekChange() {
+  shown = actual;
+  pending = null;
+  notify();
 }
 
 async function refresh() {
   const next = await fetchLiveWeek().catch(() => undefined);
-  if (next !== undefined) setCurrent(next);
+  if (next !== undefined) setActual(next);
 }
 
 function scheduleTimers() {
   if (closeTimer) clearTimeout(closeTimer);
   closeTimer = null;
-  if (current?.closesAt && !current.closed) {
-    const ms = new Date(current.closesAt).getTime() - Date.now();
+  if (actual?.closesAt && !actual.closed) {
+    const ms = new Date(actual.closesAt).getTime() - Date.now();
     // setTimeout can't hold more than ~24.8 days; a week is well under.
     closeTimer = setTimeout(
       () => {
-        if (current) setCurrent({ ...current, closed: true, expired: isFlyerWeekExpired(current.validTo) });
+        if (actual) setActual({ ...actual, closed: true, expired: isFlyerWeekExpired(actual.validTo) });
       },
       Math.max(0, ms)
     );
   }
-  if (current?.closed && !pollTimer) {
+  if (actual?.closed && !pollTimer) {
     pollTimer = setInterval(refresh, POLL_WHILE_CLOSED_MS);
-  } else if (!current?.closed && pollTimer) {
+  } else if (!actual?.closed && pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
   }
@@ -153,23 +206,64 @@ function scheduleTimers() {
 function start() {
   if (started) return;
   started = true;
+  activeSince = Date.now();
   refresh();
   AppState.addEventListener('change', (state) => {
-    if (state === 'active') refresh();
+    if (state === 'active') {
+      activeSince = Date.now();
+      refresh();
+    }
   });
 }
 
-export function useLiveWeek(): LiveWeek | null {
-  const [liveWeek, setLiveWeek] = useState<LiveWeek | null>(current);
+function useStore<T>(read: () => T): T {
+  const [value, setValue] = useState<T>(read);
   useEffect(() => {
     start();
-    listeners.add(setLiveWeek);
-    setLiveWeek(current);
+    const listener = () => setValue(read);
+    listeners.add(listener);
+    listener();
     return () => {
-      listeners.delete(setLiveWeek);
+      listeners.delete(listener);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- read is a module-level getter
   }, []);
-  return liveWeek;
+  return value;
+}
+
+// The week the screens should render (see "No swapping" above).
+export function useLiveWeek(): LiveWeek | null {
+  return useStore(() => shown);
+}
+
+// Which handover popup to show, if any. Only WeekLifecycle.tsx needs this.
+export function usePendingWeekChange(): WeekChange | null {
+  return useStore(() => pending);
+}
+
+// Milliseconds until the shown week closes, but only inside the last hour
+// (Anabelle, 2026-09-28: a heads-up banner from Wednesday 11 pm). Null
+// otherwise. Ticks every second inside the hour; outside it, sleeps until
+// the hour starts.
+export const CLOSING_SOON_MS = 60 * 60 * 1000;
+
+export function useClosingCountdown(): number | null {
+  const week = useLiveWeek();
+  const closesAt = week && !week.closed && week.closesAt ? new Date(week.closesAt).getTime() : null;
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (closesAt === null) return;
+    const untilWindow = closesAt - CLOSING_SOON_MS - Date.now();
+    if (untilWindow > 0) {
+      const timer = setTimeout(() => setNow(Date.now()), Math.min(untilWindow, 2 ** 31 - 1));
+      return () => clearTimeout(timer);
+    }
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [closesAt, now > (closesAt ?? 0) - CLOSING_SOON_MS]);
+  if (closesAt === null) return null;
+  const left = closesAt - now;
+  return left > 0 && left <= CLOSING_SOON_MS ? left : null;
 }
 
 // When the empty-state countdown counts down to: the scheduled publish if

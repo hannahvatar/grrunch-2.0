@@ -6,6 +6,7 @@ import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon } from 're
 import { AlertBanner } from '../../components/AlertBanner';
 import { MealCard } from '../../components/MealCard';
 import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
+import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { WeekGapState } from '../../components/WeekGapState';
 import type { Meal } from '../../lib/mealData';
 import { type MealSortMode, sortMealsByBestDeal, sortMealsByPrice } from '../../lib/mealScaling';
@@ -135,6 +136,7 @@ export default function MealsScreen() {
 
   return (
     <View style={[styles.gradient, styles.container]}>
+      <ClosingSoonBanner />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
           <Text style={[styles.title, styles.titleFlex]}>Meals from This Week's Deals</Text>
