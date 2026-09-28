@@ -29,7 +29,7 @@ const BOX_H = 252;
 const SURFACE_X = 150;
 const SURFACE_Y = 116;
 
-const STIR_MS = 2400;
+const STIR_MS = 4000;
 const BUBBLE_MS = 1500;
 const STEAM_MS = 2800;
 const FLICKER_MS = 260;
