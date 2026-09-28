@@ -59,6 +59,7 @@ export type Database = {
           package_volume_ml: number | null
           package_weight_g: number | null
           package_weight_g_source: string | null
+          pick_reason: string | null
           price: number | null
           price_unit: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at: string | null
@@ -91,6 +92,7 @@ export type Database = {
           package_volume_ml?: number | null
           package_weight_g?: number | null
           package_weight_g_source?: string | null
+          pick_reason?: string | null
           price?: number | null
           price_unit?: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at?: string | null
@@ -123,6 +125,7 @@ export type Database = {
           package_volume_ml?: number | null
           package_weight_g?: number | null
           package_weight_g_source?: string | null
+          pick_reason?: string | null
           price?: number | null
           price_unit?: Database["public"]["Enums"]["deal_price_unit"]
           pricing_reviewed_at?: string | null
