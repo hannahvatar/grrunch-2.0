@@ -76,8 +76,9 @@ function PotLip() {
 function Spoon() {
   return (
     <Svg width={36} height={132} viewBox="0 0 36 132" fill="none" stroke={INK} strokeWidth={3} strokeLinejoin="round">
-      <Rect x={13} y={2} width={10} height={112} rx={5} fill={WOOD} />
-      <Ellipse cx={18} cy={116} rx={14} ry={12} fill={WOOD} />
+      {/* Runs past the bottom of the clip box (styles.spoon), so the
+          handle is cut off at the stew line and reads as dipping in. */}
+      <Rect x={13} y={2} width={10} height={128} rx={5} fill={WOOD} />
     </Svg>
   );
 }
@@ -236,7 +237,8 @@ export function CauldronAnimation({ active }: { active: boolean }) {
       })}
 
       {/* Spoon: its foot sits in the stew at the surface centre, pivoting
-          from there. */}
+          from there. No ripple on top (Anabelle, 2026-09-28) -- the handle
+          is clipped at the stew line instead. */}
       <Animated.View
         style={[
           styles.spoon,
@@ -245,13 +247,6 @@ export function CauldronAnimation({ active }: { active: boolean }) {
       >
         <Spoon />
       </Animated.View>
-      {/* A little stew ripple that follows the spoon and hides its foot. */}
-      <Animated.View style={[styles.ripple, { transform: [{ translateX: spoonX }, { translateY: spoonY }] }]}>
-        <Svg width={56} height={20} viewBox="0 0 56 20">
-          <Ellipse cx={28} cy={10} rx={26} ry={8.5} fill={STEW} stroke={INK} strokeWidth={2.4} />
-        </Svg>
-      </Animated.View>
-
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <PotLip />
       </View>
@@ -263,7 +258,7 @@ const styles = StyleSheet.create({
   box: { width: BOX_W, height: BOX_H },
   abs: { position: 'absolute' },
   flame: { position: 'absolute', top: 206, transformOrigin: 'bottom' },
-  // Spoon is 36x132; its bowl's centre (18, 116) sits on the surface.
-  spoon: { position: 'absolute', left: SURFACE_X - 18, top: SURFACE_Y - 116, transformOrigin: '50% 88%' },
-  ripple: { position: 'absolute', left: SURFACE_X - 28, top: SURFACE_Y + 6 - 9 },
+  // Spoon clip box: its bottom edge is the stew surface, where the
+  // handle is cut off. Pivots from that bottom edge.
+  spoon: { position: 'absolute', left: SURFACE_X - 18, top: SURFACE_Y - 110 + 4, width: 36, height: 110, overflow: 'hidden', transformOrigin: 'bottom' },
 });
