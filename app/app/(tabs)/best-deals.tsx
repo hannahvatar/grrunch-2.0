@@ -27,6 +27,7 @@ import { ExpiredBadge } from '../../components/ExpiredBadge';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
 import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
+import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { WeekGapState } from '../../components/WeekGapState';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSelectedStores } from '../../lib/selectedStores';
@@ -147,6 +148,7 @@ export default function BestDealsScreen() {
 
   return (
     <View style={styles.container}>
+      <ClosingSoonBanner />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Weekly Deals</Text>
         {weekExpired && (

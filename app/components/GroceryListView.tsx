@@ -13,6 +13,7 @@ import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
 import { useSubscription } from '../lib/subscription';
 import { UpgradeCta } from './UpgradeCta';
+import { ClosingSoonBanner } from './ClosingSoonBanner';
 import { WeekGapState } from './WeekGapState';
 
 // Same visual language as the recipe page (app/recipe.tsx) -- peach
@@ -341,6 +342,7 @@ export function GroceryListView() {
 
   return (
     <View style={styles.container}>
+      <ClosingSoonBanner />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Scrolls away with the rest of the content now, matching
             recipe.tsx's own headerText (also the first thing inside its

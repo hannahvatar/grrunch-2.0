@@ -1,29 +1,46 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Modal, Pressable, StyleSheet, Text } from 'react-native';
 
-import { useLiveWeek } from '../lib/liveWeek';
+import { acknowledgeWeekChange, type WeekChange, useLiveWeek, usePendingWeekChange } from '../lib/liveWeek';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Weekly handover side effects (Anabelle, 2026-09-24) -- mounted once in
-// app/_layout.tsx, inside the selection providers:
-//   - Wednesday 11:59 pm close: clears the grocery list, and shows a modal
-//     to anyone who was using the app at that moment so the screens
-//     don't just go empty under them. Someone opening the app during the
-//     gap sees the empty state instead -- no modal needed.
-//   - New week published (Thursday 12:00 pm): clears the list again, since
-//     anything on it belongs to the week that just ended.
-//
-// Modal copy below is a PLACEHOLDER -- Anabelle is providing the design
-// and copy for the gap states.
+// Weekly handover (Anabelle, 2026-09-24, softened 2026-09-28 because it
+// "feels abrupt") -- mounted once in app/_layout.tsx, inside the
+// selection providers:
+//   - Wednesday 11 pm: a banner with a countdown on Meals, Weekly Deals and
+//     My list (ClosingSoonBanner.tsx).
+//   - Wednesday 11:59 pm close, while the app is open: a popup over this
+//     week's screens. They switch to the countdown empty state and the
+//     grocery list clears only once it's tapped.
+//   - New week published (Thursday 12:00 pm), while the app is open: a
+//     popup, and the new week loads when it's tapped.
+//   - Either change while the app was in the background: no popup, the
+//     screens are simply up to date when it comes back.
+// The grocery list clears whenever the screens move to a new state
+// (close or new week), since anything on it belongs to the week that
+// just ended.
+const POPUPS: Record<WeekChange, { title: string; body: string; button: string }> = {
+  closed: {
+    title: "That's a wrap for this week",
+    body: "This week's meals and deals have ended, and your grocery list is cleared. New ones drop Thursday at 12:00 pm.",
+    button: 'Got it',
+  },
+  newWeek: {
+    title: 'New meals and deals are here!',
+    body: 'Fresh from this week\'s flyers.',
+    button: "Let's see",
+  },
+};
+
 export function WeekLifecycle() {
   const liveWeek = useLiveWeek();
+  const pending = usePendingWeekChange();
   const { clearSelected } = useSelectedMeals();
   const { clearDealsSelected } = useSelectedDeals();
-  const [showClosedModal, setShowClosedModal] = useState(false);
   const previous = useRef(liveWeek);
 
   useEffect(() => {
@@ -37,19 +54,18 @@ export function WeekLifecycle() {
       clearSelected();
       clearDealsSelected();
     }
-    if (justClosed) setShowClosedModal(true);
   }, [liveWeek, clearSelected, clearDealsSelected]);
 
+  const popup = pending ? POPUPS[pending] : null;
+
   return (
-    <Modal visible={showClosedModal} transparent animationType="fade" onRequestClose={() => setShowClosedModal(false)}>
-      <Pressable style={styles.backdrop} onPress={() => setShowClosedModal(false)}>
+    <Modal visible={!!popup} transparent animationType="fade" onRequestClose={acknowledgeWeekChange}>
+      <Pressable style={styles.backdrop} onPress={acknowledgeWeekChange}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>This week’s deals have ended</Text>
-          <Text style={styles.body}>
-            New deals and recipes drop Thursday at 12:00 pm. Your grocery list has been cleared for the new week.
-          </Text>
-          <Pressable style={styles.button} onPress={() => setShowClosedModal(false)}>
-            <Text style={styles.buttonText}>Got it</Text>
+          <Text style={styles.title}>{popup?.title}</Text>
+          <Text style={styles.body}>{popup?.body}</Text>
+          <Pressable style={styles.button} onPress={acknowledgeWeekChange}>
+            <Text style={styles.buttonText}>{popup?.button}</Text>
           </Pressable>
         </Pressable>
       </Pressable>
