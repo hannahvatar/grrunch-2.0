@@ -1,0 +1,53 @@
+name: Website
+
+# Builds grrunch.com (website/build.mjs) and publishes it to GitHub Pages.
+# The Privacy Policy, Terms and Support pages are generated from the app's
+# own text (app/lib/privacyPolicy.ts, termsOfUse.ts, support.ts), so a
+# change there redeploys the site too.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'app/lib/privacyPolicy.ts'
+      - 'app/lib/termsOfUse.ts'
+      - 'app/lib/support.ts'
+      - 'app/lib/legalContent.ts'
+      - 'app/lib/purchases.tsx'
+      - '.github/workflows/website.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The build only needs TypeScript's transpiler from the app's
+      # dependencies, not the whole React Native install.
+      - name: Install TypeScript
+        run: npm install --prefix website/.tooling --no-package-lock "typescript@$(node -p "require('./app/package.json').devDependencies.typescript")"
+      - run: node website/build.mjs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
