@@ -1447,7 +1447,10 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
                   options={PER_UNIT_OPTIONS}
                   value={perUnit}
                   onChange={(value) => setPerUnit(value as PerUnit)}
-                  menuAlign="right"
+                  // With "each" there's no amount field, so the pill sits at
+                  // the left edge: open the menu rightwards or it runs off
+                  // screen (Anabelle, 2026-09-30: "its buggy").
+                  menuAlign={perUnit === 'each' ? 'left' : 'right'}
                 />
               </View>
               <Text style={styles.fieldLabel}>Previous price on the cutout (leave blank if none)</Text>
