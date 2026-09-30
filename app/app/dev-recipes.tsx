@@ -195,6 +195,7 @@ export default function DevRecipesScreen() {
               isSelected={selectedIds.has(meal.id)}
               onToggleSelected={() => toggleSelected(meal.id)}
               dealsExpired={week === 'next' ? false : undefined}
+              week={week}
             />
           </View>
         ))}

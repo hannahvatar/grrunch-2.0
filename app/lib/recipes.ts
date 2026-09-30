@@ -291,7 +291,10 @@ export async function fetchAllRecipes(week: RecipeWeek = 'live'): Promise<Meal[]
   );
 }
 
-export async function fetchRecipeById(id: string): Promise<Meal | null> {
+// week 'next': the same draft-week view as fetchAllRecipes -- used when a
+// recipe is opened from dev-recipes' "Next week" (Anabelle, 2026-09-30:
+// "When I open the recipe, I should see the curated deals associated").
+export async function fetchRecipeById(id: string, week: RecipeWeek = 'live'): Promise<Meal | null> {
   const [{ data, error }, statcanPrices, producePrices, staplePrices, subRecipes] = await Promise.all([
     supabase.from('recipes').select('*').eq('id', id).maybeSingle(),
     fetchStatcanPrices(),
@@ -300,7 +303,12 @@ export async function fetchRecipeById(id: string): Promise<Meal | null> {
     fetchSubRecipes(),
   ]);
   if (error) throw error;
-  return data ? mapRowToMeal(data, statcanPrices, producePrices, staplePrices, subRecipes) : null;
+  if (!data) return null;
+  const row =
+    week === 'next'
+      ? { ...data, deal_tags: data.draft_deal_tags, price: data.draft_price, featured: data.featured_next }
+      : data;
+  return mapRowToMeal(row, statcanPrices, producePrices, staplePrices, subRecipes);
 }
 
 export async function fetchRecipesByIds(ids: string[]): Promise<Meal[]> {
