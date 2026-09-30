@@ -394,6 +394,10 @@ export default function DevDealsScreen() {
           setStartSplit(false);
         }}
         onOpenDeal={(deal) => setSelectedId(deal.id)}
+        onDealsUpdated={(updated) => {
+          const byId = new Map(updated.map((d) => [d.id, d]));
+          setDeals((prev) => prev.map((d) => byId.get(d.id) ?? d));
+        }}
         onSplit={(source, duplicates) => {
           setStartSplit(false);
           // Stays on the cutout screen, which now lists every product as
@@ -618,6 +622,8 @@ interface CutoutViewProps {
   onSplit: (source: CuratedDeal, duplicates: CuratedDeal[]) => void;
   // Open with the by-hand split box showing.
   startSplit?: boolean;
+  // Rows changed on this screen (rejected without opening them).
+  onDealsUpdated: (deals: CuratedDeal[]) => void;
 }
 
 // One flyer cutout with more than one product on it: the photo once,
@@ -698,7 +704,7 @@ function toSentSize(
   return base >= 5 ? { volume_ml: Math.round(base) } : 'invalid';
 }
 
-function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }: CutoutViewProps) {
+function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, startSplit = false }: CutoutViewProps) {
   const photo = cutout.deals.find((d) => d.image_url)?.image_url ?? null;
 
   // The products still to split, grouped by the combined deal they come
@@ -735,6 +741,50 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
   );
   const [splittingId, setSplittingId] = useState<string | null>(null);
   const [splitError, setSplitError] = useState<string | null>(null);
+
+  // Reject straight from this screen, one product or the whole cutout,
+  // without splitting first (Anabelle, 2026-09-30: "I want to be able to
+  // reject right away a deal that is split"). Same save as the deal
+  // screen's Reject: the stored values are sent back unchanged with
+  // reject: true.
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectError, setRejectError] = useState<string | null>(null);
+  async function rejectDeals(targets: CuratedDeal[]) {
+    const open = targets.filter((d) => d.status !== 'rejected');
+    if (open.length === 0 || rejecting) return;
+    setRejecting(true);
+    setRejectError(null);
+    const updated: CuratedDeal[] = [];
+    for (const deal of open) {
+      const { data, error: invokeError } = await supabase.functions.invoke<{ deal?: CuratedDeal; error?: string }>(
+        'update-curated-deal-pricing',
+        {
+          body: {
+            deal_id: deal.id,
+            item_name: deal.item_name,
+            price: deal.price,
+            original_price: deal.original_price,
+            original_price_source: deal.original_price_source,
+            price_unit: deal.price_unit,
+            package_weight_g: deal.package_weight_g,
+            package_weight_g_source: deal.package_weight_g_source,
+            quantity_estimated: deal.quantity_estimated,
+            usage: deal.usage,
+            keyword_matches: deal.keyword_matches,
+            zone: deal.zone,
+            reject: true,
+          },
+        }
+      );
+      if (invokeError || !data?.deal) {
+        setRejectError(await functionErrorMessage(invokeError, data?.error, `Could not reject ${deal.item_name}.`));
+        break;
+      }
+      updated.push(data.deal);
+    }
+    setRejecting(false);
+    if (updated.length > 0) onDealsUpdated(updated);
+  }
 
   // Anabelle, 2026-09-30: the automatic split only cuts at "or", so
   // "Acorn, Butternut, Buttercup or Spaghetti Squash" came out as 2
@@ -822,11 +872,26 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
         <Text style={styles.editStore}>{cutout.deals[0].chain_name}</Text>
         {cutout.deals[0].pick_reason && <Text style={styles.pickReason}>{cutout.deals[0].pick_reason}</Text>}
 
+        {cutout.deals.some((d) => d.status !== 'rejected') && (
+          <Pressable
+            style={[styles.tertiaryButton, styles.splitFromDeal]}
+            onPress={() => rejectDeals(cutout.deals)}
+            disabled={rejecting}
+          >
+            {rejecting ? (
+              <ActivityIndicator color={INK} />
+            ) : (
+              <Text style={[styles.tertiaryButtonText, styles.rejectText]}>Reject whole cutout</Text>
+            )}
+          </Pressable>
+        )}
+        {rejectError && <Text style={styles.saveError}>{rejectError}</Text>}
+
         <Text style={styles.sectionTitle}>Deals from this cutout</Text>
         {cutout.deals.map((deal) => {
           const combined = isCombinedName(deal.item_name);
           return (
-            <Pressable key={deal.id} style={styles.dealRow} onPress={() => onOpenDeal(deal)}>
+            <Pressable key={deal.id} style={[styles.dealRow, styles.cutoutDealRow]} onPress={() => onOpenDeal(deal)}>
               <View style={styles.dealRowInfo}>
                 <Text style={styles.dealRowName}>{deal.item_name}</Text>
                 <DealPriceLine deal={deal} showStatus />
@@ -843,6 +908,11 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
                   </Text>
                 )}
               </View>
+              {deal.status !== 'rejected' && (
+                <Pressable onPress={() => rejectDeals([deal])} disabled={rejecting} hitSlop={8}>
+                  <Text style={[styles.textLink, styles.rejectText]}>Reject</Text>
+                </Pressable>
+              )}
             </Pressable>
           );
         })}
@@ -2234,6 +2304,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardAboveNext: { zIndex: 30 },
+  rejectText: { color: '#B42318' },
+  cutoutDealRow: { alignItems: 'center' },
   splitFromDeal: { alignSelf: 'flex-start' },
   referenceBlock: { gap: 6 },
   referenceNameBox: {
