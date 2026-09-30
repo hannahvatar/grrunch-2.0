@@ -565,7 +565,8 @@ function DealPriceLine({ deal, showStatus }: { deal: CuratedDeal; showStatus: bo
     <View style={styles.dealRowPriceLine}>
       <Text style={styles.dealRowPrice}>
         {deal.price != null ? `$${deal.price.toFixed(2)}` : 'Unknown'}
-        {deal.price != null && deal.bundle_count ? ` for ${deal.bundle_count}` : ''}{' '}
+        {deal.price != null && deal.bundle_count ? ` for ${deal.bundle_count}` : ''}
+        {deal.price != null && deal.min_quantity ? ` · buy ${deal.min_quantity}+` : ''}{' '}
         <Text style={styles.dealRowOriginal}>
           {deal.original_price != null ? `$${deal.original_price.toFixed(2)}` : 'Unknown'}
         </Text>
@@ -1335,6 +1336,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
   // package". Blank or 1 = a single-item price. The fetch fills this from
   // the flyer (bundle_count); it was stored but never shown here.
   const [bundleText, setBundleText] = useState(deal.bundle_count ? String(deal.bundle_count) : '');
+  // "$5.99 each when you buy 2 or more" (Anabelle, 2026-09-30, Butterball
+  // Turkey Bacon) -- a minimum, not a bundle. Blank = no minimum.
+  const [minQtyText, setMinQtyText] = useState(deal.min_quantity ? String(deal.min_quantity) : '');
 
   // 3/4 -- StatCan reference.
   const [decision, setDecision] = useState<ReferenceDecision>('undecided');
@@ -1439,6 +1443,8 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
   // describes ONE item, so the comparison below uses the per-item price.
   const priceUnit: PriceUnit = bundle !== null ? 'each' : formUnit;
   const comparePrice = priceNum !== null && bundle !== null ? priceNum / bundle : priceNum;
+  const parsedMinQty = minQtyText.trim() === '' ? null : Number(minQtyText);
+  const minQty = parsedMinQty !== null && Number.isInteger(parsedMinQty) && parsedMinQty >= 2 ? parsedMinQty : null;
   const basis = priceBasis(formUnit, deal, itemName, weightG, volumeMl);
 
   // The StatCan item shown for approval: one picked from search, else
@@ -1496,6 +1502,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
     if (volumeMl !== null && volumeMl < 5) {
       return { error: 'That quantity is under 5 ml -- no real package is that small, so check the unit.' };
     }
+    if (minQtyText.trim() !== '' && minQty === null && Number(minQtyText) !== 1) {
+      return { error: 'The minimum to buy must be a whole number (2 for "buy 2 or more"), or blank.' };
+    }
     if (bundleText.trim() !== '' && bundle === null && Number(bundleText) !== 1) {
       return { error: 'How many for this price must be a whole number (2 for "2 for $3"), or blank.' };
     }
@@ -1514,6 +1523,7 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
         // unit the stored one is sent back untouched. A size typed here
         // was read off the cutout, hence 'label'.
         bundle_count: bundle,
+        min_quantity: minQty,
         package_weight_g: formUnit === 'package' ? weightG : deal.package_weight_g,
         package_weight_g_source:
           formUnit !== 'package'
@@ -1616,6 +1626,7 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
                         basis.label === 'each' || basis.label === 'package' ? '' : ` · ${basis.label} each`
                       }`
                     : `${formatMoney(priceNum)} / ${basis.label}`}
+                {priceNum !== null && minQty !== null ? ` · buy ${minQty}+` : ''}
               </Text>
               {/* Tertiary treatment -- same white-fill/1.5px-INK pill as
                   signup-nudge.tsx's tertiaryButton, not a bare link. */}
@@ -1652,6 +1663,8 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
               </View>
               <Text style={styles.fieldLabel}>How many for this price? (e.g. 2 for "2 for $3", blank if just one)</Text>
               <InputField value={bundleText} onChangeText={setBundleText} keyboardType="number-pad" placeholder="1" />
+              <Text style={styles.fieldLabel}>Minimum to buy for this price (e.g. 2 for "when you buy 2 or more", blank if none)</Text>
+              <InputField value={minQtyText} onChangeText={setMinQtyText} keyboardType="number-pad" placeholder="None" />
               <Text style={styles.fieldLabel}>
                 {bundle !== null
                   ? 'Previous price of ONE item on the cutout (leave blank if none)'

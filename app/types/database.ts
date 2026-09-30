@@ -43,6 +43,7 @@ export type Database = {
         Row: {
           airtable_record_id: string | null
           bundle_count: number | null
+          min_quantity: number | null
           category: string | null
           chain_name: string
           created_at: string
@@ -76,6 +77,7 @@ export type Database = {
         Insert: {
           airtable_record_id?: string | null
           bundle_count?: number | null
+          min_quantity?: number | null
           category?: string | null
           chain_name: string
           created_at?: string
@@ -109,6 +111,7 @@ export type Database = {
         Update: {
           airtable_record_id?: string | null
           bundle_count?: number | null
+          min_quantity?: number | null
           category?: string | null
           chain_name?: string
           created_at?: string
