@@ -157,7 +157,14 @@ function isNonBlankName(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "" && value.length <= MAX_NAME_LENGTH;
 }
 
-type ProductSize = { weight_g: number } | { volume_ml: number } | null;
+// { price_unit } = priced per item or per package with no size to record
+// (Anabelle, 2026-09-30: bunches like "Bunch Mint, Methi Leaf or Red
+// Carrots" are priced each, not by weight).
+type ProductSize =
+  | { weight_g: number }
+  | { volume_ml: number }
+  | { price_unit: "each" | "package" }
+  | null;
 
 function isProductSize(value: unknown): value is ProductSize {
   if (value === null) return true;
@@ -167,6 +174,7 @@ function isProductSize(value: unknown): value is ProductSize {
   if (keys.length !== 1) return false;
   if (keys[0] === "weight_g") return typeof v.weight_g === "number" && v.weight_g >= 10;
   if (keys[0] === "volume_ml") return typeof v.volume_ml === "number" && v.volume_ml >= 5;
+  if (keys[0] === "price_unit") return v.price_unit === "each" || v.price_unit === "package";
   return false;
 }
 
@@ -175,6 +183,14 @@ function isProductSize(value: unknown): value is ProductSize {
 // (lb/kg/100g) and multi-buys keep their unit and just record the size.
 function sizeColumns(size: ProductSize, source: CuratedDealRow) {
   if (size === null) return {};
+  if ("price_unit" in size) {
+    return {
+      price_unit: size.price_unit as DealPriceUnit,
+      package_weight_g: null,
+      package_weight_g_source: null,
+      package_volume_ml: null,
+    };
+  }
   const unit =
     source.price_unit === "each" && source.bundle_count === null ? { price_unit: "package" as DealPriceUnit } : {};
   return "weight_g" in size
@@ -223,7 +239,7 @@ export default {
       (!batchForm || !Array.isArray(sizes) || sizes.length !== newCount + 1 || !sizes.every(isProductSize))
     ) {
       return validationError(
-        "sizes must be one entry per product (the source first, then each new name): null, { weight_g: 10 or more }, or { volume_ml: 5 or more }.",
+        "sizes must be one entry per product (the source first, then each new name): null, { weight_g: 10 or more }, { volume_ml: 5 or more }, or { price_unit: 'each' | 'package' }.",
       );
     }
     const productSizes = (sizes as ProductSize[] | undefined) ?? [];
