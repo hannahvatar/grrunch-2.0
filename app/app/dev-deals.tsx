@@ -90,7 +90,10 @@ const NO_ZONE = '__no_zone__';
 // ml / L added for liquids (Anabelle: "we are missing ml from the
 // dropdown quantity units", on Unico capers 125 mL / pepper rings 750 mL)
 // -- saved as package_volume_ml, which recipe pricing already reads.
-type PerUnit = 'g' | 'kg' | 'lb' | 'ml' | 'L' | 'each';
+// 'unit': a count of items for the one price ("$4.79 per 6 unit"), compared
+// per unit (Anabelle, 2026-09-30: "I need 'unit' in priced per"). Saved as
+// an 'each' deal with bundle_count = the count.
+type PerUnit = 'g' | 'kg' | 'lb' | 'ml' | 'L' | 'each' | 'unit';
 const PER_UNIT_OPTIONS: { value: PerUnit; label: string }[] = [
   { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
@@ -98,6 +101,7 @@ const PER_UNIT_OPTIONS: { value: PerUnit; label: string }[] = [
   { value: 'ml', label: 'ml' },
   { value: 'L', label: 'L' },
   { value: 'each', label: 'each' },
+  { value: 'unit', label: 'unit' },
 ];
 const GRAMS_PER_LB = 453.592;
 
@@ -110,7 +114,7 @@ function toStoredPrice(
   qty: number | null,
   unit: PerUnit
 ): { priceUnit: PriceUnit; weightG: number | null; volumeMl: number | null } {
-  if (unit === 'each') return { priceUnit: 'each', weightG: null, volumeMl: null };
+  if (unit === 'each' || unit === 'unit') return { priceUnit: 'each', weightG: null, volumeMl: null };
   if (unit === 'lb') {
     return qty === null || qty === 1
       ? { priceUnit: 'lb', weightG: null, volumeMl: null }
@@ -142,6 +146,10 @@ function fromStoredPrice(deal: CuratedDeal, itemName: string): { qty: string; un
   }
   if (deal.price_unit === 'each' && deal.bundle_count != null && deal.package_volume_ml != null) {
     return { qty: String(deal.package_volume_ml), unit: 'ml' };
+  }
+  // A count with no size reads back as "per N unit".
+  if (deal.price_unit === 'each' && deal.bundle_count != null && deal.package_weight_g == null && deal.package_volume_ml == null) {
+    return { qty: String(deal.bundle_count), unit: 'unit' };
   }
   if (deal.price_unit === 'each') return { qty: '', unit: 'each' };
   if (deal.package_weight_g != null) return { qty: String(deal.package_weight_g), unit: 'g' };
@@ -1441,7 +1449,14 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
   const perQty = parsedQty !== null && Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : null;
   const { priceUnit: formUnit, weightG, volumeMl } = toStoredPrice(perQty, perUnit);
   const parsedBundle = bundleText.trim() === '' ? null : Number(bundleText);
-  const bundle = parsedBundle !== null && Number.isInteger(parsedBundle) && parsedBundle >= 2 ? parsedBundle : null;
+  // With "per N unit" the count comes from the amount box instead.
+  const unitCount = perUnit === 'unit' && perQty !== null && Number.isInteger(perQty) && perQty >= 2 ? perQty : null;
+  const bundle =
+    perUnit === 'unit'
+      ? unitCount
+      : parsedBundle !== null && Number.isInteger(parsedBundle) && parsedBundle >= 2
+        ? parsedBundle
+        : null;
   // A multi-buy is stored as an 'each' deal with bundle_count (what the
   // recipe pricing's bundle handling reads); the form's per-unit still
   // describes ONE item, so the comparison below uses the per-item price.
@@ -1509,7 +1524,10 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
     if (minQtyText.trim() !== '' && minQty === null && Number(minQtyText) !== 1) {
       return { error: 'The minimum to buy must be a whole number (2 for "buy 2 or more"), or blank.' };
     }
-    if (bundleText.trim() !== '' && bundle === null && Number(bundleText) !== 1) {
+    if (perUnit === 'unit' && perQty !== null && !Number.isInteger(perQty)) {
+      return { error: 'The number of units must be a whole number (6 for "per 6 unit").' };
+    }
+    if (perUnit !== 'unit' && bundleText.trim() !== '' && bundle === null && Number(bundleText) !== 1) {
       return { error: 'How many for this price must be a whole number (2 for "2 for $3"), or blank.' };
     }
     const original = resolvedOriginal();
@@ -1668,10 +1686,14 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
               {/* Covers packs too (Anabelle, 2026-09-30: "I am missing unit in
                   the quantity" -- with "each" there's no amount box, so a pack
                   of 6 goes here). */}
-              <Text style={styles.fieldLabel}>
-                How many items for this price? (6 for a pack of 6, 2 for "2 for $3", blank if just one)
-              </Text>
-              <InputField value={bundleText} onChangeText={setBundleText} keyboardType="number-pad" placeholder="1" />
+              {perUnit !== 'unit' && (
+                <>
+                  <Text style={styles.fieldLabel}>
+                    How many items for this price? (6 for a pack of 6, 2 for "2 for $3", blank if just one)
+                  </Text>
+                  <InputField value={bundleText} onChangeText={setBundleText} keyboardType="number-pad" placeholder="1" />
+                </>
+              )}
               <Text style={styles.fieldLabel}>Minimum to buy for this price (e.g. 2 for "when you buy 2 or more", blank if none)</Text>
               <InputField value={minQtyText} onChangeText={setMinQtyText} keyboardType="number-pad" placeholder="None" />
               <Text style={styles.fieldLabel}>
