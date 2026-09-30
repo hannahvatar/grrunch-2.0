@@ -621,32 +621,57 @@ interface CutoutViewProps {
 // A split product's size, as typed: amount + unit.
 interface SplitSize {
   qty: string;
-  unit: 'g' | 'kg' | 'ml' | 'L';
+  // 'each' / 'package': priced per item or per package, no size to enter
+  // (Anabelle, 2026-09-30, on bunches of mint / carrots).
+  unit: 'g' | 'kg' | 'lb' | 'oz' | 'ml' | 'L' | 'each' | 'package';
 }
 const BLANK_SIZE: SplitSize = { qty: '', unit: 'g' };
 const SPLIT_SIZE_UNITS: { value: SplitSize['unit']; label: string }[] = [
   { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
+  // lb / oz too (Anabelle, 2026-09-30: "I am missing lbs") -- saved in grams.
+  { value: 'lb', label: 'lb' },
+  { value: 'oz', label: 'oz' },
   { value: 'ml', label: 'ml' },
   { value: 'L', label: 'L' },
+  { value: 'each', label: 'each' },
+  { value: 'package', label: 'package' },
 ];
+const GRAMS_PER_OZ = 28.3495;
 
 function sizeFromPart(name: string): SplitSize {
   const found = sizeFromItemName(name);
   if (!found) return BLANK_SIZE;
-  if (found.unit === 'g' || found.unit === 'kg' || found.unit === 'ml' || found.unit === 'L') {
+  if (
+    found.unit === 'g' ||
+    found.unit === 'kg' ||
+    found.unit === 'lb' ||
+    found.unit === 'oz' ||
+    found.unit === 'ml' ||
+    found.unit === 'L'
+  ) {
     return { qty: found.quantity, unit: found.unit };
   }
   return BLANK_SIZE;
 }
 
 // What the split function stores: grams or millilitres, null for blank.
-function toSentSize(size: SplitSize): { weight_g: number } | { volume_ml: number } | null | 'invalid' {
+function toSentSize(
+  size: SplitSize
+): { weight_g: number } | { volume_ml: number } | { price_unit: 'each' | 'package' } | null | 'invalid' {
+  if (size.unit === 'each' || size.unit === 'package') return { price_unit: size.unit };
   if (size.qty.trim() === '') return null;
   const amount = parseFloat(size.qty);
   if (!Number.isFinite(amount) || amount <= 0) return 'invalid';
-  const base = size.unit === 'kg' || size.unit === 'L' ? amount * 1000 : amount;
-  if (size.unit === 'g' || size.unit === 'kg') return base >= 10 ? { weight_g: Math.round(base) } : 'invalid';
+  const base =
+    size.unit === 'kg' || size.unit === 'L'
+      ? amount * 1000
+      : size.unit === 'lb'
+        ? amount * GRAMS_PER_LB
+        : size.unit === 'oz'
+          ? amount * GRAMS_PER_OZ
+          : amount;
+  if (size.unit !== 'ml' && size.unit !== 'L') return base >= 10 ? { weight_g: Math.round(base) } : 'invalid';
   return base >= 5 ? { volume_ml: Math.round(base) } : 'invalid';
 }
 
@@ -729,7 +754,8 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
       return;
     }
     const editedSizes = sizes[source.id] ?? (group?.parts ?? []).map(sizeFromPart);
-    const sentSizes: ({ weight_g: number } | { volume_ml: number } | null)[] = [];
+    const sentSizes: ({ weight_g: number } | { volume_ml: number } | { price_unit: 'each' | 'package' } | null)[] =
+      [];
     for (const size of editedSizes) {
       const sent = toSentSize(size);
       if (sent === 'invalid') {
@@ -822,6 +848,9 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
                       paints over the rows below it on web. */}
                   <View style={[styles.splitSizeRow, { zIndex: 50 - index }]}>
                     <View style={styles.splitNameField}>
+                      {['each', 'package'].includes((sizes[source.id]?.[index] ?? sizeFromPart(parts[index] ?? '')).unit) ? (
+                        <Text style={styles.note}>Priced per {(sizes[source.id]?.[index] ?? sizeFromPart(parts[index] ?? '')).unit}, no size needed</Text>
+                      ) : (
                       <InputField
                         value={(sizes[source.id]?.[index] ?? sizeFromPart(parts[index] ?? '')).qty}
                         onChangeText={(qty) =>
@@ -833,6 +862,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
                         keyboardType="decimal-pad"
                         placeholder="Size (optional)"
                       />
+                      )}
                     </View>
                     <Dropdown
                       options={SPLIT_SIZE_UNITS}
