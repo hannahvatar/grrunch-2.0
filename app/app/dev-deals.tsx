@@ -1308,6 +1308,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
 
   // 3/4 -- StatCan reference.
   const [decision, setDecision] = useState<ReferenceDecision>('undecided');
+  // Show the StatCan / AI section even when the cutout prints a previous
+  // price (see the section itself).
+  const [compareAnyway, setCompareAnyway] = useState(false);
   const [statcan, setStatcan] = useState<StaplePrice[] | null>(null);
   const [statcanError, setStatcanError] = useState(false);
   // A StatCan item picked by hand from search, replacing the automatic
@@ -1649,12 +1652,27 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
           </View>
         )}
 
-        {/* 3/4 -- StatCan reference, only when there's no previous price */}
-        {previousNum === null && (
+        {/* 3/4 -- StatCan reference. With a previous price on the cutout it's
+            an optional check (Anabelle, 2026-09-30, on "Avocado Bag --
+            Members Save $1": a member price beats the store's own
+            non-member price, but is it a good price? "I need to be able to
+            review against StatCan or AI estimate"). */}
+        {previousNum !== null && !compareAnyway && (
+          <Pressable style={[styles.tertiaryButton, styles.splitFromDeal]} onPress={() => setCompareAnyway(true)}>
+            <Text style={styles.tertiaryButtonText}>Also compare with StatCan or AI</Text>
+          </Pressable>
+        )}
+        {(previousNum === null || compareAnyway) && (
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>
               {reference?.aiReasoning !== undefined ? 'AI reference' : 'StatCan reference'}
             </Text>
+            {previousNum !== null && (
+              <Text style={styles.note}>
+                A check for you: the deal's saving still comes from the previous price on the cutout. To use this
+                reference instead, clear that previous price.
+              </Text>
+            )}
             {priceNum === null ? (
               <Text style={styles.note}>Add the cutout price first -- the reference is compared against it.</Text>
             ) : statcanError ? (
