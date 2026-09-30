@@ -1409,8 +1409,11 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
 
         {/* 1 -- Cutout price. Each step sits in its own white card
             (Anabelle: "Make the cutout price section in its own white
-            container" / "StatCan reference section also"). */}
-        <View style={styles.sectionCard}>
+            container" / "StatCan reference section also").
+            zIndex: the "Price is per" menu hangs below this card, and on web
+            it painted under the StatCan card next to it, hiding ml / L /
+            each (Anabelle, 2026-09-30). Same fix as Dropdown's own comment. */}
+        <View style={[styles.sectionCard, styles.cardAboveNext]}>
           <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>Cutout price</Text>
           {!fixingPrice && (
             <>
@@ -1444,7 +1447,10 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
                   options={PER_UNIT_OPTIONS}
                   value={perUnit}
                   onChange={(value) => setPerUnit(value as PerUnit)}
-                  menuAlign="right"
+                  // With "each" there's no amount field, so the pill sits at
+                  // the left edge: open the menu rightwards or it runs off
+                  // screen (Anabelle, 2026-09-30: "its buggy").
+                  menuAlign={perUnit === 'each' ? 'left' : 'right'}
                 />
               </View>
               <Text style={styles.fieldLabel}>Previous price on the cutout (leave blank if none)</Text>
@@ -1943,6 +1949,7 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
   },
+  cardAboveNext: { zIndex: 30 },
   referenceBlock: { gap: 6 },
   referenceNameBox: {
     backgroundColor: '#FFEAD4',
