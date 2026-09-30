@@ -59,7 +59,7 @@ h1 {
 /* Google's PNG has built-in clear space (~1/6 of its height top and
    bottom); size it so the visible badge matches Apple's 52px. */
 .badge-play { height: 78px; width: auto; margin: -13px -12px; }
-/* The app's info AlertBanner colours (components/AlertBanner.tsx). */
+/* The app's info AlertBanner text and icon colour (components/AlertBanner.tsx), on white (Anabelle, 2026-09-29). */
 .info-banner {
   display: inline-flex;
   align-items: center;
@@ -67,7 +67,7 @@ h1 {
   margin: 24px 0 0;
   padding: 12px 16px;
   border-radius: 16px;
-  background: #e8f1fe;
+  background: #fff;
   color: #1456b0;
   font-size: 15px;
   font-weight: 700;
