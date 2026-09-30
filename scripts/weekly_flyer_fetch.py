@@ -649,6 +649,11 @@ def refresh_draft_recipes():
 
 def send_email(subject, body):
     user, password = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASSWORD")
+    # Google shows app passwords as four groups with spaces, and copying
+    # them can bring along non-breaking spaces (\xa0) that smtplib can't
+    # send (first real run, 2026-09-29). The password itself has no spaces,
+    # so drop all whitespace.
+    password = "".join((password or "").split())
     to = os.environ.get("NOTIFY_TO", "admin@grrunch.com")
     if not user or not password:
         say("(email not configured -- SMTP_USER / SMTP_PASSWORD unset; summary printed above only)")
