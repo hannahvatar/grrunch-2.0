@@ -38,6 +38,10 @@ const WEEK_OPTIONS: { value: RecipeWeek; label: string }[] = [
 export default function DevRecipesScreen() {
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const [week, setWeek] = useState<RecipeWeek>('next');
+  // Featured-only by default (Anabelle, 2026-09-30: "I only want to see
+  // this week deals curated 7 recipes") -- the rest of the library stays in
+  // the database, one tap away.
+  const [showAll, setShowAll] = useState(false);
   const [meals, setMeals] = useState<Meal[]>([]);
   // Anabelle: "reoder (just on this page) per newest first so its
   // easier for me to review recipes". fetchAllRecipes()'s Meal type
@@ -166,7 +170,17 @@ export default function DevRecipesScreen() {
             : `${meals.filter((m) => m.featured).length} featured this week · live prices · newest first`}
         </Text>
 
-        {sorted.map((meal) => (
+        <SegmentedControl
+          wrap
+          options={[
+            { value: 'featured', label: 'Featured only' },
+            { value: 'all', label: 'All recipes' },
+          ]}
+          value={showAll ? 'all' : 'featured'}
+          onChange={(value) => setShowAll(value === 'all')}
+        />
+
+        {sorted.filter((meal) => showAll || meal.featured).map((meal) => (
           <View key={meal.id} style={styles.recipeBlock}>
             <Pressable
               style={[styles.featureToggle, meal.featured && styles.featureToggleActive]}
