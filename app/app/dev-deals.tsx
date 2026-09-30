@@ -1493,8 +1493,16 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
                         exterior border of the table") -- it sits straight in
                         the white card. */}
                     <View style={styles.referenceBlock}>
-                      {/* For an AI estimate, the wording it was asked to price. */}
-                      <Text style={styles.referenceName}>{reference.name}</Text>
+                      {/* For an AI estimate, the wording it was asked to price.
+                          Set apart from the rest of the card (Anabelle,
+                          2026-09-30: "Being the same type treatment my eyes
+                          look for it") -- it's the one thing to check. */}
+                      <View style={styles.referenceNameBox}>
+                        <Text style={styles.referenceNameLabel}>
+                          {reference.aiReasoning !== undefined ? 'Estimated item' : 'Matched to'}
+                        </Text>
+                        <Text style={styles.referenceName}>{reference.name}</Text>
+                      </View>
                       <ReferenceComparisonTable
                         referenceLabel={referenceLabel}
                         referencePrice={reference.avgPrice}
@@ -1936,7 +1944,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   referenceBlock: { gap: 6 },
-  referenceName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  referenceNameBox: {
+    backgroundColor: '#FFEAD4',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFA955',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 2,
+  },
+  referenceNameLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'OpenSans_700Bold',
+    color: '#767676',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  referenceName: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   searchResult: { borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingVertical: 8, gap: 2 },
   // No outer border (Anabelle) -- only the dividers between cells.
   table: { overflow: 'hidden' },
