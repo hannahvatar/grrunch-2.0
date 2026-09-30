@@ -76,9 +76,10 @@ h1 {
 .info-banner svg { flex: none; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+/* No fill, dashed ink border (Anabelle, 2026-09-29). */
 .card {
-  background: var(--paper);
-  border: 2px solid var(--ink);
+  background: transparent;
+  border: 2px dashed var(--ink);
   border-radius: 20px;
   padding: 22px;
 }
