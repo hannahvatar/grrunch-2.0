@@ -842,6 +842,28 @@ export function computeDealPackageCount(
   bundleCount?: number,
   ingredientName?: string
 ): number {
+  // Whole items counted with a container word ("2 cans", "2 packs",
+  // "1 package") or whole produce ("1 whole" onion). Anabelle, 2026-09-30:
+  // "the kidney beans don't scale" -- the fallback below returned just
+  // the batch count, so 2 cans x 2 batches still read "2".
+  const counted = parseUnitAmount(quantity, unit);
+  if (!Number.isNaN(counted.amount) && counted.baseUnit === 'each' && !(fragmentByWeight && bundleCount)) {
+    // Whole items bought loose from a weighed bag (onions): a second bag
+    // only once the onions outweigh one bag.
+    if (fragmentByWeight && packageWeightG && ingredientName) {
+      const ingWords = normalizeWords(ingredientName);
+      const bridge = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+        const words = normalizeWords(name);
+        return words.length > 0 && words.every((w) => ingWords.includes(w));
+      });
+      if (bridge) return Math.max(1, Math.ceil((counted.amount * bridge[1] * multiplier) / packageWeightG));
+    }
+    // N cans/packs per batch -> N x batches. A bare count of pieces out
+    // of one package (8 Kraft Singles) isn't this, so it's excluded.
+    if (counted.amount >= 1 && !isBareOrSizeCount(unit)) {
+      return Math.max(1, Math.ceil(counted.amount * multiplier));
+    }
+  }
   if (fragmentByWeight) {
     const ua = parseUnitAmount(quantity, unit);
     if (!Number.isNaN(ua.amount)) {
@@ -977,12 +999,14 @@ export function shouldShowUseQuantityText(
   // are equally worth spelling out (neither cleanly maps to "exactly N
   // whole packages"), so this now shows unless the amount matches the
   // package size exactly.
+  // Also hidden for an exact whole number of packages (900 g of a 450 g
+  // pack at 2x servings is just "2" on the badge, not "900 g of the package").
   if (ua.baseUnit === 'g') {
-    if (packageWeightG) return ua.amount !== packageWeightG;
+    if (packageWeightG) return ua.amount % packageWeightG !== 0;
     return true;
   }
   if (ua.baseUnit === 'ml') {
-    if (packageVolumeMl) return ua.amount !== packageVolumeMl;
+    if (packageVolumeMl) return ua.amount % packageVolumeMl !== 0;
     return true;
   }
   // Each-based quantity that's ALREADY a natural count (e.g. "8 Kraft
