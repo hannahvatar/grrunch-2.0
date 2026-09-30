@@ -621,20 +621,31 @@ interface CutoutViewProps {
 // A split product's size, as typed: amount + unit.
 interface SplitSize {
   qty: string;
-  unit: 'g' | 'kg' | 'ml' | 'L';
+  unit: 'g' | 'kg' | 'lb' | 'oz' | 'ml' | 'L';
 }
 const BLANK_SIZE: SplitSize = { qty: '', unit: 'g' };
 const SPLIT_SIZE_UNITS: { value: SplitSize['unit']; label: string }[] = [
   { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
+  // lb / oz too (Anabelle, 2026-09-30: "I am missing lbs") -- saved in grams.
+  { value: 'lb', label: 'lb' },
+  { value: 'oz', label: 'oz' },
   { value: 'ml', label: 'ml' },
   { value: 'L', label: 'L' },
 ];
+const GRAMS_PER_OZ = 28.3495;
 
 function sizeFromPart(name: string): SplitSize {
   const found = sizeFromItemName(name);
   if (!found) return BLANK_SIZE;
-  if (found.unit === 'g' || found.unit === 'kg' || found.unit === 'ml' || found.unit === 'L') {
+  if (
+    found.unit === 'g' ||
+    found.unit === 'kg' ||
+    found.unit === 'lb' ||
+    found.unit === 'oz' ||
+    found.unit === 'ml' ||
+    found.unit === 'L'
+  ) {
     return { qty: found.quantity, unit: found.unit };
   }
   return BLANK_SIZE;
@@ -645,8 +656,15 @@ function toSentSize(size: SplitSize): { weight_g: number } | { volume_ml: number
   if (size.qty.trim() === '') return null;
   const amount = parseFloat(size.qty);
   if (!Number.isFinite(amount) || amount <= 0) return 'invalid';
-  const base = size.unit === 'kg' || size.unit === 'L' ? amount * 1000 : amount;
-  if (size.unit === 'g' || size.unit === 'kg') return base >= 10 ? { weight_g: Math.round(base) } : 'invalid';
+  const base =
+    size.unit === 'kg' || size.unit === 'L'
+      ? amount * 1000
+      : size.unit === 'lb'
+        ? amount * GRAMS_PER_LB
+        : size.unit === 'oz'
+          ? amount * GRAMS_PER_OZ
+          : amount;
+  if (size.unit !== 'ml' && size.unit !== 'L') return base >= 10 ? { weight_g: Math.round(base) } : 'invalid';
   return base >= 5 ? { volume_ml: Math.round(base) } : 'invalid';
 }
 
