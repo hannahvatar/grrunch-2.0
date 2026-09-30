@@ -1378,7 +1378,11 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
       unit?: string;
       reasoning?: string;
       error?: string;
-    }>('estimate-reference-price', { body: { item_name: query } });
+    }>('estimate-reference-price', {
+      // With a count set, the deal is compared per item -- so the estimate
+      // must be for ONE item too, never a pack (see the function).
+      body: { item_name: query, per_item: bundle !== null },
+    });
     setAiLoading(false);
     if (invokeError || !data?.price || !data.quantity || !data.unit) {
       setAiError(await functionErrorMessage(invokeError, data?.error, 'Could not get an AI estimate.'));
@@ -1829,7 +1833,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
                     {/* For when StatCan has nothing comparable (Anabelle, on
                         extra lean ground beef vs StatCan's plain "Ground
                         beef"). */}
-                    <Text style={styles.fieldLabel}>No match? AI estimate for</Text>
+                    <Text style={styles.fieldLabel}>
+                      {bundle !== null ? 'No match? AI estimate for ONE of' : 'No match? AI estimate for'}
+                    </Text>
                     <InputField value={aiQuery} onChangeText={setAiQuery} placeholder="Item to estimate" />
                     <Pressable
                       style={[styles.tertiaryButton, aiLoading && styles.saveButtonDisabled]}
