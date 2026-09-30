@@ -618,6 +618,38 @@ interface CutoutViewProps {
 // doesn't have a deal yet. Replaces the old "Split into N separate
 // items" button inside the edit form, which made N anonymous copies
 // all still carrying the combined name for you to tell apart later.
+// A split product's size, as typed: amount + unit.
+interface SplitSize {
+  qty: string;
+  unit: 'g' | 'kg' | 'ml' | 'L';
+}
+const BLANK_SIZE: SplitSize = { qty: '', unit: 'g' };
+const SPLIT_SIZE_UNITS: { value: SplitSize['unit']; label: string }[] = [
+  { value: 'g', label: 'g' },
+  { value: 'kg', label: 'kg' },
+  { value: 'ml', label: 'ml' },
+  { value: 'L', label: 'L' },
+];
+
+function sizeFromPart(name: string): SplitSize {
+  const found = sizeFromItemName(name);
+  if (!found) return BLANK_SIZE;
+  if (found.unit === 'g' || found.unit === 'kg' || found.unit === 'ml' || found.unit === 'L') {
+    return { qty: found.quantity, unit: found.unit };
+  }
+  return BLANK_SIZE;
+}
+
+// What the split function stores: grams or millilitres, null for blank.
+function toSentSize(size: SplitSize): { weight_g: number } | { volume_ml: number } | null | 'invalid' {
+  if (size.qty.trim() === '') return null;
+  const amount = parseFloat(size.qty);
+  if (!Number.isFinite(amount) || amount <= 0) return 'invalid';
+  const base = size.unit === 'kg' || size.unit === 'L' ? amount * 1000 : amount;
+  if (size.unit === 'g' || size.unit === 'kg') return base >= 10 ? { weight_g: Math.round(base) } : 'invalid';
+  return base >= 5 ? { volume_ml: Math.round(base) } : 'invalid';
+}
+
 function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }: CutoutViewProps) {
   const photo = cutout.deals.find((d) => d.image_url)?.image_url ?? null;
 
@@ -646,6 +678,13 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
   const [names, setNames] = useState<Record<string, string[]>>(() =>
     Object.fromEntries(groups.map((g) => [g.source.id, g.parts]))
   );
+  // Each product's own size (Anabelle, 2026-09-30: "When i split item, i
+  // should be able to enter their qty e.g. ml, gr"), prefilled from a size
+  // in its name when there is one. Blank = keep the size copied from the
+  // original deal.
+  const [sizes, setSizes] = useState<Record<string, SplitSize[]>>(() =>
+    Object.fromEntries(groups.map((g) => [g.source.id, g.parts.map(sizeFromPart)]))
+  );
   const [splittingId, setSplittingId] = useState<string | null>(null);
   const [splitError, setSplitError] = useState<string | null>(null);
 
@@ -662,19 +701,42 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
   }
   function addPart(sourceId: string, parts: string[]) {
     setNames((prev) => ({ ...prev, [sourceId]: [...(prev[sourceId] ?? parts), ''] }));
+    setSizes((prev) => ({ ...prev, [sourceId]: [...(prev[sourceId] ?? parts.map(sizeFromPart)), BLANK_SIZE] }));
   }
   function removePart(sourceId: string, parts: string[], index: number) {
     setNames((prev) => ({ ...prev, [sourceId]: (prev[sourceId] ?? parts).filter((_, i) => i !== index) }));
+    setSizes((prev) => ({
+      ...prev,
+      [sourceId]: (prev[sourceId] ?? parts.map(sizeFromPart)).filter((_, i) => i !== index),
+    }));
+  }
+  function setSize(sourceId: string, parts: string[], index: number, size: SplitSize) {
+    setSizes((prev) => {
+      const next = [...(prev[sourceId] ?? parts.map(sizeFromPart))];
+      next[index] = size;
+      return { ...prev, [sourceId]: next };
+    });
   }
 
   // One call per combined deal: the deal itself takes the first name and
   // a copy is made for each of the others, so no combined "X or Y" row is
   // left over to reject afterwards.
   async function split(source: CuratedDeal) {
-    const edited = (names[source.id] ?? []).map((name) => name.trim());
+    const group = groups.find((g) => g.source.id === source.id);
+    const edited = (names[source.id] ?? group?.parts ?? []).map((name) => name.trim());
     if (edited.length === 0 || edited.some((name) => name === '')) {
       setSplitError('Every product needs a name.');
       return;
+    }
+    const editedSizes = sizes[source.id] ?? (group?.parts ?? []).map(sizeFromPart);
+    const sentSizes: ({ weight_g: number } | { volume_ml: number } | null)[] = [];
+    for (const size of editedSizes) {
+      const sent = toSentSize(size);
+      if (sent === 'invalid') {
+        setSplitError('Each size must be a number: at least 10 g, or 5 ml -- or blank.');
+        return;
+      }
+      sentSizes.push(sent);
     }
     setSplitError(null);
     setSplittingId(source.id);
@@ -683,7 +745,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
       duplicates?: CuratedDeal[];
       error?: string;
     }>('duplicate-curated-deal', {
-      body: { deal_id: source.id, source_item_name: edited[0], new_item_names: edited.slice(1) },
+      body: { deal_id: source.id, source_item_name: edited[0], new_item_names: edited.slice(1), sizes: sentSizes },
     });
     setSplittingId(null);
     if (invokeError || !data?.source || !data?.duplicates) {
@@ -744,7 +806,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
                 : 'Check each product\'s name -- fix any that are cut off or missing the brand or size.'}
             </Text>
             {current.map((name, index) => (
-              <View key={`${source.id}-${index}`} style={styles.splitNameRow}>
+              <View key={`${source.id}-${index}`} style={[styles.splitNameRow, { zIndex: 50 - index }]}>
                 <View style={styles.splitNameField}>
                   <InputField
                     value={name}
@@ -756,6 +818,34 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
                     scrollEnabled={false}
                     style={styles.splitNameInput}
                   />
+                  {/* zIndex steps down row by row so an open unit menu
+                      paints over the rows below it on web. */}
+                  <View style={[styles.splitSizeRow, { zIndex: 50 - index }]}>
+                    <View style={styles.splitNameField}>
+                      <InputField
+                        value={(sizes[source.id]?.[index] ?? sizeFromPart(parts[index] ?? '')).qty}
+                        onChangeText={(qty) =>
+                          setSize(source.id, parts, index, {
+                            ...(sizes[source.id]?.[index] ?? sizeFromPart(parts[index] ?? '')),
+                            qty,
+                          })
+                        }
+                        keyboardType="decimal-pad"
+                        placeholder="Size (optional)"
+                      />
+                    </View>
+                    <Dropdown
+                      options={SPLIT_SIZE_UNITS}
+                      value={(sizes[source.id]?.[index] ?? sizeFromPart(parts[index] ?? '')).unit}
+                      onChange={(unit) =>
+                        setSize(source.id, parts, index, {
+                          ...(sizes[source.id]?.[index] ?? sizeFromPart(parts[index] ?? '')),
+                          unit: unit as SplitSize['unit'],
+                        })
+                      }
+                      menuAlign="right"
+                    />
+                  </View>
                 </View>
                 {current.length > 1 && (
                   <Pressable
@@ -1944,7 +2034,8 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginTop: 8 },
   splitNameInput: { borderRadius: 20, textAlignVertical: 'top' },
   splitNameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  splitNameField: { flex: 1 },
+  splitNameField: { flex: 1, gap: 6 },
+  splitSizeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   splitRemove: { fontSize: 16, fontWeight: '700', color: INK, paddingHorizontal: 4 },
   splitAdd: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, textDecorationLine: 'underline' },
   cutoutHint: { fontSize: 12, color: '#D0342C', marginTop: 4 },

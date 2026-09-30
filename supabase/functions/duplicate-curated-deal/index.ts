@@ -10,7 +10,8 @@
 //   POST { deal_id: string (uuid), item_name?: string }
 //   -> 200 { source: CuratedDealRow, duplicate: CuratedDealRow }
 //
-//   POST { deal_id, source_item_name?: string, new_item_names?: string[] }
+//   POST { deal_id, source_item_name?: string, new_item_names?: string[],
+//          sizes?: ({ weight_g } | { volume_ml } | null)[] }
 //   -> 200 { source: CuratedDealRow, duplicates: CuratedDealRow[] }
 //
 // The second form splits a whole cutout in one call (dev-deals.tsx's
@@ -98,6 +99,8 @@ interface CuratedDealRow {
   price_unit: DealPriceUnit;
   package_weight_g: number | null;
   package_weight_g_source: PackageWeightSource | null;
+  package_volume_ml: number | null;
+  bundle_count: number | null;
   quantity_estimated: boolean;
   pricing_reviewed_at: string | null;
   original_price_source: "flyer" | "reference";
@@ -120,6 +123,10 @@ interface Database {
         Update: {
           pricing_reviewed_at?: string | null;
           item_name?: string;
+          price_unit?: DealPriceUnit;
+          package_weight_g?: number | null;
+          package_weight_g_source?: PackageWeightSource | null;
+          package_volume_ml?: number | null;
         };
         Relationships: [];
       };
@@ -136,6 +143,11 @@ interface RequestBody {
   item_name?: unknown;
   source_item_name?: unknown;
   new_item_names?: unknown;
+  // Batch form only (Anabelle, 2026-09-30: "When i split item, i should be
+  // able to enter their qty e.g. ml, gr"). One entry per product, in order:
+  // [source, ...new_item_names]. Each is null (keep the copied size) or
+  // { weight_g } or { volume_ml }, read off the cutout.
+  sizes?: unknown;
 }
 
 const MAX_NAME_LENGTH = 300;
@@ -143,6 +155,36 @@ const MAX_NEW_ROWS = 20;
 
 function isNonBlankName(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "" && value.length <= MAX_NAME_LENGTH;
+}
+
+type ProductSize = { weight_g: number } | { volume_ml: number } | null;
+
+function isProductSize(value: unknown): value is ProductSize {
+  if (value === null) return true;
+  if (typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  const keys = Object.keys(v);
+  if (keys.length !== 1) return false;
+  if (keys[0] === "weight_g") return typeof v.weight_g === "number" && v.weight_g >= 10;
+  if (keys[0] === "volume_ml") return typeof v.volume_ml === "number" && v.volume_ml >= 5;
+  return false;
+}
+
+// The columns a product's own size sets. A plain per-item ('each') price
+// with a known size becomes a per-package price of that size; rates
+// (lb/kg/100g) and multi-buys keep their unit and just record the size.
+function sizeColumns(size: ProductSize, source: CuratedDealRow) {
+  if (size === null) return {};
+  const unit =
+    source.price_unit === "each" && source.bundle_count === null ? { price_unit: "package" as DealPriceUnit } : {};
+  return "weight_g" in size
+    ? {
+        ...unit,
+        package_weight_g: Math.round(size.weight_g),
+        package_weight_g_source: "label" as PackageWeightSource,
+        package_volume_ml: null,
+      }
+    : { ...unit, package_volume_ml: Math.round(size.volume_ml), package_weight_g: null, package_weight_g_source: null };
 }
 
 function validationError(message: string) {
@@ -158,7 +200,7 @@ export default {
       return validationError("Request body must be valid JSON.");
     }
 
-    const { deal_id, item_name, source_item_name, new_item_names } = body;
+    const { deal_id, item_name, source_item_name, new_item_names, sizes } = body;
     if (typeof deal_id !== "string" || deal_id.length === 0) {
       return validationError("deal_id is required.");
     }
@@ -175,6 +217,16 @@ export default {
       return validationError(`new_item_names must be an array of up to ${MAX_NEW_ROWS} non-blank names.`);
     }
     const batchForm = source_item_name !== undefined || new_item_names !== undefined;
+    const newCount = Array.isArray(new_item_names) ? new_item_names.length : 0;
+    if (
+      sizes !== undefined &&
+      (!batchForm || !Array.isArray(sizes) || sizes.length !== newCount + 1 || !sizes.every(isProductSize))
+    ) {
+      return validationError(
+        "sizes must be one entry per product (the source first, then each new name): null, { weight_g: 10 or more }, or { volume_ml: 5 or more }.",
+      );
+    }
+    const productSizes = (sizes as ProductSize[] | undefined) ?? [];
 
     // ctx.supabaseAdmin bypasses RLS -- curated_deals only grants
     // public SELECT scoped to status='approved' (see the comment in
@@ -204,8 +256,9 @@ export default {
       const { data: inserted, error: insertError } = await ctx.supabaseAdmin
         .from("curated_deals")
         .insert(
-          names.map((name) => ({
+          names.map((name, index) => ({
             ...copyable,
+            ...sizeColumns(productSizes[index + 1] ?? null, source),
             item_name: name,
             status: "pending" as const,
             airtable_record_id: null,
@@ -229,6 +282,7 @@ export default {
       .update({
         pricing_reviewed_at: null,
         ...(typeof source_item_name === "string" ? { item_name: source_item_name.trim() } : {}),
+        ...sizeColumns(productSizes[0] ?? null, source),
       })
       .eq("id", deal_id)
       .select()
