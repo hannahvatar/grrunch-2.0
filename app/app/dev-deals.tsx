@@ -221,6 +221,16 @@ function buildCutouts(deals: CuratedDeal[]): Map<string, Cutout> {
   return cutouts;
 }
 
+// The deals a list card's checkbox / ✓ / ✕ act on (bulk review, Anabelle
+// 2026-09-30). A cutout still waiting to be split has none -- it has to be
+// opened. Once split, a leftover combined "X or Y" row is left out (it's
+// meant to be rejected on the cutout screen, not approved in bulk).
+function bulkDealsFor(cutout: Cutout): CuratedDeal[] {
+  if (cutout.missingParts.length > 0) return [];
+  if (cutout.deals.length === 1) return cutout.deals;
+  return cutout.deals.filter((d) => !isCombinedName(d.item_name));
+}
+
 // What a cutout's list card calls itself: the flyer's own combined text
 // when a row still carries it (that IS the cutout's name), otherwise
 // each split-off product's name joined together.
@@ -258,6 +268,10 @@ export default function DevDealsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
+  // Bulk review: selected deal ids, and the in-flight / result state.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   // null until chosen: defaults to the draft when there is one, else live.
   const [weekChoice, setWeekChoice] = useState<DealWeek | null>(null);
@@ -452,6 +466,48 @@ export default function DevDealsScreen() {
   // Approved tab would read as nonsense otherwise.
   const unreviewedCount = statusScoped.filter((d) => d.pricing_reviewed_at === null).length;
 
+  // Only the products matching the current tab/zone/search -- on "Needs
+  // review", selecting a split cutout must not re-approve a product
+  // already rejected.
+  const bulkIdsFor = (cutout: Cutout) => bulkDealsFor(cutout).filter(matchesFilters).map((d) => d.id);
+  const shownBulkIds = visibleCutouts.flatMap(({ cutout }) => bulkIdsFor(cutout));
+  const toggleIds = (ids: string[]) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allOn = ids.every((id) => next.has(id));
+      ids.forEach((id) => (allOn ? next.delete(id) : next.add(id)));
+      return next;
+    });
+
+  async function setStatus(ids: string[], status: 'approved' | 'rejected') {
+    if (ids.length === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    setBulkMessage(null);
+    const { data, error: invokeError } = await supabase.functions.invoke<{
+      updated?: CuratedDeal[];
+      skipped?: string[];
+      error?: string;
+    }>('set-curated-deal-status', { body: { deal_ids: ids, status } });
+    setBulkBusy(false);
+    if (invokeError || !data?.updated) {
+      setBulkMessage(await functionErrorMessage(invokeError, data?.error, 'Could not update these deals.'));
+      return;
+    }
+    const byId = new Map(data.updated.map((d) => [d.id, d]));
+    setDeals((prev) => prev.map((d) => byId.get(d.id) ?? d));
+    setSelected((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+    const verb = status === 'approved' ? 'Approved' : 'Rejected';
+    const skipped = data.skipped?.length ?? 0;
+    setBulkMessage(
+      `${verb} ${data.updated.length} deal${data.updated.length === 1 ? '' : 's'}.` +
+        (skipped > 0 ? ` ${skipped} skipped: no price yet -- open them to add one.` : '')
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -499,13 +555,43 @@ export default function DevDealsScreen() {
           <Dropdown options={zoneOptions} value={zoneFilter} onChange={setZoneFilter} menuAlign="right" />
         </View>
 
+        <View style={styles.bulkLinksRow}>
+          <Pressable onPress={() => setSelected(new Set(shownBulkIds))} hitSlop={8} disabled={shownBulkIds.length === 0}>
+            <Text style={styles.textLink}>Select all shown ({shownBulkIds.length})</Text>
+          </Pressable>
+          {selected.size > 0 && (
+            <Pressable onPress={() => setSelected(new Set())} hitSlop={8}>
+              <Text style={styles.textLink}>Clear selection</Text>
+            </Pressable>
+          )}
+        </View>
+        {bulkMessage && <Text style={styles.note}>{bulkMessage}</Text>}
+
         {visibleCutouts.map(({ cutout, title, unreviewed }) => {
           const single = cutout.deals.length === 1 && cutout.missingParts.length === 0;
           const deal = cutout.deals[0];
+          const bulkIds = bulkIdsFor(cutout);
+          const checked = bulkIds.length > 0 && bulkIds.every((id) => selected.has(id));
           return (
+            <View key={cutout.key} style={styles.bulkRow}>
+              {/* Checkbox -- empty space (not a disabled box) when the
+                  cutout must be opened to split first. */}
+              <Pressable
+                style={styles.checkboxHit}
+                onPress={() => toggleIds(bulkIds)}
+                disabled={bulkIds.length === 0}
+                hitSlop={6}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked }}
+              >
+                {bulkIds.length > 0 && (
+                  <View style={[styles.checkbox, checked && styles.checkboxOn]}>
+                    {checked && <CheckIcon size={14} color="#fff" strokeWidth={3} />}
+                  </View>
+                )}
+              </Pressable>
             <Pressable
-              key={cutout.key}
-              style={styles.dealRow}
+              style={[styles.dealRow, styles.dealRowFlex]}
               onPress={() => {
                 // A plain one-product cutout has nothing to choose
                 // between -- straight to its edit form, like before.
@@ -548,12 +634,50 @@ export default function DevDealsScreen() {
                   </View>
                 )}
               </View>
+              {bulkIds.length > 0 && (
+                <View style={styles.quickActions}>
+                  <Pressable
+                    style={[styles.quickButton, styles.quickApprove]}
+                    onPress={() => setStatus(bulkIds, 'approved')}
+                    disabled={bulkBusy}
+                    accessibilityLabel={`Approve ${title}`}
+                  >
+                    <CheckIcon size={18} color="#1E7B34" strokeWidth={2.5} />
+                  </Pressable>
+                  <Pressable
+                    style={[styles.quickButton, styles.quickReject]}
+                    onPress={() => setStatus(bulkIds, 'rejected')}
+                    disabled={bulkBusy}
+                    accessibilityLabel={`Reject ${title}`}
+                  >
+                    <XMarkIcon size={18} color="#B42318" strokeWidth={2.5} />
+                  </Pressable>
+                </View>
+              )}
             </Pressable>
+            </View>
           );
         })}
 
         {visibleCutouts.length === 0 && <Text style={styles.emptyText}>No deals match.</Text>}
       </ScrollView>
+      {selected.size > 0 && (
+        <View style={styles.bulkBar}>
+          <Text style={styles.bulkBarText}>{selected.size} selected</Text>
+          {bulkBusy ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Pressable style={[styles.bulkBarButton, styles.bulkBarApprove]} onPress={() => setStatus([...selected], 'approved')}>
+                <Text style={styles.bulkBarButtonText}>Approve</Text>
+              </Pressable>
+              <Pressable style={[styles.bulkBarButton, styles.bulkBarReject]} onPress={() => setStatus([...selected], 'rejected')}>
+                <Text style={styles.bulkBarButtonText}>Reject</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -1996,7 +2120,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFEAD4' },
   centered: { alignItems: 'center', justifyContent: 'center' },
   notDevText: { padding: 24, fontSize: 15, color: '#888', textAlign: 'center' },
-  scrollContent: { padding: 20, paddingTop: 60, gap: 12 },
+  // Bottom room so the bulk bar never covers the last row.
+  scrollContent: { padding: 20, paddingTop: 60, paddingBottom: 110, gap: 12 },
   devBanner: {
     backgroundColor: '#111',
     borderRadius: 8,
@@ -2077,6 +2202,53 @@ const styles = StyleSheet.create({
   cutoutHint: { fontSize: 12, color: '#D0342C', marginTop: 4 },
   dealThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealRowInfo: { flex: 1, gap: 2 },
+  // Bulk review (see bulkDealsFor).
+  bulkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dealRowFlex: { flex: 1 },
+  checkboxHit: { width: 28, alignItems: 'center', justifyContent: 'center' },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: INK,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: INK },
+  quickActions: { justifyContent: 'center', gap: 8 },
+  quickButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  quickApprove: { borderColor: '#1E7B34' },
+  quickReject: { borderColor: '#B42318' },
+  bulkLinksRow: { flexDirection: 'row', gap: 20 },
+  bulkBar: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: INK,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingLeft: 20,
+    paddingRight: 10,
+  },
+  bulkBarText: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  bulkBarButton: { borderRadius: 999, paddingVertical: 10, paddingHorizontal: 18 },
+  bulkBarApprove: { backgroundColor: '#1E7B34' },
+  bulkBarReject: { backgroundColor: '#B42318' },
+  bulkBarButtonText: { color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   dealRowName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   dealRowStore: { fontSize: 12, color: '#767676' },
   pickReason: { fontSize: 12, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', marginTop: 2 },
