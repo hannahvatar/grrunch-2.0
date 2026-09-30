@@ -23,7 +23,11 @@
 // dev-deals.tsx before asking.
 //
 // Client contract:
-//   POST { item_name: string }
+//   POST { item_name: string, per_item?: boolean }
+//   per_item: price ONE single unit, never a pack (Anabelle, 2026-09-30, on
+//   Everything Bagels: "a pack can widely differ in number of units" -- a
+//   6-pack estimate was compared against one bagel). dev-deals sends it
+//   when the deal has "How many items for this price?" set.
 //   -> 200 { price: number, quantity: number, unit: "g"|"kg"|"ml"|"L"|"lb"|"each",
 //            reasoning: string }
 //   -> 4xx/5xx { error: string }
@@ -78,7 +82,7 @@ function validationError(message: string) {
 
 export default {
   fetch: withSupabase({ auth: ["publishable"] }, async (req) => {
-    let body: { item_name?: unknown };
+    let body: { item_name?: unknown; per_item?: unknown };
     try {
       body = await req.json();
     } catch {
@@ -86,6 +90,7 @@ export default {
     }
 
     const itemName = typeof body.item_name === "string" ? body.item_name.trim() : "";
+    const perItem = body.per_item === true;
     if (itemName === "" || itemName.length > 200) {
       return validationError("item_name is required (200 characters max).");
     }
@@ -117,7 +122,9 @@ export default {
         messages: [
           {
             role: "user",
-            content: `Item: ${itemName}`,
+            content: perItem
+              ? `Item: ${itemName}\nPrice ONE single unit of this item (one bagel, one can, one bar), not a pack or multi-pack. Answer with unit "each" and quantity 1. If it's usually sold in packs, divide a typical BC pack price by the pack's usual count.`
+              : `Item: ${itemName}`,
           },
         ],
       });
