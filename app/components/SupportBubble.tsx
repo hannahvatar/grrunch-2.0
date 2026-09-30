@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 import { ChatBubbleOvalLeftEllipsisIcon } from 'react-native-heroicons/solid';
 
@@ -9,6 +9,11 @@ import { ChatBubbleOvalLeftEllipsisIcon } from 'react-native-heroicons/solid';
 // Solid black fill/white icon -- Anabelle tried the white/INK-border
 // tertiary treatment and reverted, preferred the original black.
 export function SupportBubble() {
+  // Hidden on the dev-deals review screen, where it covered deal cards and
+  // menus (Anabelle, 2026-09-30: "Its in the way"). Dev-only screen, so
+  // shoppers never see the difference.
+  const pathname = usePathname();
+  if (pathname.startsWith('/dev-deals')) return null;
   return (
     <Pressable style={styles.bubble} onPress={() => router.push('/get-support')} hitSlop={8}>
       <ChatBubbleOvalLeftEllipsisIcon size={24} color="#fff" />
