@@ -168,6 +168,7 @@ interface Database {
           package_weight_g_source: PackageWeightSource | null;
           package_volume_ml: number | null;
           bundle_count: number | null;
+          min_quantity: number | null;
           fragment_by_weight: boolean;
           quantity_estimated: boolean;
           pricing_reviewed_at: string | null;
@@ -186,6 +187,7 @@ interface Database {
           package_weight_g_source?: PackageWeightSource | null;
           package_volume_ml?: number | null;
           bundle_count?: number | null;
+          min_quantity?: number | null;
           fragment_by_weight?: boolean;
           quantity_estimated?: boolean;
           pricing_reviewed_at?: string | null;
@@ -222,6 +224,9 @@ interface RequestBody {
   // Optional: omitted = leave the stored value alone. See
   // 20260820020000_fragment_by_volume_and_bundle_count.sql.
   bundle_count?: unknown;
+  // "Buy 2 or more" minimum, or null (20260930010000_curated_deals_min_quantity.sql).
+  // Optional: omitted = leave the stored value alone.
+  min_quantity?: unknown;
   quantity_estimated?: unknown;
   original_price_source?: unknown;
   usage?: unknown;
@@ -258,6 +263,7 @@ export default {
       package_weight_g_source,
       package_volume_ml,
       bundle_count,
+      min_quantity,
       quantity_estimated,
       original_price_source,
       usage,
@@ -321,6 +327,13 @@ export default {
       (typeof bundle_count !== "number" || !Number.isInteger(bundle_count) || bundle_count < 2)
     ) {
       return validationError("bundle_count must be null or a whole number of 2 or more (\"2 for $3\" -> 2).");
+    }
+    if (
+      min_quantity !== undefined &&
+      min_quantity !== null &&
+      (typeof min_quantity !== "number" || !Number.isInteger(min_quantity) || min_quantity < 2)
+    ) {
+      return validationError("min_quantity must be null or a whole number of 2 or more (\"buy 2 or more\" -> 2).");
     }
     if (typeof quantity_estimated !== "boolean") {
       return validationError("quantity_estimated must be a boolean.");
@@ -390,6 +403,7 @@ export default {
         // A multi-buy is paired with fragment_by_weight so a recipe using
         // one of the two is credited half the bundle price (see the
         // bundle_count migration).
+        ...(min_quantity !== undefined ? { min_quantity: min_quantity as number | null } : {}),
         ...(bundle_count !== undefined
           ? {
               bundle_count: bundle_count as number | null,
