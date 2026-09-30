@@ -1197,6 +1197,12 @@ export function describeUseQuantityText(
   packageWeightG?: number,
   bundleCount?: number
 ): string {
+  // A measured amount with a plain-language description in brackets --
+  // "1200 g (1 small or medium squash), peeled and cubed" -- reads as that
+  // description, not the grams (Anabelle, 2026-09-30: "Recipe uses about
+  // 1 small or medium squash, peeled and cubed").
+  const described = describedAmount(unit, multiplier);
+  if (described) return `Recipe uses about ${described}`;
   const ua = parseUnitAmount(quantity, unit);
   if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g' && packageWeightG) {
     const ingWords = normalizeWords(ingredientName);
@@ -1435,4 +1441,18 @@ export function portionCost(
   }
   if (fraction === undefined || fraction >= 1) return undefined;
   return Math.round(deal.price * fraction * multiplier * 100) / 100;
+}
+
+// "g (about 4 carrots), julienned" -> "4 carrots, julienned" (leading
+// "about" dropped -- the caller adds its own), with a leading count in the
+// brackets scaled by the servings multiplier. Only for a weight/volume
+// unit followed by a bracketed description; anything else is undefined.
+function describedAmount(unit: string | undefined, multiplier: number): string | undefined {
+  const match = (unit ?? '').trim().match(/^(g|kg|ml|mL|l|L|lb|lbs|oz)\s*\(([^)]+)\)\s*(.*)$/);
+  if (!match) return undefined;
+  let inner = match[2].trim().replace(/^about\s+/i, '');
+  const rest = match[3].trim();
+  const lead = inner.match(/^(\d+(?:\s*\/\s*\d+)?(?:\.\d+)?)\s+(.*)$/);
+  if (lead && multiplier !== 1) inner = `${scaleQuantityString(lead[1], multiplier)} ${lead[2]}`;
+  return rest ? `${inner}${rest.startsWith(',') ? '' : ' '}${rest}` : inner;
 }
