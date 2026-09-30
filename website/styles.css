@@ -52,16 +52,10 @@ h1 {
   letter-spacing: -0.01em;
 }
 .lede { font-size: 18px; max-width: 580px; margin: 0 auto 28px; }
-.stores { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-.store {
-  display: inline-block;
-  padding: 14px 24px;
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  background: var(--paper);
-  font-weight: 700;
-}
-.store:first-child { background: var(--accent); }
+.soon { font-weight: 700; font-size: 18px; margin: 0 0 14px; }
+.stores { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 32px; }
+.store-mark { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 18px; }
+.store-mark svg { display: block; }
 .where { margin: 16px 0 0; font-weight: 600; color: var(--muted); }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
