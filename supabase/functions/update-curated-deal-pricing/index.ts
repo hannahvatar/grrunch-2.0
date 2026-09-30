@@ -167,6 +167,8 @@ interface Database {
           package_weight_g: number | null;
           package_weight_g_source: PackageWeightSource | null;
           package_volume_ml: number | null;
+          bundle_count: number | null;
+          fragment_by_weight: boolean;
           quantity_estimated: boolean;
           pricing_reviewed_at: string | null;
           original_price_source: OriginalPriceSource;
@@ -183,6 +185,8 @@ interface Database {
           package_weight_g?: number | null;
           package_weight_g_source?: PackageWeightSource | null;
           package_volume_ml?: number | null;
+          bundle_count?: number | null;
+          fragment_by_weight?: boolean;
           quantity_estimated?: boolean;
           pricing_reviewed_at?: string | null;
           original_price_source?: OriginalPriceSource;
@@ -214,6 +218,10 @@ interface RequestBody {
   package_weight_g?: unknown;
   package_weight_g_source?: unknown;
   package_volume_ml?: unknown;
+  // Multi-buy count ("2 for $3" -> 2), or null for a single-item price.
+  // Optional: omitted = leave the stored value alone. See
+  // 20260820020000_fragment_by_volume_and_bundle_count.sql.
+  bundle_count?: unknown;
   quantity_estimated?: unknown;
   original_price_source?: unknown;
   usage?: unknown;
@@ -249,6 +257,7 @@ export default {
       package_weight_g,
       package_weight_g_source,
       package_volume_ml,
+      bundle_count,
       quantity_estimated,
       original_price_source,
       usage,
@@ -305,6 +314,13 @@ export default {
       return validationError(
         "package_volume_ml must be null or a number of millilitres (5 or more) -- if you meant litres, convert first (1 L = 1000 ml).",
       );
+    }
+    if (
+      bundle_count !== undefined &&
+      bundle_count !== null &&
+      (typeof bundle_count !== "number" || !Number.isInteger(bundle_count) || bundle_count < 2)
+    ) {
+      return validationError("bundle_count must be null or a whole number of 2 or more (\"2 for $3\" -> 2).");
     }
     if (typeof quantity_estimated !== "boolean") {
       return validationError("quantity_estimated must be a boolean.");
@@ -371,6 +387,15 @@ export default {
         package_weight_g: package_weight_g as number | null,
         package_weight_g_source: package_weight_g_source as PackageWeightSource | null,
         ...(package_volume_ml !== undefined ? { package_volume_ml: package_volume_ml as number | null } : {}),
+        // A multi-buy is paired with fragment_by_weight so a recipe using
+        // one of the two is credited half the bundle price (see the
+        // bundle_count migration).
+        ...(bundle_count !== undefined
+          ? {
+              bundle_count: bundle_count as number | null,
+              ...(bundle_count !== null ? { fragment_by_weight: true } : {}),
+            }
+          : {}),
         quantity_estimated,
         original_price_source: original_price_source as OriginalPriceSource,
         usage: usage as DealUsage,
