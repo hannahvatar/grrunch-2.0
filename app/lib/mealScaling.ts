@@ -1,6 +1,12 @@
 import { isReferencePriced } from './curatedDeals';
 import type { IngredientLine, Meal } from './mealData';
-import { describeQuantityText, describeUseQuantityText, scaleQuantityString, shouldShowUseQuantityText } from './unitConversion';
+import {
+  describeQuantityText,
+  describeUseQuantityText,
+  portionCost,
+  scaleQuantityString,
+  shouldShowUseQuantityText,
+} from './unitConversion';
 
 // There's no per-user calorie/protein target anymore (see git history /
 // the archive/calorie-protein-plan-targets and archive/dynamic-meal-
@@ -107,10 +113,13 @@ export function scaleIngredientDisplay(
           ingredient.dealTag.bundleCount
         )
       : undefined;
+    // Keep the "· about $X" portion cost when resized (it was only added
+    // at 1x and dropped here -- Anabelle, 2026-09-30).
+    const cost = portionCost(ingredient.quantity, ingredient.unit, ingredient.name, ingredient.dealTag, multiplier);
     return {
       text: ingredient.text,
       groceryText: ingredient.groceryText,
-      useQuantityText,
+      useQuantityText: useQuantityText && cost !== undefined ? `${useQuantityText} · about $${cost.toFixed(2)}` : useQuantityText,
       dealDisplayText: ingredient.dealDisplayText,
     };
   }

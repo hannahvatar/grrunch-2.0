@@ -272,7 +272,8 @@ function normalizeWords(text: string): string[] {
 // Anabelle: "add recipe uses 6 eggs" -- real gap, caught live.
 function isBareOrSizeCount(unit: string | undefined): boolean {
   const normalized = (unit ?? '').trim().toLowerCase();
-  return normalized === '' || normalized === 'each' || normalized === 'large';
+  // "whole", "whole, diced" -- a count of whole items, like a bare count.
+  return normalized === '' || normalized === 'each' || normalized === 'large' || /^whole\b/.test(normalized);
 }
 
 // Parses a quantity+unit into a normalized (amount, base_unit) pair.
@@ -616,6 +617,10 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // -- notably larger than a standard round tomato, a real produce-aisle
   // estimate for this specific variety.
   tomatoes: 227,
+  // One onion is about 150 g -- server twin: staple_avg_weights 'Onions'
+  // (Anabelle, 2026-09-30: show how many onions a recipe needs and what
+  // that part of the bag costs).
+  onions: 150,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -837,6 +842,28 @@ export function computeDealPackageCount(
   bundleCount?: number,
   ingredientName?: string
 ): number {
+  // Whole items counted with a container word ("2 cans", "2 packs",
+  // "1 package") or whole produce ("1 whole" onion). Anabelle, 2026-09-30:
+  // "the kidney beans don't scale" -- the fallback below returned just
+  // the batch count, so 2 cans x 2 batches still read "2".
+  const counted = parseUnitAmount(quantity, unit);
+  if (!Number.isNaN(counted.amount) && counted.baseUnit === 'each' && !(fragmentByWeight && bundleCount)) {
+    // Whole items bought loose from a weighed bag (onions): a second bag
+    // only once the onions outweigh one bag.
+    if (fragmentByWeight && packageWeightG && ingredientName) {
+      const ingWords = normalizeWords(ingredientName);
+      const bridge = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+        const words = normalizeWords(name);
+        return words.length > 0 && words.every((w) => ingWords.includes(w));
+      });
+      if (bridge) return Math.max(1, Math.ceil((counted.amount * bridge[1] * multiplier) / packageWeightG));
+    }
+    // N cans/packs per batch -> N x batches. A bare count of pieces out
+    // of one package (8 Kraft Singles) isn't this, so it's excluded.
+    if (counted.amount >= 1 && !isBareOrSizeCount(unit)) {
+      return Math.max(1, Math.ceil(counted.amount * multiplier));
+    }
+  }
   if (fragmentByWeight) {
     const ua = parseUnitAmount(quantity, unit);
     if (!Number.isNaN(ua.amount)) {
@@ -972,12 +999,14 @@ export function shouldShowUseQuantityText(
   // are equally worth spelling out (neither cleanly maps to "exactly N
   // whole packages"), so this now shows unless the amount matches the
   // package size exactly.
+  // Also hidden for an exact whole number of packages (900 g of a 450 g
+  // pack at 2x servings is just "2" on the badge, not "900 g of the package").
   if (ua.baseUnit === 'g') {
-    if (packageWeightG) return ua.amount !== packageWeightG;
+    if (packageWeightG) return ua.amount % packageWeightG !== 0;
     return true;
   }
   if (ua.baseUnit === 'ml') {
-    if (packageVolumeMl) return ua.amount !== packageVolumeMl;
+    if (packageVolumeMl) return ua.amount % packageVolumeMl !== 0;
     return true;
   }
   // Each-based quantity that's ALREADY a natural count (e.g. "8 Kraft
@@ -1128,6 +1157,10 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   'russet potatoes': { singular: 'potato', plural: 'potatoes' },
   // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above.
   samosas: { singular: 'samosa', plural: 'samosas' },
+  // After 'green onions' on purpose: find() takes the first match, so a
+  // green onion never reads as a cooking onion.
+  onions: { singular: 'onion', plural: 'onions' },
+  onion: { singular: 'onion', plural: 'onions' },
 };
 
 // Deal items where even a WHOLE container quantity (amount >= 1, not a
@@ -1188,6 +1221,12 @@ export function describeUseQuantityText(
   packageWeightG?: number,
   bundleCount?: number
 ): string {
+  // A measured amount with a plain-language description in brackets --
+  // "1200 g (1 small or medium squash), peeled and cubed" -- reads as that
+  // description, not the grams (Anabelle, 2026-09-30: "Recipe uses about
+  // 1 small or medium squash, peeled and cubed").
+  const described = describedAmount(unit, multiplier);
+  if (described) return `Recipe uses about ${described}`;
   const ua = parseUnitAmount(quantity, unit);
   if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g' && packageWeightG) {
     const ingWords = normalizeWords(ingredientName);
@@ -1282,7 +1321,12 @@ export function describeUseQuantityText(
       // the bunch-fraction pricing needs -- re-parse it directly instead
       // of undoing parseUnitAmount's division.
       const isBareCount = isBareOrSizeCount(unit);
-      const count = Math.round((isBareCount ? ua.amount : parseQuantity(quantity)) * multiplier);
+      const exact = (isBareCount ? ua.amount : parseQuantity(quantity)) * multiplier;
+      // "1/2 onion", not a rounded "1 onion" (or "0 onions").
+      if (!Number.isInteger(exact) && isBareCount) {
+        return `Recipe uses ${scaleQuantityString(quantity, multiplier)} ${exact <= 1 ? label.singular : label.plural}`;
+      }
+      const count = Math.round(exact);
       return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
     }
   }
@@ -1390,4 +1434,49 @@ export function describeUnitCount(
   const count = snapUnitCount(ua.amount / gramsPerUnit) * multiplier;
   const label = count > 1 ? plural : singular;
   return `${formatFraction(count)} ${label}`;
+}
+
+// What the part of a deal's package a recipe uses costs, as the recipe's
+// price per serving counts it (compute_deal_tag_pricing's contribution):
+// only for a partial-package deal (fragmentByWeight) with a known size.
+// Anabelle, 2026-09-30: "how much then it's going to cost in onion".
+// Undefined whenever it can't be worked out honestly.
+export function portionCost(
+  quantity: string | undefined,
+  unit: string | undefined,
+  ingredientName: string,
+  deal: { price?: number; fragmentByWeight?: boolean; packageWeightG?: number; packageVolumeMl?: number; bundleCount?: number },
+  multiplier = 1
+): number | undefined {
+  if (!deal.fragmentByWeight || deal.price == null) return undefined;
+  const ua = parseUnitAmount(quantity, unit);
+  if (Number.isNaN(ua.amount)) return undefined;
+  let fraction: number | undefined;
+  if (ua.baseUnit === 'g' && deal.packageWeightG) fraction = ua.amount / deal.packageWeightG;
+  else if (ua.baseUnit === 'ml' && deal.packageVolumeMl) fraction = ua.amount / deal.packageVolumeMl;
+  else if (ua.baseUnit === 'each' && deal.bundleCount) fraction = ua.amount / deal.bundleCount;
+  else if (ua.baseUnit === 'each' && deal.packageWeightG) {
+    const ingWords = normalizeWords(ingredientName);
+    const entry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+      const words = normalizeWords(name);
+      return words.length > 0 && words.every((w) => ingWords.includes(w));
+    });
+    if (entry) fraction = (ua.amount * entry[1]) / deal.packageWeightG;
+  }
+  if (fraction === undefined || fraction >= 1) return undefined;
+  return Math.round(deal.price * fraction * multiplier * 100) / 100;
+}
+
+// "g (about 4 carrots), julienned" -> "4 carrots, julienned" (leading
+// "about" dropped -- the caller adds its own), with a leading count in the
+// brackets scaled by the servings multiplier. Only for a weight/volume
+// unit followed by a bracketed description; anything else is undefined.
+function describedAmount(unit: string | undefined, multiplier: number): string | undefined {
+  const match = (unit ?? '').trim().match(/^(g|kg|ml|mL|l|L|lb|lbs|oz)\s*\(([^)]+)\)\s*(.*)$/);
+  if (!match) return undefined;
+  let inner = match[2].trim().replace(/^about\s+/i, '');
+  const rest = match[3].trim();
+  const lead = inner.match(/^(\d+(?:\s*\/\s*\d+)?(?:\.\d+)?)\s+(.*)$/);
+  if (lead && multiplier !== 1) inner = `${scaleQuantityString(lead[1], multiplier)} ${lead[2]}`;
+  return rest ? `${inner}${rest.startsWith(',') ? '' : ' '}${rest}` : inner;
 }

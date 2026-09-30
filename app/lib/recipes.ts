@@ -2,7 +2,13 @@ import { supabase } from './supabase';
 import type { DealTag, IngredientLine, Meal, OptionalAddition, SubRecipe } from './mealData';
 import { fetchProducePrices, fetchStaplePrices, fetchStatcanPrices, matchReferencePrice, type StaplePrice } from './staplePrices';
 import { fetchSubRecipes } from './subRecipes';
-import { describeDealPackage, describeQuantityText, describeUseQuantityText, shouldShowUseQuantityText } from './unitConversion';
+import {
+  describeDealPackage,
+  describeQuantityText,
+  describeUseQuantityText,
+  portionCost,
+  shouldShowUseQuantityText,
+} from './unitConversion';
 
 interface RecipeIngredient {
   name: string;
@@ -117,9 +123,11 @@ function mapIngredient(
           dealTag?.bundleCount
         )
       : undefined;
+    const cost = dealTag ? portionCost(ingredient.quantity, ingredient.unit, ingredient.name, dealTag) : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText: text, dealDisplayText,
-      quantity: ingredient.quantity, unit: ingredient.unit, useQuantityText,
+      quantity: ingredient.quantity, unit: ingredient.unit,
+      useQuantityText: withPortionCost(useQuantityText, cost),
     };
   }
   const { text, groceryText } = describeQuantityText(ingredient.name, ingredient.quantity, ingredient.unit);
@@ -154,8 +162,10 @@ function mapIngredient(
           dealTag.bundleCount
         )
       : undefined;
+    const cost = portionCost(ingredient.quantity, ingredient.unit, ingredient.name, dealTag);
     return {
-      text, name: ingredient.name, dealTag, groceryText, dealDisplayText, useQuantityText,
+      text, name: ingredient.name, dealTag, groceryText, dealDisplayText,
+      useQuantityText: withPortionCost(useQuantityText, cost),
       quantity: ingredient.quantity, unit: ingredient.unit,
     };
   }
@@ -267,6 +277,13 @@ function mapRowToMeal(
 // "Next week" view, 20260918 weekly publish): recipe prices/deal tags
 // computed against the draft deals (draft_deal_tags / draft_price), and
 // featured_next as the featured flag. Shoppers always get 'live'.
+// "Recipe uses 1/2 onion" + " · about $0.08" -- the part of the package
+// the recipe's price actually counts.
+function withPortionCost(note: string | undefined, cost: number | undefined): string | undefined {
+  if (!note || cost === undefined) return note;
+  return `${note} · about $${cost.toFixed(2)}`;
+}
+
 export type RecipeWeek = 'live' | 'next';
 
 export async function fetchAllRecipes(week: RecipeWeek = 'live'): Promise<Meal[]> {
