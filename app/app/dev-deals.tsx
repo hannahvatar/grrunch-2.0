@@ -617,6 +617,24 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
   const [splittingId, setSplittingId] = useState<string | null>(null);
   const [splitError, setSplitError] = useState<string | null>(null);
 
+  // Anabelle, 2026-09-30: the automatic split only cuts at "or", so
+  // "Acorn, Butternut, Buttercup or Spaghetti Squash" came out as 2
+  // products instead of 4. The number of products is editable too: add a
+  // product, or remove one the split got wrong.
+  function setPart(sourceId: string, parts: string[], index: number, text: string) {
+    setNames((prev) => {
+      const next = [...(prev[sourceId] ?? parts)];
+      next[index] = text;
+      return { ...prev, [sourceId]: next };
+    });
+  }
+  function addPart(sourceId: string, parts: string[]) {
+    setNames((prev) => ({ ...prev, [sourceId]: [...(prev[sourceId] ?? parts), ''] }));
+  }
+  function removePart(sourceId: string, parts: string[], index: number) {
+    setNames((prev) => ({ ...prev, [sourceId]: (prev[sourceId] ?? parts).filter((_, i) => i !== index) }));
+  }
+
   // One call per combined deal: the deal itself takes the first name and
   // a copy is made for each of the others, so no combined "X or Y" row is
   // left over to reject afterwards.
@@ -680,35 +698,46 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
           );
         })}
 
-        {groups.map(({ source, parts }) => (
+        {groups.map(({ source, parts }) => {
+          const current = names[source.id] ?? parts;
+          return (
           <View key={source.id} style={styles.sectionCard}>
             <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>
-              {parts.length === 1 ? 'Name this deal' : `Split into ${parts.length} deals`}
+              {current.length === 1 ? 'Name this deal' : `Split into ${current.length} deals`}
             </Text>
             <Text style={styles.note}>
-              {parts.length === 1
+              {current.length === 1
                 ? 'Check the name before it becomes the deal\'s name.'
                 : 'Check each product\'s name -- fix any that are cut off or missing the brand or size.'}
             </Text>
-            {parts.map((part, index) => (
-              <InputField
-                key={`${source.id}-${index}`}
-                value={names[source.id]?.[index] ?? part}
-                onChangeText={(text) =>
-                  setNames((prev) => {
-                    const next = [...(prev[source.id] ?? parts)];
-                    next[index] = text;
-                    return { ...prev, [source.id]: next };
-                  })
-                }
-                placeholder="Product name"
-                // Wraps instead of cutting off a long flyer name -- the
-                // whole point here is to read it in full before splitting.
-                multiline
-                scrollEnabled={false}
-                style={styles.splitNameInput}
-              />
+            {current.map((name, index) => (
+              <View key={`${source.id}-${index}`} style={styles.splitNameRow}>
+                <View style={styles.splitNameField}>
+                  <InputField
+                    value={name}
+                    onChangeText={(text) => setPart(source.id, parts, index, text)}
+                    placeholder="Product name"
+                    // Wraps instead of cutting off a long flyer name -- the
+                    // whole point here is to read it in full before splitting.
+                    multiline
+                    scrollEnabled={false}
+                    style={styles.splitNameInput}
+                  />
+                </View>
+                {current.length > 1 && (
+                  <Pressable
+                    onPress={() => removePart(source.id, parts, index)}
+                    hitSlop={8}
+                    accessibilityLabel={`Remove ${name || 'this product'}`}
+                  >
+                    <Text style={styles.splitRemove}>✕</Text>
+                  </Pressable>
+                )}
+              </View>
             ))}
+            <Pressable onPress={() => addPart(source.id, parts)} hitSlop={8}>
+              <Text style={styles.splitAdd}>+ Add a product</Text>
+            </Pressable>
             <Pressable
               style={[styles.splitButton, splittingId !== null && styles.saveButtonDisabled]}
               onPress={() => split(source)}
@@ -718,12 +747,13 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
                 <ActivityIndicator color="#3B82F6" />
               ) : (
                 <Text style={styles.splitButtonText}>
-                  {parts.length === 1 ? 'Use this name' : `Split into ${parts.length} deals`}
+                  {current.length === 1 ? 'Use this name' : `Split into ${current.length} deals`}
                 </Text>
               )}
             </Pressable>
           </View>
-        ))}
+          );
+        })}
         {splitError && <Text style={styles.saveError}>{splitError}</Text>}
       </ScrollView>
     </View>
@@ -1819,6 +1849,10 @@ const styles = StyleSheet.create({
   cutoutTitle: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   sectionTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginTop: 8 },
   splitNameInput: { borderRadius: 20, textAlignVertical: 'top' },
+  splitNameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  splitNameField: { flex: 1 },
+  splitRemove: { fontSize: 16, fontWeight: '700', color: INK, paddingHorizontal: 4 },
+  splitAdd: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, textDecorationLine: 'underline' },
   cutoutHint: { fontSize: 12, color: '#D0342C', marginTop: 4 },
   dealThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealRowInfo: { flex: 1, gap: 2 },
