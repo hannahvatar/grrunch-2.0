@@ -53,6 +53,9 @@ function openInNewTab(url: string) {
 
 interface IngredientRowProps {
   text: string;
+  // Draft-week view (dev-recipes "Next week"): its deals haven't started,
+  // so the live week's expiry never applies.
+  ignoreExpiry?: boolean;
   dealTag?: DealTag;
   estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'staple' };
   // Grocery-only extras -- the recipe page passes none of these, so it
@@ -154,6 +157,7 @@ interface IngredientRowProps {
 // none of those), never the core layout.
 export function IngredientRow({
   text,
+  ignoreExpiry,
   dealTag,
   estimatedPrice,
   meta,
@@ -175,7 +179,8 @@ export function IngredientRow({
 }: IngredientRowProps) {
   // Last week's flyers have ended and the next week isn't published yet
   // (lib/liveWeek.ts) -- the deal's price stays, its badge becomes Expired.
-  const weekExpired = useLiveWeekExpired();
+  const liveWeekExpired = useLiveWeekExpired();
+  const weekExpired = liveWeekExpired && !ignoreExpiry;
   // stackedLayout only -- text is always "<quantity> <rest of
   // description>" for a deal item (e.g. "1 package Prime raised...",
   // see lib/recipes.ts describeDealPackage/describeQuantityText, which

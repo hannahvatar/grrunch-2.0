@@ -20,6 +20,9 @@ const ACCENT = '#FFA955';
 const INK = '#111';
 
 interface MealCardProps {
+  // 'next' when shown in dev-recipes' draft-week view, so "View recipe"
+  // opens the recipe with the draft week's deals too.
+  week?: 'live' | 'next';
   meal: Meal;
   isSelected: boolean;
   onToggleSelected: () => void;
@@ -38,7 +41,7 @@ interface MealCardProps {
 // One recipe card as shown on the Meals tab -- shared with app/dev-
 // recipes.tsx (a __DEV__-only, no-login recipe review screen) so a
 // recipe looks identical in both places and never drifts between them.
-export function MealCard({ meal, isSelected, onToggleSelected, locked, dealsExpired }: MealCardProps) {
+export function MealCard({ meal, isSelected, onToggleSelected, locked, dealsExpired, week }: MealCardProps) {
   const weekExpired = useLiveWeekExpired();
   const expired = dealsExpired ?? weekExpired;
   return (
@@ -148,7 +151,9 @@ export function MealCard({ meal, isSelected, onToggleSelected, locked, dealsExpi
 
             <Pressable
               style={styles.recipeButton}
-              onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
+              onPress={() =>
+                router.push({ pathname: '/recipe', params: week === 'next' ? { id: meal.id, week } : { id: meal.id } })
+              }
             >
               <Text style={styles.recipeButtonText}>View recipe</Text>
             </Pressable>

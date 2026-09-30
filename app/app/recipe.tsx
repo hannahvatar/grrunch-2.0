@@ -24,7 +24,9 @@ const INK = '#111';
 // meal card's "View recipe" button. Not covered by a wireframe yet, so this
 // stays plain/functional like the rest of the guest-mode flow.
 export default function RecipeScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, week: weekParam } = useLocalSearchParams<{ id: string; week?: string }>();
+  // Opened from dev-recipes' "Next week": price and tag it with the draft deals.
+  const week = weekParam === 'next' ? 'next' : 'live';
   const { isGuest, session } = useAuth();
   const { isSubscribed } = useSubscription();
   // Same context the Meals tab's own "Add to list" toggle uses (see
@@ -71,10 +73,10 @@ export default function RecipeScreen() {
       setRawMeal(null);
       return;
     }
-    fetchRecipeById(id)
+    fetchRecipeById(id, week)
       .then(setRawMeal)
       .catch(() => setRawMeal(null));
-  }, [id]);
+  }, [id, week]);
 
   // Soft sign-up nudge tracking (see lib/guestNudge.ts) -- only guests
   // accumulate a view count at all; a signed-in person (member or not)
@@ -111,7 +113,7 @@ export default function RecipeScreen() {
       setMyRating(null);
       return;
     }
-    fetchRecipeById(rawMeal.id).then(setRawMeal).catch(() => {});
+    fetchRecipeById(rawMeal.id, week).then(setRawMeal).catch(() => {});
   }
 
   useEffect(() => {
@@ -326,6 +328,7 @@ export default function RecipeScreen() {
                     <View key={index}>
                       {index > 0 && <View style={styles.dealDivider} />}
                       <IngredientRow
+                        ignoreExpiry={week === 'next'}
                         text={ingredient.dealDisplayText ?? ingredient.text}
                         dealTag={ingredient.dealTag}
                         estimatedPrice={ingredient.estimatedPrice}
@@ -395,6 +398,7 @@ export default function RecipeScreen() {
                     return (
                       <IngredientRow
                         key={index}
+                        ignoreExpiry={week === 'next'}
                         text={ingredient.text}
                         estimatedPrice={ingredient.estimatedPrice}
                         bulleted
