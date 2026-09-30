@@ -272,7 +272,8 @@ function normalizeWords(text: string): string[] {
 // Anabelle: "add recipe uses 6 eggs" -- real gap, caught live.
 function isBareOrSizeCount(unit: string | undefined): boolean {
   const normalized = (unit ?? '').trim().toLowerCase();
-  return normalized === '' || normalized === 'each' || normalized === 'large';
+  // "whole", "whole, diced" -- a count of whole items, like a bare count.
+  return normalized === '' || normalized === 'each' || normalized === 'large' || /^whole\b/.test(normalized);
 }
 
 // Parses a quantity+unit into a normalized (amount, base_unit) pair.
@@ -616,6 +617,10 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // -- notably larger than a standard round tomato, a real produce-aisle
   // estimate for this specific variety.
   tomatoes: 227,
+  // One onion is about 150 g -- server twin: staple_avg_weights 'Onions'
+  // (Anabelle, 2026-09-30: show how many onions a recipe needs and what
+  // that part of the bag costs).
+  onions: 150,
 };
 
 // Scales a reference price to the recipe's actual quantity. Returns
@@ -1128,6 +1133,10 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   'russet potatoes': { singular: 'potato', plural: 'potatoes' },
   // Paired with the STAPLE_AVG_WEIGHT_G_PER_EACH entry above.
   samosas: { singular: 'samosa', plural: 'samosas' },
+  // After 'green onions' on purpose: find() takes the first match, so a
+  // green onion never reads as a cooking onion.
+  onions: { singular: 'onion', plural: 'onions' },
+  onion: { singular: 'onion', plural: 'onions' },
 };
 
 // Deal items where even a WHOLE container quantity (amount >= 1, not a
@@ -1282,7 +1291,12 @@ export function describeUseQuantityText(
       // the bunch-fraction pricing needs -- re-parse it directly instead
       // of undoing parseUnitAmount's division.
       const isBareCount = isBareOrSizeCount(unit);
-      const count = Math.round((isBareCount ? ua.amount : parseQuantity(quantity)) * multiplier);
+      const exact = (isBareCount ? ua.amount : parseQuantity(quantity)) * multiplier;
+      // "1/2 onion", not a rounded "1 onion" (or "0 onions").
+      if (!Number.isInteger(exact) && isBareCount) {
+        return `Recipe uses ${scaleQuantityString(quantity, multiplier)} ${exact <= 1 ? label.singular : label.plural}`;
+      }
+      const count = Math.round(exact);
       return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
     }
   }
@@ -1390,4 +1404,35 @@ export function describeUnitCount(
   const count = snapUnitCount(ua.amount / gramsPerUnit) * multiplier;
   const label = count > 1 ? plural : singular;
   return `${formatFraction(count)} ${label}`;
+}
+
+// What the part of a deal's package a recipe uses costs, as the recipe's
+// price per serving counts it (compute_deal_tag_pricing's contribution):
+// only for a partial-package deal (fragmentByWeight) with a known size.
+// Anabelle, 2026-09-30: "how much then it's going to cost in onion".
+// Undefined whenever it can't be worked out honestly.
+export function portionCost(
+  quantity: string | undefined,
+  unit: string | undefined,
+  ingredientName: string,
+  deal: { price?: number; fragmentByWeight?: boolean; packageWeightG?: number; packageVolumeMl?: number; bundleCount?: number },
+  multiplier = 1
+): number | undefined {
+  if (!deal.fragmentByWeight || deal.price == null) return undefined;
+  const ua = parseUnitAmount(quantity, unit);
+  if (Number.isNaN(ua.amount)) return undefined;
+  let fraction: number | undefined;
+  if (ua.baseUnit === 'g' && deal.packageWeightG) fraction = ua.amount / deal.packageWeightG;
+  else if (ua.baseUnit === 'ml' && deal.packageVolumeMl) fraction = ua.amount / deal.packageVolumeMl;
+  else if (ua.baseUnit === 'each' && deal.bundleCount) fraction = ua.amount / deal.bundleCount;
+  else if (ua.baseUnit === 'each' && deal.packageWeightG) {
+    const ingWords = normalizeWords(ingredientName);
+    const entry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
+      const words = normalizeWords(name);
+      return words.length > 0 && words.every((w) => ingWords.includes(w));
+    });
+    if (entry) fraction = (ua.amount * entry[1]) / deal.packageWeightG;
+  }
+  if (fraction === undefined || fraction >= 1) return undefined;
+  return Math.round(deal.price * fraction * multiplier * 100) / 100;
 }
