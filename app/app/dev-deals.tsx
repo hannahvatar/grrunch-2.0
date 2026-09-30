@@ -136,6 +136,13 @@ function fromStoredPrice(deal: CuratedDeal, itemName: string): { qty: string; un
   if (deal.price_unit === 'lb') return { qty: '1', unit: 'lb' };
   if (deal.price_unit === 'kg') return { qty: '1', unit: 'kg' };
   if (deal.price_unit === '100g') return { qty: '100', unit: 'g' };
+  // A multi-buy is stored as 'each' but keeps one item's size -- show that.
+  if (deal.price_unit === 'each' && deal.bundle_count != null && deal.package_weight_g != null) {
+    return { qty: String(deal.package_weight_g), unit: 'g' };
+  }
+  if (deal.price_unit === 'each' && deal.bundle_count != null && deal.package_volume_ml != null) {
+    return { qty: String(deal.package_volume_ml), unit: 'ml' };
+  }
   if (deal.price_unit === 'each') return { qty: '', unit: 'each' };
   if (deal.package_weight_g != null) return { qty: String(deal.package_weight_g), unit: 'g' };
   if (deal.package_volume_ml != null) return { qty: String(deal.package_volume_ml), unit: 'ml' };
@@ -543,7 +550,8 @@ function DealPriceLine({ deal, showStatus }: { deal: CuratedDeal; showStatus: bo
   return (
     <View style={styles.dealRowPriceLine}>
       <Text style={styles.dealRowPrice}>
-        {deal.price != null ? `$${deal.price.toFixed(2)}` : 'Unknown'}{' '}
+        {deal.price != null ? `$${deal.price.toFixed(2)}` : 'Unknown'}
+        {deal.price != null && deal.bundle_count ? ` for ${deal.bundle_count}` : ''}{' '}
         <Text style={styles.dealRowOriginal}>
           {deal.original_price != null ? `$${deal.original_price.toFixed(2)}` : 'Unknown'}
         </Text>
@@ -1164,8 +1172,16 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
   // 2 -- The cutout's own previous price, when it prints one. Only a
   // 'flyer'-sourced original price counts -- a 'reference' one is ours.
   const [previousText, setPreviousText] = useState(
-    deal.original_price != null && deal.original_price_source === 'flyer' ? String(deal.original_price) : ''
+    deal.original_price != null && deal.original_price_source === 'flyer'
+      ? // Stored for the whole multi-buy; entered per item (see bundle below).
+        String(Math.round((deal.original_price / (deal.bundle_count ?? 1)) * 100) / 100)
+      : ''
   );
+  // Multi-buy ("2 for $3" -> 2), Anabelle 2026-09-30: "I need to be able to
+  // reflect on the cutout price section that the price is $3 for 2
+  // package". Blank or 1 = a single-item price. The fetch fills this from
+  // the flyer (bundle_count); it was stored but never shown here.
+  const [bundleText, setBundleText] = useState(deal.bundle_count ? String(deal.bundle_count) : '');
 
   // 3/4 -- StatCan reference.
   const [decision, setDecision] = useState<ReferenceDecision>('undecided');
@@ -1259,8 +1275,15 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
     parsedPrevious !== null && Number.isFinite(parsedPrevious) && parsedPrevious > 0 ? parsedPrevious : null;
   const parsedQty = perQtyText.trim() === '' ? null : parseFloat(perQtyText);
   const perQty = parsedQty !== null && Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : null;
-  const { priceUnit, weightG, volumeMl } = toStoredPrice(perQty, perUnit);
-  const basis = priceBasis(priceUnit, deal, itemName, weightG, volumeMl);
+  const { priceUnit: formUnit, weightG, volumeMl } = toStoredPrice(perQty, perUnit);
+  const parsedBundle = bundleText.trim() === '' ? null : Number(bundleText);
+  const bundle = parsedBundle !== null && Number.isInteger(parsedBundle) && parsedBundle >= 2 ? parsedBundle : null;
+  // A multi-buy is stored as an 'each' deal with bundle_count (what the
+  // recipe pricing's bundle handling reads); the form's per-unit still
+  // describes ONE item, so the comparison below uses the per-item price.
+  const priceUnit: PriceUnit = bundle !== null ? 'each' : formUnit;
+  const comparePrice = priceNum !== null && bundle !== null ? priceNum / bundle : priceNum;
+  const basis = priceBasis(formUnit, deal, itemName, weightG, volumeMl);
 
   // The StatCan item shown for approval: one picked from search, else
   // the automatic match (the pick the app's own pricing engine would
@@ -1271,7 +1294,7 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
   const referenceLabel = reference?.aiReasoning !== undefined ? 'the AI estimate' : 'StatCan';
   const converted =
     reference && priceNum !== null
-      ? convertReference(priceNum, priceUnit, basis, { price: reference.avgPrice, unit: reference.unit })
+      ? convertReference(comparePrice as number, formUnit, basis, { price: reference.avgPrice, unit: reference.unit })
       : null;
   const canApprove = converted?.ok === true && !converted.implausible;
   // Search opens by itself when the match is rejected or nothing matched.
@@ -1285,10 +1308,13 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
 
   // What original_price/original_price_source get saved as, from
   // whichever of steps 2-4 applies.
+  // Per-item amounts (previous price, reference) scale up to the whole
+  // multi-buy, so they compare against its bundle price.
+  const perBundle = (value: number) => (bundle !== null ? Math.round(value * bundle * 100) / 100 : value);
   function resolvedOriginal(): { value: number | null; source: OriginalPriceSource } {
-    if (previousNum !== null) return { value: previousNum, source: 'flyer' };
+    if (previousNum !== null) return { value: perBundle(previousNum), source: 'flyer' };
     if (decision === 'approved' && converted?.ok && !converted.implausible) {
-      return { value: converted.value, source: 'reference' };
+      return { value: perBundle(converted.value), source: 'reference' };
     }
     if (decision === 'undecided' && savedReference !== null) return { value: savedReference, source: 'reference' };
     // Nothing to compare against -- saved as unknown (no deal badge).
@@ -1314,6 +1340,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
     if (volumeMl !== null && volumeMl < 5) {
       return { error: 'That quantity is under 5 ml -- no real package is that small, so check the unit.' };
     }
+    if (bundleText.trim() !== '' && bundle === null && Number(bundleText) !== 1) {
+      return { error: 'How many for this price must be a whole number (2 for "2 for $3"), or blank.' };
+    }
     const original = resolvedOriginal();
     return {
       body: {
@@ -1328,9 +1357,10 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
         // Only a per-package price uses a package size; for any other
         // unit the stored one is sent back untouched. A size typed here
         // was read off the cutout, hence 'label'.
-        package_weight_g: priceUnit === 'package' ? weightG : deal.package_weight_g,
+        bundle_count: bundle,
+        package_weight_g: formUnit === 'package' ? weightG : deal.package_weight_g,
         package_weight_g_source:
-          priceUnit !== 'package'
+          formUnit !== 'package'
             ? deal.package_weight_g === null
               ? null
               : deal.package_weight_g_source
@@ -1341,7 +1371,7 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
                 : 'label',
         // A package is priced by weight OR volume -- whichever unit was
         // picked; the other is cleared.
-        package_volume_ml: priceUnit === 'package' ? volumeMl : deal.package_volume_ml,
+        package_volume_ml: formUnit === 'package' ? volumeMl : deal.package_volume_ml,
         // No longer asked on this screen -- sent back exactly as stored.
         quantity_estimated: deal.quantity_estimated,
         zone: deal.zone,
@@ -1415,7 +1445,13 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
           {!fixingPrice && (
             <>
               <Text style={styles.bigPrice}>
-                {priceNum !== null ? `${formatMoney(priceNum)} / ${basis.label}` : 'No price saved'}
+                {priceNum === null
+                  ? 'No price saved'
+                  : bundle !== null
+                    ? `${formatMoney(priceNum)} for ${bundle}${
+                        basis.label === 'each' || basis.label === 'package' ? '' : ` · ${basis.label} each`
+                      }`
+                    : `${formatMoney(priceNum)} / ${basis.label}`}
               </Text>
               {/* Tertiary treatment -- same white-fill/1.5px-INK pill as
                   signup-nudge.tsx's tertiaryButton, not a bare link. */}
@@ -1447,7 +1483,13 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
                   menuAlign="right"
                 />
               </View>
-              <Text style={styles.fieldLabel}>Previous price on the cutout (leave blank if none)</Text>
+              <Text style={styles.fieldLabel}>How many for this price? (e.g. 2 for "2 for $3", blank if just one)</Text>
+              <InputField value={bundleText} onChangeText={setBundleText} keyboardType="number-pad" placeholder="1" />
+              <Text style={styles.fieldLabel}>
+                {bundle !== null
+                  ? 'Previous price of ONE item on the cutout (leave blank if none)'
+                  : 'Previous price on the cutout (leave blank if none)'}
+              </Text>
               <InputField value={previousText} onChangeText={setPreviousText} keyboardType="decimal-pad" placeholder="0.00" />
               <Pressable style={styles.tertiaryButton} onPress={() => setFixingPrice(false)}>
                 <Text style={styles.tertiaryButtonText}>Done</Text>
