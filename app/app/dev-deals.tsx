@@ -274,6 +274,9 @@ export default function DevDealsScreen() {
   // one product to review) -- a deal opened FROM it returns here on
   // back/save instead of all the way to the list.
   const [selectedCutoutKey, setSelectedCutoutKey] = useState<string | null>(null);
+  // Opens the cutout screen with the by-hand split box already showing
+  // (the deal screen's "Split into several products").
+  const [startSplit, setStartSplit] = useState(false);
 
   const loadDeals = () => {
     setLoading(true);
@@ -355,6 +358,11 @@ export default function DevDealsScreen() {
         deal={selectedDeal}
         backLabel={selectedCutout ? '← Back to cutout' : '← Back to list'}
         onBack={closeDeal}
+        onStartSplit={() => {
+          setSelectedCutoutKey(cutoutKeyFor(selectedDeal));
+          setStartSplit(true);
+          setSelectedId(null);
+        }}
         onSaved={(updated) => {
           // Every status is visible somewhere in this screen now (the
           // status-tab filter, not this list, decides what's shown) --
@@ -370,10 +378,16 @@ export default function DevDealsScreen() {
   if (selectedCutout) {
     return (
       <CutoutView
+        key={`${selectedCutout.key}-${startSplit}`}
         cutout={selectedCutout}
-        onBack={() => setSelectedCutoutKey(null)}
+        startSplit={startSplit}
+        onBack={() => {
+          setSelectedCutoutKey(null);
+          setStartSplit(false);
+        }}
         onOpenDeal={(deal) => setSelectedId(deal.id)}
         onSplit={(source, duplicates) => {
+          setStartSplit(false);
           // Stays on the cutout screen, which now lists every product as
           // its own deal, ready to open and review one by one.
           setDeals((prev) => [...prev.map((d) => (d.id === source.id ? source : d)), ...duplicates]);
@@ -593,6 +607,8 @@ interface CutoutViewProps {
   onBack: () => void;
   onOpenDeal: (deal: CuratedDeal) => void;
   onSplit: (source: CuratedDeal, duplicates: CuratedDeal[]) => void;
+  // Open with the by-hand split box showing.
+  startSplit?: boolean;
 }
 
 // One flyer cutout with more than one product on it: the photo once,
@@ -602,7 +618,7 @@ interface CutoutViewProps {
 // doesn't have a deal yet. Replaces the old "Split into N separate
 // items" button inside the edit form, which made N anonymous copies
 // all still carrying the combined name for you to tell apart later.
-function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
+function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }: CutoutViewProps) {
   const photo = cutout.deals.find((d) => d.image_url)?.image_url ?? null;
 
   // The products still to split, grouped by the combined deal they come
@@ -613,6 +629,14 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
     if (group) group.parts.push(part);
     else groups.push({ source, parts: [part] });
   }
+  // A split started by hand (Anabelle, 2026-09-30: "I need to split Angie's
+  // Boom Chicka Pop Popcorn"): the name has no "or" and no sizes, so the
+  // automatic split doesn't see two products, but the cutout shows Sea
+  // Salt and Sweet & Salty. Offered when nothing is left to split
+  // automatically; starts from the deal's own name plus one blank product.
+  const [manualSplit, setManualSplit] = useState(startSplit);
+  const manualSource = cutout.deals.find((d) => d.status !== 'rejected') ?? cutout.deals[0];
+  if (manualSplit && groups.length === 0) groups.push({ source: manualSource, parts: [manualSource.item_name, ''] });
 
   // Anabelle ("A"): each product's name is editable before splitting --
   // the automatic split can't always tell where one product ends (it
@@ -666,6 +690,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
       setSplitError(await functionErrorMessage(invokeError, data?.error, 'Could not split this cutout.'));
       return;
     }
+    setManualSplit(false);
     onSplit(data.source, data.duplicates);
   }
 
@@ -762,6 +787,11 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit }: CutoutViewProps) {
           </View>
           );
         })}
+        {!manualSplit && cutout.missingParts.length === 0 && (
+          <Pressable style={styles.tertiaryButton} onPress={() => setManualSplit(true)}>
+            <Text style={styles.tertiaryButtonText}>Split into several products</Text>
+          </Pressable>
+        )}
         {splitError && <Text style={styles.saveError}>{splitError}</Text>}
       </ScrollView>
     </View>
@@ -982,6 +1012,9 @@ interface DealEditViewProps {
   backLabel: string;
   onBack: () => void;
   onSaved: (deal: CuratedDeal) => void;
+  // A cutout showing several products under one name (no "or" to split
+  // on) -- jumps to the cutout screen's by-hand split.
+  onStartSplit: () => void;
 }
 
 // What a price is FOR, as the quantity/unit pair lib/referenceCompare.ts
@@ -1153,7 +1186,7 @@ type ReferenceDecision = 'undecided' | 'approved' | 'rejected';
 // "quantity is an estimate", zone picker, price-source picker) is gone
 // from the screen -- whatever is already stored for those is sent back
 // unchanged on save.
-function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
+function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEditViewProps) {
   // Anabelle: "The name should be fetched from the cutout and displayed
   // as is" -- a title, never an input.
   const itemName = deal.item_name;
@@ -1436,6 +1469,11 @@ function DealEditView({ deal, backLabel, onBack, onSaved }: DealEditViewProps) {
 
         <Text style={styles.nameTitle}>{itemName}</Text>
         {deal.pick_reason && <Text style={styles.pickReason}>{deal.pick_reason}</Text>}
+        {/* Anabelle, 2026-09-30: "I need to split Angie's Boom Chicka Pop
+            Popcorn" -- one name, two flavours on the cutout. */}
+        <Pressable style={[styles.tertiaryButton, styles.splitFromDeal]} onPress={onStartSplit}>
+          <Text style={styles.tertiaryButtonText}>Split into several products</Text>
+        </Pressable>
 
         {/* 1 -- Cutout price. Each step sits in its own white card
             (Anabelle: "Make the cutout price section in its own white
@@ -1992,6 +2030,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardAboveNext: { zIndex: 30 },
+  splitFromDeal: { alignSelf: 'flex-start' },
   referenceBlock: { gap: 6 },
   referenceNameBox: {
     backgroundColor: '#FFEAD4',
