@@ -1661,7 +1661,12 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
                   menuAlign={perUnit === 'each' ? 'left' : 'right'}
                 />
               </View>
-              <Text style={styles.fieldLabel}>How many for this price? (e.g. 2 for "2 for $3", blank if just one)</Text>
+              {/* Covers packs too (Anabelle, 2026-09-30: "I am missing unit in
+                  the quantity" -- with "each" there's no amount box, so a pack
+                  of 6 goes here). */}
+              <Text style={styles.fieldLabel}>
+                How many items for this price? (6 for a pack of 6, 2 for "2 for $3", blank if just one)
+              </Text>
               <InputField value={bundleText} onChangeText={setBundleText} keyboardType="number-pad" placeholder="1" />
               <Text style={styles.fieldLabel}>Minimum to buy for this price (e.g. 2 for "when you buy 2 or more", blank if none)</Text>
               <InputField value={minQtyText} onChangeText={setMinQtyText} keyboardType="number-pad" placeholder="None" />
