@@ -99,15 +99,6 @@ function legalBody({ effectiveDate, intro, sections, outro }) {
 const MASCOT = fs.readFileSync(path.join(APP, 'assets', 'grrunch-illus-01.svg'), 'utf8');
 const YEAR = new Date().getFullYear();
 
-// Store marks for the "coming soon" line (Anabelle, 2026-09-29: logos, not
-// button-looking pills). Plain ink logos, not links, since the apps aren't
-// in the stores yet. At launch, swap for the official badges linking to
-// each listing. Apple logo: app/assets/apple-logo-svgrepo-com.svg; the
-// Play triangle is drawn here.
-const APPLE_LOGO =
-  '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 17 2.94 12.45 4.7 9.39C5.57 7.87 7.13 6.91 8.82 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"/></svg>';
-const PLAY_LOGO =
-  '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M5.5 3.5 19.5 12 5.5 20.5Z" fill="currentColor" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg>';
 
 function page({ title, description, pathName, body, bodyClass = '' }) {
   const canonical = `https://grrunch.com${pathName}`;
@@ -160,9 +151,13 @@ const landing = page({
   <h1>Let the deals decide dinner</h1>
   <p class="lede">Every week, Grrunch scans the grocery flyers, picks the deals actually worth buying, and turns them into affordable recipes and your grocery list.</p>
   <p class="soon">Coming soon to iPhone and Android</p>
+  <!-- Official badges (Anabelle, 2026-09-29), from Apple's marketing
+       toolbox and Google's badge page, unmodified. Not links yet: both
+       stores expect the badge to link to the app's listing, so wrap each
+       in its store link at launch. -->
   <div class="stores">
-    <span class="store-mark">${APPLE_LOGO}<span>App Store</span></span>
-    <span class="store-mark">${PLAY_LOGO}<span>Google Play</span></span>
+    <img class="badge badge-apple" src="/badges/app-store.svg" alt="Download on the App Store">
+    <img class="badge badge-play" src="/badges/google-play.png" alt="Get it on Google Play">
   </div>
   <p class="where">Launching first in British Columbia.</p>
 </section>
@@ -237,6 +232,7 @@ write('support/index.html', supportPage);
 write('404.html', landing.replace('<main>', '<main><p class="notfound">That page doesn’t exist. Here’s the home page.</p>'));
 write('CNAME', 'grrunch.com\n');
 fs.copyFileSync(path.join(HERE, 'styles.css'), path.join(OUT, 'styles.css'));
+fs.cpSync(path.join(HERE, 'badges'), path.join(OUT, 'badges'), { recursive: true });
 fs.copyFileSync(path.join(APP, 'assets', 'favicon.png'), path.join(OUT, 'favicon.png'));
 fs.copyFileSync(path.join(APP, 'assets', 'icon.png'), path.join(OUT, 'icon.png'));
 console.log(`Built ${OUT}`);
