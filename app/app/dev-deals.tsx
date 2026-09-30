@@ -632,7 +632,8 @@ interface SplitSize {
   qty: string;
   // 'each' / 'package': priced per item or per package, no size to enter
   // (Anabelle, 2026-09-30, on bunches of mint / carrots).
-  unit: 'g' | 'kg' | 'lb' | 'oz' | 'ml' | 'L' | 'each' | 'package';
+  // 'unit': the amount is a count of units for the one price ("5 unit").
+  unit: 'g' | 'kg' | 'lb' | 'oz' | 'ml' | 'L' | 'each' | 'package' | 'unit';
 }
 const BLANK_SIZE: SplitSize = { qty: '', unit: 'g' };
 const SPLIT_SIZE_UNITS: { value: SplitSize['unit']; label: string }[] = [
@@ -645,6 +646,7 @@ const SPLIT_SIZE_UNITS: { value: SplitSize['unit']; label: string }[] = [
   { value: 'L', label: 'L' },
   { value: 'each', label: 'each' },
   { value: 'package', label: 'package' },
+  { value: 'unit', label: 'unit' },
 ];
 const GRAMS_PER_OZ = 28.3495;
 
@@ -667,8 +669,20 @@ function sizeFromPart(name: string): SplitSize {
 // What the split function stores: grams or millilitres, null for blank.
 function toSentSize(
   size: SplitSize
-): { weight_g: number } | { volume_ml: number } | { price_unit: 'each' | 'package' } | null | 'invalid' {
+):
+  | { weight_g: number }
+  | { volume_ml: number }
+  | { price_unit: 'each' | 'package' }
+  | { count: number }
+  | null
+  | 'invalid' {
   if (size.unit === 'each' || size.unit === 'package') return { price_unit: size.unit };
+  if (size.unit === 'unit') {
+    if (size.qty.trim() === '') return null;
+    const count = Number(size.qty);
+    if (!Number.isInteger(count) || count < 1) return 'invalid';
+    return count === 1 ? { price_unit: 'each' } : { count };
+  }
   if (size.qty.trim() === '') return null;
   const amount = parseFloat(size.qty);
   if (!Number.isFinite(amount) || amount <= 0) return 'invalid';
@@ -763,12 +777,17 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, startSplit = false }:
       return;
     }
     const editedSizes = sizes[source.id] ?? (group?.parts ?? []).map(sizeFromPart);
-    const sentSizes: ({ weight_g: number } | { volume_ml: number } | { price_unit: 'each' | 'package' } | null)[] =
-      [];
+    const sentSizes: (
+      | { weight_g: number }
+      | { volume_ml: number }
+      | { price_unit: 'each' | 'package' }
+      | { count: number }
+      | null
+    )[] = [];
     for (const size of editedSizes) {
       const sent = toSentSize(size);
       if (sent === 'invalid') {
-        setSplitError('Each size must be a number: at least 10 g, or 5 ml -- or blank.');
+        setSplitError('Each size must be a number: at least 10 g, 5 ml, or a whole number of units -- or blank.');
         return;
       }
       sentSizes.push(sent);
