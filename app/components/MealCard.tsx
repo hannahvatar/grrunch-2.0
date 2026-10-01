@@ -241,7 +241,12 @@ const styles = StyleSheet.create({
     // dealTagsRow underneath despite mealCardBody's gap:10 (real repro,
     // Anabelle, 2026-09-11: the "Fair price" badge visibly overlapping
     // "359 cal" above it).
-    alignItems: 'center',
+    // 'flex-end' (was 'center', Anabelle 2026-10-01: "532 cal" sat ~4px
+    // above "/ serving"): centering lined the small stats up with the
+    // middle of the tall 24px price instead of its text line. Bottom-
+    // aligning plus nutritionRow's paddingBottom puts them on the same
+    // line as "/ serving • min. servings N".
+    alignItems: 'flex-end',
     flexWrap: 'wrap',
     gap: 12,
   },
@@ -255,7 +260,9 @@ const styles = StyleSheet.create({
   // between lines once it does wrap (gap alone only covers horizontal
   // spacing within a line).
   priceBlock: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, rowGap: 2 },
-  nutritionRow: { flexDirection: 'row', gap: 16 },
+  // paddingBottom = the 24px price's descent below the small text's
+  // bottom in priceBlock (measured 4px), so the stats share its line.
+  nutritionRow: { flexDirection: 'row', gap: 16, paddingBottom: 4 },
   // 'center' (was 'baseline') -- baseline alignment doesn't work reliably
   // for an icon+text pair since the icon has no font baseline of its own
   // to align to, which was pushing it visibly below the text. Same
