@@ -151,6 +151,10 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // (Supabase) for the server-side twins.
   cornstarch: 120,
   oregano: 33,
+  // Porktoberfest -- dried rosemary needles, ~1.2 g/tsp (denser than
+  // oregano's flakes). See the staple_densities table (Supabase) for the
+  // server-side twin.
+  rosemary: 58,
   // Basic Beef Lasagna -- same ~33 g/cup figure as oregano above
   // (Italian seasoning is a blend of dried leafy herbs -- oregano,
   // basil, thyme -- not a fine ground spice, so it gets the leafy-herb
