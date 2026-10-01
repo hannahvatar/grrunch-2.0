@@ -2,17 +2,16 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
-import { CheckIcon, ChevronDownIcon, MagnifyingGlassPlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { CheckIcon, ChevronDownIcon, MagnifyingGlassPlusIcon } from 'react-native-heroicons/outline';
 
+import { CutoutViewer } from '../components/CutoutViewer';
 import { InputField } from '../components/InputField';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { isGreatReferenceValue } from '../lib/curatedDeals';
@@ -1019,12 +1018,9 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, start
 // The cutout photo, tappable to open full screen -- Anabelle: "Could there
 // be a way for me to click on the image and see a close up preview of the
 // cutout? So i can verify the copy and most of the time its too small".
-// Full screen it fills the width; pinch (or double-tap) to zoom further
-// uses ScrollView's own zoom, which is iOS-only -- elsewhere it's still
-// shown at full-screen size. The X closes it.
+// The full-screen view is the shared CutoutViewer.
 function CutoutPhoto({ uri }: { uri: string }) {
   const [open, setOpen] = useState(false);
-  const { width, height } = useWindowDimensions();
   return (
     <>
       <Pressable onPress={() => setOpen(true)} accessibilityRole="imagebutton" accessibilityLabel="Enlarge cutout">
@@ -1033,22 +1029,7 @@ function CutoutPhoto({ uri }: { uri: string }) {
           <MagnifyingGlassPlusIcon size={18} color="#fff" strokeWidth={2} />
         </View>
       </Pressable>
-      <Modal visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
-        <View style={styles.viewer}>
-          <ScrollView
-            maximumZoomScale={4}
-            minimumZoomScale={1}
-            centerContent
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-          >
-            <Image source={{ uri }} style={{ width, height }} resizeMode="contain" />
-          </ScrollView>
-          <Pressable style={styles.viewerClose} onPress={() => setOpen(false)} hitSlop={12} accessibilityLabel="Close">
-            <XMarkIcon size={22} color={INK} strokeWidth={2} />
-          </Pressable>
-        </View>
-      </Modal>
+      <CutoutViewer uri={uri} visible={open} onClose={() => setOpen(false)} />
     </>
   );
 }
@@ -2253,15 +2234,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17,17,17,0.7)',
     borderRadius: 999,
     padding: 8,
-  },
-  viewer: { flex: 1, backgroundColor: '#000' },
-  viewerClose: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    backgroundColor: '#fff',
-    borderRadius: 999,
-    padding: 10,
   },
   editPhoto: { width: '100%', height: 220, borderRadius: 16, backgroundColor: '#F2F2F2' },
   nameTitle: { fontSize: 22, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
