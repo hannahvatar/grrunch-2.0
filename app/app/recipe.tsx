@@ -432,6 +432,17 @@ export default function RecipeScreen() {
           ))}
         </View>
 
+        {/* A tip that isn't a cooking step (Anabelle, 2026-10-01: "This is
+            not a step. Make it a note"), same card look as Optional. */}
+        {!!meal.notes && (
+          <View style={styles.optionalCard}>
+            <View style={styles.optionalHeadingRow}>
+              <Text style={styles.optionalHeading}>Note</Text>
+            </View>
+            <Text style={styles.optionalText}>{meal.notes}</Text>
+          </View>
+        )}
+
         {/* Own bordered/tinted card now (Anabelle's call, with a design
             reference) -- label replaces the plain "Optional" sectionTitle
             used elsewhere on this page, so this reads as a distinct

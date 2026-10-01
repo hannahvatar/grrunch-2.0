@@ -216,6 +216,7 @@ function mapRowToMeal(
     price: number | null;
     servings: number;
     optional_additions: unknown;
+    notes?: string | null;
     avg_rating: number | null;
     rating_count: number;
     featured: boolean | null;
@@ -256,6 +257,7 @@ function mapRowToMeal(
     ),
     instructions: row.instructions as string[],
     optionalAdditions,
+    notes: row.notes ?? undefined,
     // The sub-recipes this meal's own ingredients name (exact match),
     // its Optional callout prose mentions (substring match), OR that
     // are directly attached via recipe_id (no text mention needed at
