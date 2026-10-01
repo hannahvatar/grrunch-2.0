@@ -832,6 +832,19 @@ function roundUpTo5(n: number): number {
 // Previously this badge blindly multiplied a static "1" placeholder by
 // the batch multiplier for every deal item alike, ignoring
 // fragmentByWeight entirely.
+// How many whole items a by-weight quantity stands for, read from its
+// bracketed description: "g (about 2 apples), sliced" -> 2, "g (1 small
+// squash)" -> 1, "g (about 1/4 head)" -> 1 (a part still means buying
+// one). Undefined when there's no bracketed count.
+function describedItemCount(unit: string | undefined): number | undefined {
+  const match = (unit ?? '').trim().match(/^(?:g|kg|lb|lbs|oz)\s*\((?:about\s+)?(\d+(?:\s*\/\s*\d+)?(?:\.\d+)?)\s/i);
+  if (!match) return undefined;
+  const count = parseQuantity(match[1]);
+  return Number.isNaN(count) || count <= 0 ? undefined : count;
+}
+
+const BY_WEIGHT_PRICE_UNITS = ['lb', 'kg', '100g'];
+
 export function computeDealPackageCount(
   quantity: string | undefined,
   unit: string | undefined,
@@ -840,8 +853,16 @@ export function computeDealPackageCount(
   multiplier: number,
   packageVolumeMl?: number,
   bundleCount?: number,
-  ingredientName?: string
+  ingredientName?: string,
+  priceUnit?: string
 ): number {
+  // Loose produce priced by weight (apples at $1.49/lb) has no package:
+  // the badge counts the items, "(about 2 apples)" x batches (Anabelle,
+  // 2026-10-01: "if the recipe uses 2 apples, why does the number show 1").
+  if (priceUnit && BY_WEIGHT_PRICE_UNITS.includes(priceUnit)) {
+    const items = describedItemCount(unit);
+    if (items !== undefined) return Math.max(1, Math.ceil(items * multiplier));
+  }
   // Whole items counted with a container word ("2 cans", "2 packs",
   // "1 package") or whole produce ("1 whole" onion). Anabelle, 2026-09-30:
   // "the kidney beans don't scale" -- the fallback below returned just
@@ -922,6 +943,11 @@ export function describeDealPackage(
 ): string | undefined {
   const ua = parseUnitAmount(recipeQuantity, recipeUnit);
   if (Number.isNaN(ua.amount)) return undefined;
+  // Priced by weight, so there's no "package": a bare count of the items
+  // ("2" Royal Gala Apples), or "1" for one piece (a pork loin).
+  if (ua.baseUnit === 'g' && priceUnit && BY_WEIGHT_PRICE_UNITS.includes(priceUnit)) {
+    return String(Math.max(1, Math.ceil(describedItemCount(recipeUnit) ?? 1)));
+  }
   if (ua.baseUnit !== 'each') return '1 package';
   // A fractional container sub-unit (clove/stalk -- parseUnitAmount's
   // own /clove|stalk/ division always lands under 1) still only ever
@@ -933,7 +959,9 @@ export function describeDealPackage(
   // leaked through as the package-count badge -- reading as "buy 3 of
   // these" when it's really a small fraction of the 1 package needed.
   if (ua.amount < 1) return '1 package';
-  if (priceUnit === 'package' && ua.amount > 1 && packageWeightG && ingredientName) {
+  // >= 1, not > 1: a single whole onion from a bag ("1 whole, sliced")
+  // otherwise fell through and the card read "whole, sliced yellow onions".
+  if (priceUnit === 'package' && ua.amount >= 1 && packageWeightG && ingredientName) {
     const ingWords = normalizeWords(ingredientName);
     const bridgeEntry = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => {
       const words = normalizeWords(name);

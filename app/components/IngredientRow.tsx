@@ -225,7 +225,8 @@ export function IngredientRow({
             multiplier,
             dealTag?.packageVolumeMl,
             dealTag?.bundleCount,
-            dealTag?.name
+            dealTag?.name,
+            dealTag?.priceUnit
           )
         )
       : dealQuantityBase;
