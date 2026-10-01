@@ -183,6 +183,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // no crop needed. Old unsuffixed original stays on disk
   // (tomato-soup-grilled-cheese-remix.jpeg) but is no longer referenced.
   'Tomato Soup & Grilled Cheese Remix': require('../assets/tomato-soup-grilled-cheese-remix-rev-fixed.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Pork Yeah! Noodle Bowl': require('../assets/pork-yeah-noodle-bowl.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
