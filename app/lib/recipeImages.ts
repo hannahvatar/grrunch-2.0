@@ -191,6 +191,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Squash the Hunger Chili': require('../assets/squash-the-hunger-chili.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Sticky Chicken, Crisp Apple': require('../assets/sticky-chicken-crispy-apples.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Porktoberfest': require('../assets/porktoberfest.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
