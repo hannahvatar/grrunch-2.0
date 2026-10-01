@@ -1534,11 +1534,17 @@ export function portionCost(
 // brackets scaled by the servings multiplier. Only for a weight/volume
 // unit followed by a bracketed description; anything else is undefined.
 function describedAmount(unit: string | undefined, multiplier: number): string | undefined {
-  const match = (unit ?? '').trim().match(/^(g|kg|ml|mL|l|L|lb|lbs|oz)\s*\(([^)]+)\)\s*(.*)$/);
+  // One level of brackets inside is allowed: "g (about 1 whole leg (about
+  // 4.4 lbs)), bone-in" -> "1 whole leg (about 4.4 lbs), bone-in".
+  const match = (unit ?? '').trim().match(/^(g|kg|ml|mL|l|L|lb|lbs|oz)\s*\(((?:[^()]|\([^()]*\))+)\)\s*(.*)$/);
   if (!match) return undefined;
   let inner = match[2].trim().replace(/^about\s+/i, '');
   const rest = match[3].trim();
   const lead = inner.match(/^(\d+(?:\s*\/\s*\d+)?(?:\.\d+)?)\s+(.*)$/);
-  if (lead && multiplier !== 1) inner = `${scaleQuantityString(lead[1], multiplier)} ${lead[2]}`;
+  if (lead && multiplier !== 1) {
+    // Scale a weight restated inside too ("(about 4.4 lbs)" at 2x -> 8.8).
+    const tail = lead[2].replace(/(\d+(?:\.\d+)?)\s*(lbs?|kg)\b/gi, (_m, n: string, u: string) => `${Math.round(parseFloat(n) * multiplier * 10) / 10} ${u}`);
+    inner = `${scaleQuantityString(lead[1], multiplier)} ${tail}`;
+  }
   return rest ? `${inner}${rest.startsWith(',') ? '' : ' '}${rest}` : inner;
 }
