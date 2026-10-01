@@ -195,6 +195,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Porktoberfest': require('../assets/porktoberfest.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Catch of the Tray': require('../assets/catch-of-the-tray.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Lamb Sweet Tagine': require('../assets/lamb-sweet-tagine.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
