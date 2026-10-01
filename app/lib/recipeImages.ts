@@ -185,6 +185,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Tomato Soup & Grilled Cheese Remix': require('../assets/tomato-soup-grilled-cheese-remix-rev-fixed.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Pork Yeah! Noodle Bowl': require('../assets/pork-yeah-noodle-bowl.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Sundubu Jjigae (Spicy Soft Tofu Stew)': require('../assets/sundubu-jjigae-spicy-soft-tofu-stew.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
