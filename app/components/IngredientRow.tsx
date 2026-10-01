@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { MagnifyingGlassPlusIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
 // @deprecated (upstream) in favor of the Reanimated-based rewrite --
 // still fully functional in gesture-handler 2.28 (no reanimated
 // dependency needed, confirmed), just flagged for a future migration
@@ -21,6 +21,7 @@ import { PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
 // Swipeable needs this.
 import { Swipeable, Pressable as GesturePressable } from 'react-native-gesture-handler';
 
+import { CutoutViewer } from './CutoutViewer';
 import {
   formatComparePriceLabel,
   formatDealBadgePrice,
@@ -177,6 +178,7 @@ export function IngredientRow({
   quantity,
   unit,
 }: IngredientRowProps) {
+  const [zoomOpen, setZoomOpen] = useState(false);
   // Last week's flyers have ended and the next week isn't published yet
   // (lib/liveWeek.ts) -- the deal's price stays, its badge becomes Expired.
   const liveWeekExpired = useLiveWeekExpired();
@@ -231,8 +233,13 @@ export function IngredientRow({
         )
       : dealQuantityBase;
 
+  // Tap the cutout to see it full screen (Anabelle, 2026-10-01: zoom in
+  // on the cutout on every recipe card) -- see CutoutViewer.
   const imageEl = dealTag?.imageUrl && (
-    <View
+    <Pressable
+      onPress={() => setZoomOpen(true)}
+      accessibilityRole="imagebutton"
+      accessibilityLabel="Enlarge flyer cutout"
       style={[styles.itemImageBox, { width: imageSize, height: imageSize, borderRadius: imageSize / 4.5 }]}
     >
       {blurredBackdrop && (
@@ -266,7 +273,13 @@ export function IngredientRow({
         resizeMode="contain"
         style={blurredBackdrop ? styles.itemImageInset : StyleSheet.absoluteFillObject}
       />
-    </View>
+      {imageSize >= 64 && (
+        <View style={styles.zoomHint} pointerEvents="none">
+          <MagnifyingGlassPlusIcon size={14} color="#fff" strokeWidth={2} />
+        </View>
+      )}
+      <CutoutViewer uri={dealTag.imageUrl} visible={zoomOpen} onClose={() => setZoomOpen(false)} />
+    </Pressable>
   );
 
   // Splits the lowercased name around linkedText (case-insensitive) and
@@ -657,6 +670,15 @@ const styles = StyleSheet.create({
   // foreground Image pair to the box's rounded corners; backgroundColor
   // is the fallback while an image is loading or blurredBackdrop is off.
   itemImageBox: { backgroundColor: '#F2F2F2', overflow: 'hidden', position: 'relative' },
+  // Same look as dev-deals' zoom hint, scaled down for a card thumbnail.
+  zoomHint: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    backgroundColor: 'rgba(17,17,17,0.7)',
+    borderRadius: 999,
+    padding: 5,
+  },
   // A fixed 10% margin off every edge -- see the comment above where
   // this is used for why a same-size fill isn't always enough to
   // guarantee the blurred backdrop shows.
