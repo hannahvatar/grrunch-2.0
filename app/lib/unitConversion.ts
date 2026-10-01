@@ -841,8 +841,10 @@ function roundUpTo5(n: number): number {
 // squash)" -> 1, "g (about 1/4 head)" -> 1 (a part still means buying
 // one). Undefined when there's no bracketed count.
 function describedItemCount(unit: string | undefined): number | undefined {
-  const match = (unit ?? '').trim().match(/^(?:g|kg|lb|lbs|oz)\s*\((?:about\s+)?(\d+(?:\s*\/\s*\d+)?(?:\.\d+)?)\s/i);
+  const match = (unit ?? '').trim().match(/^(?:g|kg|lb|lbs|oz)\s*\((?:about\s+)?(\d+(?:\s*\/\s*\d+)?(?:\.\d+)?)\s+([a-z]+)/i);
   if (!match) return undefined;
+  // "(about 2.2 lb)" restates the weight, it isn't a count of items.
+  if (/^(?:lbs?|kg|g|oz|ml|l|cups?|tbsp|tsp)$/i.test(match[2])) return undefined;
   const count = parseQuantity(match[1]);
   return Number.isNaN(count) || count <= 0 ? undefined : count;
 }
@@ -952,6 +954,11 @@ export function describeDealPackage(
   if (ua.baseUnit === 'g' && priceUnit && BY_WEIGHT_PRICE_UNITS.includes(priceUnit)) {
     return String(Math.max(1, Math.ceil(describedItemCount(recipeUnit) ?? 1)));
   }
+  // More than one known-size package (900 g of ground beef in 450 g packs
+  // is 2), not a flat "1 package".
+  if (ua.baseUnit === 'g' && packageWeightG && ua.amount > packageWeightG) {
+    return `${Math.ceil(ua.amount / packageWeightG - 1e-9)} packages`;
+  }
   if (ua.baseUnit !== 'each') return '1 package';
   // A fractional container sub-unit (clove/stalk -- parseUnitAmount's
   // own /clove|stalk/ division always lands under 1) still only ever
@@ -976,6 +983,13 @@ export function describeDealPackage(
       const packageCount = Math.ceil((ua.amount * gramsEach) / packageWeightG);
       return packageCount === 1 ? '1 package' : `${packageCount} packages`;
     }
+  }
+  // Whole containers or items with a prep note ("1 can, drained and
+  // rinsed", "1 whole, sliced"): just the count, so the card reads
+  // "chickpeas", not "can, drained and rinsed chickpeas". A bare count of
+  // pieces out of one package (8 Kraft Singles) keeps its own wording.
+  if (!isBareOrSizeCount(recipeUnit) || /^whole\b/i.test((recipeUnit ?? '').trim())) {
+    return String(Math.round(ua.amount));
   }
   return undefined;
 }
@@ -1375,7 +1389,11 @@ export function describeUseQuantityText(
     const tail = rest.length ? `,${rest.join(',')}` : '';
     return `Recipe uses ${scaledQuantity} ${base.trim()}${pounds}${tail}`.trim();
   }
-  return `Recipe uses ${scaledQuantity} ${unit} of the package`.trim();
+  // Prep note after "of the package": "900 g of the package, peeled and
+  // cubed", not "900 g, peeled and cubed of the package".
+  const [unitBase, ...prep] = (unit ?? '').split(',');
+  const prepTail = prep.length ? `,${prep.join(',')}` : '';
+  return `Recipe uses ${scaledQuantity} ${unitBase.trim()} of the package${prepTail}`.replace(/\s+/g, ' ').trim();
 }
 
 // Staples conventionally bought and measured as whole discrete items (a
