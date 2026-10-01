@@ -1331,6 +1331,18 @@ export function describeUseQuantityText(
     }
   }
   const scaledQuantity = scaleQuantityString(quantity, multiplier);
+  // No known package size -- a deal priced by weight (pork loin at
+  // $2.49/lb, loose squash) has no "package" at all, so "of the package"
+  // left the user wondering how big it was (Anabelle, 2026-10-01). Say
+  // the weight instead, with pounds from 200 g up since meat and produce
+  // are priced per lb in store: "Recipe uses 600 g (about 1.3 lb)".
+  if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g' && !packageWeightG) {
+    const [base, ...rest] = (unit ?? '').split(',');
+    const grams = ua.amount * multiplier;
+    const pounds = grams >= 200 ? ` (about ${Math.round((grams / 453.6) * 10) / 10} lb)` : '';
+    const tail = rest.length ? `,${rest.join(',')}` : '';
+    return `Recipe uses ${scaledQuantity} ${base.trim()}${pounds}${tail}`.trim();
+  }
   return `Recipe uses ${scaledQuantity} ${unit} of the package`.trim();
 }
 
