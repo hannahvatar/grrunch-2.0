@@ -311,6 +311,7 @@ export type Database = {
           instructions: Json
           minutes: number | null
           name: string
+          notes: string | null
           optional_additions: Json
           price: number | null
           protein: number | null
@@ -334,6 +335,7 @@ export type Database = {
           instructions: Json
           minutes?: number | null
           name: string
+          notes?: string | null
           optional_additions?: Json
           price?: number | null
           protein?: number | null
@@ -357,6 +359,7 @@ export type Database = {
           instructions?: Json
           minutes?: number | null
           name?: string
+          notes?: string | null
           optional_additions?: Json
           price?: number | null
           protein?: number | null

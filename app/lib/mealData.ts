@@ -194,6 +194,8 @@ export interface Meal {
   ingredients: IngredientLine[];
   instructions: string[];
   optionalAdditions: OptionalAddition[];
+  // Tip shown under the instructions that isn't a step (freezing etc.).
+  notes?: string;
   // Only the sub-recipes actually relevant to THIS meal's own
   // ingredients (cross-referenced by name in lib/recipes.ts) -- not
   // every sub-recipe in the shared table.
