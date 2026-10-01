@@ -193,6 +193,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Sticky Chicken, Crisp Apple': require('../assets/sticky-chicken-crispy-apples.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Porktoberfest': require('../assets/porktoberfest.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Catch of the Tray': require('../assets/catch-of-the-tray.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
