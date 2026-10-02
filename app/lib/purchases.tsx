@@ -133,7 +133,7 @@ function activeWillRenew(info: CustomerInfo): boolean {
 const IS_NATIVE = Platform.OS !== 'web';
 
 export function PurchasesProvider({ children }: { children: ReactNode }) {
-  const { session, isGuest } = useAuth();
+  const { session, isGuest, loading: authLoading } = useAuth();
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
@@ -178,17 +178,32 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   // RevenueCat's own anonymous id; logOut() when a session ends so a
   // shared/borrowed device doesn't leak one account's entitlement into
   // the next guest session.
+  //
+  // Waits for authLoading (2026-10-02 bug): on every cold start the
+  // saved session isn't restored yet on the first render, so this used
+  // to see "no session" and logOut() a signed-in member onto a fresh
+  // anonymous id, then logIn() a moment later -- and the anonymous
+  // CustomerInfo from the getCustomerInfo() below could land last,
+  // showing a real member (incl. a promotional entitlement) as a
+  // non-member. Applying the CustomerInfo that logIn/logOut return
+  // makes the account's own entitlement the final word, and logOut is
+  // skipped when already anonymous (the old "LogOut was called but the
+  // current user is anonymous" dev toast).
   useEffect(() => {
-    if (!configured) return;
+    if (!configured || authLoading) return;
     if (session && !isGuest) {
-      Purchases.logIn(session.user.id).catch(() => {
-        // Non-fatal -- customerInfo listener below still reflects
-        // whatever identity is currently active.
-      });
+      Purchases.logIn(session.user.id)
+        .then(({ customerInfo }) => applyCustomerInfo(customerInfo))
+        .catch(() => {
+          // Non-fatal -- customerInfo listener below still reflects
+          // whatever identity is currently active.
+        });
     } else {
-      Purchases.logOut().catch(() => {});
+      Purchases.isAnonymous()
+        .then((anonymous) => (anonymous ? null : Purchases.logOut().then(applyCustomerInfo)))
+        .catch(() => {});
     }
-  }, [configured, session, isGuest]);
+  }, [configured, authLoading, session, isGuest]);
 
   // Live entitlement state -- fires immediately with the current
   // CustomerInfo and again on any change (purchase, renewal,

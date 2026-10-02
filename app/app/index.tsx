@@ -67,7 +67,7 @@ export default function OnboardingScreen() {
 
   function proceedPastOnboarding() {
     if (!loading && session) {
-      router.replace('/meals');
+      router.replace('/best-deals');
     } else {
       router.push('/terms');
     }

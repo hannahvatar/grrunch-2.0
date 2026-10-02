@@ -4,7 +4,7 @@ import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, T
 import {
   CheckIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
+  ChevronUpIcon,
   LockClosedIcon,
   PlusIcon,
   TagIcon,
@@ -29,6 +29,7 @@ import { filterDealsByZone } from '../../lib/dealZones';
 import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { WeekGapState } from '../../components/WeekGapState';
+import { MONTHLY_PRICE_DISPLAY } from '../../lib/purchases';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSelectedStores } from '../../lib/selectedStores';
 import { useSubscription } from '../../lib/subscription';
@@ -45,7 +46,7 @@ const INK = '#111';
 // in each category (was 3, Anabelle 2026-09-08) -- see selectVisibleDeals,
 // which already sorts by savings desc before slicing, so this is "the one
 // with the best deal percentage" by construction. Grrunch Plus (30-day
-// free trial, then $5.99/mo) unlocks the rest. A deal used by any recipe
+// free trial, then MONTHLY_PRICE_DISPLAY/mo) unlocks the rest. A deal used by any recipe
 // is exempt from this cap entirely, always shown regardless of how many
 // others are already visible. The "Unlock N more deals" dashed card
 // stands in for however many non-recipe-linked deals are left, naming the
@@ -150,18 +151,13 @@ export default function BestDealsScreen() {
     <View style={styles.container}>
       <ClosingSoonBanner />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Weekly Deals</Text>
+        <Text style={styles.title}>Grrunch Picks</Text>
         {weekExpired && (
           <AlertBanner variant="info" title={FRESH_DEALS_BANNER_TITLE} description={FRESH_DEALS_BANNER_BODY} />
         )}
         {!weekExpired && (
-          <Text style={styles.tagline}>We checked this week's flyers. These deals made the cut.</Text>
+          <Text style={styles.tagline}>We crunched the flyers and evaluated the offers. These deals actually made the cut.</Text>
         )}
-        <Text style={styles.subtitle}>
-          {deals.length} deal{deals.length === 1 ? '' : 's'} {weekExpired ? "from last week's flyers" : 'this week'} ·{' '}
-          {categories.length} categor
-          {categories.length === 1 ? 'y' : 'ies'}
-        </Text>
 
         {deals.length === 0 && (
           <View style={styles.emptyState}>
@@ -169,7 +165,31 @@ export default function BestDealsScreen() {
           </View>
         )}
 
-        {categories.map((category) => {
+        {categories.length > 0 && (
+        <View style={styles.categoryContainer}>
+          {/* Top section of the category card: the pill legend (on
+              white, since the peach "Fair price" pill vanishes on this
+              page's own peach background), then the deal count as the
+              card's title. */}
+          <View style={styles.cardTop}>
+          <View style={styles.legend}>
+            <View style={[styles.dealBadge, styles.legendPill]}>
+              <Text style={styles.dealBadgeText}>Store discount</Text>
+            </View>
+            <View style={[styles.dealGreatValueBadge, styles.legendPill]}>
+              <Text style={styles.dealGreatValueBadgeText}>Below average</Text>
+            </View>
+            <View style={[styles.dealFairPriceBadge, styles.legendPill]}>
+              <Text style={styles.dealFairPriceBadgeText}>Fair price</Text>
+            </View>
+          </View>
+          <Text style={styles.cardTitle}>
+            {deals.length} deal{deals.length === 1 ? '' : 's'} {weekExpired ? "from last week's flyers" : 'this week'} ·{' '}
+            {categories.length} categor
+            {categories.length === 1 ? 'y' : 'ies'}
+          </Text>
+          </View>
+        {categories.map((category, categoryIndex) => {
           const categoryDeals = groups.get(category)!;
           const { visibleDeals, lockedDealCount } = selectVisibleDeals(
             categoryDeals,
@@ -178,17 +198,20 @@ export default function BestDealsScreen() {
           );
           const isExpanded = expandedCategories.has(category);
           return (
-            <View key={category} style={styles.categorySection}>
-              <Pressable style={styles.categoryHeader} onPress={() => toggleCategory(category)}>
+            <View
+              key={category}
+              style={[styles.categorySection, categoryIndex === categories.length - 1 && styles.categorySectionLast]}
+            >
+              <Pressable style={styles.categoryHeader} onPress={() => toggleCategory(category)} hitSlop={8}>
                 <Text style={styles.categoryTitle}>{category}</Text>
                 <View style={styles.categoryHeaderRight}>
                   <View style={styles.categoryCountBadge}>
                     <Text style={styles.categoryCount}>{categoryDeals.length}</Text>
                   </View>
                   {isExpanded ? (
-                    <ChevronDownIcon size={16} color={INK} />
+                    <ChevronUpIcon size={16} color={INK} />
                   ) : (
-                    <ChevronRightIcon size={16} color={INK} />
+                    <ChevronDownIcon size={16} color={INK} />
                   )}
                 </View>
               </Pressable>
@@ -305,7 +328,7 @@ export default function BestDealsScreen() {
                       <Text style={styles.unlockTitle}>
                         Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
                       </Text>
-                      <Text style={styles.unlockSubtitle}>30-day free trial · Then $5.99/mo · Cancel anytime</Text>
+                      <Text style={styles.unlockSubtitle}>30-day free trial · Then {MONTHLY_PRICE_DISPLAY}/mo · Cancel anytime</Text>
                     </Pressable>
                   )}
                 </View>
@@ -313,6 +336,8 @@ export default function BestDealsScreen() {
             </View>
           );
         })}
+        </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -336,31 +361,42 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 20 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   tagline: { fontSize: 14, color: INK, marginTop: -12 },
-  subtitle: { fontSize: 13, color: INK },
+  // First section of categoryContainer (legend + count title), divided
+  // off like a category row.
+  cardTop: { paddingVertical: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: INK },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  cardTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // A touch narrower than the card pills so all three fit on one line
+  // inside the category card at iPhone width (393pt).
+  legendPill: { marginTop: 0, paddingHorizontal: 8 },
   // "Modal treatment" -- same white/2px-INK-border/16px-radius language
   // as every other card on the Meals/Grocery/Recipe screens (was flat
   // #F2F2F2 grey box with no border).
   emptyState: { backgroundColor: '#fff', borderWidth: 2, borderColor: INK, borderRadius: 16, padding: 20 },
   emptyStateText: { color: INK, fontSize: 14, textAlign: 'center' },
-  categorySection: { gap: 10 },
-  // "Modal treatment" header, matching recipe.tsx's own card-with-
-  // heading-row convention -- was a thin #eee-border/12px-radius box,
-  // visually unrelated to any other card on the app.
+  // Same accordion treatment as get-support.tsx's FAQ (Anabelle,
+  // 2026-10-02): one white card with a 1px INK border holding every
+  // category, rows split by 1px INK dividers, chevron down/up. Was one
+  // separate 2px-bordered pill per category.
+  categoryContainer: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: INK,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
+  categorySection: { borderBottomWidth: 1, borderBottomColor: INK, paddingVertical: 16, gap: 12 },
+  categorySectionLast: { borderBottomWidth: 0 },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    gap: 12,
   },
   // 700/Bold, not 800/ExtraBold -- matches this app's established
   // section-heading weight (recipe.tsx's sectionTitle, GroceryListView's
   // storeName/selectedSectionTitle), not the page-title weight.
-  categoryTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  categoryTitle: { flex: 1, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   categoryHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // ACCENT-filled pill, matching the brand-accent badges used elsewhere
   // (e.g. sheetDoneButton) -- was plain muted-grey text with no badge.

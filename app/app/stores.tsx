@@ -154,8 +154,8 @@ export default function StoresScreen() {
     };
   }, [hasPreciseLocation, lat, lng]);
 
-  function goToMeals() {
-    router.push('/meals');
+  function goToFirstTab() {
+    router.push('/best-deals');
   }
 
   // Only persists on the deliberate "Continue" confirmation, not
@@ -172,7 +172,7 @@ export default function StoresScreen() {
         lng: store.lng ?? undefined,
       }))
     );
-    router.push('/meals');
+    router.push('/best-deals');
   }
 
   if (loading) {
@@ -207,7 +207,7 @@ export default function StoresScreen() {
             >
               <Text style={styles.primaryButtonText}>Enable location</Text>
             </Pressable>
-            <Pressable style={styles.skipButton} onPress={goToMeals}>
+            <Pressable style={styles.skipButton} onPress={goToFirstTab}>
               <Text style={styles.skipText}>Skip for now</Text>
               <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
             </Pressable>

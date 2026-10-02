@@ -61,7 +61,7 @@ export function AppTopBar() {
               settings.tsx's closeButton/recipe.tsx's closeButton -- routes
               straight into the existing Profile tab (group segments like
               "(tabs)" don't appear in the URL, so this is just '/profile',
-              same pattern stores.tsx already uses for '/meals'). */}
+              same pattern stores.tsx already uses for '/best-deals'). */}
           <Pressable style={styles.profileButton} onPress={() => router.push('/profile')} hitSlop={8}>
             <PersonIcon size={18} color={INK} />
           </Pressable>
