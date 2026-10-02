@@ -31,6 +31,10 @@ on:
         description: 'Run even if this week is already fetched (keeps rows already reviewed)'
         type: boolean
         default: false
+      test_email:
+        description: 'Only send a test email (checks the SMTP secrets, fetches nothing)'
+        type: boolean
+        default: false
 
 jobs:
   fetch:
@@ -59,3 +63,4 @@ jobs:
           python3 weekly_flyer_fetch.py
           --group ${{ github.event_name == 'schedule' && 'auto' || inputs.group }}
           ${{ inputs.force && '--force' || '' }}
+          ${{ inputs.test_email && '--test-email' || '' }}
