@@ -99,9 +99,36 @@ function extractErrorCode(url: string): string | null {
   return null;
 }
 
+// Session tokens from a successful magic-link/OAuth redirect, in either
+// the #fragment (Supabase's default) or the query string.
+function extractSessionTokens(url: string): { accessToken: string; refreshToken: string } | null {
+  const parsed = Linking.parse(url);
+  const fragment = url.split('#')[1];
+  const fromFragment = fragment ? new URLSearchParams(fragment) : null;
+  const accessToken =
+    (parsed.queryParams?.access_token as string | undefined) ?? fromFragment?.get('access_token');
+  const refreshToken =
+    (parsed.queryParams?.refresh_token as string | undefined) ?? fromFragment?.get('refresh_token');
+  return accessToken && refreshToken ? { accessToken, refreshToken } : null;
+}
+
+// Handles every sign-in link the app is opened with, success or failure.
+// Success used to be caught only by login.tsx's own 'url' listener, which
+// misses a COLD start: if iOS had killed the app while the tester was in
+// Mail, tapping the link launched Grrunch fresh, the login screen wasn't
+// mounted yet, and the tokens were silently dropped (no sign-in, no
+// error). Living here, getInitialURL covers the cold start and the
+// listener covers a warm one; AuthRedirect above then routes on
+// SIGNED_IN as before. lib/supabase.ts's detectSessionInUrl still owns
+// the web case.
 function DeepLinkErrorRedirect() {
   useEffect(() => {
     function handle(url: string) {
+      const tokens = extractSessionTokens(url);
+      if (tokens) {
+        supabase.auth.setSession({ access_token: tokens.accessToken, refresh_token: tokens.refreshToken });
+        return;
+      }
       const errorCode = extractErrorCode(url);
       if (!errorCode) return;
       router.replace({
