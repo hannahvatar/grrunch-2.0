@@ -2,7 +2,6 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as Linking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Network from 'expo-network';
 import * as WebBrowser from 'expo-web-browser';
@@ -24,11 +23,17 @@ import { supabase } from '../lib/supabase';
 // redirect is meaningless to a browser (or an email client's "open link"
 // action opening one), so getting this wrong makes the confirmation link
 // silently fail rather than error clearly.
+//
+// Native is pinned to plain grrunch:// (the `native` option wins in dev
+// builds and release builds alike): left to itself, a dev build produced
+// an exp+grrunch-style URI that isn't on Supabase's redirect allow list
+// (and the dashboard rejects "+" schemes, so it can't be added), so Auth
+// silently fell back to the Site URL instead of reopening the app.
 function getRedirectUri(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     return window.location.origin;
   }
-  return makeRedirectUri();
+  return makeRedirectUri({ native: 'grrunch://' });
 }
 
 // Guest-mode wireframe step 2 — Sign up / Log in.
@@ -41,8 +46,8 @@ function getRedirectUri(): string {
 // template editing behind custom SMTP, which isn't set up, so the code
 // variable ({{ .Token }}) never actually appears in the email that gets
 // sent. The link approach needs no template changes: it's completed via
-// detectSessionInUrl on web (see lib/supabase.ts) and the deep-link
-// listener below on native. Same request both creates the account and
+// detectSessionInUrl on web (see lib/supabase.ts) and app/_layout.tsx's
+// deep-link handler on native. Same request both creates the account and
 // signs in, so there's no separate "log in" form to build.
 //
 // Apple, Google, and email all need one thing from the Supabase dashboard
@@ -99,7 +104,7 @@ export default function LoginScreen() {
 
   // emailSent switches the form from "enter your email" to "check your
   // email" -- sign-in itself completes later, out of band, when the
-  // confirmation link is tapped (see the deep-link listener below and
+  // confirmation link is tapped (see app/_layout.tsx's deep-link handler and
   // lib/supabase.ts's detectSessionInUrl for the web case).
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
@@ -112,25 +117,9 @@ export default function LoginScreen() {
       .catch(() => setAppleAuthAvailable(false));
   }, []);
 
-  // Native equivalent of lib/supabase.ts's detectSessionInUrl (which only
-  // handles web, since it reads window.location) -- the confirmation link
-  // opens the app via its grrunch:// scheme with the session tokens in the
-  // URL, which the Supabase JS SDK never sees on its own there.
-  useEffect(() => {
-    const subscription = Linking.addEventListener('url', async ({ url }) => {
-      const parsed = Linking.parse(url);
-      const fragment = url.split('#')[1];
-      const fromFragment = fragment ? new URLSearchParams(fragment) : null;
-      const accessToken =
-        (parsed.queryParams?.access_token as string | undefined) ?? fromFragment?.get('access_token');
-      const refreshToken =
-        (parsed.queryParams?.refresh_token as string | undefined) ?? fromFragment?.get('refresh_token');
-      if (accessToken && refreshToken) {
-        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      }
-    });
-    return () => subscription.remove();
-  }, []);
+  // The confirmation link's session tokens (grrunch://#access_token=...)
+  // are picked up app-wide in app/_layout.tsx's DeepLinkErrorRedirect,
+  // not here -- this screen isn't mounted on a cold start from Mail.
 
   // Was an unconditional router.push('/location') at every call site --
   // fine for a true cold start, but this screen is also reachable
