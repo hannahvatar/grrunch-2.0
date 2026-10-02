@@ -674,7 +674,16 @@ def main():
     ap.add_argument("--group", choices=["auto", "tuesday", "wednesday"], default="auto")
     ap.add_argument("--dry-run", action="store_true", help="fetch and pick, but don't write or email")
     ap.add_argument("--force", action="store_true", help="run even if this week's draft already has these chains")
+    ap.add_argument("--test-email", action="store_true", help="only send a test email to check SMTP_USER / SMTP_PASSWORD, then exit")
     args = ap.parse_args()
+
+    # A normal run skips an already-fetched week and a dry run never
+    # emails, so neither can confirm the email setup after an app
+    # password change (2026-10-02: a revoked password failed every run).
+    if args.test_email:
+        send_email("Grrunch flyer fetch: test email",
+                   "If you're reading this, the weekly flyer fetch can email its summary.")
+        return
 
     now = datetime.now(VANCOUVER)
     group = group_due(now) if args.group == "auto" else args.group
