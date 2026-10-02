@@ -13,12 +13,12 @@ export default function TabsLayout() {
       <AppTopBar />
       <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: '#111', tabBarInactiveTintColor: '#999' }}>
         <Tabs.Screen
-          name="meals"
-          options={{ title: 'Meals', tabBarIcon: ({ color }) => <RestaurantIcon size={22} color={color} /> }}
-        />
-        <Tabs.Screen
           name="best-deals"
           options={{ title: 'Weekly Deals', tabBarIcon: ({ color }) => <SellIcon size={22} color={color} /> }}
+        />
+        <Tabs.Screen
+          name="meals"
+          options={{ title: 'Meals', tabBarIcon: ({ color }) => <RestaurantIcon size={22} color={color} /> }}
         />
         <Tabs.Screen
           name="grocery"

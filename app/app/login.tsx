@@ -135,7 +135,7 @@ export default function LoginScreen() {
   // full onboarding rather than guessing.
   function navigateAfterSignIn() {
     if (storesLoaded && existingStores.length > 0) {
-      router.push('/meals');
+      router.push('/best-deals');
     } else {
       router.push('/location');
     }
