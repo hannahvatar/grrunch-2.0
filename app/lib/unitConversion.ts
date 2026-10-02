@@ -561,6 +561,12 @@ export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   // priced deal). ~12 g per stalk. See the staple_avg_weights table
   // (Supabase) for the server-side twin.
   'green onions': 12,
+  // Thanks, It's Turkey -- Anabelle: "Add the avr costs of Recipe uses 2
+  // celery stalks just like you do for the onions". One whole bunch
+  // (~1 lb), same whole-unit shape as garlic's bulb: parseUnitAmount
+  // already turns "2 stalks" into 2/8 of a bunch. See the
+  // staple_avg_weights table (Supabase) for the server-side twin.
+  celery: 454,
   // Curry Up Coconut Chicken -- Anabelle: "Reaplce Recipe uses 150 g of
   // the package with 'Recipe uses 2 coloured peppers'". This deal is
   // loose/priced per lb (no package_weight_g at all, confirmed via the
@@ -1162,6 +1168,10 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   // clove count (re-parsed directly, not the divided fraction -- see
   // the each-based branches below for why).
   garlic: { singular: 'clove', plural: 'cloves' },
+  // Thanks, It's Turkey -- Anabelle: "specify that it uses about 2
+  // celery stalks". Same stalk-of-a-bunch shape as garlic's cloves
+  // above (parseUnitAmount's /stalk/ division).
+  celery: { singular: 'celery stalk', plural: 'celery stalks' },
   // Breakfast for Dinner -- Croissant déjeûner -- Anabelle: "add recipe
   // uses 6 eggs". Unit is "large" (a size descriptor, not a real
   // container word -- see isBareOrSizeCount), so this reaches the

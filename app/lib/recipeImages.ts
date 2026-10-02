@@ -197,6 +197,9 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Catch of the Tray': require('../assets/catch-of-the-tray.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Lamb Sweet Tagine': require('../assets/lamb-sweet-tagine.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped. Name
+  // uses the curly apostrophe, matching the recipe row exactly.
+  'Thanks, It’s Turkey': require('../assets/thanks-its-turkey.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
