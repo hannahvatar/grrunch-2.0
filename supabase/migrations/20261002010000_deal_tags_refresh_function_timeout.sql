@@ -1,0 +1,18 @@
+-- refresh_recipe_deal_tags(false) -- the DRAFT-week pass, called by
+-- update-curated-deal-pricing on every dev-deals save -- was failing
+-- with 57014 "canceling statement due to statement timeout" on every
+-- call, so draft recipe prices silently stopped updating after a deal
+-- edit. It takes ~14s on this project's compute; the REST/edge-function
+-- path cuts off at ~8s.
+--
+-- 20260826000000 had already fixed this once with a `set local
+-- statement_timeout = '30s'` inside the body, but every CREATE OR
+-- REPLACE since (20260914020000 tiebreak onward, through
+-- 20260930020000 home store) rewrote the body without that line.
+--
+-- Fix: attach the timeout to the function itself instead of its body.
+-- PostgREST applies a function's own statement_timeout setting before
+-- the call, and an ALTER FUNCTION ... SET survives later body edits as
+-- long as they keep it (a CREATE OR REPLACE without a SET clause clears
+-- it, so any future rewrite of this function must re-add it).
+alter function public.refresh_recipe_deal_tags(boolean) set statement_timeout = '60s';
