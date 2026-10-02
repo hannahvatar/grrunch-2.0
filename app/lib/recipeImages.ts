@@ -200,6 +200,12 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped. Name
   // uses the curly apostrophe, matching the recipe row exactly.
   'Thanks, It’s Turkey': require('../assets/thanks-its-turkey.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Cauli Mac & Cheese, Please': require('../assets/cauli-mac-and-cheese-please.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Cottage Pie, Meet Rutabaga': require('../assets/cottage-pie-meet-rutabaga.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Coconut About Basa & Eggplant': require('../assets/coconut-about-basa-eggplant.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
