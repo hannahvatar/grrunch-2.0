@@ -11,7 +11,10 @@
       "supportsTablet": true,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.grrunch.app",
-      "appleTeamId": "QZ8VY36A9G"
+      "appleTeamId": "QZ8VY36A9G",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.grrunch.app",
@@ -42,7 +45,14 @@
       ],
       "expo-web-browser",
       "expo-font",
-      "@sentry/react-native",
+      [
+        "@sentry/react-native",
+        {
+          "url": "https://sentry.io/",
+          "organization": "grrunch",
+          "project": "grrunch-app"
+        }
+      ],
       "expo-localization",
       [
         "expo-splash-screen",
