@@ -268,9 +268,9 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 2,
     borderColor: INK,
     backgroundColor: '#fff',
@@ -335,6 +335,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     marginTop: 10,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   selectButtonText: { color: INK, fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });

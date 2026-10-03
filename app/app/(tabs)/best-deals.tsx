@@ -347,7 +347,7 @@ export default function BestDealsScreen() {
                               style={styles.flyerLinkRow}
                               onPress={deal.productUrl ? () => Linking.openURL(deal.productUrl) : undefined}
                               disabled={!deal.productUrl}
-                              hitSlop={4}
+                              hitSlop={12}
                             >
                               <Text style={[styles.flyerLink, !deal.productUrl && styles.flyerLinkDisabled]}>
                                 See in flyer
@@ -506,6 +506,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   // Same INK-fill "on" state as addIconButtonActive.
   storeChipSelected: { backgroundColor: INK },
@@ -554,7 +556,7 @@ const styles = StyleSheet.create({
   // paddingRight reserves room for the top-right icon-only Add button
   // (absolute, doesn't take up flex space on its own) -- otherwise an
   // untruncated long item name could wrap right underneath it.
-  dealInfo: { flex: 1, gap: 2, paddingRight: 36 },
+  dealInfo: { flex: 1, gap: 2, paddingRight: 52 },
   // Same INK-border convention as meals.tsx's own unlock card (1px,
   // not the 2px "modal treatment" cards use -- this one has no white
   // fill of its own, transparent against the page). Full width now,
@@ -674,9 +676,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,

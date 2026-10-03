@@ -168,7 +168,7 @@ export default function ProfileScreen() {
           <Text style={styles.emptyStateText}>
             No stores yet. Set your location to find nearby stores.
           </Text>
-          <Pressable style={styles.smallLinkButton} onPress={() => router.push('/location')}>
+          <Pressable style={styles.smallLinkButton} onPress={() => router.push('/location')} hitSlop={12}>
             <Text style={styles.smallLinkButtonText}>Set my location</Text>
           </Pressable>
         </View>
@@ -332,9 +332,9 @@ const styles = StyleSheet.create({
   // for consistency with settings.tsx's own closeButton, which uses the
   // same tertiary treatment as an ellipse).
   settingsButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
@@ -405,14 +405,14 @@ const styles = StyleSheet.create({
   // size circle instead of a text pill, accessibilityLabel carries the
   // same "Change" wording for screen readers.
   changeStoreButton: {
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
-    borderRadius: 16,
+    borderRadius: 22,
   },
   // Real btn-primary-orange -- see the DS's canonical spec on login.tsx's
   // primaryButton (ACCENT fill, 2px INK border). Distinct from the Change

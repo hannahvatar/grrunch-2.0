@@ -136,7 +136,7 @@ export function OutsideAreaModal({
               {/* Prefix on its own line -- all on one row is too wide
                   for an iPhone and pushed the arrow onto a line alone. */}
               <Text style={styles.retryPrefix}>Already in BC?</Text>
-              <Pressable style={styles.retryButton} onPress={onRetryLocation} hitSlop={8}>
+              <Pressable style={styles.retryButton} onPress={onRetryLocation} hitSlop={12}>
                 <Text style={styles.retryText}>Try your location again</Text>
                 <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
               </Pressable>

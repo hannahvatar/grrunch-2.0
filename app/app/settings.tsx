@@ -84,9 +84,9 @@ const styles = StyleSheet.create({
   // Same tertiary treatment as profile.tsx's settingsButton (white fill,
   // 1.5px INK border), ellipse (borderRadius: 999).
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: '#111',

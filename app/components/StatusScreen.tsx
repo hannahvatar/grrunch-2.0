@@ -71,7 +71,7 @@ export function StatusScreen({
           const onPress = action.onPress ?? (() => router.back());
           if (variant === 'text') {
             return (
-              <Pressable key={action.label} style={styles.textButton} onPress={onPress}>
+              <Pressable key={action.label} style={styles.textButton} onPress={onPress} hitSlop={12}>
                 <Text style={styles.textButtonLabel}>{action.label}</Text>
               </Pressable>
             );
@@ -114,9 +114,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     right: 20,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,

@@ -556,6 +556,7 @@ export function GroceryListView() {
             {editingItem && quantityOverrides.has(editingItem.key) && (
               <Pressable
                 style={styles.sheetResetButton}
+                hitSlop={12}
                 onPress={() => {
                   resetQuantityOverride(editingItem.key);
                   closeQuantityEditor();
@@ -604,6 +605,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   resetAllButtonText: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Same 0.35 opacity convention as stepperButtonDisabled above.
@@ -664,9 +667,9 @@ const styles = StyleSheet.create({
   // (this button up here, editButton down in each item row), so
   // Anabelle's call was to make THEM consistent with each other.
   removeMealButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
@@ -677,9 +680,9 @@ const styles = StyleSheet.create({
   // Bold INK-bordered circle, matching recipe.tsx's own servings
   // stepper (was a thin #ddd/1px border, the plainer pre-pull look).
   stepperButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1.5,
     borderColor: INK,
     alignItems: 'center',

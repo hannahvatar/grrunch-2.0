@@ -133,7 +133,7 @@ export default function LocationScreen() {
             <Text style={styles.secondaryButtonText}>Open Settings</Text>
           </Pressable>
         )}
-        <Pressable style={styles.skipButton} onPress={() => router.push('/stores')}>
+        <Pressable style={styles.skipButton} onPress={() => router.push('/stores')} hitSlop={12}>
           <Text style={styles.skipText}>Skip for now</Text>
           <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
         </Pressable>
