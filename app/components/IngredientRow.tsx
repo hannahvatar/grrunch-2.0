@@ -339,7 +339,7 @@ export function IngredientRow({
           style={styles.flyerLinkRow}
           onPress={dealTag.productUrl ? () => openInNewTab(dealTag.productUrl!) : undefined}
           disabled={!dealTag.productUrl}
-          hitSlop={4}
+          hitSlop={12}
         >
           <Text style={[styles.flyerLink, !dealTag.productUrl && styles.flyerLinkDisabled]}>See in flyer</Text>
           <ArrowOutwardIcon size={12} color={dealTag.productUrl ? INK : '#999'} />
@@ -368,7 +368,7 @@ export function IngredientRow({
           style={styles.flyerLinkRow}
           onPress={dealTag.productUrl ? () => openInNewTab(dealTag.productUrl!) : undefined}
           disabled={!dealTag.productUrl}
-          hitSlop={4}
+          hitSlop={12}
         >
           <Text style={[styles.flyerLink, !dealTag.productUrl && styles.flyerLinkDisabled]}>See in flyer</Text>
           <ArrowOutwardIcon size={12} color={dealTag.productUrl ? INK : '#999'} />
@@ -634,9 +634,9 @@ const styles = StyleSheet.create({
   // "native-hollow-btn" component shape (Anabelle's final call, after a
   // brief detour through a rounded-square version).
   editButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,

@@ -394,7 +394,7 @@ export default function LoginScreen() {
         <View style={styles.dividerLine} />
       </View>
 
-      <Pressable style={styles.guestButton} onPress={navigateAfterSignIn}>
+      <Pressable style={styles.guestButton} onPress={navigateAfterSignIn} hitSlop={12}>
         <Text style={styles.guestText}>Continue as guest</Text>
         <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
       </Pressable>

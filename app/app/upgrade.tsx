@@ -332,7 +332,7 @@ export default function UpgradeScreen() {
               </Pressable>
             )}
             {configured && !isGuest && (
-              <Pressable onPress={handleRestore} disabled={loading || restoring} hitSlop={8}>
+              <Pressable onPress={handleRestore} disabled={loading || restoring} hitSlop={12}>
                 {restoring ? (
                   <ActivityIndicator size="small" color="#767676" />
                 ) : (
@@ -374,9 +374,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     right: 20,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,

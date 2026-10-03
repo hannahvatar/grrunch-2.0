@@ -171,9 +171,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,

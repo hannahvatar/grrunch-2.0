@@ -207,7 +207,7 @@ export default function StoresScreen() {
             >
               <Text style={styles.primaryButtonText}>Enable location</Text>
             </Pressable>
-            <Pressable style={styles.skipButton} onPress={goToFirstTab}>
+            <Pressable style={styles.skipButton} onPress={goToFirstTab} hitSlop={12}>
               <Text style={styles.skipText}>Skip for now</Text>
               <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
             </Pressable>

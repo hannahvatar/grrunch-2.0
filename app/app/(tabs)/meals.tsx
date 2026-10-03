@@ -248,6 +248,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 14,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   sortPillText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
   sortMenu: {

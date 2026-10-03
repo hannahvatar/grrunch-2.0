@@ -48,6 +48,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: INK,
     backgroundColor: '#fff',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   pillSelected: { backgroundColor: INK },
   pillText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },

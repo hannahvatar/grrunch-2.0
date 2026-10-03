@@ -146,9 +146,9 @@ const styles = StyleSheet.create({
   // Same white-fill/1.5px-INK-border tertiary circle as AppTopBar's own
   // profileButton, sitting right next to it.
   bellButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
@@ -209,6 +209,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 18,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   subscribeButtonText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
 });

@@ -30,7 +30,7 @@ export function StoreFilterNoticeModal({ visible, onConfirm, onCancel }: StoreFi
           <Pressable style={styles.primaryButton} onPress={onConfirm}>
             <Text style={styles.primaryButtonText}>Got it</Text>
           </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={onCancel} hitSlop={8}>
+          <Pressable style={styles.secondaryButton} onPress={onCancel} hitSlop={12}>
             <Text style={styles.secondaryButtonText}>Keep all stores</Text>
           </Pressable>
         </Pressable>

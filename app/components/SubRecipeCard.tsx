@@ -77,9 +77,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   description: { fontSize: 14, lineHeight: 21, color: INK, marginTop: 6 },
   toggleButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#fff',
     borderWidth: 1.5,
     borderColor: INK,
