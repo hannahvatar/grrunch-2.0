@@ -286,10 +286,12 @@ const styles = StyleSheet.create({
   // solid #96E696 fill with plain black (INK) text -- the one deal-tag
   // badge that didn't pair a light bg with a saturated matching text
   // color the way fairPriceBadge/greatValueBadge below already did.
-  dealTagBadge: { backgroundColor: '#E8F5E9', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  dealTagBadgeText: { color: '#1E7B34', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Store-discount blue (#E3ECFD/#2C5FD6) since 2026-10-02 -- green is
+  // reserved for success/confirmation (the "Added" badge above).
+  dealTagBadge: { backgroundColor: '#E3ECFD', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  dealTagBadgeText: { color: '#2C5FD6', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Light peach + saturated orange text -- distinct from
-  // dealTagBadge's green (reserved for a real store discount; Fair
+  // dealTagBadge's blue (reserved for a real store discount; Fair
   // price sharing that color was a pre-existing inconsistency with
   // every other screen's badge, now unified as this instead). Needs
   // its own text style (not dealTagBadgeText's black) to pair with

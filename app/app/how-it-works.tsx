@@ -49,8 +49,8 @@ const TAG_ROWS: TagRow[] = [
     // surfaces most people actually see), not the small solid-rect variant
     // used in the non-stacked grocery-list layout.
     tag: 'Up to 20% off',
-    tagBg: '#DFF5E3',
-    tagColor: '#1B7A43',
+    tagBg: '#E3ECFD',
+    tagColor: '#2C5FD6',
     meaning: "This week's price is lower than the store's own listed regular price for this item.",
     source: "Scraped straight from this week's official flyer.",
   },

@@ -738,9 +738,11 @@ const styles = StyleSheet.create({
   // stackedLayout only -- pill-shaped variants (borderRadius: 999) of
   // the badges above, matching the design reference's rounded-capsule
   // shape instead of discountBadge/fairPriceBadge's rounded-rect.
-  dealDiscountBadge: { backgroundColor: '#DFF5E3', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  // Store-discount blue (#E3ECFD/#2C5FD6) since 2026-10-02 -- green is
+  // reserved for success/confirmation.
+  dealDiscountBadge: { backgroundColor: '#E3ECFD', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   dealDiscountBadgeText: {
-    color: '#1B7A43',
+    color: '#2C5FD6',
     fontSize: 12,
     fontWeight: '800',
     fontFamily: 'OpenSans_800ExtraBold',
