@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -28,6 +29,7 @@ import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
 import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
+import { StoreFilterNoticeModal } from '../../components/StoreFilterNoticeModal';
 import { WeekGapState } from '../../components/WeekGapState';
 import { MONTHLY_PRICE_DISPLAY } from '../../lib/purchases';
 import { useSelectedDeals } from '../../lib/selectedDeals';
@@ -40,6 +42,23 @@ import { useSubscription } from '../../lib/subscription';
 // earlier, plainer white-bg/thin-grey-border look that had drifted
 // from the rest of the app).
 const ACCENT = '#FFA955';
+const FILTER_NOTICE_SEEN_KEY = 'grrunch:storeFilterNoticeSeen';
+const EMPTY_GREY = '#9A9A9A';
+
+// Category count badge color by how much of the category's deals (across
+// every store) the store chips still show (Anabelle, 2026-10-02): green
+// above 75%, yellow from 25% to 75%, red under 25%, grey at none (the
+// row itself greys out too). With every store selected it's always green.
+// Yellow is a true yellow, not AlertBanner's amber warning, which reads
+// too close to the orange "Fair price" pill; red/grey reuse AlertBanner's
+// error/neutral colors.
+function countBadgeColors(shown: number, total: number): { bg: string; text: string } {
+  if (shown === 0) return { bg: '#F2F2F2', text: '#6B6B6B' };
+  const share = shown / total;
+  if (share > 0.75) return { bg: '#E8F5E9', text: '#1E7B34' };
+  if (share >= 0.25) return { bg: '#FFF6C7', text: '#8A6A00' };
+  return { bg: '#FDECEC', text: '#B42318' };
+}
 const INK = '#111';
 
 // Free tier sees only the single biggest-savings non-recipe-linked item
@@ -64,6 +83,21 @@ export default function BestDealsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  // Store chips under the intro (Anabelle, 2026-10-02): a quick,
+  // page-only filter -- every chain starts shown, tapping a chip hides/
+  // shows its deals. Deliberately NOT tied to the saved stores
+  // (lib/selectedStores.tsx) and not persisted; resets on next launch.
+  const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
+  // First unselect shows StoreFilterNoticeModal once per device; the
+  // chain waiting on that answer is held in pendingChain.
+  const [filterNoticeSeen, setFilterNoticeSeen] = useState(false);
+  const [pendingChain, setPendingChain] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem(FILTER_NOTICE_SEEN_KEY)
+      .then((value) => setFilterNoticeSeen(value === 'true'))
+      .catch(() => {});
+  }, []);
   const { selectedDealIds, toggleDealSelected } = useSelectedDeals();
   const { stores: myStores } = useSelectedStores();
   // Last week's flyers have ended but this week isn't published yet --
@@ -144,12 +178,45 @@ export default function BestDealsScreen() {
     );
   }
 
-  const groups = groupDealsByCategory(deals);
-  const categories = Array.from(groups.keys()).sort();
+  const chains = Array.from(new Set(deals.map((deal) => deal.chainName))).sort();
+  const shownDeals = deals.filter((deal) => !hiddenChains.has(deal.chainName));
+  // Categories come from ALL deals (every store) so a category the store
+  // chips have emptied stays listed, greyed out; counts come from the
+  // deals still shown.
+  const allGroups = groupDealsByCategory(deals);
+  const groups = groupDealsByCategory(shownDeals);
+  const categories = Array.from(allGroups.keys()).sort();
+
+  function toggleChain(chain: string) {
+    if (!hiddenChains.has(chain) && !filterNoticeSeen) {
+      setPendingChain(chain);
+      return;
+    }
+    applyToggleChain(chain);
+  }
+
+  function applyToggleChain(chain: string) {
+    setHiddenChains((prev) => {
+      const next = new Set(prev);
+      if (next.has(chain)) next.delete(chain);
+      else next.add(chain);
+      return next;
+    });
+  }
 
   return (
     <View style={styles.container}>
       <ClosingSoonBanner />
+      <StoreFilterNoticeModal
+        visible={pendingChain !== null}
+        onConfirm={() => {
+          if (pendingChain) applyToggleChain(pendingChain);
+          setPendingChain(null);
+          setFilterNoticeSeen(true);
+          AsyncStorage.setItem(FILTER_NOTICE_SEEN_KEY, 'true').catch(() => {});
+        }}
+        onCancel={() => setPendingChain(null)}
+      />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Grrunch Picks</Text>
         {weekExpired && (
@@ -159,19 +226,47 @@ export default function BestDealsScreen() {
           <Text style={styles.tagline}>We crunched the flyers and evaluated the offers. These deals actually made the cut.</Text>
         )}
 
+        {chains.length > 1 && (
+          <View style={styles.storeChips}>
+            {chains.map((chain) => {
+              const selected = !hiddenChains.has(chain);
+              return (
+                <Pressable
+                  key={chain}
+                  style={[styles.storeChip, selected && styles.storeChipSelected]}
+                  onPress={() => toggleChain(chain)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selected }}
+                >
+                  {selected && <CheckIcon size={14} color="#fff" strokeWidth={2.5} />}
+                  <Text style={[styles.storeChipText, selected && styles.storeChipTextSelected]}>{chain}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
         {deals.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>No deals available right now. Check back soon.</Text>
           </View>
         )}
+        {deals.length > 0 && shownDeals.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>Select a store above to see its deals.</Text>
+          </View>
+        )}
 
         {categories.length > 0 && (
         <View style={styles.categoryContainer}>
-          {/* Top section of the category card: the pill legend (on
-              white, since the peach "Fair price" pill vanishes on this
-              page's own peach background), then the deal count as the
-              card's title. */}
+          {/* Top section of the category card: the deal count as the
+              card's title, then the pill legend (on white, since the
+              peach "Fair price" pill vanishes on this page's own peach
+              background). */}
           <View style={styles.cardTop}>
+          <Text style={styles.cardTitle}>
+            {shownDeals.length} deal{shownDeals.length === 1 ? '' : 's'} {weekExpired ? "from last week's flyers" : 'this week'}
+          </Text>
           <View style={styles.legend}>
             <View style={[styles.dealBadge, styles.legendPill]}>
               <Text style={styles.dealBadgeText}>Store discount</Text>
@@ -183,45 +278,49 @@ export default function BestDealsScreen() {
               <Text style={styles.dealFairPriceBadgeText}>Fair price</Text>
             </View>
           </View>
-          <Text style={styles.cardTitle}>
-            {deals.length} deal{deals.length === 1 ? '' : 's'} {weekExpired ? "from last week's flyers" : 'this week'} ·{' '}
-            {categories.length} categor
-            {categories.length === 1 ? 'y' : 'ies'}
-          </Text>
           </View>
         {categories.map((category, categoryIndex) => {
-          const categoryDeals = groups.get(category)!;
+          const categoryDeals = groups.get(category) ?? [];
           const { visibleDeals, lockedDealCount } = selectVisibleDeals(
             categoryDeals,
             isSubscribed,
             FREE_DEALS_PER_CATEGORY
           );
-          const isExpanded = expandedCategories.has(category);
+          const isEmpty = categoryDeals.length === 0;
+          const isExpanded = !isEmpty && expandedCategories.has(category);
+          const badge = countBadgeColors(categoryDeals.length, allGroups.get(category)!.length);
           return (
             <View
               key={category}
               style={[styles.categorySection, categoryIndex === categories.length - 1 && styles.categorySectionLast]}
             >
-              <Pressable style={styles.categoryHeader} onPress={() => toggleCategory(category)} hitSlop={8}>
-                <Text style={styles.categoryTitle}>{category}</Text>
-                <View style={styles.categoryHeaderRight}>
-                  <View style={styles.categoryCountBadge}>
-                    <Text style={styles.categoryCount}>{categoryDeals.length}</Text>
+              <Pressable
+                style={styles.categoryHeader}
+                onPress={() => toggleCategory(category)}
+                disabled={isEmpty}
+                hitSlop={8}
+              >
+                <View style={styles.categoryTitleRow}>
+                  <Text style={[styles.categoryTitle, isEmpty && styles.categoryTitleEmpty]}>{category}</Text>
+                  <View style={[styles.categoryCountBadge, { backgroundColor: badge.bg }]}>
+                    <Text style={[styles.categoryCount, { color: badge.text }]}>{categoryDeals.length}</Text>
                   </View>
+                </View>
+                <View style={styles.categoryHeaderRight}>
                   {isExpanded ? (
                     <ChevronUpIcon size={16} color={INK} />
                   ) : (
-                    <ChevronDownIcon size={16} color={INK} />
+                    <ChevronDownIcon size={16} color={isEmpty ? EMPTY_GREY : INK} />
                   )}
                 </View>
               </Pressable>
 
               {isExpanded && (
                 <View style={styles.dealsGrid}>
-                  {visibleDeals.map((deal) => {
+                  {visibleDeals.map((deal, dealIndex) => {
                     const isAdded = selectedDealIds.has(deal.id);
                     return (
-                      <View key={deal.id} style={styles.dealCard}>
+                      <View key={deal.id} style={[styles.dealCard, dealIndex > 0 && styles.dealCardDivider]}>
                         <Pressable style={styles.dealCardTop} onPress={() => Linking.openURL(deal.productUrl)}>
                           <View style={styles.dealImageWrap}>
                             {deal.imageUrl ? (
@@ -396,12 +495,32 @@ const styles = StyleSheet.create({
   // 700/Bold, not 800/ExtraBold -- matches this app's established
   // section-heading weight (recipe.tsx's sectionTitle, GroceryListView's
   // storeName/selectedSectionTitle), not the page-title weight.
-  categoryTitle: { flex: 1, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  storeChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -6 },
+  storeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  // Same INK-fill "on" state as addIconButtonActive.
+  storeChipSelected: { backgroundColor: INK },
+  storeChipText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  storeChipTextSelected: { color: '#fff' },
+  // Name + count badge grouped on the left (badge right after the
+  // name), chevron alone on the right.
+  categoryTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  categoryTitle: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  categoryTitleEmpty: { color: EMPTY_GREY },
   categoryHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  // ACCENT-filled pill, matching the brand-accent badges used elsewhere
-  // (e.g. sheetDoneButton) -- was plain muted-grey text with no badge.
+  // Colors come from countBadgeColors() (green/yellow/red/grey by how
+  // much of the category the store chips still show) -- was the solid
+  // ACCENT orange.
   categoryCountBadge: {
-    backgroundColor: ACCENT,
     borderRadius: 999,
     minWidth: 24,
     paddingHorizontal: 8,
@@ -409,25 +528,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryCount: { fontSize: 13, color: INK, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  categoryCount: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // Plain vertical stack now (Anabelle's call) -- was a 2-col wrapped
   // grid (width: '47%' cards); each deal card is now its own full-width
   // horizontal row instead.
-  dealsGrid: { gap: 12 },
-  // "Modal treatment" card, full width -- was a half-width grid item
-  // with the image stacked on top of the text.
-  // position: relative -- anchors the icon-only Add button (absolute)
-  // to this card's own top-right corner.
+  dealsGrid: {},
+  // Plain list row inside the category accordion (Anabelle, 2026-10-02:
+  // "remove the border around the individual items just use a
+  // separator") -- was its own 2px-INK-bordered rounded card, which
+  // read as a card inside a card. position: relative anchors the
+  // icon-only Add button (absolute) to the row's top-right corner.
   dealCard: {
     width: '100%',
     position: 'relative',
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: INK,
-    borderRadius: 16,
-    padding: 10,
+    paddingVertical: 16,
     gap: 10,
   },
+  // Light hairline between deals, deliberately softer than the 1px INK
+  // dividers between categories so categories still read as the
+  // sections and deals as the list inside one.
+  dealCardDivider: { borderTopWidth: 1, borderTopColor: '#B8B0A7' },
   // Image left, name/store/price column right -- same horizontal-row
   // shape as IngredientRow's own default (non-stacked) layout.
   dealCardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
@@ -445,6 +565,7 @@ const styles = StyleSheet.create({
   // was a solid 1px border.
   unlockCard: {
     width: '100%',
+    marginTop: 8,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: INK,
@@ -476,20 +597,21 @@ const styles = StyleSheet.create({
   // this app's own Meals tab is the more relevant precedent for a
   // recipe/deal card's badge, so this now matches that instead.
   //
-  // Light-green/dark-green confirmation scheme (#E8F5E9/#1E7B34) --
-  // kept in lockstep with MealCard.tsx's dealTagBadge (Anabelle,
-  // 2026-09-11: "the percentage off should be adjusted also"), which
-  // moved off the old solid #96E696 fill for the same reason.
+  // Light-blue/blue store-discount scheme (#E3ECFD/#2C5FD6), kept in
+  // lockstep with MealCard.tsx's dealTagBadge, IngredientRow.tsx's
+  // dealDiscountBadge and how-it-works.tsx's tag table. Blue, not
+  // green (Anabelle, 2026-10-02): green is reserved for success/
+  // confirmation, so a store discount must not read as one.
   dealBadge: {
     alignSelf: 'flex-start',
     marginTop: 4,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#E3ECFD',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  dealBadgeText: { color: '#1E7B34', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  // Peach/orange -- distinct from dealBadge's green (a real store
+  dealBadgeText: { color: '#2C5FD6', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Peach/orange -- distinct from dealBadge's blue (a real store
   // discount), matching MealCard's fairPriceBadge exactly.
   dealFairPriceBadge: {
     alignSelf: 'flex-start',
@@ -500,7 +622,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   dealFairPriceBadgeText: { color: '#FF7A2A', fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  // Purple -- deliberately distinct from dealBadge's green (a real
+  // Purple -- deliberately distinct from dealBadge's blue (a real
   // store discount) and dealFairPriceBadge's peach (a neutral price),
   // matching MealCard's greatValueBadge exactly.
   dealGreatValueBadge: {
@@ -550,8 +672,8 @@ const styles = StyleSheet.create({
   // 2026-09-08 to match unlockCard above; reverted back.
   addIconButton: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 16,
+    right: 0,
     width: 32,
     height: 32,
     borderRadius: 16,

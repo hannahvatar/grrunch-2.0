@@ -228,7 +228,7 @@ export function groupDealsByCategory(deals: Deal[]): Map<string, Deal[]> {
 
 // Ranks a real, store-printed discount above a reference-sourced
 // comparison at the same discountPct -- matches the badge hierarchy
-// already shown (showsRealDiscount's green badge outranks
+// already shown (showsRealDiscount's blue badge outranks
 // isGreatReferenceValue's purple one), so "most savings" sorts the same
 // way the page visually communicates savings.
 function bySavingsDesc(a: Deal, b: Deal): number {
