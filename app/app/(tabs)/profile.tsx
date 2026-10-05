@@ -10,7 +10,6 @@ import {
   PencilIcon,
 } from 'react-native-heroicons/outline';
 
-import { AlertBanner } from '../../components/AlertBanner';
 import { ManageAccountSection } from '../../components/ManageAccountSection';
 import { MembershipStatus } from '../../components/MembershipStatus';
 import { NotificationsSection } from '../../components/NotificationsSection';
@@ -100,15 +99,6 @@ export default function ProfileScreen() {
   // right slot even if myStores itself has re-rendered with a new array
   // reference in the meantime.
   const [editingStore, setEditingStore] = useState<SelectedStore | null>(null);
-  // Dismissible per screen visit, not persisted -- Anabelle, 2026-09-14:
-  // "add a info banner at the top of my stores section that tell user
-  // that advanced stores customization such as removing store will come
-  // soon" (following the decision to hold off on store removal for v1 --
-  // see the "keeping the recipe-generation scope simple" conversation
-  // this banner's copy is paraphrasing). Not worth AsyncStorage-backed
-  // "seen once" persistence for a temporary, low-stakes heads-up like
-  // this -- reappearing next visit is fine.
-  const [storesBannerDismissed, setStoresBannerDismissed] = useState(false);
   const { isSubscribed } = useSubscription();
   const { isGuest } = useAuth();
 
@@ -142,6 +132,20 @@ export default function ProfileScreen() {
             // logic instead of a second, drift-prone copy of it.
             <MembershipStatus />
           )}
+
+          {/* Right after Membership (Anabelle, 2026-10-05; was after My
+              stores). */}
+          <View style={styles.sectionDivider} />
+          <SectionHeader
+            title="Manage account"
+            expanded={manageAccountOpen}
+            onToggle={() => setManageAccountOpen((v) => !v)}
+          />
+          {/* ManageAccountSection carries its own Sign out/Delete account
+              buttons (its "Security" sub-section) -- Profile no longer
+              needs a separate standalone Sign out button now that this
+              is here, so that one's removed rather than left duplicated. */}
+          {manageAccountOpen && <ManageAccountSection />}
         </>
       )}
 
@@ -154,15 +158,6 @@ export default function ProfileScreen() {
       />
       {storesOpen && (
       <>
-      {isSubscribed && !storesBannerDismissed && (
-        <AlertBanner
-          variant="info"
-          title="Advanced store customization coming soon"
-          description="You can already change the location used for each store banner. Soon, you'll also be able to remove stores you don't want included. For now, all 5 stores remain active."
-          onDismiss={() => setStoresBannerDismissed(true)}
-          style={styles.storesInfoBanner}
-        />
-      )}
       {storesLoaded && myStores.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
@@ -263,18 +258,6 @@ export default function ProfileScreen() {
         <>
           <View style={styles.sectionDivider} />
           <SectionHeader
-            title="Manage account"
-            expanded={manageAccountOpen}
-            onToggle={() => setManageAccountOpen((v) => !v)}
-          />
-          {/* ManageAccountSection carries its own Sign out/Delete account
-              buttons (its "Security" sub-section) -- Profile no longer
-              needs a separate standalone Sign out button now that this
-              is here, so that one's removed rather than left duplicated. */}
-          {manageAccountOpen && <ManageAccountSection />}
-
-          <View style={styles.sectionDivider} />
-          <SectionHeader
             title="Notifications"
             expanded={notificationsOpen}
             onToggle={() => setNotificationsOpen((v) => !v)}
@@ -360,7 +343,6 @@ const styles = StyleSheet.create({
   // Same offset-shadow card technique as app/stores.tsx's listCardOuter/
   // listCardShadow/listCard -- a flat black shadow layer behind a white,
   // INK-bordered card on top.
-  storesInfoBanner: { marginTop: 8, marginBottom: 4 },
   storesCardOuter: { marginTop: 4 },
   storesCardShadow: {
     position: 'absolute',
