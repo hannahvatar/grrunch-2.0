@@ -6,6 +6,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   LockClosedIcon,
+  MagnifyingGlassPlusIcon,
   PlusIcon,
   TagIcon,
 } from 'react-native-heroicons/outline';
@@ -23,6 +24,7 @@ import {
   showsRealDiscount,
 } from '../../lib/curatedDeals';
 import { AlertBanner } from '../../components/AlertBanner';
+import { CutoutViewer } from '../../components/CutoutViewer';
 import { ExpiredBadge } from '../../components/ExpiredBadge';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
@@ -82,6 +84,9 @@ export default function BestDealsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  // Cutout shown full screen (tap a deal's thumbnail) -- one viewer for
+  // the whole page rather than one per deal.
+  const [zoomUri, setZoomUri] = useState<string | null>(null);
   // Store chips (shared with Meals and My list, lib/storeFilter.tsx):
   // an unselected chain's deals are hidden here.
   const { hiddenChains } = useStoreFilter();
@@ -176,6 +181,7 @@ export default function BestDealsScreen() {
   return (
     <View style={styles.container}>
       <ClosingSoonBanner />
+      {zoomUri && <CutoutViewer uri={zoomUri} visible onClose={() => setZoomUri(null)} />}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Grrunch Picks</Text>
         {weekExpired && (
@@ -263,15 +269,28 @@ export default function BestDealsScreen() {
                     return (
                       <View key={deal.id} style={[styles.dealCard, dealIndex > 0 && styles.dealCardDivider]}>
                         <Pressable style={styles.dealCardTop} onPress={() => Linking.openURL(deal.productUrl)}>
-                          <View style={styles.dealImageWrap}>
-                            {deal.imageUrl ? (
+                          {/* Tapping the thumbnail zooms the cutout (same as
+                              recipe and grocery cards); the rest of the row
+                              still opens the flyer. */}
+                          {deal.imageUrl ? (
+                            <Pressable
+                              style={styles.dealImageWrap}
+                              onPress={() => setZoomUri(deal.imageUrl)}
+                              accessibilityRole="imagebutton"
+                              accessibilityLabel="Enlarge flyer cutout"
+                            >
                               <Image source={{ uri: deal.imageUrl }} style={styles.dealImage} />
-                            ) : (
+                              <View style={styles.zoomHint} pointerEvents="none">
+                                <MagnifyingGlassPlusIcon size={14} color="#fff" strokeWidth={2} />
+                              </View>
+                            </Pressable>
+                          ) : (
+                            <View style={styles.dealImageWrap}>
                               <View style={[styles.dealImage, styles.dealImagePlaceholder]}>
                                 <TagIcon size={24} color="#ccc" />
                               </View>
-                            )}
-                          </View>
+                            </View>
+                          )}
                           <View style={styles.dealInfo}>
                             {/* No numberOfLines -- the full item name always
                                 shows, never truncated with an ellipsis. */}
@@ -514,6 +533,15 @@ const styles = StyleSheet.create({
   // the left of the info column in the new horizontal row.
   dealImage: { width: 88, height: 88, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  // Same as IngredientRow's zoomHint.
+  zoomHint: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    backgroundColor: 'rgba(17,17,17,0.7)',
+    borderRadius: 999,
+    padding: 5,
+  },
   // Pill badges, inline beside the price (was an absolute overlay on
   // the image, cramped/wrapping awkwardly on the smaller 88px
   // horizontal-row image) -- matches MealCard.tsx's own dealTagBadge/
