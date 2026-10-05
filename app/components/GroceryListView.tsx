@@ -264,7 +264,17 @@ export function GroceryListView() {
     const trimmed = sheetQuantityDraft.trim();
     if (trimmed) {
       const [, ...rest] = resolveDisplayText(editingItem).split(' ');
-      setQuantityOverrides((prev) => new Map(prev).set(editingItem.key, [trimmed, ...rest].join(' ')));
+      const nextText = [trimmed, ...rest].join(' ');
+      // Back at the original amount (or Done tapped with no change)
+      // isn't an edit -- drop the override instead of storing a copy of
+      // the original, so Reset stays greyed out until something really
+      // changed.
+      setQuantityOverrides((prev) => {
+        const next = new Map(prev);
+        if (nextText === editingItem.text) next.delete(editingItem.key);
+        else next.set(editingItem.key, nextText);
+        return next;
+      });
     }
     closeQuantityEditor();
   }
@@ -482,7 +492,10 @@ export function GroceryListView() {
               hitSlop={8}
             >
               <Text style={styles.resetAllButtonText}>Reset</Text>
-              <ArrowPathIcon size={14} color={INK} />
+              {/* strokeWidth 2 so the icon reads as black like the bold
+                  label (the default thin stroke looked grey); greyed with
+                  the rest of the button when disabled. */}
+              <ArrowPathIcon size={14} color={INK} strokeWidth={2} />
             </Pressable>
           </View>
         )}
