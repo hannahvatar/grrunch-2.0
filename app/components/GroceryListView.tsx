@@ -383,30 +383,6 @@ export function GroceryListView() {
           )}
         </View>
         <StoreChips page="list" />
-        {items.length > 0 && (
-          <View style={styles.quantityNoteRow}>
-            <Text style={styles.quantityNote}>
-              Quantities shown reflect your selected recipes. You can manually edit them, or reset to
-              the original amount.
-            </Text>
-            {/* Bulk version of each row's own sheet-level "Reset to
-                original quantity" link. Always visible (not conditionally
-                hidden) so the row's layout is stable -- disabled/dimmed
-                instead once there's nothing to reset, same as the
-                servings stepper's own disabled minus button. Same
-                tertiary treatment (white fill, INK border) as
-                IngredientRow's editButton/removeMealButton above. */}
-            <Pressable
-              style={[styles.resetAllButton, quantityOverrides.size === 0 && styles.resetAllButtonDisabled]}
-              onPress={resetAllQuantityOverrides}
-              disabled={quantityOverrides.size === 0}
-              hitSlop={8}
-            >
-              <Text style={styles.resetAllButtonText}>Reset</Text>
-              <ArrowPathIcon size={14} color={INK} />
-            </Pressable>
-          </View>
-        )}
         {/* Two different empty states. Was isGuest-only until Anabelle's
             correction (2026-09-09: "With a free account BUT NOT
             MEMBERSHIP you CANT add to your grocery list") -- adding is
@@ -488,7 +464,28 @@ export function GroceryListView() {
             reads as two clearly labeled sections (the recipes you've
             picked, then what to actually buy for them) instead of the
             store cards just starting with no heading of their own. */}
-        {storeNames.length > 0 && <Text style={styles.selectedSectionTitle}>Your list</Text>}
+        {storeNames.length > 0 && (
+          <View style={styles.yourListHeaderRow}>
+            <Text style={styles.selectedSectionTitle}>Your list</Text>
+            {/* Bulk version of each row's own sheet-level "Reset to
+                original quantity" link, right-aligned on the "Your list"
+                heading (Anabelle, 2026-10-05; was its own row with an
+                explanatory sentence). Always visible so the row's layout
+                is stable -- disabled/dimmed instead once there's nothing
+                to reset, same as the servings stepper's own disabled
+                minus button. Same tertiary treatment (white fill, INK
+                border) as IngredientRow's editButton/removeMealButton. */}
+            <Pressable
+              style={[styles.resetAllButton, quantityOverrides.size === 0 && styles.resetAllButtonDisabled]}
+              onPress={resetAllQuantityOverrides}
+              disabled={quantityOverrides.size === 0}
+              hitSlop={8}
+            >
+              <Text style={styles.resetAllButtonText}>Reset</Text>
+              <ArrowPathIcon size={14} color={INK} />
+            </Pressable>
+          </View>
+        )}
         {storeNames.map((store) => (
           <View key={store} style={styles.storeCard}>
             <View style={styles.storeHeadingRow}>
@@ -617,9 +614,7 @@ const styles = StyleSheet.create({
   // the bulk Reset button living on the same row -- text takes whatever
   // space the button doesn't need (flexShrink so it wraps instead of
   // pushing the button off-row), button itself never shrinks.
-  quantityNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  // INK, not muted -- Anabelle's explicit call (was #767676).
-  quantityNote: { flex: 1, flexShrink: 1, fontSize: 12, color: INK, lineHeight: 17 },
+  yourListHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   // Same tertiary treatment as editButton/removeMealButton (white fill,
   // INK border) but a pill (borderRadius: 999) rather than a circle,
   // since this one has a text label, not just an icon.
