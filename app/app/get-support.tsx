@@ -85,7 +85,7 @@ export default function GetSupportScreen() {
           how the content below scrolls/centers -- same convention as
           recipe.tsx's own closeButton. */}
       <Pressable style={styles.closeButton} onPress={() => router.back()} hitSlop={8}>
-        <XMarkIcon size={18} color={INK} />
+        <XMarkIcon size={20} color={INK} />
       </Pressable>
     </View>
   );

@@ -197,7 +197,7 @@ export default function RecipeScreen() {
           rather than sitting in its own opaque bar. Positioned outside
           the ScrollView entirely, so it never scrolls away. */}
       <Pressable style={styles.closeButton} onPress={handleClose}>
-        <XMarkIcon size={18} color={INK} />
+        <XMarkIcon size={20} color={INK} />
       </Pressable>
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerText}>
@@ -254,7 +254,7 @@ export default function RecipeScreen() {
                   disabled={meal.servings <= options[0]}
                   hitSlop={8}
                 >
-                  <MinusIcon size={14} color={INK} />
+                  <MinusIcon size={20} color={INK} />
                 </Pressable>
                 <Text style={styles.stepperValue}>{meal.servings}</Text>
                 <Pressable
@@ -269,7 +269,7 @@ export default function RecipeScreen() {
                   disabled={meal.servings >= options[options.length - 1]}
                   hitSlop={8}
                 >
-                  <PlusIcon size={14} color={INK} />
+                  <PlusIcon size={20} color={INK} />
                 </Pressable>
               </View>
             </View>

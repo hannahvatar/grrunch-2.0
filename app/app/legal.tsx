@@ -22,7 +22,7 @@ export default function LegalScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Terms of Use</Text>
         <Pressable style={styles.closeButton} onPress={() => router.back()} hitSlop={8}>
-          <XMarkIcon size={18} color={INK} />
+          <XMarkIcon size={20} color={INK} />
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>

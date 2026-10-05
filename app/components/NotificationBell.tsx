@@ -95,7 +95,7 @@ export function NotificationBell() {
   return (
     <View>
       <Pressable style={styles.bellButton} onPress={() => setOpen((v) => !v)} hitSlop={8}>
-        <BellIcon size={18} color={INK} />
+        <BellIcon size={20} color={INK} />
         {bellUrgency && <View style={[styles.badge, { backgroundColor: bellUrgency.strong }]} />}
       </Pressable>
       {open && (

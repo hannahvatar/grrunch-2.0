@@ -189,7 +189,7 @@ export default function UpgradeScreen() {
     <View style={styles.container}>
       <View style={styles.handle} />
       <Pressable style={styles.closeButton} onPress={() => router.back()}>
-        <XMarkIcon size={18} color={INK} />
+        <XMarkIcon size={20} color={INK} />
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>

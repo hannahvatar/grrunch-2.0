@@ -58,7 +58,7 @@ export function StatusScreen({
         onPress={onBack ?? (() => router.back())}
         hitSlop={8}
       >
-        <XMarkIcon size={18} color={INK} />
+        <XMarkIcon size={20} color={INK} />
       </Pressable>
       <View style={styles.content}>
         <View style={styles.iconCircle}>{icon}</View>

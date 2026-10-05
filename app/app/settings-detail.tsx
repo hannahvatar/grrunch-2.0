@@ -32,7 +32,7 @@ export default function SettingsDetailScreen() {
             closeButton -- was a "< Back" text link, Anabelle's call to make
             it consistent with the rest of Settings' screens. */}
         <Pressable style={styles.closeButton} onPress={() => router.back()} hitSlop={8}>
-          <XMarkIcon size={18} color="#111" />
+          <XMarkIcon size={20} color="#111" />
         </Pressable>
       </View>
       {isAbout ? (
