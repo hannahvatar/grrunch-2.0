@@ -74,3 +74,49 @@ const styles = StyleSheet.create({
   secondaryButton: { alignItems: 'center', paddingVertical: 4 },
   secondaryButtonText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });
+
+interface StoreReminderModalProps {
+  visible: boolean;
+  offCount: number;
+  onAddAllBack: () => void;
+  onKeepSelection: () => void;
+}
+
+// "N stores off" reminder (Anabelle, 2026-10-05): shown once per page per
+// session when Weekly Deals, Meals or My list opens with stores turned off
+// (see StoreChips). Replaces the inline reminder line. "Keep my
+// selection" is a tertiary button (white fill, INK border), same as
+// signup-nudge.tsx's tertiaryButton.
+export function StoreReminderModal({ visible, offCount, onAddAllBack, onKeepSelection }: StoreReminderModalProps) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onKeepSelection}>
+      <Pressable style={styles.backdrop} onPress={onKeepSelection}>
+        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.title}>
+            {offCount} store{offCount === 1 ? '' : 's'} off
+          </Text>
+          <Text style={styles.body}>You may be missing lower prices.</Text>
+          <Pressable style={styles.primaryButton} onPress={onAddAllBack}>
+            <Text style={styles.primaryButtonText}>Add all stores back</Text>
+          </Pressable>
+          <Pressable style={reminderStyles.tertiaryButton} onPress={onKeepSelection}>
+            <Text style={reminderStyles.tertiaryButtonText}>Keep my selection</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const reminderStyles = StyleSheet.create({
+  tertiaryButton: {
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 28,
+  },
+  tertiaryButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+});

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ArrowPathIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ArrowPathIcon, BuildingStorefrontIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItemStore } from '../lib/curatedDeals';
 import { IngredientRow } from './IngredientRow';
@@ -32,6 +32,11 @@ const INK = '#111';
 const ACCENT = '#FFA955';
 
 const OTHER_ITEMS = 'Other items';
+// Recipe ingredients whose deal is from a store turned off in the store
+// chips (IngredientLine.offSale) -- grouped together here instead of
+// being filed under whichever other store happens to carry them, same
+// heading as the recipe page's section.
+const NOT_ON_SALE = 'Not on sale at your stores';
 
 interface GroceryItem {
   key: string;
@@ -301,7 +306,9 @@ export function GroceryListView() {
         // Store X for this recipe." A true pantry staple with no flyer
         // presence belongs in "Other items", not implied to be at a store
         // we have no actual data for.
-        store: ingredient.dealTag?.store ?? matchItemStore(ingredient.name, lookupDeals),
+        store: ingredient.offSale
+          ? NOT_ON_SALE
+          : ingredient.dealTag?.store ?? matchItemStore(ingredient.name, lookupDeals),
         // Withheld once this item has a manual quantity override.
         // IngredientRow's dealQuantity badge folds `multiplier` directly
         // into the leading number of `text` for display, which is only
@@ -327,8 +334,11 @@ export function GroceryListView() {
   const items: GroceryItem[] = [...recipeItems, ...dealItems].filter((item) => !removedKeys.has(item.key));
   const storeGroups = groupByStore(items);
   const storeNames = Array.from(storeGroups.keys())
-    .filter((store) => store !== OTHER_ITEMS)
+    .filter((store) => store !== OTHER_ITEMS && store !== NOT_ON_SALE)
     .sort();
+  if (storeGroups.has(NOT_ON_SALE)) {
+    storeNames.push(NOT_ON_SALE);
+  }
   if (storeGroups.has(OTHER_ITEMS)) {
     storeNames.push(OTHER_ITEMS);
   }
@@ -367,12 +377,12 @@ export function GroceryListView() {
           {items.length > 0 && (
             <Text style={styles.subtitle}>
               {items.length} item{items.length === 1 ? '' : 's'} · {dealItemCount} on sale ·{' '}
-              {storeNames.filter((s) => s !== OTHER_ITEMS).length} store
-              {storeNames.filter((s) => s !== OTHER_ITEMS).length === 1 ? '' : 's'}
+              {storeNames.filter((s) => s !== OTHER_ITEMS && s !== NOT_ON_SALE).length} store
+              {storeNames.filter((s) => s !== OTHER_ITEMS && s !== NOT_ON_SALE).length === 1 ? '' : 's'}
             </Text>
           )}
         </View>
-        <StoreChips />
+        <StoreChips page="list" />
         {items.length > 0 && (
           <View style={styles.quantityNoteRow}>
             <Text style={styles.quantityNote}>
@@ -482,7 +492,11 @@ export function GroceryListView() {
         {storeNames.map((store) => (
           <View key={store} style={styles.storeCard}>
             <View style={styles.storeHeadingRow}>
-              <MapPinIcon size={18} color={INK} />
+              {store === NOT_ON_SALE ? (
+                <BuildingStorefrontIcon size={18} color={INK} />
+              ) : (
+                <MapPinIcon size={18} color={INK} />
+              )}
               <Text style={styles.storeName}>{store}</Text>
             </View>
             {storeGroups.get(store)!.map((item) => (
