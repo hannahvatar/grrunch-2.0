@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ArrowPathIcon, BuildingStorefrontIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
@@ -37,6 +37,28 @@ const OTHER_ITEMS = 'Other items';
 // being filed under whichever other store happens to carry them, same
 // heading as the recipe page's section.
 const NOT_ON_SALE = 'Not on sale at your stores';
+
+// A shopper-typed item (e.g. "1 broccoli") that no recipe or deal put
+// on the list, added via the "Add item" sheet. Restored 2026-10-05 --
+// first built 2026-08-13 (e5c0dd8) but that commit landed on an
+// already-merged branch and never reached main. Keyed `custom-${id}`;
+// no store match, so it always files under "Other items".
+interface CustomItem {
+  id: string;
+  name: string;
+  quantity: string;
+  unit: string;
+}
+
+// Unit choices in the "Add item" sheet (Anabelle's list, 2026-10-05).
+// 'unit' is the default (a plain count) and isn't shown in the line
+// ("1 broccoli", not "1 unit broccoli").
+const CUSTOM_ITEM_UNITS = ['unit', 'oz', 'ml', 'L', 'gr', 'kg', 'lbs', 'tbs', 'ts', 'cup'];
+
+function mapCustomItemToGroceryItem(item: CustomItem): GroceryItem {
+  const unit = item.unit === 'unit' ? '' : `${item.unit} `;
+  return { key: `custom-${item.id}`, text: `${item.quantity} ${unit}${item.name}`, source: 'Added by you' };
+}
 
 interface GroceryItem {
   key: string;
@@ -109,6 +131,13 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 // happens to be at.
 export function GroceryListView() {
   const { isSubscribed } = useSubscription();
+  // Same session-only lifetime as the selected recipes/deals.
+  const [customItems, setCustomItems] = useState<CustomItem[]>([]);
+  const [addItemSheetOpen, setAddItemSheetOpen] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState('1');
+  const [newItemUnit, setNewItemUnit] = useState('unit');
+  const nextCustomItemId = useRef(0);
   const weekClosed = useLiveWeek()?.closed ?? false;
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { selectedDealIds } = useSelectedDeals();
@@ -341,7 +370,38 @@ export function GroceryListView() {
   // Removed items drop out here, before grouping/counting -- so "N
   // items"/"N stores" in the header, and which store cards even show
   // up, all reflect what's actually left on the list.
-  const items: GroceryItem[] = [...recipeItems, ...dealItems].filter((item) => !removedKeys.has(item.key));
+  const customGroceryItems: GroceryItem[] = customItems.map(mapCustomItemToGroceryItem);
+  const items: GroceryItem[] = [...recipeItems, ...dealItems, ...customGroceryItems].filter(
+    (item) => !removedKeys.has(item.key)
+  );
+
+  function openAddItemSheet() {
+    setNewItemName('');
+    setNewItemQuantity('1');
+    setNewItemUnit('unit');
+    setAddItemSheetOpen(true);
+  }
+
+  function closeAddItemSheet() {
+    setAddItemSheetOpen(false);
+  }
+
+  function commitAddItem() {
+    const name = newItemName.trim();
+    if (name) {
+      const typed = newItemQuantity.trim();
+      const quantity = typed && !Number.isNaN(parseFloat(typed)) ? typed : '1';
+      const id = String(nextCustomItemId.current++);
+      setCustomItems((prev) => [...prev, { id, name, quantity, unit: newItemUnit }]);
+    }
+    closeAddItemSheet();
+  }
+
+  function adjustNewItemQuantity(delta: number) {
+    const current = parseFloat(newItemQuantity);
+    if (Number.isNaN(current)) return;
+    setNewItemQuantity(String(Math.max(1, Math.round((current + delta) * 100) / 100)));
+  }
   const storeGroups = groupByStore(items);
   const storeNames = Array.from(storeGroups.keys())
     .filter((store) => store !== OTHER_ITEMS && store !== NOT_ON_SALE)
@@ -404,7 +464,7 @@ export function GroceryListView() {
             "you haven't added anything yet," for anyone who isn't a
             member. Only a genuine subscriber with an empty list keeps
             the plain empty-state message below. */}
-        {selectedMeals.length === 0 && selectedDeals.length === 0 && (
+        {selectedMeals.length === 0 && selectedDeals.length === 0 && customItems.length === 0 && (
           <>
             {!isSubscribed ? (
               <>
@@ -417,7 +477,8 @@ export function GroceryListView() {
             ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
-                  Nothing here yet. Add recipes from Meals or deals from Weekly Deals to build your list.
+                  Nothing here yet. Add recipes from Meals, deals from Weekly Deals, or your own item to build
+                  your list.
                 </Text>
               </View>
             )}
@@ -551,6 +612,15 @@ export function GroceryListView() {
             ))}
           </View>
         ))}
+        {/* Always shown to members, empty list or not -- it's how a
+            shopper adds something no recipe needs (e.g. 1 broccoli).
+            Membership-gated like every other way of adding to the list. */}
+        {isSubscribed && (
+          <Pressable style={styles.addItemButton} onPress={openAddItemSheet}>
+            <PlusIcon size={20} color={INK} strokeWidth={2} />
+            <Text style={styles.addItemButtonText}>Add item</Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       {/* Single shared bottom sheet for quantity editing -- one
@@ -605,6 +675,72 @@ export function GroceryListView() {
             )}
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+      {/* "Add item" sheet -- same bottom-sheet pattern as the quantity
+          editor above, kept above the keyboard the same way. */}
+      <Modal visible={addItemSheetOpen} transparent animationType="slide" onRequestClose={closeAddItemSheet}>
+        <KeyboardAvoidingView style={styles.sheetKeyboardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.sheetBackdrop} onPress={closeAddItemSheet}>
+            <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>Add item</Text>
+              <TextInput
+                style={styles.addItemInput}
+                value={newItemName}
+                onChangeText={setNewItemName}
+                placeholder="e.g. Broccoli, Milk"
+                placeholderTextColor="#999"
+                autoFocus
+                autoCapitalize="sentences"
+                returnKeyType="done"
+                onSubmitEditing={commitAddItem}
+              />
+              <View style={styles.sheetStepperRow}>
+                <Pressable style={styles.sheetStepperButton} onPress={() => adjustNewItemQuantity(-1)} hitSlop={8}>
+                  <MinusIcon size={20} color={INK} />
+                </Pressable>
+                <TextInput
+                  style={styles.sheetQuantityInput}
+                  value={newItemQuantity}
+                  onChangeText={setNewItemQuantity}
+                  keyboardType="numeric"
+                  selectTextOnFocus
+                />
+                <Pressable style={styles.sheetStepperButton} onPress={() => adjustNewItemQuantity(1)} hitSlop={8}>
+                  <PlusIcon size={20} color={INK} />
+                </Pressable>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.unitChips}
+              >
+                {CUSTOM_ITEM_UNITS.map((unit) => {
+                  const selected = newItemUnit === unit;
+                  return (
+                    <Pressable
+                      key={unit}
+                      style={[styles.unitChip, selected && styles.unitChipSelected]}
+                      onPress={() => setNewItemUnit(unit)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                    >
+                      <Text style={[styles.unitChipText, selected && styles.unitChipTextSelected]}>{unit}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Pressable
+                style={[styles.sheetDoneButton, !newItemName.trim() && styles.sheetDoneButtonDisabled]}
+                onPress={commitAddItem}
+                disabled={!newItemName.trim()}
+              >
+                <Text style={styles.sheetDoneButtonText}>Add</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -799,6 +935,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sheetDoneButtonText: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  sheetDoneButtonDisabled: { opacity: 0.35 },
+  // Tertiary button (white fill, 1.5px INK border, 56pt pill) -- same as
+  // the store modals' and signup-nudge.tsx's tertiary buttons.
+  addItemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 56,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 28,
+  },
+  addItemButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Unit choice -- same INK-fill "on" state as the store chips.
+  unitChips: { gap: 8 },
+  unitChip: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
+  },
+  unitChipSelected: { backgroundColor: INK },
+  unitChipText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  unitChipTextSelected: { color: '#fff' },
+  addItemInput: {
+    minHeight: 52,
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    fontFamily: 'OpenSans_600SemiBold',
+    color: INK,
+  },
   // Plain text link, not a bordered button -- this is a secondary/
   // undo-style action sitting right below the sheet's one real primary
   // action (Done), so it deliberately doesn't compete visually with it.
