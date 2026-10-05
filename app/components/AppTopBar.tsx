@@ -63,7 +63,7 @@ export function AppTopBar() {
               "(tabs)" don't appear in the URL, so this is just '/profile',
               same pattern stores.tsx already uses for '/best-deals'). */}
           <Pressable style={styles.profileButton} onPress={() => router.push('/profile')} hitSlop={8}>
-            <PersonIcon size={18} color={INK} />
+            <PersonIcon size={20} color={INK} />
           </Pressable>
         </View>
       )}

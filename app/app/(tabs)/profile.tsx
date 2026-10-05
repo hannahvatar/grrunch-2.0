@@ -217,9 +217,9 @@ export default function ProfileScreen() {
                   hitSlop={8}
                 >
                   {isSubscribed ? (
-                    <PencilIcon size={15} color={INK} />
+                    <PencilIcon size={20} color={INK} />
                   ) : (
-                    <LockClosedIcon size={15} color={INK} />
+                    <LockClosedIcon size={20} color={INK} />
                   )}
                 </Pressable>
               </View>

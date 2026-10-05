@@ -403,9 +403,9 @@ export default function BestDealsScreen() {
                           hitSlop={6}
                         >
                           {isAdded ? (
-                            <CheckIcon size={16} color="#fff" />
+                            <CheckIcon size={20} color="#fff" />
                           ) : (
-                            <PlusIcon size={16} color={INK} />
+                            <PlusIcon size={20} color={INK} />
                           )}
                         </Pressable>
                       </View>

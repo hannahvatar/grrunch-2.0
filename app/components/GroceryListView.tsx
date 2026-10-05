@@ -435,7 +435,7 @@ export function GroceryListView() {
                       <Text style={styles.selectedRowMeta}>${meal.price.toFixed(2)} / serving</Text>
                     </Pressable>
                     <Pressable style={styles.removeMealButton} onPress={() => toggleSelected(meal.id)} hitSlop={8}>
-                      <XMarkIcon size={14} color={INK} />
+                      <XMarkIcon size={20} color={INK} />
                     </Pressable>
                   </View>
                   <View style={styles.stepperRow}>
@@ -445,7 +445,7 @@ export function GroceryListView() {
                       disabled={multiplier === 1}
                       hitSlop={8}
                     >
-                      <MinusIcon size={14} color="#111" />
+                      <MinusIcon size={20} color="#111" />
                     </Pressable>
                     <Text style={styles.stepperValue}>
                       {totalServings} serving{totalServings === 1 ? '' : 's'}
@@ -455,7 +455,7 @@ export function GroceryListView() {
                       onPress={() => adjustMultiplier(meal.id, 1)}
                       hitSlop={8}
                     >
-                      <PlusIcon size={14} color="#111" />
+                      <PlusIcon size={20} color="#111" />
                     </Pressable>
                   </View>
                 </View>
@@ -533,7 +533,7 @@ export function GroceryListView() {
             </Text>
             <View style={styles.sheetStepperRow}>
               <Pressable style={styles.sheetStepperButton} onPress={() => adjustSheetQuantity(-1)} hitSlop={8}>
-                <MinusIcon size={18} color={INK} />
+                <MinusIcon size={20} color={INK} />
               </Pressable>
               <TextInput
                 style={styles.sheetQuantityInput}
@@ -544,7 +544,7 @@ export function GroceryListView() {
                 autoFocus
               />
               <Pressable style={styles.sheetStepperButton} onPress={() => adjustSheetQuantity(1)} hitSlop={8}>
-                <PlusIcon size={18} color={INK} />
+                <PlusIcon size={20} color={INK} />
               </Pressable>
             </View>
             <Pressable style={styles.sheetDoneButton} onPress={commitQuantityEditor}>

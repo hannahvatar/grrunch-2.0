@@ -522,7 +522,7 @@ export function IngredientRow({
   // rather than decoration.
   const editButtonEl = onEditQuantity && (
     <Pressable style={styles.editButton} onPress={onEditQuantity} hitSlop={8}>
-      <PencilIcon size={13} color={INK} />
+      <PencilIcon size={20} color={INK} />
     </Pressable>
   );
 

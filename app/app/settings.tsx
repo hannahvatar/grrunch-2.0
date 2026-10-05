@@ -40,7 +40,7 @@ export default function SettingsScreen() {
         {/* Tertiary closing button, same treatment as the /upgrade modal's
             close control (white fill, INK border). */}
         <Pressable style={styles.closeButton} onPress={() => router.back()} hitSlop={8}>
-          <XMarkIcon size={18} color="#111" />
+          <XMarkIcon size={20} color="#111" />
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>

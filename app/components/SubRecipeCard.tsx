@@ -33,7 +33,7 @@ export function SubRecipeCard({ subRecipe, expanded, onToggle, onLayout }: SubRe
             <Text style={styles.description}>{subRecipe.description}</Text>
           </View>
           <Pressable style={styles.toggleButton} onPress={onToggle} hitSlop={8}>
-            {expanded ? <ChevronUpIcon size={14} color={INK} /> : <ChevronDownIcon size={14} color={INK} />}
+            {expanded ? <ChevronUpIcon size={20} color={INK} /> : <ChevronDownIcon size={20} color={INK} />}
           </Pressable>
         </View>
         {expanded && (
