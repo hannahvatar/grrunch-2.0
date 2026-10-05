@@ -174,7 +174,7 @@ export default function MealsScreen() {
           </View>
         </View>
 
-        <StoreChips />
+        <StoreChips page="meals" />
 
         {weekExpired && (
           <AlertBanner variant="info" title={FRESH_DEALS_BANNER_TITLE} description={FRESH_DEALS_BANNER_BODY} />

@@ -1,21 +1,33 @@
-import { useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckIcon } from 'react-native-heroicons/outline';
 
-import { STORE_CHAINS, useStoreFilter } from '../lib/storeFilter';
-import { StoreFilterNoticeModal } from './StoreFilterNoticeModal';
+import { STORE_CHAINS, type StoreChipsPage, useStoreFilter } from '../lib/storeFilter';
+import { StoreFilterNoticeModal, StoreReminderModal } from './StoreFilterNoticeModal';
 
 const INK = '#111';
 
 // One chip per chain, on Weekly Deals, Meals and My list -- all three
 // share one selection (lib/storeFilter.tsx). Turning a store off always
 // goes through StoreFilterNoticeModal, which nudges toward keeping it;
-// turning one back on is immediate. While any store is off, a reminder
-// line under the chips offers to add them all back.
-export function StoreChips() {
-  const { hiddenChains, isHidden, toggleChain, showAllChains } = useStoreFilter();
+// turning one back on is immediate. When a page opens with stores off,
+// StoreReminderModal shows once per page per session; the page where a
+// store was just turned off counts as already reminded.
+export function StoreChips({ page }: { page: StoreChipsPage }) {
+  const { hiddenChains, isHidden, toggleChain, showAllChains, wasReminded, markReminded } = useStoreFilter();
   const [pendingChain, setPendingChain] = useState<string | null>(null);
+  const [showReminder, setShowReminder] = useState(false);
   const offCount = hiddenChains.size;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (offCount > 0 && !wasReminded(page)) {
+        markReminded(page);
+        setShowReminder(true);
+      }
+    }, [offCount, page, wasReminded, markReminded])
+  );
 
   function handlePress(chain: string) {
     if (isHidden(chain)) toggleChain(chain);
@@ -23,14 +35,24 @@ export function StoreChips() {
   }
 
   return (
-    <View style={styles.wrap}>
+    <>
       <StoreFilterNoticeModal
         chain={pendingChain}
         onKeep={() => setPendingChain(null)}
         onTurnOff={() => {
+          markReminded(page);
           if (pendingChain) toggleChain(pendingChain);
           setPendingChain(null);
         }}
+      />
+      <StoreReminderModal
+        visible={showReminder}
+        offCount={offCount}
+        onAddAllBack={() => {
+          showAllChains();
+          setShowReminder(false);
+        }}
+        onKeepSelection={() => setShowReminder(false)}
       />
       <View style={styles.chips}>
         {STORE_CHAINS.map((chain) => {
@@ -49,22 +71,11 @@ export function StoreChips() {
           );
         })}
       </View>
-      {offCount > 0 && (
-        <View style={styles.reminder}>
-          <Text style={styles.reminderText}>
-            {offCount} store{offCount === 1 ? '' : 's'} off · You may be missing lower prices
-          </Text>
-          <Pressable onPress={showAllChains} hitSlop={12}>
-            <Text style={styles.reminderLink}>Add all stores back</Text>
-          </Pressable>
-        </View>
-      )}
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     flexDirection: 'row',
@@ -83,13 +94,4 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: INK },
   chipText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   chipTextSelected: { color: '#fff' },
-  reminder: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2 },
-  reminderText: { fontSize: 13, color: INK },
-  reminderLink: {
-    fontSize: 13,
-    color: INK,
-    fontWeight: '700',
-    fontFamily: 'OpenSans_700Bold',
-    textDecorationLine: 'underline',
-  },
 });

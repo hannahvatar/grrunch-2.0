@@ -185,7 +185,7 @@ export default function BestDealsScreen() {
           <Text style={styles.tagline}>We crunched the flyers and evaluated the offers. These deals actually made the cut.</Text>
         )}
 
-        <StoreChips />
+        <StoreChips page="deals" />
 
         {deals.length === 0 && (
           <View style={styles.emptyState}>

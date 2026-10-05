@@ -18,23 +18,34 @@ import { portionCost } from './unitConversion';
 //     Single deals added to My list straight from Weekly Deals stay as-is.
 export const STORE_CHAINS = ['No Frills', 'Real Canadian Superstore', 'Safeway', 'Save-On-Foods', 'Walmart'];
 
+// The pages that show the chips. Each shows the "N stores off" reminder
+// modal at most once per session while stores are off (StoreChips).
+export type StoreChipsPage = 'deals' | 'meals' | 'list';
+
 interface StoreFilterContextValue {
   hiddenChains: Set<string>;
   isHidden: (chain: string) => boolean;
   toggleChain: (chain: string) => void;
   showAllChains: () => void;
+  // Pages that already showed (or don't need) the reminder this session.
+  // Cleared whenever every store is back on, so a later turn-off starts
+  // fresh.
+  wasReminded: (page: StoreChipsPage) => boolean;
+  markReminded: (page: StoreChipsPage) => void;
 }
 
 const StoreFilterContext = createContext<StoreFilterContextValue | undefined>(undefined);
 
 export function StoreFilterProvider({ children }: { children: ReactNode }) {
   const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
+  const [remindedPages, setRemindedPages] = useState<Set<StoreChipsPage>>(new Set());
 
   function toggleChain(chain: string) {
     setHiddenChains((prev) => {
       const next = new Set(prev);
       if (next.has(chain)) next.delete(chain);
       else next.add(chain);
+      if (next.size === 0) setRemindedPages(new Set());
       return next;
     });
   }
@@ -45,7 +56,12 @@ export function StoreFilterProvider({ children }: { children: ReactNode }) {
         hiddenChains,
         isHidden: (chain) => hiddenChains.has(chain),
         toggleChain,
-        showAllChains: () => setHiddenChains(new Set()),
+        showAllChains: () => {
+          setHiddenChains(new Set());
+          setRemindedPages(new Set());
+        },
+        wasReminded: (page) => remindedPages.has(page),
+        markReminded: (page) => setRemindedPages((prev) => new Set(prev).add(page)),
       }}
     >
       {children}
