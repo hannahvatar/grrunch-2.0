@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { BuildingStorefrontIcon, ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
@@ -14,6 +14,7 @@ import { resizeMealServings, servingsOptions } from '../lib/mealScaling';
 import { fetchMyRating, rateRecipe } from '../lib/ratings';
 import { fetchRecipeById } from '../lib/recipes';
 import { useSelectedMeals } from '../lib/selectedMeals';
+import { applyStoreFilter, useStoreFilter } from '../lib/storeFilter';
 import { useSubscription } from '../lib/subscription';
 
 const ACCENT = '#FFA955';
@@ -120,8 +121,14 @@ export default function RecipeScreen() {
     setServingsOverride(null);
   }, [rawMeal?.id]);
 
+  // Meals' store chips: an unselected chain's
+  // deal ingredients move to "Not on sale at your stores" at regular
+  // price, and price/serving follows -- applied before resizing so the
+  // servings stepper still works the same way on top of it.
+  const { hiddenChains } = useStoreFilter('meals');
+  const storeMeal = rawMeal ? applyStoreFilter(rawMeal, hiddenChains) : rawMeal;
   const meal =
-    rawMeal && servingsOverride !== null ? resizeMealServings(rawMeal, servingsOverride) : rawMeal;
+    storeMeal && servingsOverride !== null ? resizeMealServings(storeMeal, servingsOverride) : storeMeal;
   // Whole multiples of the recipe's own natural serving count -- you
   // can't buy a fraction of a deal-tagged package, so "N+1 servings"
   // isn't a real option; making another whole batch is.
@@ -157,7 +164,8 @@ export default function RecipeScreen() {
   // white card, staples on the page's plain peach background) without
   // re-deriving the grouping.
   const dealIngredients = meal.ingredients.filter((ingredient) => ingredient.dealTag);
-  const stapleIngredients = meal.ingredients.filter((ingredient) => !ingredient.dealTag);
+  const offSaleIngredients = meal.ingredients.filter((ingredient) => ingredient.offSale);
+  const stapleIngredients = meal.ingredients.filter((ingredient) => !ingredient.dealTag && !ingredient.offSale);
 
   // Closing is the natural "done browsing this recipe" moment -- if a
   // guest has now crossed the view threshold, show the sign-up nudge
@@ -303,7 +311,7 @@ export default function RecipeScreen() {
             you'll need" umbrella title, which still covers both since
             the staples group is not on sale. */}
         <Text style={styles.sectionTitle}>What you'll need</Text>
-        {(dealIngredients.length > 0 || stapleIngredients.length > 0) && (
+        {(dealIngredients.length > 0 || offSaleIngredients.length > 0 || stapleIngredients.length > 0) && (
           <View style={styles.ingredientsModalCard}>
             {dealIngredients.length > 0 && (
               <View>
@@ -379,9 +387,34 @@ export default function RecipeScreen() {
                 </View>
               </View>
             )}
-            {stapleIngredients.length > 0 && (
+            {offSaleIngredients.length > 0 && (
               <View style={dealIngredients.length > 0 && styles.pantrySectionStacked}>
                 {dealIngredients.length > 0 && <View style={styles.sectionDivider} />}
+                <View style={styles.innerHeadingRow}>
+                  <BuildingStorefrontIcon size={18} color={INK} />
+                  <Text style={[styles.innerSectionTitleFirst, styles.headingRowTextReset]}>
+                    Not on sale at your stores
+                  </Text>
+                </View>
+                <View style={styles.staplesList}>
+                  {offSaleIngredients.map((ingredient, index) => (
+                    <IngredientRow
+                      key={index}
+                      ignoreExpiry={week === 'next'}
+                      text={ingredient.text}
+                      estimatedPrice={ingredient.estimatedPrice}
+                      bulleted
+                      useQuantityText={ingredient.useQuantityText}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+            {stapleIngredients.length > 0 && (
+              <View
+                style={(dealIngredients.length > 0 || offSaleIngredients.length > 0) && styles.pantrySectionStacked}
+              >
+                {(dealIngredients.length > 0 || offSaleIngredients.length > 0) && <View style={styles.sectionDivider} />}
                 <View style={styles.innerHeadingRow}>
                   <ChefHatIcon size={18} color={INK} />
                   <Text style={[styles.innerSectionTitleFirst, styles.headingRowTextReset]}>From your pantry</Text>

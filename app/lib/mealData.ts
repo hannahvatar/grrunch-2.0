@@ -109,7 +109,13 @@ export interface IngredientLine {
   // (see lib/curatedDeals.ts matchItemStore).
   name: string;
   dealTag?: DealTag;
-  estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'staple' };
+  // 'regular' = an off-sale deal ingredient priced at its deal's own
+  // regular price (lib/storeFilter.ts's applyStoreFilter).
+  estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'staple' | 'regular' };
+  // True when this ingredient's deal comes from a store the user
+  // unselected in the store chips -- shown under "Not on sale at your
+  // stores" at its regular price instead of under On Sale This Week.
+  offSale?: boolean;
   // Grocery-list-only override of `text`, for staples the recipe states
   // in cooked terms (e.g. "2 cups Rice") but that you actually buy dry
   // (e.g. "⅔ cup (123 g) dry Rice") -- see lib/unitConversion.ts

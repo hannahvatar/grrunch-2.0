@@ -10,6 +10,8 @@ import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { WeekGapState } from '../../components/WeekGapState';
 import type { Meal } from '../../lib/mealData';
 import { type MealSortMode, sortMealsByBestDeal, sortMealsByPrice } from '../../lib/mealScaling';
+import { applyStoreFilter, useStoreFilter } from '../../lib/storeFilter';
+import { StoreChips } from '../../components/StoreChips';
 import { fetchAllRecipes } from '../../lib/recipes';
 import { useSelectedMeals } from '../../lib/selectedMeals';
 import { useSubscription } from '../../lib/subscription';
@@ -114,7 +116,14 @@ export default function MealsScreen() {
       .finally(() => setLoading(false));
   }, [liveWeek?.publishedAt]);
 
-  const sortedMeals = eligibleMeals(allMeals, sortMode);
+  // Store chips (Meals' own selection, separate from Weekly Deals): an
+  // unselected chain's deals switch to regular price before sorting, so
+  // "Best savings" and price/serving both reflect the chosen stores.
+  const { hiddenChains } = useStoreFilter('meals');
+  const sortedMeals = eligibleMeals(
+    allMeals.map((meal) => applyStoreFilter(meal, hiddenChains)),
+    sortMode
+  );
   const visibleMeals = isSubscribed ? sortedMeals : sortedMeals.slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = sortedMeals.length - visibleMeals.length;
 
@@ -164,6 +173,8 @@ export default function MealsScreen() {
             )}
           </View>
         </View>
+
+        <StoreChips scope="meals" />
 
         {weekExpired && (
           <AlertBanner variant="info" title={FRESH_DEALS_BANNER_TITLE} description={FRESH_DEALS_BANNER_BODY} />

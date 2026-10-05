@@ -1,9 +1,25 @@
 import { Modal, Pressable, StyleSheet, Text } from 'react-native';
 
+import type { StoreFilterScope } from '../lib/storeFilter';
+
 const ACCENT = '#FFA955';
 const INK = '#111';
 
+// One notice per page (Anabelle, 2026-10-05) -- each page's chips have
+// their own selection and say what unselecting does THERE.
+const COPY: Record<StoreFilterScope, { title: string; body: string }> = {
+  deals: {
+    title: 'Showing fewer stores',
+    body: "Unselecting a store hides its deals, so you'll see fewer deals.",
+  },
+  meals: {
+    title: 'Prices may go up',
+    body: 'As you remove stores, their sale items switch to regular price, so prices per serving will go up.',
+  },
+};
+
 interface StoreFilterNoticeModalProps {
+  scope: StoreFilterScope;
   visible: boolean;
   // "Got it": go ahead and unselect the store (the caller also records
   // that this notice has been seen, so it only ever shows once).
@@ -12,21 +28,17 @@ interface StoreFilterNoticeModalProps {
   onCancel: () => void;
 }
 
-// Shown the first time someone unselects a store chip on Weekly Deals
-// (Anabelle, 2026-10-02). The chips are a page-only filter, so the copy
-// is careful to say recipes and their prices are NOT affected -- they
-// still use every store's deals. Same backdrop + centered white/INK-
-// border card as OutsideAreaModal.tsx.
-export function StoreFilterNoticeModal({ visible, onConfirm, onCancel }: StoreFilterNoticeModalProps) {
+// Shown the first time someone unselects a store chip on a page (see
+// components/StoreChips.tsx). Same backdrop + centered white/INK-border
+// card as OutsideAreaModal.tsx.
+export function StoreFilterNoticeModal({ scope, visible, onConfirm, onCancel }: StoreFilterNoticeModalProps) {
+  const { title, body } = COPY[scope];
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <Pressable style={styles.backdrop} onPress={onCancel}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>Showing fewer stores</Text>
-          <Text style={styles.body}>
-            Unselecting a store hides its deals on this page, so you'll see fewer deals. Recipes and their prices
-            still include deals from every store.
-          </Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.body}>{body}</Text>
           <Pressable style={styles.primaryButton} onPress={onConfirm}>
             <Text style={styles.primaryButtonText}>Got it</Text>
           </Pressable>
