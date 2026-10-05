@@ -82,9 +82,9 @@ export default function BestDealsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  // Store chips: this page's own selection (lib/storeFilter.tsx). An
-  // unselected chain's deals are hidden here.
-  const { hiddenChains } = useStoreFilter('deals');
+  // Store chips (shared with Meals and My list, lib/storeFilter.tsx):
+  // an unselected chain's deals are hidden here.
+  const { hiddenChains } = useStoreFilter();
   const { selectedDealIds, toggleDealSelected } = useSelectedDeals();
   const { stores: myStores } = useSelectedStores();
   // Last week's flyers have ended but this week isn't published yet --
@@ -185,7 +185,7 @@ export default function BestDealsScreen() {
           <Text style={styles.tagline}>We crunched the flyers and evaluated the offers. These deals actually made the cut.</Text>
         )}
 
-        <StoreChips scope="deals" />
+        <StoreChips />
 
         {deals.length === 0 && (
           <View style={styles.emptyState}>

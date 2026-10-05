@@ -1,49 +1,37 @@
 import { Modal, Pressable, StyleSheet, Text } from 'react-native';
 
-import type { StoreFilterScope } from '../lib/storeFilter';
-
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// One notice per page (Anabelle, 2026-10-05) -- each page's chips have
-// their own selection and say what unselecting does THERE.
-const COPY: Record<StoreFilterScope, { title: string; body: string }> = {
-  deals: {
-    title: 'Showing fewer stores',
-    body: "Unselecting a store hides its deals, so you'll see fewer deals.",
-  },
-  meals: {
-    title: 'Prices may go up',
-    body: 'As you remove stores, their sale items switch to regular price, so prices per serving will go up.',
-  },
-};
-
 interface StoreFilterNoticeModalProps {
-  scope: StoreFilterScope;
-  visible: boolean;
-  // "Got it": go ahead and unselect the store (the caller also records
-  // that this notice has been seen, so it only ever shows once).
-  onConfirm: () => void;
-  // "Keep all stores" / backdrop tap: leave the store selected.
-  onCancel: () => void;
+  // The store about to be turned off; null = closed.
+  chain: string | null;
+  // "Keep <store>" / backdrop tap: leave it selected (the main action --
+  // the modal deliberately nudges toward keeping every store).
+  onKeep: () => void;
+  // "Turn it off anyway": go ahead and unselect it.
+  onTurnOff: () => void;
 }
 
-// Shown the first time someone unselects a store chip on a page (see
-// components/StoreChips.tsx). Same backdrop + centered white/INK-border
-// card as OutsideAreaModal.tsx.
-export function StoreFilterNoticeModal({ scope, visible, onConfirm, onCancel }: StoreFilterNoticeModalProps) {
-  const { title, body } = COPY[scope];
+// Shown EVERY time a store chip is turned off (Anabelle, 2026-10-05), on
+// Weekly Deals, Meals or My list -- the selection is shared by all three
+// (lib/storeFilter.tsx), so one choice costs deals and recipe prices
+// everywhere. Same backdrop + centered white/INK-border card as
+// OutsideAreaModal.tsx.
+export function StoreFilterNoticeModal({ chain, onKeep, onTurnOff }: StoreFilterNoticeModalProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={styles.backdrop} onPress={onCancel}>
+    <Modal visible={chain !== null} transparent animationType="fade" onRequestClose={onKeep}>
+      <Pressable style={styles.backdrop} onPress={onKeep}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.body}>{body}</Text>
-          <Pressable style={styles.primaryButton} onPress={onConfirm}>
-            <Text style={styles.primaryButtonText}>Got it</Text>
+          <Text style={styles.title}>Keep {chain} for the lowest prices?</Text>
+          <Text style={styles.body}>
+            Without {chain}, you'll see fewer deals and recipe prices per serving go up.
+          </Text>
+          <Pressable style={styles.primaryButton} onPress={onKeep}>
+            <Text style={styles.primaryButtonText}>Keep {chain}</Text>
           </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={onCancel} hitSlop={12}>
-            <Text style={styles.secondaryButtonText}>Keep all stores</Text>
+          <Pressable style={styles.secondaryButton} onPress={onTurnOff} hitSlop={12}>
+            <Text style={styles.secondaryButtonText}>Turn it off anyway</Text>
           </Pressable>
         </Pressable>
       </Pressable>

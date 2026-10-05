@@ -12,6 +12,7 @@ import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
 import { applyStoreFilter, useStoreFilter } from '../lib/storeFilter';
+import { StoreChips } from './StoreChips';
 import { useSubscription } from '../lib/subscription';
 import { UpgradeCta } from './UpgradeCta';
 import { ClosingSoonBanner } from './ClosingSoonBanner';
@@ -155,10 +156,10 @@ export function GroceryListView() {
 
   // Each recipe's real, un-scaled serving size/price/nutrition -- see
   // lib/mealScaling.ts for why nothing here gets resized to a target --
-  // re-priced for the stores unselected on Meals (lib/storeFilter.tsx),
-  // so a recipe added before a store was turned off shows the same
-  // price/serving and off-sale items here as on Meals and its page.
-  const { hiddenChains } = useStoreFilter('meals');
+  // re-priced for the stores unselected in the shared store chips
+  // (lib/storeFilter.tsx), same as on Meals and the recipe page. Single
+  // deals added from Weekly Deals are left alone -- picked on purpose.
+  const { hiddenChains } = useStoreFilter();
   const selectedMeals = rawSelectedMeals.map((meal) => applyStoreFilter(meal, hiddenChains));
   // Store lookup for non-deal ingredients skips unselected chains too,
   // so an item moved off sale isn't still filed under that store.
@@ -371,6 +372,7 @@ export function GroceryListView() {
             </Text>
           )}
         </View>
+        <StoreChips />
         {items.length > 0 && (
           <View style={styles.quantityNoteRow}>
             <Text style={styles.quantityNote}>

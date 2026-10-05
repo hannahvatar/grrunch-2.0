@@ -116,10 +116,10 @@ export default function MealsScreen() {
       .finally(() => setLoading(false));
   }, [liveWeek?.publishedAt]);
 
-  // Store chips (Meals' own selection, separate from Weekly Deals): an
-  // unselected chain's deals switch to regular price before sorting, so
+  // Store chips (shared with Weekly Deals and My list): an unselected
+  // chain's deals switch to regular price before sorting, so
   // "Best savings" and price/serving both reflect the chosen stores.
-  const { hiddenChains } = useStoreFilter('meals');
+  const { hiddenChains } = useStoreFilter();
   const sortedMeals = eligibleMeals(
     allMeals.map((meal) => applyStoreFilter(meal, hiddenChains)),
     sortMode
@@ -174,7 +174,7 @@ export default function MealsScreen() {
           </View>
         </View>
 
-        <StoreChips scope="meals" />
+        <StoreChips />
 
         {weekExpired && (
           <AlertBanner variant="info" title={FRESH_DEALS_BANNER_TITLE} description={FRESH_DEALS_BANNER_BODY} />

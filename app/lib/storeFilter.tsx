@@ -1,82 +1,62 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
 
 import type { IngredientLine, Meal } from './mealData';
 import { portionCost } from './unitConversion';
 
-// The store chips at the top of Weekly Deals and Meals (Anabelle,
-// 2026-10-05). Each page has its OWN selection ('deals' / 'meals'),
-// every chain starts selected, and neither is persisted (resets on next
-// launch) or tied to the saved stores in lib/selectedStores.tsx. Each
-// page also has its own one-time notice (StoreFilterNoticeModal).
+// The store chips at the top of Weekly Deals, Meals and My list
+// (Anabelle, 2026-10-05): ONE selection shared by all three pages, so
+// turning a store off anywhere turns it off everywhere. Every chain
+// starts selected; it isn't persisted (resets on next launch) and is
+// separate from the saved stores in lib/selectedStores.tsx.
 //
 // What unselecting a chain does:
-//   - 'deals' (Weekly Deals): hides that chain's deals.
-//   - 'meals' (Meals + recipe pages): any ingredient priced on that
+//   - Weekly Deals hides that chain's deals.
+//   - Meals, recipe pages and My list: any ingredient priced on that
 //     chain's deal moves to "Not on sale at your stores", priced at the
 //     deal's own regular price (its originalPrice, the "$X avg." already
 //     shown on the deal), and price per serving goes up by the difference.
+//     Single deals added to My list straight from Weekly Deals stay as-is.
 export const STORE_CHAINS = ['No Frills', 'Real Canadian Superstore', 'Safeway', 'Save-On-Foods', 'Walmart'];
 
-export type StoreFilterScope = 'deals' | 'meals';
-
-// 'deals' keeps the original key so a device that already saw the
-// Weekly Deals notice doesn't see it again.
-const NOTICE_SEEN_KEYS: Record<StoreFilterScope, string> = {
-  deals: 'grrunch:storeFilterNoticeSeen',
-  meals: 'grrunch:storeFilterNoticeSeen:meals',
-};
-
-interface ScopeState {
+interface StoreFilterContextValue {
   hiddenChains: Set<string>;
   isHidden: (chain: string) => boolean;
   toggleChain: (chain: string) => void;
-  // The first unselect on a device asks for confirmation (StoreChips'
-  // notice modal); after "Got it" it never asks again for that page.
-  noticeSeen: boolean;
-  markNoticeSeen: () => void;
+  showAllChains: () => void;
 }
 
-const StoreFilterContext = createContext<Record<StoreFilterScope, ScopeState> | undefined>(undefined);
-
-function useScopeState(scope: StoreFilterScope): ScopeState {
-  const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
-  const [noticeSeen, setNoticeSeen] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem(NOTICE_SEEN_KEYS[scope])
-      .then((value) => setNoticeSeen(value === 'true'))
-      .catch(() => {});
-  }, [scope]);
-
-  return {
-    hiddenChains,
-    isHidden: (chain) => hiddenChains.has(chain),
-    toggleChain: (chain) =>
-      setHiddenChains((prev) => {
-        const next = new Set(prev);
-        if (next.has(chain)) next.delete(chain);
-        else next.add(chain);
-        return next;
-      }),
-    noticeSeen,
-    markNoticeSeen: () => {
-      setNoticeSeen(true);
-      AsyncStorage.setItem(NOTICE_SEEN_KEYS[scope], 'true').catch(() => {});
-    },
-  };
-}
+const StoreFilterContext = createContext<StoreFilterContextValue | undefined>(undefined);
 
 export function StoreFilterProvider({ children }: { children: ReactNode }) {
-  const deals = useScopeState('deals');
-  const meals = useScopeState('meals');
-  return <StoreFilterContext.Provider value={{ deals, meals }}>{children}</StoreFilterContext.Provider>;
+  const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
+
+  function toggleChain(chain: string) {
+    setHiddenChains((prev) => {
+      const next = new Set(prev);
+      if (next.has(chain)) next.delete(chain);
+      else next.add(chain);
+      return next;
+    });
+  }
+
+  return (
+    <StoreFilterContext.Provider
+      value={{
+        hiddenChains,
+        isHidden: (chain) => hiddenChains.has(chain),
+        toggleChain,
+        showAllChains: () => setHiddenChains(new Set()),
+      }}
+    >
+      {children}
+    </StoreFilterContext.Provider>
+  );
 }
 
-export function useStoreFilter(scope: StoreFilterScope): ScopeState {
+export function useStoreFilter(): StoreFilterContextValue {
   const ctx = useContext(StoreFilterContext);
   if (!ctx) throw new Error('useStoreFilter must be used within a StoreFilterProvider');
-  return ctx[scope];
+  return ctx;
 }
 
 // " · about $0.62" -- the deal's own portion cost, appended to the
