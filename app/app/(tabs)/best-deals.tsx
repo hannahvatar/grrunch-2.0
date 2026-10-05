@@ -206,12 +206,14 @@ export default function BestDealsScreen() {
 
         {categories.length > 0 && (
         <View style={styles.categoryContainer}>
-          {/* Top section of the category card: the deal count as the
-              card's title. */}
+          {/* Top section of the category card: a label plus the count in a
+              read-only, input-style box (Anabelle, 2026-10-05). The count
+              follows the store chips. */}
           <View style={styles.cardTop}>
-            <Text style={styles.cardTitle}>
-              {shownDeals.length} deal{shownDeals.length === 1 ? '' : 's'} {weekExpired ? "from last week's flyers" : 'this week'}
-            </Text>
+            <Text style={styles.cardTitle}>{weekExpired ? "Deals from last week's flyers" : 'Deals this week'}</Text>
+            <View style={styles.countField} accessibilityRole="text">
+              <Text style={styles.countFieldText}>{shownDeals.length}</Text>
+            </View>
           </View>
         {categories.map((category, categoryIndex) => {
           const categoryDeals = groups.get(category) ?? [];
@@ -409,7 +411,28 @@ const styles = StyleSheet.create({
   tagline: { fontSize: 14, color: INK, marginTop: -12 },
   // First section of categoryContainer (count title), divided off like
   // a category row.
-  cardTop: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: INK },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: INK,
+  },
+  // Same look as My list's quantity box (IngredientRow's
+  // dealQuantityBadge): 44pt, 1px grey border, 6 radius, grey regular text.
+  countField: {
+    minWidth: 44,
+    height: 44,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#767676',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countFieldText: { fontSize: 13, fontWeight: '400', fontFamily: 'OpenSans_400Regular', color: '#767676' },
   cardTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   // "Modal treatment" -- same white/2px-INK-border/16px-radius language
   // as every other card on the Meals/Grocery/Recipe screens (was flat
