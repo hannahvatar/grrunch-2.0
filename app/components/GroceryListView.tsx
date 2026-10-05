@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ArrowPathIcon, BuildingStorefrontIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItemStore } from '../lib/curatedDeals';
@@ -549,6 +549,10 @@ export function GroceryListView() {
           Pressable backdrop is the standard RN bottom-sheet pattern;
           no extra library needed for something this simple. */}
       <Modal visible={!!editingItem} transparent animationType="slide" onRequestClose={closeQuantityEditor}>
+        {/* The quantity field autofocuses, so the number pad opens with
+            the sheet -- without this the keyboard covered the whole sheet
+            (stepper, Done) on iOS. Lifts the sheet to sit above it. */}
+        <KeyboardAvoidingView style={styles.sheetKeyboardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={styles.sheetBackdrop} onPress={closeQuantityEditor}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.sheetHandle} />
@@ -591,6 +595,7 @@ export function GroceryListView() {
             )}
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -735,6 +740,7 @@ const styles = StyleSheet.create({
   // justifyContent. The inner Pressable's onPress stopPropagation stops
   // a tap anywhere on the sheet's own content from bubbling up to the
   // backdrop and closing it.
+  sheetKeyboardWrap: { flex: 1 },
   sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: '#fff',
