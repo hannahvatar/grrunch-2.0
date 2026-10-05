@@ -207,24 +207,11 @@ export default function BestDealsScreen() {
         {categories.length > 0 && (
         <View style={styles.categoryContainer}>
           {/* Top section of the category card: the deal count as the
-              card's title, then the pill legend (on white, since the
-              peach "Fair price" pill vanishes on this page's own peach
-              background). */}
+              card's title. */}
           <View style={styles.cardTop}>
-          <Text style={styles.cardTitle}>
-            {shownDeals.length} deal{shownDeals.length === 1 ? '' : 's'} {weekExpired ? "from last week's flyers" : 'this week'}
-          </Text>
-          <View style={styles.legend}>
-            <View style={[styles.dealBadge, styles.legendPill]}>
-              <Text style={styles.dealBadgeText}>Store discount</Text>
-            </View>
-            <View style={[styles.dealGreatValueBadge, styles.legendPill]}>
-              <Text style={styles.dealGreatValueBadgeText}>Below average</Text>
-            </View>
-            <View style={[styles.dealFairPriceBadge, styles.legendPill]}>
-              <Text style={styles.dealFairPriceBadgeText}>Fair price</Text>
-            </View>
-          </View>
+            <Text style={styles.cardTitle}>
+              {shownDeals.length} deal{shownDeals.length === 1 ? '' : 's'} {weekExpired ? "from last week's flyers" : 'this week'}
+            </Text>
           </View>
         {categories.map((category, categoryIndex) => {
           const categoryDeals = groups.get(category) ?? [];
@@ -420,14 +407,10 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 20 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   tagline: { fontSize: 14, color: INK, marginTop: -12 },
-  // First section of categoryContainer (legend + count title), divided
-  // off like a category row.
-  cardTop: { paddingVertical: 14, gap: 12, borderBottomWidth: 1, borderBottomColor: INK },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  // First section of categoryContainer (count title), divided off like
+  // a category row.
+  cardTop: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: INK },
   cardTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  // A touch narrower than the card pills so all three fit on one line
-  // inside the category card at iPhone width (393pt).
-  legendPill: { marginTop: 0, paddingHorizontal: 8 },
   // "Modal treatment" -- same white/2px-INK-border/16px-radius language
   // as every other card on the Meals/Grocery/Recipe screens (was flat
   // #F2F2F2 grey box with no border).
