@@ -725,8 +725,10 @@ const styles = StyleSheet.create({
   // near you", reused here so a store name reads the same way
   // wherever it shows up) instead of the previous plain bold-text-only
   // label on a bare background.
+  // gap 20 (was 10): rows ran together once the quantity box and edit
+  // button grew to 44pt.
   storeCard: {
-    gap: 10,
+    gap: 20,
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,

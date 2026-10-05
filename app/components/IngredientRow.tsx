@@ -273,11 +273,11 @@ export function IngredientRow({
         resizeMode="contain"
         style={blurredBackdrop ? styles.itemImageInset : StyleSheet.absoluteFillObject}
       />
-      {imageSize >= 64 && (
-        <View style={styles.zoomHint} pointerEvents="none">
-          <MagnifyingGlassPlusIcon size={14} color="#fff" strokeWidth={2} />
-        </View>
-      )}
+      {/* Every cutout zooms, so every thumbnail shows the hint -- a
+          smaller one on the grocery list's 44pt thumbnails. */}
+      <View style={[styles.zoomHint, imageSize < 64 && styles.zoomHintSmall]} pointerEvents="none">
+        <MagnifyingGlassPlusIcon size={imageSize < 64 ? 10 : 14} color="#fff" strokeWidth={2} />
+      </View>
       <CutoutViewer uri={dealTag.imageUrl} visible={zoomOpen} onClose={() => setZoomOpen(false)} />
     </Pressable>
   );
@@ -616,9 +616,11 @@ const styles = StyleSheet.create({
   // number both muted #767676 (was INK) -- reads as secondary data next
   // to the INK-stroke editButton beside it, which stays black since
   // that one's an actual actionable control, not a data display.
+  // 44x44 so it lines up with the 44pt edit (pencil) button beside it on
+  // My list; minWidth lets a longer quantity widen it.
   dealQuantityBadge: {
-    minWidth: 26,
-    height: 26,
+    minWidth: 44,
+    height: 44,
     paddingHorizontal: 6,
     borderRadius: 6,
     borderWidth: 1,
@@ -679,6 +681,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     padding: 5,
   },
+  zoomHintSmall: { right: 2, bottom: 2, padding: 3 },
   // A fixed 10% margin off every edge -- see the comment above where
   // this is used for why a same-size fill isn't always enough to
   // guarantee the blurred backdrop shows.
