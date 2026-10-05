@@ -121,11 +121,11 @@ export default function RecipeScreen() {
     setServingsOverride(null);
   }, [rawMeal?.id]);
 
-  // Meals' store chips: an unselected chain's
+  // The shared store chips: an unselected chain's
   // deal ingredients move to "Not on sale at your stores" at regular
   // price, and price/serving follows -- applied before resizing so the
   // servings stepper still works the same way on top of it.
-  const { hiddenChains } = useStoreFilter('meals');
+  const { hiddenChains } = useStoreFilter();
   const storeMeal = rawMeal ? applyStoreFilter(rawMeal, hiddenChains) : rawMeal;
   const meal =
     storeMeal && servingsOverride !== null ? resizeMealServings(storeMeal, servingsOverride) : storeMeal;
