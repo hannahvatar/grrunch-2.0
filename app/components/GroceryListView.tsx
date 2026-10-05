@@ -11,6 +11,7 @@ import { useLiveWeek } from '../lib/liveWeek';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
+import { applyStoreFilter, useStoreFilter } from '../lib/storeFilter';
 import { useSubscription } from '../lib/subscription';
 import { UpgradeCta } from './UpgradeCta';
 import { ClosingSoonBanner } from './ClosingSoonBanner';
@@ -153,8 +154,15 @@ export function GroceryListView() {
   }, [selectedIds]);
 
   // Each recipe's real, un-scaled serving size/price/nutrition -- see
-  // lib/mealScaling.ts for why nothing here gets resized to a target.
-  const selectedMeals = rawSelectedMeals;
+  // lib/mealScaling.ts for why nothing here gets resized to a target --
+  // re-priced for the stores unselected on Meals (lib/storeFilter.tsx),
+  // so a recipe added before a store was turned off shows the same
+  // price/serving and off-sale items here as on Meals and its page.
+  const { hiddenChains } = useStoreFilter('meals');
+  const selectedMeals = rawSelectedMeals.map((meal) => applyStoreFilter(meal, hiddenChains));
+  // Store lookup for non-deal ingredients skips unselected chains too,
+  // so an item moved off sale isn't still filed under that store.
+  const lookupDeals = hiddenChains.size === 0 ? allDeals : allDeals.filter((deal) => !hiddenChains.has(deal.chainName));
 
   useEffect(() => {
     if (selectedDealIds.size === 0) {
@@ -292,7 +300,7 @@ export function GroceryListView() {
         // Store X for this recipe." A true pantry staple with no flyer
         // presence belongs in "Other items", not implied to be at a store
         // we have no actual data for.
-        store: ingredient.dealTag?.store ?? matchItemStore(ingredient.name, allDeals),
+        store: ingredient.dealTag?.store ?? matchItemStore(ingredient.name, lookupDeals),
         // Withheld once this item has a manual quantity override.
         // IngredientRow's dealQuantity badge folds `multiplier` directly
         // into the leading number of `text` for display, which is only

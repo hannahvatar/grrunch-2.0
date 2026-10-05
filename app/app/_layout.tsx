@@ -22,6 +22,7 @@ import { AnalyticsProvider, initSentry, wrapWithSentry } from '../lib/observabil
 import { SelectedDealsProvider } from '../lib/selectedDeals';
 import { SelectedMealsProvider } from '../lib/selectedMeals';
 import { SelectedStoresProvider } from '../lib/selectedStores';
+import { StoreFilterProvider } from '../lib/storeFilter';
 import { PurchasesProvider } from '../lib/purchases';
 import { SubscriptionProvider } from '../lib/subscription';
 import { supabase } from '../lib/supabase';
@@ -196,6 +197,7 @@ function RootLayout() {
             <SelectedStoresProvider>
               <SelectedMealsProvider>
                 <SelectedDealsProvider>
+                <StoreFilterProvider>
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="index" />
                     <Stack.Screen name="terms" />
@@ -241,6 +243,7 @@ function RootLayout() {
                   <DeepLinkErrorRedirect />
                   <WeekLifecycle />
                   <SupportBubble />
+                </StoreFilterProvider>
                 </SelectedDealsProvider>
               </SelectedMealsProvider>
             </SelectedStoresProvider>

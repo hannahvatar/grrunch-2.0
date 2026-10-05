@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -29,11 +28,12 @@ import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
 import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
-import { StoreFilterNoticeModal } from '../../components/StoreFilterNoticeModal';
+import { StoreChips } from '../../components/StoreChips';
 import { WeekGapState } from '../../components/WeekGapState';
 import { MONTHLY_PRICE_DISPLAY } from '../../lib/purchases';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSelectedStores } from '../../lib/selectedStores';
+import { useStoreFilter } from '../../lib/storeFilter';
 import { useSubscription } from '../../lib/subscription';
 
 // GRRUNCH DS -- matches meals.tsx/recipe.tsx/GroceryListView.tsx's own
@@ -42,7 +42,6 @@ import { useSubscription } from '../../lib/subscription';
 // earlier, plainer white-bg/thin-grey-border look that had drifted
 // from the rest of the app).
 const ACCENT = '#FFA955';
-const FILTER_NOTICE_SEEN_KEY = 'grrunch:storeFilterNoticeSeen';
 const EMPTY_GREY = '#9A9A9A';
 
 // Category count badge color by how much of the category's deals (across
@@ -83,21 +82,9 @@ export default function BestDealsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  // Store chips under the intro (Anabelle, 2026-10-02): a quick,
-  // page-only filter -- every chain starts shown, tapping a chip hides/
-  // shows its deals. Deliberately NOT tied to the saved stores
-  // (lib/selectedStores.tsx) and not persisted; resets on next launch.
-  const [hiddenChains, setHiddenChains] = useState<Set<string>>(new Set());
-  // First unselect shows StoreFilterNoticeModal once per device; the
-  // chain waiting on that answer is held in pendingChain.
-  const [filterNoticeSeen, setFilterNoticeSeen] = useState(false);
-  const [pendingChain, setPendingChain] = useState<string | null>(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem(FILTER_NOTICE_SEEN_KEY)
-      .then((value) => setFilterNoticeSeen(value === 'true'))
-      .catch(() => {});
-  }, []);
+  // Store chips: this page's own selection (lib/storeFilter.tsx). An
+  // unselected chain's deals are hidden here.
+  const { hiddenChains } = useStoreFilter('deals');
   const { selectedDealIds, toggleDealSelected } = useSelectedDeals();
   const { stores: myStores } = useSelectedStores();
   // Last week's flyers have ended but this week isn't published yet --
@@ -178,7 +165,6 @@ export default function BestDealsScreen() {
     );
   }
 
-  const chains = Array.from(new Set(deals.map((deal) => deal.chainName))).sort();
   const shownDeals = deals.filter((deal) => !hiddenChains.has(deal.chainName));
   // Categories come from ALL deals (every store) so a category the store
   // chips have emptied stays listed, greyed out; counts come from the
@@ -187,36 +173,9 @@ export default function BestDealsScreen() {
   const groups = groupDealsByCategory(shownDeals);
   const categories = Array.from(allGroups.keys()).sort();
 
-  function toggleChain(chain: string) {
-    if (!hiddenChains.has(chain) && !filterNoticeSeen) {
-      setPendingChain(chain);
-      return;
-    }
-    applyToggleChain(chain);
-  }
-
-  function applyToggleChain(chain: string) {
-    setHiddenChains((prev) => {
-      const next = new Set(prev);
-      if (next.has(chain)) next.delete(chain);
-      else next.add(chain);
-      return next;
-    });
-  }
-
   return (
     <View style={styles.container}>
       <ClosingSoonBanner />
-      <StoreFilterNoticeModal
-        visible={pendingChain !== null}
-        onConfirm={() => {
-          if (pendingChain) applyToggleChain(pendingChain);
-          setPendingChain(null);
-          setFilterNoticeSeen(true);
-          AsyncStorage.setItem(FILTER_NOTICE_SEEN_KEY, 'true').catch(() => {});
-        }}
-        onCancel={() => setPendingChain(null)}
-      />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Grrunch Picks</Text>
         {weekExpired && (
@@ -226,25 +185,7 @@ export default function BestDealsScreen() {
           <Text style={styles.tagline}>We crunched the flyers and evaluated the offers. These deals actually made the cut.</Text>
         )}
 
-        {chains.length > 1 && (
-          <View style={styles.storeChips}>
-            {chains.map((chain) => {
-              const selected = !hiddenChains.has(chain);
-              return (
-                <Pressable
-                  key={chain}
-                  style={[styles.storeChip, selected && styles.storeChipSelected]}
-                  onPress={() => toggleChain(chain)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: selected }}
-                >
-                  {selected && <CheckIcon size={14} color="#fff" strokeWidth={2.5} />}
-                  <Text style={[styles.storeChipText, selected && styles.storeChipTextSelected]}>{chain}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
+        <StoreChips scope="deals" />
 
         {deals.length === 0 && (
           <View style={styles.emptyState}>
@@ -495,24 +436,6 @@ const styles = StyleSheet.create({
   // 700/Bold, not 800/ExtraBold -- matches this app's established
   // section-heading weight (recipe.tsx's sectionTitle, GroceryListView's
   // storeName/selectedSectionTitle), not the page-title weight.
-  storeChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -6 },
-  storeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: INK,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  // Same INK-fill "on" state as addIconButtonActive.
-  storeChipSelected: { backgroundColor: INK },
-  storeChipText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  storeChipTextSelected: { color: '#fff' },
   // Name + count badge grouped on the left (badge right after the
   // name), chevron alone on the right.
   categoryTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },

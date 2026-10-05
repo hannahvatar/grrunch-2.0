@@ -58,7 +58,7 @@ interface IngredientRowProps {
   // so the live week's expiry never applies.
   ignoreExpiry?: boolean;
   dealTag?: DealTag;
-  estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'staple' };
+  estimatedPrice?: { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'staple' | 'regular' };
   // Grocery-only extras -- the recipe page passes none of these, so it
   // renders the same image/name/price/badge display without a checkbox,
   // source line, or batch multiplier.
