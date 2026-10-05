@@ -30,8 +30,8 @@ export function StoreFilterNoticeModal({ chain, onKeep, onTurnOff }: StoreFilter
           <Pressable style={styles.primaryButton} onPress={onKeep}>
             <Text style={styles.primaryButtonText}>Keep {chain}</Text>
           </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={onTurnOff} hitSlop={12}>
-            <Text style={styles.secondaryButtonText}>Turn it off anyway</Text>
+          <Pressable style={tertiaryStyles.button} onPress={onTurnOff}>
+            <Text style={tertiaryStyles.text}>Turn it off anyway</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -71,8 +71,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  secondaryButton: { alignItems: 'center', paddingVertical: 4 },
-  secondaryButtonText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });
 
 interface StoreReminderModalProps {
@@ -85,8 +83,7 @@ interface StoreReminderModalProps {
 // "N stores off" reminder (Anabelle, 2026-10-05): shown once per page per
 // session when Weekly Deals, Meals or My list opens with stores turned off
 // (see StoreChips). Replaces the inline reminder line. "Keep my
-// selection" is a tertiary button (white fill, INK border), same as
-// signup-nudge.tsx's tertiaryButton.
+// selection" is a tertiary button (tertiaryStyles below).
 export function StoreReminderModal({ visible, offCount, onAddAllBack, onKeepSelection }: StoreReminderModalProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onKeepSelection}>
@@ -99,8 +96,8 @@ export function StoreReminderModal({ visible, offCount, onAddAllBack, onKeepSele
           <Pressable style={styles.primaryButton} onPress={onAddAllBack}>
             <Text style={styles.primaryButtonText}>Add all stores back</Text>
           </Pressable>
-          <Pressable style={reminderStyles.tertiaryButton} onPress={onKeepSelection}>
-            <Text style={reminderStyles.tertiaryButtonText}>Keep my selection</Text>
+          <Pressable style={tertiaryStyles.button} onPress={onKeepSelection}>
+            <Text style={tertiaryStyles.text}>Keep my selection</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -108,8 +105,10 @@ export function StoreReminderModal({ visible, offCount, onAddAllBack, onKeepSele
   );
 }
 
-const reminderStyles = StyleSheet.create({
-  tertiaryButton: {
+// Tertiary button (white fill, INK border) for both modals' second
+// action -- same as signup-nudge.tsx's tertiaryButton.
+const tertiaryStyles = StyleSheet.create({
+  button: {
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
@@ -118,5 +117,5 @@ const reminderStyles = StyleSheet.create({
     borderColor: INK,
     borderRadius: 28,
   },
-  tertiaryButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  text: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });
