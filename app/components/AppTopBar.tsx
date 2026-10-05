@@ -29,10 +29,9 @@ export function AppTopBar() {
       {/* No crumbs here (Anabelle's call) -- at this small size the
           floating dots outside the face read as stray specks, not a
           flourish. terms.tsx's big logo lockup keeps them (default on).
-          Sized to match the Sign up button's own height (~34px: its
-          paddingVertical:7*2 + borderWidth:1.5*2 + its text line height),
-          not an arbitrary icon size. */}
-      <GrrunchMascot size={34} showCrumbs={false} />
+          52px (Anabelle, 2026-10-05; was 34) -- a touch bigger than the
+          44pt bell and profile buttons on the right. */}
+      <GrrunchMascot size={52} showCrumbs={false} />
       {isGuest ? (
         <View style={styles.authButtons}>
           {/* Same screen either way (login.tsx) -- Apple/Google/email all
