@@ -59,7 +59,8 @@
         {
           "backgroundColor": "#FFF4E8"
         }
-      ]
+      ],
+      "./plugins/withMinPodDeploymentTarget"
     ],
     "experiments": {
       "typedRoutes": true
