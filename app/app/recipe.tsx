@@ -210,6 +210,7 @@ export default function RecipeScreen() {
       <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerText}>
           <Text style={styles.title}>{meal.name}</Text>
+          {!!meal.descriptor && <Text style={styles.descriptor}>{meal.descriptor}</Text>}
           <View style={styles.subtitleRow}>
             <ClockIcon size={13} color={INK} />
             <Text style={styles.subtitle}>{meal.minutes} min</Text>
@@ -592,6 +593,7 @@ const styles = StyleSheet.create({
   },
   headerText: { marginBottom: 16 },
   title: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  descriptor: { fontSize: 15, color: '#555', marginTop: 2 },
   subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   subtitle: { fontSize: 14, color: INK },
   // Floats over the ScrollView (position: absolute, sibling of it

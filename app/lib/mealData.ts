@@ -200,6 +200,8 @@ export interface Meal {
   ingredients: IngredientLine[];
   instructions: string[];
   optionalAdditions: OptionalAddition[];
+  // Plain one-line description shown under the fun title.
+  descriptor?: string;
   // Tip shown under the instructions that isn't a step (freezing etc.).
   notes?: string;
   // Only the sub-recipes actually relevant to THIS meal's own

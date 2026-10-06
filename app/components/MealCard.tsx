@@ -65,6 +65,7 @@ export function MealCard({ meal, isSelected, onToggleSelected, locked, dealsExpi
           <View style={styles.mealHeaderRow}>
             <Text style={styles.mealName}>{meal.name}</Text>
           </View>
+          {!!meal.descriptor && <Text style={styles.mealDescriptor}>{meal.descriptor}</Text>}
           {/* Read-only -- MealCard has no auth/subscription context at all
               (it's shared with dev-recipes.tsx, a no-login review screen),
               so actually casting a rating only happens on the recipe page
@@ -229,6 +230,9 @@ const styles = StyleSheet.create({
   mealCardBody: { padding: 14, gap: 10 },
   mealHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   mealName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', flex: 1, marginRight: 8 },
+  // Pulled up under the title (mealCardBody's gap is 10) so the two read
+  // as one heading block.
+  mealDescriptor: { fontSize: 14, color: '#555', marginTop: -6 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   ratingText: { fontSize: 12, color: '#888', marginLeft: 4 },
   priceNutritionRow: {
