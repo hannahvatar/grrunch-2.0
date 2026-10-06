@@ -252,7 +252,7 @@ export function AnimatedSplashScreen({ onDone }: { onDone: () => void }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -40, paddingHorizontal: 40 },
-  textBlock: { marginTop: 34, alignItems: 'center', gap: 14 },
+  textBlock: { marginTop: 34, alignItems: 'center', gap: 4 },
   wordmark: {
     fontSize: 40,
     fontWeight: '800',
