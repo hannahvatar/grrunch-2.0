@@ -255,10 +255,12 @@ export function selectVisibleDeals(
   isSubscribed: boolean,
   freeLimit: number
 ): { visibleDeals: Deal[]; lockedDealCount: number } {
-  if (isSubscribed) {
-    return { visibleDeals: categoryDeals, lockedDealCount: 0 };
-  }
+  // Best value first for everyone (Anabelle, 2026-10-06), so the deal at
+  // the top of each category is the one a non-member gets to see.
   const sorted = [...categoryDeals].sort(bySavingsDesc);
+  if (isSubscribed) {
+    return { visibleDeals: sorted, lockedDealCount: 0 };
+  }
   const visibleDeals = sorted.slice(0, freeLimit);
   return {
     visibleDeals,

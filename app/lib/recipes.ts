@@ -221,6 +221,7 @@ function mapRowToMeal(
     avg_rating: number | null;
     rating_count: number;
     featured: boolean | null;
+    free_preview?: boolean | null;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -274,6 +275,7 @@ function mapRowToMeal(
     avgRating: row.avg_rating,
     ratingCount: row.rating_count,
     featured: row.featured ?? false,
+    freePreview: row.free_preview ?? false,
   };
 }
 
@@ -302,7 +304,7 @@ export async function fetchAllRecipes(week: RecipeWeek = 'live'): Promise<Meal[]
   return (data ?? []).map((row) =>
     mapRowToMeal(
       week === 'next'
-        ? { ...row, deal_tags: row.draft_deal_tags, price: row.draft_price, featured: row.featured_next }
+        ? { ...row, deal_tags: row.draft_deal_tags, price: row.draft_price, featured: row.featured_next, free_preview: row.free_preview_next }
         : row,
       statcanPrices,
       producePrices,
@@ -327,7 +329,7 @@ export async function fetchRecipeById(id: string, week: RecipeWeek = 'live'): Pr
   if (!data) return null;
   const row =
     week === 'next'
-      ? { ...data, deal_tags: data.draft_deal_tags, price: data.draft_price, featured: data.featured_next }
+      ? { ...data, deal_tags: data.draft_deal_tags, price: data.draft_price, featured: data.featured_next, free_preview: data.free_preview_next }
       : data;
   return mapRowToMeal(row, statcanPrices, producePrices, staplePrices, subRecipes);
 }

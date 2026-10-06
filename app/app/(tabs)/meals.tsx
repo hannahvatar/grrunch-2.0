@@ -20,8 +20,10 @@ import { useSubscription } from '../../lib/subscription';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// Free tier sees only the first 3 meal recommendations -- Grrunch Plus
-// (30-day free trial, then $5.99/mo) unlocks the rest. A single "Unlock N
+// Free tier sees only 3 meal recommendations -- the ones Anabelle picks
+// each week in dev-recipes (meal.freePreview, 20261006040000), or the
+// first 3 if none are picked. Grrunch Plus (30-day free trial, then
+// $5.99/mo) unlocks the rest. A single "Unlock N
 // more recipes" tile stands in for however many are left, naming the real
 // count rather than a generic upsell.
 const FREE_MEAL_LIMIT = 3;
@@ -124,7 +126,10 @@ export default function MealsScreen() {
     allMeals.map((meal) => applyStoreFilter(meal, hiddenChains)),
     sortMode
   );
-  const visibleMeals = isSubscribed ? sortedMeals : sortedMeals.slice(0, FREE_MEAL_LIMIT);
+  const pickedMeals = sortedMeals.filter((meal) => meal.freePreview);
+  const visibleMeals = isSubscribed
+    ? sortedMeals
+    : (pickedMeals.length > 0 ? pickedMeals : sortedMeals).slice(0, FREE_MEAL_LIMIT);
   const lockedMealCount = sortedMeals.length - visibleMeals.length;
 
   if (weekClosed) {

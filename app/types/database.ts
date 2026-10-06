@@ -306,6 +306,8 @@ export type Database = {
           draft_price: number | null
           featured: boolean
           featured_next: boolean
+          free_preview: boolean
+          free_preview_next: boolean
           id: string
           ingredients: Json
           instructions: Json
@@ -330,6 +332,8 @@ export type Database = {
           draft_price?: number | null
           featured?: boolean
           featured_next?: boolean
+          free_preview?: boolean
+          free_preview_next?: boolean
           id?: string
           ingredients: Json
           instructions: Json
@@ -354,6 +358,8 @@ export type Database = {
           draft_price?: number | null
           featured?: boolean
           featured_next?: boolean
+          free_preview?: boolean
+          free_preview_next?: boolean
           id?: string
           ingredients?: Json
           instructions?: Json
