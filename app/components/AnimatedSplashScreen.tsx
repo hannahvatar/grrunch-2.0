@@ -233,7 +233,7 @@ export function AnimatedSplashScreen({ onDone }: { onDone: () => void }) {
           <View style={styles.textBlock}>
             <Animated.Text style={[styles.wordmark, { opacity: wordOpacity, transform: [{ translateY: wordY }] }]}>GRRUNCH</Animated.Text>
             <Animated.Text style={[styles.tagline, { opacity: taglineOpacity, transform: [{ translateY: taglineY }] }]}>
-              Hang tight, we’re turning your deals into delicious meals
+              Bites into grocery prices
             </Animated.Text>
           </View>
         </View>
