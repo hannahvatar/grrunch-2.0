@@ -1,0 +1,3527 @@
+[
+ {
+  "recipe": "Basic, But Make It Lasagna",
+  "ingredients": [
+   {
+    "ingredient": "Ground beef",
+    "match_tags": [
+     "ground beef",
+     "lean ground beef",
+     "medium ground beef",
+     "extra lean ground beef",
+     "regular ground beef"
+    ]
+   },
+   {
+    "ingredient": "Oven-ready lasagna noodles",
+    "match_tags": [
+     "lasagna noodles"
+    ]
+   },
+   {
+    "ingredient": "NO NAME® Pasta Sauce, Tomato Sauce or Tomato Paste",
+    "match_tags": [
+     "pasta sauce",
+     "tomato sauce"
+    ]
+   },
+   {
+    "ingredient": "Ricotta cheese",
+    "match_tags": [
+     "ricotta"
+    ]
+   },
+   {
+    "ingredient": "Mozzarella cheese",
+    "match_tags": [
+     "mozzarella"
+    ]
+   },
+   {
+    "ingredient": "Onion",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Cooking oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Italian seasoning",
+    "match_tags": [
+     "italian seasoning"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "BBQ Ribs ’n’ Cauli Nuggets",
+  "ingredients": [
+   {
+    "ingredient": "Swiss Chalet fully cooked pork back ribs",
+    "match_tags": [
+     "cooked ribs",
+     "pork back ribs"
+    ]
+   },
+   {
+    "ingredient": "CAULIFLOWER",
+    "match_tags": [
+     "cauliflower"
+    ]
+   },
+   {
+    "ingredient": "Flour",
+    "match_tags": [
+     "flour"
+    ]
+   },
+   {
+    "ingredient": "Breadcrumbs",
+    "match_tags": [
+     "breadcrumbs"
+    ]
+   },
+   {
+    "ingredient": "Garlic powder",
+    "match_tags": [
+     "garlic powder"
+    ]
+   },
+   {
+    "ingredient": "Smoked paprika",
+    "match_tags": [
+     "smoked paprika",
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Sea salt",
+    "match_tags": [
+     "salt"
+    ]
+   },
+   {
+    "ingredient": "Ground black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Eggs",
+    "match_tags": [
+     "eggs"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Berry Good Watermelon Salad",
+  "ingredients": [
+   {
+    "ingredient": "Seedless watermelon",
+    "match_tags": [
+     "watermelon"
+    ]
+   },
+   {
+    "ingredient": "Blueberries",
+    "match_tags": [
+     "blueberries"
+    ]
+   },
+   {
+    "ingredient": "Bunched Spinach",
+    "match_tags": [
+     "spinach"
+    ]
+   },
+   {
+    "ingredient": "Feta cheese",
+    "match_tags": [
+     "feta"
+    ]
+   },
+   {
+    "ingredient": "Red onions",
+    "match_tags": [
+     "red onions"
+    ]
+   },
+   {
+    "ingredient": "Mint",
+    "match_tags": [
+     "mint"
+    ]
+   },
+   {
+    "ingredient": "Pistachios",
+    "match_tags": [
+     "pistachios"
+    ]
+   },
+   {
+    "ingredient": "PC Splendido Sliced Meats",
+    "match_tags": [
+     "sliced deli meat",
+     "prosciutto"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Lime juice",
+    "match_tags": [
+     "lime juice",
+     "limes"
+    ]
+   },
+   {
+    "ingredient": "Honey",
+    "match_tags": [
+     "honey"
+    ]
+   },
+   {
+    "ingredient": "Dijon mustard",
+    "match_tags": [
+     "dijon mustard"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Boursin-Me-Up Chicken & Mushroom Rice",
+  "ingredients": [
+   {
+    "ingredient": "Prime raised without antibiotics boneless skinless chicken breasts",
+    "match_tags": [
+     "chicken breasts",
+     "boneless skinless chicken breasts"
+    ]
+   },
+   {
+    "ingredient": "PC® WHOLE CREMINI or WHITE MUSHROOMS, 454 G",
+    "match_tags": [
+     "whole cremini",
+     "cremini mushrooms",
+     "white mushrooms",
+     "mushrooms"
+    ]
+   },
+   {
+    "ingredient": "Boursin cheese",
+    "match_tags": [
+     "boursin cheese",
+     "boursin"
+    ]
+   },
+   {
+    "ingredient": "Rice",
+    "match_tags": [
+     "rice"
+    ]
+   },
+   {
+    "ingredient": "Onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Breakfast for Dinner — Eggy Croissant",
+  "ingredients": [
+   {
+    "ingredient": "Croissants",
+    "match_tags": [
+     "croissants"
+    ]
+   },
+   {
+    "ingredient": "COMPLIMENTS Large Omega-3 Eggs",
+    "match_tags": [
+     "eggs"
+    ]
+   },
+   {
+    "ingredient": "Cheddar cheese",
+    "match_tags": [
+     "cheddar"
+    ]
+   },
+   {
+    "ingredient": "Salted or Unsalted Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Breakfast for Dinner — Froot Loops French Toasts",
+  "ingredients": [
+   {
+    "ingredient": "White bread",
+    "match_tags": [
+     "white bread",
+     "bread"
+    ]
+   },
+   {
+    "ingredient": "Eggs",
+    "match_tags": [
+     "eggs"
+    ]
+   },
+   {
+    "ingredient": "Milk",
+    "match_tags": [
+     "milk"
+    ]
+   },
+   {
+    "ingredient": "Froot Loops cereal",
+    "match_tags": [
+     "froot loops",
+     "cereal"
+    ]
+   },
+   {
+    "ingredient": "Vanilla extract",
+    "match_tags": [
+     "vanilla extract"
+    ]
+   },
+   {
+    "ingredient": "Ground cinnamon",
+    "match_tags": [
+     "cinnamon"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "0% Greek yogurt",
+    "match_tags": [
+     "greek yogurt",
+     "yogurt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Catch of the Tray",
+  "ingredients": [
+   {
+    "ingredient": "Dressed Tilapia",
+    "match_tags": [
+     "tilapia"
+    ]
+   },
+   {
+    "ingredient": "Potatoes",
+    "match_tags": [
+     "potatoes"
+    ]
+   },
+   {
+    "ingredient": "Carrots",
+    "match_tags": [
+     "carrots"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Lemon",
+    "match_tags": [
+     "lemons"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Paprika",
+    "match_tags": [
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Cauli Mac & Cheese, Please",
+  "ingredients": [
+   {
+    "ingredient": "Italpasta elbow pasta",
+    "match_tags": [
+     "macaroni",
+     "pasta"
+    ]
+   },
+   {
+    "ingredient": "Cauliflower",
+    "match_tags": [
+     "cauliflower"
+    ]
+   },
+   {
+    "ingredient": "Bacon",
+    "match_tags": [
+     "bacon"
+    ]
+   },
+   {
+    "ingredient": "Evaporated milk",
+    "match_tags": [
+     "evaporated milk"
+    ]
+   },
+   {
+    "ingredient": "Cheese slices",
+    "match_tags": [
+     "cheese slices"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Dijon mustard",
+    "match_tags": [
+     "dijon mustard"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Cheesy Whizzy Spaghetti",
+  "ingredients": [
+   {
+    "ingredient": "Spaghetti",
+    "match_tags": [
+     "spaghetti",
+     "pasta"
+    ]
+   },
+   {
+    "ingredient": "Cheez Whiz",
+    "match_tags": [
+     "cheez whiz"
+    ]
+   },
+   {
+    "ingredient": "Milk",
+    "match_tags": [
+     "milk"
+    ]
+   },
+   {
+    "ingredient": "Unsalted Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Chicken, Beans & Corny Things",
+  "ingredients": [
+   {
+    "ingredient": "Prime raised without antibiotics boneless skinless chicken breasts",
+    "match_tags": [
+     "chicken breasts",
+     "boneless skinless chicken breasts"
+    ]
+   },
+   {
+    "ingredient": "Heinz beans",
+    "match_tags": [
+     "baked beans"
+    ]
+   },
+   {
+    "ingredient": "Sweet Corn",
+    "match_tags": [
+     "corn",
+     "sweet corn",
+     "canned corn",
+     "frozen corn"
+    ]
+   },
+   {
+    "ingredient": "Kale",
+    "match_tags": [
+     "kale"
+    ]
+   },
+   {
+    "ingredient": "Rice",
+    "match_tags": [
+     "rice"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Smoked paprika",
+    "match_tags": [
+     "smoked paprika",
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Chili powder",
+    "match_tags": [
+     "chili powder"
+    ]
+   },
+   {
+    "ingredient": "Ground cumin",
+    "match_tags": [
+     "cumin"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Coconut About Basa & Eggplant",
+  "ingredients": [
+   {
+    "ingredient": "Basa Steaks",
+    "match_tags": [
+     "basa steaks",
+     "basa"
+    ]
+   },
+   {
+    "ingredient": "Coconut milk",
+    "match_tags": [
+     "coconut milk"
+    ]
+   },
+   {
+    "ingredient": "Eggplant",
+    "match_tags": [
+     "eggplant"
+    ]
+   },
+   {
+    "ingredient": "Yellow onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Red curry paste",
+    "match_tags": [
+     "red curry paste",
+     "curry paste"
+    ]
+   },
+   {
+    "ingredient": "Fish sauce",
+    "match_tags": [
+     "fish sauce"
+    ]
+   },
+   {
+    "ingredient": "Brown sugar",
+    "match_tags": [
+     "brown sugar"
+    ]
+   },
+   {
+    "ingredient": "Canola oil",
+    "match_tags": [
+     "canola oil",
+     "vegetable oil"
+    ]
+   },
+   {
+    "ingredient": "Basmati rice",
+    "match_tags": [
+     "basmati rice",
+     "rice"
+    ]
+   },
+   {
+    "ingredient": "Cilantro",
+    "match_tags": [
+     "cilantro"
+    ]
+   },
+   {
+    "ingredient": "Limes",
+    "match_tags": [
+     "limes"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Cold Cuts, Hot Pizza",
+  "ingredients": [
+   {
+    "ingredient": "Western Family Pizza Crust Mix",
+    "match_tags": [
+     "pizza crust mix",
+     "pizza crust"
+    ]
+   },
+   {
+    "ingredient": "Dijon mustard",
+    "match_tags": [
+     "dijon mustard"
+    ]
+   },
+   {
+    "ingredient": "Western Family Pizza Sauce",
+    "match_tags": [
+     "pizza sauce"
+    ]
+   },
+   {
+    "ingredient": "Monsieur Gustav Gouda or Cheddar",
+    "match_tags": [
+     "gouda",
+     "cheddar"
+    ]
+   },
+   {
+    "ingredient": "Maple Leaf Natural Selections Sliced Meats",
+    "match_tags": [
+     "sliced deli meat",
+     "smoked ham"
+    ]
+   },
+   {
+    "ingredient": "Onion",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Cottage Pie, Meet Rutabaga",
+  "ingredients": [
+   {
+    "ingredient": "Ground beef",
+    "match_tags": [
+     "ground beef",
+     "lean ground beef",
+     "medium ground beef",
+     "extra lean ground beef",
+     "regular ground beef"
+    ]
+   },
+   {
+    "ingredient": "Yellow onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Carrots",
+    "match_tags": [
+     "carrots"
+    ]
+   },
+   {
+    "ingredient": "Celery",
+    "match_tags": [
+     "celery"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Tomato paste",
+    "match_tags": [
+     "tomato paste"
+    ]
+   },
+   {
+    "ingredient": "All-purpose flour",
+    "match_tags": [
+     "flour",
+     "all-purpose flour"
+    ]
+   },
+   {
+    "ingredient": "Beef broth",
+    "match_tags": [
+     "beef broth",
+     "broth"
+    ]
+   },
+   {
+    "ingredient": "Worcestershire sauce",
+    "match_tags": [
+     "worcestershire sauce"
+    ]
+   },
+   {
+    "ingredient": "Potatoes",
+    "match_tags": [
+     "potatoes"
+    ]
+   },
+   {
+    "ingredient": "Rutabaga",
+    "match_tags": [
+     "rutabaga"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Milk",
+    "match_tags": [
+     "milk"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Crack a Tin — Sardine Spaghetti",
+  "ingredients": [
+   {
+    "ingredient": "Grace sardines in tomato sauce",
+    "match_tags": [
+     "sardines in tomato sauce",
+     "sardines"
+    ]
+   },
+   {
+    "ingredient": "Spaghetti",
+    "match_tags": [
+     "spaghetti",
+     "pasta"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Chili flakes",
+    "match_tags": [
+     "chili flakes"
+    ]
+   },
+   {
+    "ingredient": "Bunched Spinach",
+    "match_tags": [
+     "spinach"
+    ]
+   },
+   {
+    "ingredient": "Parsley",
+    "match_tags": [
+     "parsley"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Curry Up Coconut Chicken",
+  "ingredients": [
+   {
+    "ingredient": "Split Chicken Breast",
+    "match_tags": [
+     "split chicken breasts",
+     "chicken breasts"
+    ]
+   },
+   {
+    "ingredient": "Aroy-D Coconut Milk",
+    "match_tags": [
+     "coconut milk"
+    ]
+   },
+   {
+    "ingredient": "Onion",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Rooster Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Fresh ginger",
+    "match_tags": [
+     "ginger"
+    ]
+   },
+   {
+    "ingredient": "Curry powder",
+    "match_tags": [
+     "curry powder"
+    ]
+   },
+   {
+    "ingredient": "Cooking oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Lime",
+    "match_tags": [
+     "limes"
+    ]
+   },
+   {
+    "ingredient": "Cilantro",
+    "match_tags": [
+     "cilantro"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Curry Up, It's Vegan!",
+  "ingredients": [
+   {
+    "ingredient": "Rooster Tofu",
+    "match_tags": [
+     "firm tofu"
+    ]
+   },
+   {
+    "ingredient": "Rooster Coconut Milk",
+    "match_tags": [
+     "coconut milk"
+    ]
+   },
+   {
+    "ingredient": "Coloured Peppers",
+    "match_tags": [
+     "sweet peppers",
+     "bell peppers",
+     "coloured peppers"
+    ]
+   },
+   {
+    "ingredient": "Cilantro",
+    "match_tags": [
+     "cilantro"
+    ]
+   },
+   {
+    "ingredient": "Chickpeas",
+    "match_tags": [
+     "canned chickpeas",
+     "chickpeas"
+    ]
+   },
+   {
+    "ingredient": "Onion",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Fresh ginger",
+    "match_tags": [
+     "ginger"
+    ]
+   },
+   {
+    "ingredient": "Curry powder",
+    "match_tags": [
+     "curry powder"
+    ]
+   },
+   {
+    "ingredient": "Ground cumin",
+    "match_tags": [
+     "cumin"
+    ]
+   },
+   {
+    "ingredient": "Turmeric",
+    "match_tags": [
+     "turmeric"
+    ]
+   },
+   {
+    "ingredient": "Cooking oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Rice",
+    "match_tags": [
+     "rice"
+    ]
+   },
+   {
+    "ingredient": "Lime",
+    "match_tags": [
+     "limes"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Eggplant Got Beef",
+  "ingredients": [
+   {
+    "ingredient": "Chinese Eggplant",
+    "match_tags": [
+     "eggplant"
+    ]
+   },
+   {
+    "ingredient": "Ground beef",
+    "match_tags": [
+     "ground beef",
+     "lean ground beef",
+     "medium ground beef",
+     "extra lean ground beef",
+     "regular ground beef"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Ginger",
+    "match_tags": [
+     "ginger"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Sesame oil",
+    "match_tags": [
+     "sesame oil"
+    ]
+   },
+   {
+    "ingredient": "Cornstarch",
+    "match_tags": [
+     "cornstarch"
+    ]
+   },
+   {
+    "ingredient": "Brown sugar",
+    "match_tags": [
+     "brown sugar"
+    ]
+   },
+   {
+    "ingredient": "Rice",
+    "match_tags": [
+     "rice"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Fast Food Fakeout — Big Mac Combo",
+  "ingredients": [
+   {
+    "ingredient": "Compliments Burgers & More beef patties",
+    "match_tags": [
+     "beef patties",
+     "burgers",
+     "ground beef",
+     "lean ground beef",
+     "medium ground beef",
+     "extra lean ground beef",
+     "regular ground beef"
+    ]
+   },
+   {
+    "ingredient": "McCain Superfries or Specialty Fries or Pockets",
+    "match_tags": [
+     "frozen fries",
+     "fries"
+    ]
+   },
+   {
+    "ingredient": "Hamburger buns",
+    "match_tags": [
+     "hamburger buns"
+    ]
+   },
+   {
+    "ingredient": "Kraft Singles",
+    "match_tags": [
+     "cheese slices"
+    ]
+   },
+   {
+    "ingredient": "Lettuce",
+    "match_tags": [
+     "lettuce"
+    ]
+   },
+   {
+    "ingredient": "Onion",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Pickles",
+    "match_tags": [
+     "pickles"
+    ]
+   },
+   {
+    "ingredient": "Mayonnaise",
+    "match_tags": [
+     "mayonnaise"
+    ]
+   },
+   {
+    "ingredient": "Ketchup",
+    "match_tags": [
+     "ketchup"
+    ]
+   },
+   {
+    "ingredient": "Relish",
+    "match_tags": [
+     "relish"
+    ]
+   },
+   {
+    "ingredient": "White vinegar",
+    "match_tags": [
+     "white vinegar"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Fish Sticks & Chill",
+  "ingredients": [
+   {
+    "ingredient": "High Liner Family Fish",
+    "match_tags": [
+     "fish sticks",
+     "breaded fish"
+    ]
+   },
+   {
+    "ingredient": "Cavendish Farms Classic Fries",
+    "match_tags": [
+     "frozen fries",
+     "fries"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Lemon",
+    "match_tags": [
+     "lemons"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Fry Me a Sandwich",
+  "ingredients": [
+   {
+    "ingredient": "McCain Superfries or Specialty Fries or Pockets",
+    "match_tags": [
+     "frozen fries",
+     "fries"
+    ]
+   },
+   {
+    "ingredient": "your favourite sandwich bread",
+    "match_tags": [
+     "sliced bread",
+     "bread"
+    ]
+   },
+   {
+    "ingredient": "shredded cheddar",
+    "match_tags": [
+     "shredded cheese",
+     "cheddar"
+    ]
+   },
+   {
+    "ingredient": "Plain Greek yogurt (2%)",
+    "match_tags": [
+     "greek yogurt",
+     "yogurt"
+    ]
+   },
+   {
+    "ingredient": "Ketchup",
+    "match_tags": [
+     "ketchup"
+    ]
+   },
+   {
+    "ingredient": "Dijon mustard",
+    "match_tags": [
+     "dijon mustard"
+    ]
+   },
+   {
+    "ingredient": "Relish",
+    "match_tags": [
+     "relish"
+    ]
+   },
+   {
+    "ingredient": "Smoked paprika",
+    "match_tags": [
+     "smoked paprika",
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Garlic powder",
+    "match_tags": [
+     "garlic powder"
+    ]
+   },
+   {
+    "ingredient": "shredded green cabbage or lettuce",
+    "match_tags": [
+     "green cabbage",
+     "coleslaw mix",
+     "lettuce"
+    ]
+   },
+   {
+    "ingredient": "White vinegar",
+    "match_tags": [
+     "white vinegar"
+    ]
+   },
+   {
+    "ingredient": "Salt and black pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Honey Garlic Chicken Noodle Toss",
+  "ingredients": [
+   {
+    "ingredient": "Prime raised without antibiotics boneless skinless chicken breasts",
+    "match_tags": [
+     "chicken breasts",
+     "boneless skinless chicken breasts"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Honey",
+    "match_tags": [
+     "honey"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Broccoli Crown",
+    "match_tags": [
+     "broccoli"
+    ]
+   },
+   {
+    "ingredient": "Rice noodles",
+    "match_tags": [
+     "rice noodles"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Honey, I Glazed the Chicken",
+  "ingredients": [
+   {
+    "ingredient": "Compliments Fresh Air-Chilled Drumsticks",
+    "match_tags": [
+     "chicken drumsticks"
+    ]
+   },
+   {
+    "ingredient": "Honey",
+    "match_tags": [
+     "honey"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Ketchup",
+    "match_tags": [
+     "ketchup"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Cooking oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Smoked paprika",
+    "match_tags": [
+     "smoked paprika",
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   },
+   {
+    "ingredient": "Broccoli Crown",
+    "match_tags": [
+     "broccoli"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Lemon",
+    "match_tags": [
+     "lemons"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Hot Dog Hash",
+  "ingredients": [
+   {
+    "ingredient": "Schneiders Original Recipe wieners",
+    "match_tags": [
+     "wieners",
+     "hot dogs",
+     "sausages"
+    ]
+   },
+   {
+    "ingredient": "Potatoes (preferably Yukon Gold)",
+    "match_tags": [
+     "yukon gold potatoes",
+     "potatoes"
+    ]
+   },
+   {
+    "ingredient": "Onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Instant Noodles Forever — The Pork One",
+  "ingredients": [
+   {
+    "ingredient": "Instant ramen noodles (85g each, with seasoning packet)",
+    "match_tags": [
+     "instant noodles",
+     "ramen"
+    ]
+   },
+   {
+    "ingredient": "Pork belly",
+    "match_tags": [
+     "pork belly"
+    ]
+   },
+   {
+    "ingredient": "Water",
+    "match_tags": []
+   },
+   {
+    "ingredient": "Eggs",
+    "match_tags": [
+     "eggs"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Fresh ginger",
+    "match_tags": [
+     "ginger"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Sesame oil",
+    "match_tags": [
+     "sesame oil"
+    ]
+   },
+   {
+    "ingredient": "Chili flakes",
+    "match_tags": [
+     "chili flakes"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Jamaican Patty with Mango Salsa & Caramelized Plantain",
+  "ingredients": [
+   {
+    "ingredient": "Patty King Jamaican beef patties",
+    "match_tags": [
+     "jamaican patties"
+    ]
+   },
+   {
+    "ingredient": "Plantains",
+    "match_tags": [
+     "plantains"
+    ]
+   },
+   {
+    "ingredient": "Mango",
+    "match_tags": [
+     "mangoes"
+    ]
+   },
+   {
+    "ingredient": "Black beans",
+    "match_tags": [
+     "black beans",
+     "canned black beans"
+    ]
+   },
+   {
+    "ingredient": "Lime",
+    "match_tags": [
+     "limes"
+    ]
+   },
+   {
+    "ingredient": "Red onion",
+    "match_tags": [
+     "red onions"
+    ]
+   },
+   {
+    "ingredient": "Cilantro",
+    "match_tags": [
+     "cilantro"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Chili flakes or cayenne",
+    "match_tags": [
+     "chili flakes",
+     "cayenne"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "K-Pogo (TikTok Korean Corn Dog)",
+  "ingredients": [
+   {
+    "ingredient": "Pogo Original 20-pack",
+    "match_tags": [
+     "corn dogs",
+     "pogo"
+    ]
+   },
+   {
+    "ingredient": "Eggs",
+    "match_tags": [
+     "eggs"
+    ]
+   },
+   {
+    "ingredient": "Panko breadcrumbs",
+    "match_tags": [
+     "panko",
+     "breadcrumbs"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil for deep-frying",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Nacho cheese sauce",
+    "match_tags": [
+     "nacho cheese sauce"
+    ]
+   },
+   {
+    "ingredient": "Lay's Ketchup Chips",
+    "match_tags": [
+     "chips"
+    ]
+   },
+   {
+    "ingredient": "Ketchup",
+    "match_tags": [
+     "ketchup"
+    ]
+   },
+   {
+    "ingredient": "Mustard",
+    "match_tags": [
+     "mustard"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Kielbasa Gone Krauty",
+  "ingredients": [
+   {
+    "ingredient": "Polish smoked kielbasa",
+    "match_tags": [
+     "kielbasa"
+    ]
+   },
+   {
+    "ingredient": "Sauerkraut",
+    "match_tags": [
+     "sauerkraut"
+    ]
+   },
+   {
+    "ingredient": "Yellow onion",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Bay leaves",
+    "match_tags": [
+     "bay leaves"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Water",
+    "match_tags": []
+   }
+  ]
+ },
+ {
+  "recipe": "Kraft Dinner alla Carbonara",
+  "ingredients": [
+   {
+    "ingredient": "Kraft Dinner",
+    "match_tags": [
+     "kraft dinner",
+     "macaroni and cheese",
+     "mac and cheese"
+    ]
+   },
+   {
+    "ingredient": "Turkey bacon",
+    "match_tags": [
+     "turkey bacon"
+    ],
+    "fallback_tags": [
+     "bacon",
+     "cooked bacon",
+     "pre-cooked bacon"
+    ]
+   },
+   {
+    "ingredient": "Egg yolks",
+    "match_tags": [
+     "eggs"
+    ]
+   },
+   {
+    "ingredient": "Grated parmesan",
+    "match_tags": [
+     "parmesan"
+    ]
+   },
+   {
+    "ingredient": "Milk",
+    "match_tags": [
+     "milk"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Frozen peas",
+    "match_tags": [
+     "frozen peas",
+     "peas",
+     "canned peas"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Kraft Singles Mac ’n’ Mingle",
+  "ingredients": [
+   {
+    "ingredient": "Pasta",
+    "match_tags": [
+     "pasta"
+    ]
+   },
+   {
+    "ingredient": "Kraft Singles",
+    "match_tags": [
+     "cheese slices"
+    ]
+   },
+   {
+    "ingredient": "Cheddar",
+    "match_tags": [
+     "cheddar"
+    ]
+   },
+   {
+    "ingredient": "Turkey bacon",
+    "match_tags": [
+     "turkey bacon"
+    ],
+    "fallback_tags": [
+     "bacon",
+     "cooked bacon",
+     "pre-cooked bacon"
+    ]
+   },
+   {
+    "ingredient": "Milk",
+    "match_tags": [
+     "milk"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Flour",
+    "match_tags": [
+     "flour"
+    ]
+   },
+   {
+    "ingredient": "Dijon mustard",
+    "match_tags": [
+     "dijon mustard"
+    ]
+   },
+   {
+    "ingredient": "Garlic powder",
+    "match_tags": [
+     "garlic powder"
+    ]
+   },
+   {
+    "ingredient": "Onion powder",
+    "match_tags": [
+     "onion powder"
+    ]
+   },
+   {
+    "ingredient": "Smoked paprika",
+    "match_tags": [
+     "smoked paprika",
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Panko breadcrumbs",
+    "match_tags": [
+     "panko",
+     "breadcrumbs"
+    ]
+   },
+   {
+    "ingredient": "Grated parmesan",
+    "match_tags": [
+     "parmesan"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Lamb Sweet Tagine",
+  "ingredients": [
+   {
+    "ingredient": "Short Cut Lamb Leg",
+    "match_tags": [
+     "short cut lamb leg",
+     "lamb leg"
+    ]
+   },
+   {
+    "ingredient": "Yellow onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Fresh ginger",
+    "match_tags": [
+     "ginger"
+    ]
+   },
+   {
+    "ingredient": "Ground cumin",
+    "match_tags": [
+     "cumin"
+    ]
+   },
+   {
+    "ingredient": "Paprika",
+    "match_tags": [
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Ground cinnamon",
+    "match_tags": [
+     "cinnamon"
+    ]
+   },
+   {
+    "ingredient": "Canned diced tomatoes",
+    "match_tags": [
+     "canned tomatoes",
+     "diced tomatoes"
+    ]
+   },
+   {
+    "ingredient": "Water",
+    "match_tags": []
+   },
+   {
+    "ingredient": "Honey",
+    "match_tags": [
+     "honey"
+    ]
+   },
+   {
+    "ingredient": "Bulk sweet potatoes",
+    "match_tags": [
+     "sweet potatoes"
+    ]
+   },
+   {
+    "ingredient": "Carrots",
+    "match_tags": [
+     "carrots"
+    ]
+   },
+   {
+    "ingredient": "Canned chickpeas",
+    "match_tags": [
+     "canned chickpeas",
+     "chickpeas"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Napolitan (Japanese Ketchup Spaghetti) ナポリタン",
+  "ingredients": [
+   {
+    "ingredient": "Spaghetti",
+    "match_tags": [
+     "spaghetti",
+     "pasta"
+    ]
+   },
+   {
+    "ingredient": "Wiener sausages",
+    "match_tags": [
+     "wieners",
+     "hot dogs",
+     "sausages"
+    ]
+   },
+   {
+    "ingredient": "Onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Green bell peppers",
+    "match_tags": [
+     "green peppers",
+     "bell peppers"
+    ]
+   },
+   {
+    "ingredient": "Button mushrooms",
+    "match_tags": [
+     "white mushrooms",
+     "mushrooms"
+    ]
+   },
+   {
+    "ingredient": "Ketchup",
+    "match_tags": [
+     "ketchup"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Sugar",
+    "match_tags": [
+     "sugar"
+    ]
+   },
+   {
+    "ingredient": "Milk",
+    "match_tags": [
+     "milk"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Grated parmesan",
+    "match_tags": [
+     "parmesan"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Pizza à la Caesar",
+  "ingredients": [
+   {
+    "ingredient": "Red Baron Classic or Thin Crust Frozen Pizza",
+    "match_tags": [
+     "frozen pizza",
+     "pizza",
+     "fresh pizza"
+    ]
+   },
+   {
+    "ingredient": "Romaine Lettuce",
+    "match_tags": [
+     "romaine",
+     "lettuce"
+    ]
+   },
+   {
+    "ingredient": "Croutons",
+    "match_tags": [
+     "croutons"
+    ]
+   },
+   {
+    "ingredient": "Grated Parmesan",
+    "match_tags": [
+     "parmesan"
+    ]
+   },
+   {
+    "ingredient": "Caesar Dressing",
+    "match_tags": [
+     "caesar dressing"
+    ]
+   },
+   {
+    "ingredient": "Bacon Bits",
+    "match_tags": [
+     "bacon bits",
+     "bacon"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Pizza Party Pasta",
+  "ingredients": [
+   {
+    "ingredient": "PC Splendido Sliced Meats Club Pack Roma Pepperoni",
+    "match_tags": [
+     "pepperoni"
+    ]
+   },
+   {
+    "ingredient": "Pasta (rotini or penne)",
+    "match_tags": [
+     "rotini",
+     "penne",
+     "pasta"
+    ]
+   },
+   {
+    "ingredient": "Pizza sauce (homemade)",
+    "match_tags": [
+     "pizza sauce"
+    ]
+   },
+   {
+    "ingredient": "Mozzarella cheese",
+    "match_tags": [
+     "mozzarella"
+    ]
+   },
+   {
+    "ingredient": "Onion",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Sweet or Bell Peppers",
+    "match_tags": [
+     "sweet peppers",
+     "bell peppers",
+     "coloured peppers"
+    ]
+   },
+   {
+    "ingredient": "PC Whole Cremini or White Mushrooms",
+    "match_tags": [
+     "whole cremini",
+     "cremini mushrooms",
+     "white mushrooms",
+     "mushrooms"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Pork Yeah! Noodle Bowl",
+  "ingredients": [
+   {
+    "ingredient": "Ground Pork",
+    "match_tags": [
+     "ground pork",
+     "lean ground pork",
+     "medium ground pork",
+     "extra lean ground pork",
+     "regular ground pork"
+    ]
+   },
+   {
+    "ingredient": "Green Cabbage",
+    "match_tags": [
+     "green cabbage"
+    ]
+   },
+   {
+    "ingredient": "Rice noodles",
+    "match_tags": [
+     "rice noodles"
+    ]
+   },
+   {
+    "ingredient": "Carrots",
+    "match_tags": [
+     "carrots"
+    ]
+   },
+   {
+    "ingredient": "Yellow onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Ginger",
+    "match_tags": [
+     "ginger"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Hoisin sauce",
+    "match_tags": [
+     "hoisin sauce"
+    ]
+   },
+   {
+    "ingredient": "Canola oil",
+    "match_tags": [
+     "canola oil",
+     "vegetable oil"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Porktoberfest",
+  "ingredients": [
+   {
+    "ingredient": "Pork Half Loin",
+    "match_tags": [
+     "pork half loin",
+     "pork loin"
+    ]
+   },
+   {
+    "ingredient": "Butternut Squash",
+    "match_tags": [
+     "butternut squash",
+     "squash"
+    ]
+   },
+   {
+    "ingredient": "Royal Gala Apples",
+    "match_tags": [
+     "gala apples",
+     "apples"
+    ]
+   },
+   {
+    "ingredient": "Yellow onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Maple syrup",
+    "match_tags": [
+     "maple syrup"
+    ]
+   },
+   {
+    "ingredient": "Dried rosemary",
+    "match_tags": [
+     "rosemary"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Potato, Bacon, Cheese, Repeat",
+  "ingredients": [
+   {
+    "ingredient": "Russet potatoes",
+    "match_tags": [
+     "russet potatoes",
+     "potatoes"
+    ]
+   },
+   {
+    "ingredient": "Canadian Butcher Bacon",
+    "match_tags": [
+     "bacon"
+    ]
+   },
+   {
+    "ingredient": "Monsieur Gustav Cheddar",
+    "match_tags": [
+     "cheddar"
+    ]
+   },
+   {
+    "ingredient": "Yellow onion",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Compliments Sour Cream",
+    "match_tags": [
+     "sour cream"
+    ],
+    "fallback_tags": [
+     "plain yogurt"
+    ]
+   },
+   {
+    "ingredient": "Chives",
+    "match_tags": [
+     "chives"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   },
+   {
+    "ingredient": "Garlic powder",
+    "match_tags": [
+     "garlic powder"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Salmon Says Fettuccine",
+  "ingredients": [
+   {
+    "ingredient": "Marinated Fresh Atlantic Salmon Fillets",
+    "match_tags": [
+     "salmon fillets",
+     "salmon"
+    ]
+   },
+   {
+    "ingredient": "Bunched Spinach",
+    "match_tags": [
+     "spinach"
+    ]
+   },
+   {
+    "ingredient": "Fettuccine or linguine",
+    "match_tags": [
+     "fettuccine",
+     "linguine",
+     "pasta"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Cooking cream",
+    "match_tags": [
+     "cooking cream",
+     "cream"
+    ]
+   },
+   {
+    "ingredient": "Grated Parmesan",
+    "match_tags": [
+     "parmesan"
+    ]
+   },
+   {
+    "ingredient": "Lemon",
+    "match_tags": [
+     "lemons"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Samosa Chaat",
+  "ingredients": [
+   {
+    "ingredient": "PRAN Frozen Samosas",
+    "match_tags": [
+     "samosas"
+    ]
+   },
+   {
+    "ingredient": "Greek yogurt",
+    "match_tags": [
+     "greek yogurt",
+     "yogurt"
+    ]
+   },
+   {
+    "ingredient": "Cucumbers",
+    "match_tags": [
+     "cucumber"
+    ]
+   },
+   {
+    "ingredient": "Beefsteak Tomatoes",
+    "match_tags": [
+     "beefsteak tomatoes",
+     "tomatoes"
+    ]
+   },
+   {
+    "ingredient": "Red onion",
+    "match_tags": [
+     "red onions"
+    ]
+   },
+   {
+    "ingredient": "Tamarind chutney",
+    "match_tags": [
+     "tamarind chutney"
+    ]
+   },
+   {
+    "ingredient": "Ground cumin",
+    "match_tags": [
+     "cumin"
+    ]
+   },
+   {
+    "ingredient": "Chili powder",
+    "match_tags": [
+     "chili powder"
+    ]
+   },
+   {
+    "ingredient": "Cilantro",
+    "match_tags": [
+     "cilantro"
+    ]
+   },
+   {
+    "ingredient": "Lime",
+    "match_tags": [
+     "limes"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Sizzling Pork Skewers",
+  "ingredients": [
+   {
+    "ingredient": "Marcangelo fresh pork kabobs",
+    "match_tags": [
+     "pork kabobs",
+     "pork souvlaki"
+    ]
+   },
+   {
+    "ingredient": "GREEN, GREY OR YELLOW ZUCCHINI",
+    "match_tags": [
+     "green zucchini",
+     "zucchini"
+    ]
+   },
+   {
+    "ingredient": "Rice",
+    "match_tags": [
+     "rice"
+    ]
+   },
+   {
+    "ingredient": "Onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Smoking Hot Sweet Potato & Kale Skillet",
+  "ingredients": [
+   {
+    "ingredient": "Great Value smoked sausages",
+    "match_tags": [
+     "smoked sausages",
+     "sausages"
+    ]
+   },
+   {
+    "ingredient": "KALE",
+    "match_tags": [
+     "kale"
+    ]
+   },
+   {
+    "ingredient": "Sweet potatoes",
+    "match_tags": [
+     "sweet potatoes"
+    ]
+   },
+   {
+    "ingredient": "Onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Souvlaki Street Bowl with a Kick",
+  "ingredients": [
+   {
+    "ingredient": "Marcangelo Chicken Breast Souvlaki kabobs",
+    "match_tags": [
+     "chicken souvlaki",
+     "chicken kabobs"
+    ]
+   },
+   {
+    "ingredient": "Rice",
+    "match_tags": [
+     "rice"
+    ]
+   },
+   {
+    "ingredient": "NO NAME® NATURALLY IMPERFECT™ SWEET PEPPERS, 2.5 LB",
+    "match_tags": [
+     "sweet peppers",
+     "bell peppers",
+     "coloured peppers"
+    ]
+   },
+   {
+    "ingredient": "Onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Feta cheese",
+    "match_tags": [
+     "feta"
+    ]
+   },
+   {
+    "ingredient": "Lemon",
+    "match_tags": [
+     "lemons"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Squash the Hunger Chili",
+  "ingredients": [
+   {
+    "ingredient": "Ground Beef",
+    "match_tags": [
+     "ground beef",
+     "lean ground beef",
+     "medium ground beef",
+     "extra lean ground beef",
+     "regular ground beef"
+    ]
+   },
+   {
+    "ingredient": "Red Kidney Beans",
+    "match_tags": [
+     "red kidney beans",
+     "kidney beans",
+     "canned kidney beans",
+     "canned red kidney beans"
+    ]
+   },
+   {
+    "ingredient": "Buttercup Squash",
+    "match_tags": [
+     "buttercup squash",
+     "squash"
+    ]
+   },
+   {
+    "ingredient": "Yellow onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Canned diced tomatoes",
+    "match_tags": [
+     "canned tomatoes",
+     "diced tomatoes"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Chili powder",
+    "match_tags": [
+     "chili powder"
+    ]
+   },
+   {
+    "ingredient": "Ground cumin",
+    "match_tags": [
+     "cumin"
+    ]
+   },
+   {
+    "ingredient": "Canola oil",
+    "match_tags": [
+     "canola oil",
+     "vegetable oil"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Sticky Chicken, Crisp Apple",
+  "ingredients": [
+   {
+    "ingredient": "Chicken Drumsticks",
+    "match_tags": [
+     "chicken drumsticks"
+    ]
+   },
+   {
+    "ingredient": "Honey",
+    "match_tags": [
+     "honey"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Red Cabbage",
+    "match_tags": [
+     "red cabbage"
+    ]
+   },
+   {
+    "ingredient": "Gala Apples",
+    "match_tags": [
+     "gala apples",
+     "apples"
+    ]
+   },
+   {
+    "ingredient": "Apple cider vinegar",
+    "match_tags": [
+     "apple cider vinegar"
+    ]
+   },
+   {
+    "ingredient": "Canola oil",
+    "match_tags": [
+     "canola oil",
+     "vegetable oil"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Sunday Roast With the Most",
+  "ingredients": [
+   {
+    "ingredient": "Only Goodness Whole Fryer Chicken",
+    "match_tags": [
+     "whole chicken"
+    ]
+   },
+   {
+    "ingredient": "Little Potato Co. Charmers Potatoes",
+    "match_tags": [
+     "baby potatoes",
+     "potatoes"
+    ]
+   },
+   {
+    "ingredient": "Green Beans",
+    "match_tags": [
+     "green beans"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Smoked paprika",
+    "match_tags": [
+     "smoked paprika",
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Sundubu Jjigae (Spicy Soft Tofu Stew)",
+  "ingredients": [
+   {
+    "ingredient": "Smooth Tofu",
+    "match_tags": [
+     "smooth tofu",
+     "soft tofu"
+    ]
+   },
+   {
+    "ingredient": "Pork Belly",
+    "match_tags": [
+     "pork belly"
+    ]
+   },
+   {
+    "ingredient": "Green Zucchini",
+    "match_tags": [
+     "green zucchini",
+     "zucchini"
+    ]
+   },
+   {
+    "ingredient": "White mushrooms",
+    "match_tags": [
+     "white mushrooms",
+     "mushrooms"
+    ]
+   },
+   {
+    "ingredient": "Yellow onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Gochugaru (Korean chili flakes)",
+    "match_tags": [
+     "gochugaru",
+     "chili flakes"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Fish sauce",
+    "match_tags": [
+     "fish sauce"
+    ]
+   },
+   {
+    "ingredient": "Chicken broth",
+    "match_tags": [
+     "chicken broth",
+     "broth"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   },
+   {
+    "ingredient": "Canola oil",
+    "match_tags": [
+     "canola oil",
+     "vegetable oil"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Taco Tuesday, Every Day",
+  "ingredients": [
+   {
+    "ingredient": "Ground beef",
+    "match_tags": [
+     "ground beef",
+     "lean ground beef",
+     "medium ground beef",
+     "extra lean ground beef",
+     "regular ground beef"
+    ]
+   },
+   {
+    "ingredient": "Black beans",
+    "match_tags": [
+     "black beans",
+     "canned black beans"
+    ]
+   },
+   {
+    "ingredient": "Compliments Sour Cream",
+    "match_tags": [
+     "sour cream"
+    ],
+    "fallback_tags": [
+     "plain yogurt"
+    ]
+   },
+   {
+    "ingredient": "Monsieur Gustav Cheddar",
+    "match_tags": [
+     "cheddar"
+    ]
+   },
+   {
+    "ingredient": "Beefsteak Tomatoes",
+    "match_tags": [
+     "beefsteak tomatoes",
+     "tomatoes"
+    ]
+   },
+   {
+    "ingredient": "Iceberg or Living Lettuce",
+    "match_tags": [
+     "iceberg lettuce",
+     "lettuce"
+    ]
+   },
+   {
+    "ingredient": "Taco shells",
+    "match_tags": [
+     "taco shells"
+    ]
+   },
+   {
+    "ingredient": "Taco seasoning mix",
+    "match_tags": [
+     "taco seasoning"
+    ]
+   },
+   {
+    "ingredient": "Lime",
+    "match_tags": [
+     "limes"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Thanks, It’s Turkey",
+  "ingredients": [
+   {
+    "ingredient": "Whole turkey",
+    "match_tags": [
+     "whole turkey",
+     "turkey"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Dried rosemary",
+    "match_tags": [
+     "rosemary"
+    ]
+   },
+   {
+    "ingredient": "Yellow onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Celery",
+    "match_tags": [
+     "celery"
+    ]
+   },
+   {
+    "ingredient": "Potatoes",
+    "match_tags": [
+     "potatoes"
+    ]
+   },
+   {
+    "ingredient": "Milk",
+    "match_tags": [
+     "milk"
+    ]
+   },
+   {
+    "ingredient": "Carrots",
+    "match_tags": [
+     "carrots"
+    ]
+   },
+   {
+    "ingredient": "Brussels Sprouts",
+    "match_tags": [
+     "brussels sprouts"
+    ]
+   },
+   {
+    "ingredient": "Gravy mix",
+    "match_tags": [
+     "gravy mix",
+     "gravy"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Salt",
+    "match_tags": [
+     "salt"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "The Great Pepper Roast",
+  "ingredients": [
+   {
+    "ingredient": "Sweet peppers",
+    "match_tags": [
+     "sweet peppers",
+     "bell peppers",
+     "coloured peppers"
+    ]
+   },
+   {
+    "ingredient": "White kidney beans",
+    "match_tags": [
+     "white kidney beans",
+     "cannellini beans",
+     "canned white kidney beans",
+     "canned cannellini beans"
+    ]
+   },
+   {
+    "ingredient": "Onions",
+    "match_tags": [
+     "yellow onions",
+     "onions"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Potatoes",
+    "match_tags": [
+     "potatoes"
+    ]
+   },
+   {
+    "ingredient": "Chicken broth",
+    "match_tags": [
+     "chicken broth",
+     "broth"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Smoked paprika",
+    "match_tags": [
+     "smoked paprika",
+     "paprika"
+    ]
+   },
+   {
+    "ingredient": "Ground cumin",
+    "match_tags": [
+     "cumin"
+    ]
+   },
+   {
+    "ingredient": "Greek yogurt",
+    "match_tags": [
+     "greek yogurt",
+     "yogurt"
+    ]
+   },
+   {
+    "ingredient": "Heavy cream",
+    "match_tags": [
+     "heavy cream",
+     "whipping cream"
+    ]
+   },
+   {
+    "ingredient": "Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Red wine vinegar",
+    "match_tags": [
+     "red wine vinegar"
+    ]
+   },
+   {
+    "ingredient": "Salt and pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "TikTok Baked Feta Pasta (with a tofu twist)",
+  "ingredients": [
+   {
+    "ingredient": "Feta cheese",
+    "match_tags": [
+     "feta"
+    ]
+   },
+   {
+    "ingredient": "Firm tofu, pressed",
+    "match_tags": [
+     "firm tofu",
+     "tofu"
+    ]
+   },
+   {
+    "ingredient": "Cherry tomatoes",
+    "match_tags": [
+     "cherry tomatoes"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Chili flakes",
+    "match_tags": [
+     "chili flakes"
+    ]
+   },
+   {
+    "ingredient": "Pasta (penne or rigatoni)",
+    "match_tags": [
+     "penne",
+     "rigatoni",
+     "pasta"
+    ]
+   },
+   {
+    "ingredient": "Olive oil",
+    "match_tags": [
+     "olive oil"
+    ]
+   },
+   {
+    "ingredient": "Fresh basil",
+    "match_tags": [
+     "basil"
+    ]
+   },
+   {
+    "ingredient": "Salt and black pepper",
+    "match_tags": [
+     "salt",
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Tomato Soup & Grilled Cheese Remix",
+  "ingredients": [
+   {
+    "ingredient": "Sandwich bread",
+    "match_tags": [
+     "sliced bread",
+     "bread"
+    ]
+   },
+   {
+    "ingredient": "Monsieur Gustav Cheddar",
+    "match_tags": [
+     "cheddar"
+    ]
+   },
+   {
+    "ingredient": "Condensed tomato soup",
+    "match_tags": [
+     "tomato soup"
+    ]
+   },
+   {
+    "ingredient": "Eggs",
+    "match_tags": [
+     "eggs"
+    ]
+   },
+   {
+    "ingredient": "Milk",
+    "match_tags": [
+     "milk"
+    ]
+   },
+   {
+    "ingredient": "Unsalted Butter",
+    "match_tags": [
+     "butter"
+    ]
+   },
+   {
+    "ingredient": "Garlic powder",
+    "match_tags": [
+     "garlic powder"
+    ]
+   },
+   {
+    "ingredient": "Black pepper",
+    "match_tags": [
+     "black pepper"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Vermicelli Gets a Spring Roll",
+  "ingredients": [
+   {
+    "ingredient": "Wong Wing vegetable spring rolls",
+    "match_tags": [
+     "spring rolls"
+    ]
+   },
+   {
+    "ingredient": "Rice vermicelli noodles",
+    "match_tags": [
+     "rice vermicelli",
+     "rice noodles"
+    ]
+   },
+   {
+    "ingredient": "Carrot",
+    "match_tags": [
+     "carrots"
+    ]
+   },
+   {
+    "ingredient": "Cucumbers",
+    "match_tags": [
+     "cucumber"
+    ]
+   },
+   {
+    "ingredient": "Green onions",
+    "match_tags": [
+     "green onions"
+    ]
+   },
+   {
+    "ingredient": "Cilantro",
+    "match_tags": [
+     "cilantro"
+    ]
+   },
+   {
+    "ingredient": "Peanuts",
+    "match_tags": [
+     "peanuts"
+    ]
+   },
+   {
+    "ingredient": "Frozen edamame",
+    "match_tags": [
+     "edamame",
+     "frozen edamame",
+     "fresh edamame"
+    ]
+   },
+   {
+    "ingredient": "Lime",
+    "match_tags": [
+     "limes"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Rice vinegar",
+    "match_tags": [
+     "rice vinegar"
+    ]
+   },
+   {
+    "ingredient": "Brown sugar",
+    "match_tags": [
+     "brown sugar"
+    ]
+   },
+   {
+    "ingredient": "Sesame oil",
+    "match_tags": [
+     "sesame oil"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Chili flakes",
+    "match_tags": [
+     "chili flakes"
+    ]
+   }
+  ]
+ },
+ {
+  "recipe": "Wok This Way Hoisin Pork",
+  "ingredients": [
+   {
+    "ingredient": "Pork Stir Fry",
+    "match_tags": [
+     "pork stir fry",
+     "pork tenderloin",
+     "pork shoulder",
+     "pork butt"
+    ]
+   },
+   {
+    "ingredient": "Tilda Basmati Rice",
+    "match_tags": [
+     "basmati rice",
+     "rice"
+    ]
+   },
+   {
+    "ingredient": "Lee Kum Kee Hoisin Sauce",
+    "match_tags": [
+     "hoisin sauce"
+    ]
+   },
+   {
+    "ingredient": "Soy sauce",
+    "match_tags": [
+     "soy sauce"
+    ]
+   },
+   {
+    "ingredient": "Garlic",
+    "match_tags": [
+     "garlic"
+    ]
+   },
+   {
+    "ingredient": "Fresh ginger",
+    "match_tags": [
+     "ginger"
+    ]
+   },
+   {
+    "ingredient": "Green Onions",
+    "match_tags": [
+     "green onions"
+    ]
+   },
+   {
+    "ingredient": "Vegetable oil",
+    "match_tags": [
+     "vegetable oil",
+     "canola oil"
+    ]
+   }
+  ]
+ }
+]
