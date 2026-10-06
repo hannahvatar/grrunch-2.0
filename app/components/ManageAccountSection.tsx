@@ -201,14 +201,6 @@ function ManageAccountForm({
     onSaved?.();
   }
 
-  function handleSignOut() {
-    supabase.auth.signOut();
-    // mode:'signin' -- someone who just signed out already has an
-    // account, so /login's headline should read as "sign back in," not
-    // "create a free account."
-    router.replace({ pathname: '/login', params: { mode: 'signin' } });
-  }
-
   async function confirmDeleteAccount() {
     setDeleting(true);
     setDeleteError(null);
@@ -331,9 +323,6 @@ function ManageAccountForm({
 
       <Text style={styles.subheading}>Security</Text>
       <Text style={styles.securityText}>Signed in with {providerLabel(provider)}</Text>
-      <Pressable style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutButtonText}>Sign out</Text>
-      </Pressable>
       {deleteError && <Text style={styles.errorText}>{deleteError}</Text>}
       {/* Real destructive button (Anabelle, 2026-09-15) -- was an
           underlined text link, same white-fill/2px-ERROR-border/pill
@@ -460,23 +449,13 @@ const styles = StyleSheet.create({
   saveButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   divider: { height: 1, backgroundColor: '#111', marginVertical: 20 },
   securityText: { fontSize: 14, color: INK, marginBottom: 14 },
-  signOutButton: {
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: INK,
-    borderRadius: 24,
-  },
-  signOutButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Real destructive button (Anabelle, 2026-09-15) -- was a plain
-  // underlined text link. Same white-fill/pill shape as signOutButton
-  // above, ERROR instead of INK for the border/text -- same
+  // underlined text link. Same white-fill/pill shape as Profile's Sign
+  // out button, ERROR instead of INK for the border/text -- same
   // secondary-destructive convention as MembershipStatus.tsx's own
   // cancelTrialButton.
   deleteButton: {
-    marginTop: 18,
+    marginTop: 4,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',

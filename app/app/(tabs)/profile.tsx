@@ -15,6 +15,7 @@ import { MembershipStatus } from '../../components/MembershipStatus';
 import { NotificationsSection } from '../../components/NotificationsSection';
 import { StoreSelectorModal } from '../../components/StoreSelectorModal';
 import { useAuth } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
 import { type SelectedStore, useSelectedStores } from '../../lib/selectedStores';
 import { useSubscription } from '../../lib/subscription';
 
@@ -108,6 +109,14 @@ export default function ProfileScreen() {
   const [storesOpen, setStoresOpen] = useState(false);
   const [manageAccountOpen, setManageAccountOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  function handleSignOut() {
+    supabase.auth.signOut();
+    // mode:'signin' -- someone who just signed out already has an
+    // account, so /login's headline should read as "sign back in," not
+    // "create a free account."
+    router.replace({ pathname: '/login', params: { mode: 'signin' } });
+  }
 
   return (
     <View style={styles.gradient}>
@@ -274,6 +283,12 @@ export default function ProfileScreen() {
               used standalone) -- this whole section is already hidden
               for a guest by the wrapping !isGuest above. */}
           {notificationsOpen && <NotificationsSection />}
+          <View style={styles.sectionDivider} />
+          {/* Top level, very bottom of Profile (Anabelle, 2026-10-06) --
+              was buried inside Manage account's Security block. */}
+          <Pressable style={styles.signOutButton} onPress={handleSignOut}>
+            <Text style={styles.signOutButtonText}>Sign out</Text>
+          </Pressable>
         </>
       )}
     </ScrollView>
@@ -309,6 +324,17 @@ const styles = StyleSheet.create({
   // own heading below it.
   container: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 24, gap: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  signOutButton: {
+    marginTop: 12,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 24,
+  },
+  signOutButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Same tertiary treatment as IngredientRow's editButton / GroceryListView's
   // resetAllButton (white fill, 1.5px INK border) -- Anabelle's call, was a
   // bare icon with just hitSlop before. Ellipse (Anabelle's follow-up call,
