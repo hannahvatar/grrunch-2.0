@@ -263,8 +263,8 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 19,
-    fontWeight: '700',
-    fontFamily: 'OpenSans_700Bold',
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
     color: BODY_TEXT,
     textAlign: 'center',
     lineHeight: 27.5,
