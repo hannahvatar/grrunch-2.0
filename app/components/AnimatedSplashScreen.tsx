@@ -20,7 +20,9 @@ const INK = '#1A1208';
 const BODY_TEXT = '#4A3A26';
 const DOT_IDLE = 'rgba(26,18,8,0.16)';
 
-const MIN_DISPLAY_MS = 1600; // one full mascot pop + a couple of dot cycles
+// 2200 (was 1600, Anabelle 2026-10-06): the tagline is fully in at
+// ~850ms, so 1600 left it readable for barely 0.75s.
+const MIN_DISPLAY_MS = 2200;
 const POP_MS = 950;
 const SPIN_MS = 7000;
 const DOT_CYCLE_MS = 1350;
@@ -250,7 +252,7 @@ export function AnimatedSplashScreen({ onDone }: { onDone: () => void }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -40, paddingHorizontal: 40 },
-  textBlock: { marginTop: 34, alignItems: 'center', gap: 14 },
+  textBlock: { marginTop: 34, alignItems: 'center', gap: 4 },
   wordmark: {
     fontSize: 40,
     fontWeight: '800',
