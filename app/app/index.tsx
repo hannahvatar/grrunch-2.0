@@ -23,7 +23,7 @@ const SLIDES = [
   },
   {
     headline: 'Let the deals decide dinner',
-    body: "We turn the week's best deals into affordable recipes and your meal plan.",
+    body: "We turn this week's best deals into affordable and delicious meals.",
   },
   {
     headline: 'Member prices count, too',
