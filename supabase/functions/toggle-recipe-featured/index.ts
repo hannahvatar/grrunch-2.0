@@ -16,8 +16,10 @@
 // not touching pricing, financial, or user data.
 //
 // Client contract:
-//   POST { recipe_id: string (uuid), featured: boolean }
-//   -> 200 { id: string, featured: boolean }
+//   POST { recipe_id: string (uuid), featured: boolean, week?, field? }
+//   -> 200 { id, featured, featured_next, free_preview, free_preview_next }
+// field 'free_preview' (default 'featured') toggles which recipes
+// non-members see on Meals (20261006040000) -- same live/next split.
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
@@ -27,9 +29,9 @@ interface Database {
   public: {
     Tables: {
       recipes: {
-        Row: { id: string; featured: boolean; featured_next: boolean };
+        Row: { id: string; featured: boolean; featured_next: boolean; free_preview: boolean; free_preview_next: boolean };
         Insert: never;
-        Update: { featured?: boolean; featured_next?: boolean };
+        Update: { featured?: boolean; featured_next?: boolean; free_preview?: boolean; free_preview_next?: boolean };
         Relationships: [];
       };
     };
@@ -47,6 +49,8 @@ interface RequestBody {
   // 'next' toggles recipes.featured_next -- the set being built for the
   // draft week, which publish_week() makes live (20260918 weekly publish).
   week?: unknown;
+  // 'featured' (default) or 'free_preview'.
+  field?: unknown;
 }
 
 function validationError(message: string) {
@@ -62,7 +66,7 @@ export default {
       return validationError("Request body must be valid JSON.");
     }
 
-    const { recipe_id, featured, week = "live" } = body;
+    const { recipe_id, featured, week = "live", field = "featured" } = body;
 
     if (typeof recipe_id !== "string" || recipe_id.length === 0) {
       return validationError("recipe_id is required.");
@@ -73,14 +77,20 @@ export default {
     if (week !== "live" && week !== "next") {
       return validationError("week must be 'live' or 'next'.");
     }
+    if (field !== "featured" && field !== "free_preview") {
+      return validationError("field must be 'featured' or 'free_preview'.");
+    }
+    const patch = field === "free_preview"
+      ? (week === "next" ? { free_preview_next: featured } : { free_preview: featured })
+      : (week === "next" ? { featured_next: featured } : { featured });
 
     // ctx.supabaseAdmin bypasses RLS -- see the header comment above for
     // why that's needed here.
     const { data: updated, error } = await ctx.supabaseAdmin
       .from("recipes")
-      .update(week === "next" ? { featured_next: featured } : { featured })
+      .update(patch)
       .eq("id", recipe_id)
-      .select("id, featured, featured_next")
+      .select("id, featured, featured_next, free_preview, free_preview_next")
       .single();
 
     if (error) {

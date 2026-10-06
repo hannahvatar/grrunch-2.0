@@ -220,4 +220,7 @@ export interface Meal {
   // (intended: 12 recipes). Meals tab filters on this now, not
   // dealTags.length > 0 -- see 20260911020000_recipes_featured_flag.sql.
   featured: boolean;
+  // One of the (up to 3) recipes non-members see on Meals, picked by hand
+  // in dev-recipes (20261006040000_recipe_free_preview.sql).
+  freePreview: boolean;
 }

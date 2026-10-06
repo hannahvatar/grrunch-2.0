@@ -72,15 +72,20 @@ export default function DevRecipesScreen() {
   // recipes has no client-writable RLS policy, same reasoning as every
   // other dev-screen write in this project). Reverts on failure so the
   // UI never quietly drifts from the real row.
-  async function handleToggleFeatured(meal: Meal) {
-    const nextFeatured = !meal.featured;
-    setMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, featured: nextFeatured } : m)));
+  //
+  // field 'freePreview' (Anabelle, 2026-10-06): the "Free" pill -- picks
+  // the up-to-3 recipes non-members see on Meals that week.
+  async function handleToggleFeatured(meal: Meal, field: 'featured' | 'freePreview' = 'featured') {
+    const nextFeatured = !meal[field];
+    setMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, [field]: nextFeatured } : m)));
     setTogglingIds((prev) => new Set(prev).add(meal.id));
     const { data, error: invokeError } = await supabase.functions.invoke<{
       id?: string;
       featured?: boolean;
       error?: string;
-    }>('toggle-recipe-featured', { body: { recipe_id: meal.id, featured: nextFeatured, week } });
+    }>('toggle-recipe-featured', {
+      body: { recipe_id: meal.id, featured: nextFeatured, week, field: field === 'freePreview' ? 'free_preview' : 'featured' },
+    });
     setTogglingIds((prev) => {
       const next = new Set(prev);
       next.delete(meal.id);
@@ -91,7 +96,7 @@ export default function DevRecipesScreen() {
       // dev-deals.tsx's own submit(): supabase-js only populates `data`
       // for a real 2xx response, so a validation error's actual message
       // lives on invokeError's raw Response instead of anywhere obvious.
-      setMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, featured: meal.featured } : m)));
+      setMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, [field]: meal[field] } : m)));
       let message = data?.error ?? invokeError?.message ?? 'Could not save.';
       const context = (invokeError as { context?: Response } | undefined)?.context;
       if (context && typeof context.json === 'function') {
@@ -102,7 +107,7 @@ export default function DevRecipesScreen() {
           // Body wasn't JSON (or already consumed) -- keep the fallback above.
         }
       }
-      Alert.alert('Could not update featured', message);
+      Alert.alert(field === 'freePreview' ? 'Could not update free preview' : 'Could not update featured', message);
     }
   }
 
@@ -166,8 +171,8 @@ export default function DevRecipesScreen() {
         <SegmentedControl wrap options={WEEK_OPTIONS} value={week} onChange={setWeek} />
         <Text style={styles.subtitle}>
           {week === 'next'
-            ? `${meals.filter((m) => m.featured).length} featured for next week · prices from the draft deals · newest first`
-            : `${meals.filter((m) => m.featured).length} featured this week · live prices · newest first`}
+            ? `${meals.filter((m) => m.featured).length} featured for next week · ${meals.filter((m) => m.freePreview).length} of 3 free · prices from the draft deals · newest first`
+            : `${meals.filter((m) => m.featured).length} featured this week · ${meals.filter((m) => m.freePreview).length} of 3 free · live prices · newest first`}
         </Text>
 
         <SegmentedControl
@@ -182,6 +187,7 @@ export default function DevRecipesScreen() {
 
         {sorted.filter((meal) => showAll || meal.featured).map((meal) => (
           <View key={meal.id} style={styles.recipeBlock}>
+            <View style={styles.toggleRow}>
             <Pressable
               style={[styles.featureToggle, meal.featured && styles.featureToggleActive]}
               onPress={() => handleToggleFeatured(meal)}
@@ -204,6 +210,15 @@ export default function DevRecipesScreen() {
                 <StarIcon size={18} color="#888" />
               )}
             </Pressable>
+            <Pressable
+              style={[styles.freeToggle, meal.freePreview && styles.featureToggleActive]}
+              onPress={() => handleToggleFeatured(meal, 'freePreview')}
+              disabled={togglingIds.has(meal.id)}
+              accessibilityLabel={meal.freePreview ? 'Shown to non-members' : 'Show to non-members'}
+            >
+              <Text style={[styles.freeToggleText, meal.freePreview && styles.freeToggleTextActive]}>Free</Text>
+            </Pressable>
+            </View>
             <MealCard
               meal={meal}
               isSelected={selectedIds.has(meal.id)}
@@ -246,4 +261,16 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   featureToggleActive: { backgroundColor: ACCENT, borderColor: INK },
+  toggleRow: { flexDirection: 'row', gap: 8 },
+  freeToggle: {
+    height: 36,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#ccc',
+    borderRadius: 999,
+  },
+  freeToggleText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#888' },
+  freeToggleTextActive: { color: INK },
 });
