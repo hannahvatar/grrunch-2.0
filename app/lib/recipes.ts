@@ -94,7 +94,14 @@ function mapIngredient(
   // nutrition scaling server-side. Checked before dryEquivalent/
   // unitCount since those describe non-deal staple quantities.
   const dealPackage = dealTag
-    ? describeDealPackage(ingredient.quantity, ingredient.unit, ingredient.name, dealTag.priceUnit, dealTag.packageWeightG)
+    ? describeDealPackage(
+        ingredient.quantity,
+        ingredient.unit,
+        ingredient.name,
+        dealTag.priceUnit,
+        dealTag.packageWeightG,
+        dealTag.bundleCount
+      )
     : undefined;
   if (dealPackage) {
     const text = `${dealPackage} ${ingredient.name}`;
