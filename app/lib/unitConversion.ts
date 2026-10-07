@@ -155,6 +155,10 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // oregano's flakes). See the staple_densities table (Supabase) for the
   // server-side twin.
   rosemary: 58,
+  // Ham & Bean Bonanza -- dried thyme leaves, ~1 g/tsp (between
+  // oregano's flakes and rosemary's needles). See the staple_densities
+  // table (Supabase) for the server-side twin.
+  thyme: 45,
   // Basic Beef Lasagna -- same ~33 g/cup figure as oregano above
   // (Italian seasoning is a blend of dried leafy herbs -- oregano,
   // basil, thyme -- not a fine ground spice, so it gets the leafy-herb
