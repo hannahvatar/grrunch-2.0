@@ -544,7 +544,26 @@ export default function RecipeScreen() {
               </View>
               <Text style={styles.optionalHeading}>Leftovers</Text>
             </View>
-            <Text style={styles.optionalText}>{meal.leftovers}</Text>
+            {(() => {
+              // A companion recipe named in the tip ("the Ham Spread
+              // below") becomes the same jump link the Optional card uses.
+              const text = meal.leftovers;
+              const subRecipe = meal.subRecipes.find((sr) =>
+                text.toLowerCase().includes(sr.matchIngredientName.toLowerCase())
+              );
+              const at = subRecipe ? text.toLowerCase().indexOf(subRecipe.matchIngredientName.toLowerCase()) : -1;
+              if (!subRecipe || at < 0) return <Text style={styles.optionalText}>{text}</Text>;
+              const end = at + subRecipe.matchIngredientName.length;
+              return (
+                <Text style={styles.optionalText}>
+                  {text.slice(0, at)}
+                  <Text style={styles.optionalLink} onPress={() => scrollToSubRecipe(subRecipe.title)}>
+                    {text.slice(at, end)}
+                  </Text>
+                  {text.slice(end)}
+                </Text>
+              );
+            })()}
           </View>
         )}
 
