@@ -218,6 +218,7 @@ function mapRowToMeal(
     optional_additions: unknown;
     descriptor?: string | null;
     notes?: string | null;
+    leftovers?: string | null;
     avg_rating: number | null;
     rating_count: number;
     featured: boolean | null;
@@ -261,6 +262,7 @@ function mapRowToMeal(
     optionalAdditions,
     descriptor: row.descriptor ?? undefined,
     notes: row.notes ?? undefined,
+    leftovers: row.leftovers ?? undefined,
     // The sub-recipes this meal's own ingredients name (exact match),
     // its Optional callout prose mentions (substring match), OR that
     // are directly attached via recipe_id (no text mention needed at
