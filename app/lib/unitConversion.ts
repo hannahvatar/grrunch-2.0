@@ -1234,7 +1234,16 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
 // table here.
 const ALWAYS_SHOW_CONTAINER_COUNT: string[] = [
   'aroy-d coconut milk',
+  // Ham & Bean Bonanza -- Anabelle: "Recipe uses 1 package of 900ml".
+  'chicken broth',
 ];
+
+// Package size spelled out after the count for an entry above. Kept out
+// of the recipe's own unit on purpose: "package of 900 mL" there would
+// parse as 900 mL and change the pricing.
+const CONTAINER_SIZE_LABELS: Record<string, string> = {
+  'chicken broth': '900\u00A0mL', // non-breaking space: never wraps between 900 and mL
+};
 
 // English pluralization for a kitchen container word (bunch, pack, box,
 // jar...) -- covers the common patterns (bare +s, +es after
@@ -1350,7 +1359,11 @@ export function describeUseQuantityText(
         const count = Math.round(parseQuantity(quantity) * multiplier);
         const containerWord = (unit ?? '').trim();
         const word = count === 1 ? containerWord : pluralizeContainerWord(containerWord);
-        return `Recipe uses ${count} ${word}`;
+        const size = Object.entries(CONTAINER_SIZE_LABELS).find(([name]) => {
+          const words = normalizeWords(name);
+          return words.length > 0 && words.every((w) => ingWords.includes(w));
+        })?.[1];
+        return size ? `Recipe uses ${count} ${word} of ${size}` : `Recipe uses ${count} ${word}`;
       }
     }
   }
