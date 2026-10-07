@@ -176,6 +176,9 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // fine-ground-spice figure as every other one above. See the
   // staple_densities table (Supabase) for the server-side twin.
   turmeric: 100,
+  // Paneer Pressure -- same ~100 g/cup ground-spice figure. See the
+  // staple_densities table (Supabase) for the server-side twin.
+  'garam masala': 100,
   // CORRECTION to the second-batch comment above: "a liquid condiment
   // priced in mL already bridges with no density entry needed" was
   // wrong. That's true for PRICE (recipe mL vs. reference mL match
