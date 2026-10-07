@@ -208,6 +208,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Coconut About Basa & Eggplant': require('../assets/coconut-about-basa-eggplant.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Ham & Bean Bonanza': require('../assets/ham-and-beans-bonanza.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Mussel Up, Buttercup': require('../assets/mussels-up-buttercup.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
