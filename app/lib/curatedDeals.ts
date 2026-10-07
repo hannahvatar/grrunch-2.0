@@ -32,6 +32,8 @@ export interface Deal {
   // Airtable "Deals" records had it set as of 2026-09-14) -- filterDealsByZone
   // below treats that as "unknown, don't exclude", not "wrong zone".
   zone: string | null;
+  priceUnit?: 'package' | 'each' | 'lb' | 'kg' | '100g';
+  packageWeightG?: number;
 }
 
 const UNCATEGORIZED = 'Other';
@@ -113,8 +115,23 @@ export function formatGreatReferenceValueLabel(discountPct: number): string {
 // Deliberately no "compare:" prefix (Anabelle's call) -- the muted
 // styling and "avg." suffix already read as a reference number, not a
 // store price, without needing to spell that out.
-export function formatComparePriceLabel(originalPrice: number): string {
-  return `$${originalPrice.toFixed(2)} avg.`;
+export function formatComparePriceLabel(originalPrice: number, unitSuffix = ''): string {
+  return `$${originalPrice.toFixed(2)}${unitSuffix} avg.`;
+}
+
+// "/lb" after a price that's still a per-weight rate (loose/bulk, no
+// package weight to turn it into a package price -- see
+// formatDealBadgePrice below), so "$1.97" on a bone-in ham doesn't read
+// as the whole ham's price (Anabelle, 2026-10-07). Empty otherwise.
+export function priceUnitSuffix(
+  priceUnit: 'package' | 'each' | 'lb' | 'kg' | '100g' | undefined,
+  packageWeightG: number | undefined
+): string {
+  if (packageWeightG) return '';
+  if (priceUnit === 'lb') return '/lb';
+  if (priceUnit === 'kg') return '/kg';
+  if (priceUnit === '100g') return '/100\u00A0g';
+  return '';
 }
 
 const GRAMS_PER_PRICE_UNIT: Record<string, number> = { lb: 453.592, kg: 1000, '100g': 100 };
@@ -169,6 +186,8 @@ function mapRowToDeal(row: {
   original_price_source: string;
   used_in_recipe: boolean | null;
   zone: string | null;
+  price_unit?: string | null;
+  package_weight_g?: number | null;
 }): Deal | null {
   if (row.price == null || row.original_price == null) return null;
   return {
@@ -184,6 +203,8 @@ function mapRowToDeal(row: {
     originalPriceSource: row.original_price_source as OriginalPriceSource,
     usedInRecipe: row.used_in_recipe ?? false,
     zone: row.zone,
+    priceUnit: (row.price_unit ?? undefined) as Deal['priceUnit'],
+    packageWeightG: row.package_weight_g ?? undefined,
   };
 }
 

@@ -314,6 +314,7 @@ export type Database = {
           minutes: number | null
           name: string
           leftovers: string | null
+          time_note: string | null
           notes: string | null
           optional_additions: Json
           price: number | null
@@ -341,6 +342,7 @@ export type Database = {
           minutes?: number | null
           name: string
           leftovers?: string | null
+          time_note?: string | null
           notes?: string | null
           optional_additions?: Json
           price?: number | null
@@ -368,6 +370,7 @@ export type Database = {
           minutes?: number | null
           name?: string
           leftovers?: string | null
+          time_note?: string | null
           notes?: string | null
           optional_additions?: Json
           price?: number | null

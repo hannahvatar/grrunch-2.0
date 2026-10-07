@@ -219,6 +219,7 @@ function mapRowToMeal(
     descriptor?: string | null;
     notes?: string | null;
     leftovers?: string | null;
+    time_note?: string | null;
     avg_rating: number | null;
     rating_count: number;
     featured: boolean | null;
@@ -263,6 +264,7 @@ function mapRowToMeal(
     descriptor: row.descriptor ?? undefined,
     notes: row.notes ?? undefined,
     leftovers: row.leftovers ?? undefined,
+    timeNote: row.time_note ?? undefined,
     // The sub-recipes this meal's own ingredients name (exact match),
     // its Optional callout prose mentions (substring match), OR that
     // are directly attached via recipe_id (no text mention needed at

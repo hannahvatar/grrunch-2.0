@@ -15,6 +15,7 @@ import {
   type Deal,
   fetchAllDeals,
   formatComparePriceLabel,
+  priceUnitSuffix,
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
   groupDealsByCategory,
@@ -304,16 +305,20 @@ export default function BestDealsScreen() {
                               <ArrowOutwardIcon size={12} color={deal.productUrl ? INK : '#999'} />
                             </Pressable>
                             <View style={styles.priceRow}>
-                              <Text style={styles.dealPrice}>${deal.price.toFixed(2)}</Text>
+                              <Text style={styles.dealPrice}>
+                                ${deal.price.toFixed(2)}
+                                {priceUnitSuffix(deal.priceUnit, deal.packageWeightG)}
+                              </Text>
                               {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
                                 <Text style={styles.dealOriginalPrice}>
                                   ${deal.originalPrice.toFixed(2)}
+                                  {priceUnitSuffix(deal.priceUnit, deal.packageWeightG)}
                                 </Text>
                               )}
                             </View>
                             {isReferencePriced(deal.originalPriceSource) && (
                               <Text style={styles.dealCompareAnnotation}>
-                                {formatComparePriceLabel(deal.originalPrice)}
+                                {formatComparePriceLabel(deal.originalPrice, priceUnitSuffix(deal.priceUnit, deal.packageWeightG))}
                               </Text>
                             )}
                             {/* Moved off the image overlay (was cramped/

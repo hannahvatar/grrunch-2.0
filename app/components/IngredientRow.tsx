@@ -25,6 +25,7 @@ import { CutoutViewer } from './CutoutViewer';
 import {
   formatComparePriceLabel,
   formatDealBadgePrice,
+  priceUnitSuffix,
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
   isGreatReferenceValue,
@@ -394,6 +395,7 @@ export function IngredientRow({
           <Text style={styles.itemPriceValue}>
             {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}$
             {formatDealBadgePrice(dealTag.rawPrice ?? dealTag.price, dealTag.priceUnit, dealTag.packageWeightG).toFixed(2)}
+              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)}
           </Text>
           {dealTag.originalPrice != null &&
             dealTag.originalPrice > dealTag.price &&
@@ -405,6 +407,7 @@ export function IngredientRow({
                   dealTag.priceUnit,
                   dealTag.packageWeightG
                 ).toFixed(2)}
+                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)}
               </Text>
             )}
         </View>
@@ -415,7 +418,8 @@ export function IngredientRow({
       {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
         <Text style={styles.itemPriceEstimated}>
           {formatComparePriceLabel(
-            formatDealBadgePrice(dealTag.rawOriginalPrice ?? dealTag.originalPrice, dealTag.priceUnit, dealTag.packageWeightG)
+            formatDealBadgePrice(dealTag.rawOriginalPrice ?? dealTag.originalPrice, dealTag.priceUnit, dealTag.packageWeightG),
+            priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)
           )}
         </Text>
       )}
@@ -457,6 +461,7 @@ export function IngredientRow({
             <Text style={styles.itemPriceValue}>
               {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}$
               {formatDealBadgePrice(dealTag.rawPrice ?? dealTag.price, dealTag.priceUnit, dealTag.packageWeightG).toFixed(2)}
+              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)}
             </Text>
           )}
           {dealTag?.originalPrice != null &&
@@ -469,12 +474,14 @@ export function IngredientRow({
                   dealTag.priceUnit,
                   dealTag.packageWeightG
                 ).toFixed(2)}
+                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)}
               </Text>
             )}
           {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
             <Text style={styles.itemPriceEstimated}>
               {formatComparePriceLabel(
-                formatDealBadgePrice(dealTag.rawOriginalPrice ?? dealTag.originalPrice, dealTag.priceUnit, dealTag.packageWeightG)
+                formatDealBadgePrice(dealTag.rawOriginalPrice ?? dealTag.originalPrice, dealTag.priceUnit, dealTag.packageWeightG),
+                priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)
               )}
             </Text>
           )}
