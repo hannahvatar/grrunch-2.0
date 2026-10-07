@@ -213,7 +213,9 @@ export default function RecipeScreen() {
           {!!meal.descriptor && <Text style={styles.descriptor}>{meal.descriptor}</Text>}
           <View style={styles.subtitleRow}>
             <ClockIcon size={13} color={INK} />
-            <Text style={styles.subtitle}>{meal.minutes} min</Text>
+            <Text style={styles.subtitle}>
+              {meal.minutes} min{meal.timeNote ? `, ${meal.timeNote}` : ''}
+            </Text>
           </View>
           {/* Anyone sees the average; only a subscriber's tap actually
               rates (RecipeRating routes anyone else to /upgrade instead

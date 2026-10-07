@@ -206,6 +206,8 @@ export interface Meal {
   notes?: string;
   // What to do with a big pack's leftovers (20261007030000).
   leftovers?: string;
+  // Time not counted in `minutes`, shown after it ("plus soaking").
+  timeNote?: string;
   // Only the sub-recipes actually relevant to THIS meal's own
   // ingredients (cross-referenced by name in lib/recipes.ts) -- not
   // every sub-recipe in the shared table.
