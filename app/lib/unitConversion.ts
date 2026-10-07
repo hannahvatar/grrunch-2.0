@@ -1517,9 +1517,26 @@ export function portionCost(
   quantity: string | undefined,
   unit: string | undefined,
   ingredientName: string,
-  deal: { price?: number; fragmentByWeight?: boolean; packageWeightG?: number; packageVolumeMl?: number; bundleCount?: number },
+  deal: {
+    price?: number;
+    fragmentByWeight?: boolean;
+    packageWeightG?: number;
+    packageVolumeMl?: number;
+    bundleCount?: number;
+    priceUnit?: string;
+  },
   multiplier = 1
 ): number | undefined {
+  // A deal priced by weight with no package size (e.g. bone-in ham at
+  // $1.97/lb): the database already stores its tag price as what this
+  // recipe's weight costs (compute_deal_tag_pricing -- 1.2 lb -> $2.39),
+  // so that's the portion cost as-is, scaled with the servings
+  // (Anabelle, 2026-10-07: the ham line had no "about $X.XX").
+  if (deal.price != null && !deal.packageWeightG && (deal.priceUnit === 'lb' || deal.priceUnit === 'kg' || deal.priceUnit === '100g')) {
+    const byWeight = parseUnitAmount(quantity, unit);
+    if (Number.isNaN(byWeight.amount) || byWeight.baseUnit !== 'g') return undefined;
+    return Math.round(deal.price * multiplier * 100) / 100;
+  }
   if (!deal.fragmentByWeight || deal.price == null) return undefined;
   const ua = parseUnitAmount(quantity, unit);
   if (Number.isNaN(ua.amount)) return undefined;
