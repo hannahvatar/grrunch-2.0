@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BuildingStorefrontIcon, ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ArrowPathIcon, BuildingStorefrontIcon, ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
@@ -532,6 +532,22 @@ export default function RecipeScreen() {
           </View>
         )}
 
+        {/* What to do with what's left of a big pack (Anabelle, 2026-10-07:
+            "I dont like when there is an ingredient with a lot of
+            leftover"). Its own card, so it reads as a tip for later rather
+            than part of tonight's recipe. */}
+        {!!meal.leftovers && (
+          <View style={styles.leftoversCard}>
+            <View style={styles.leftoversHeadingRow}>
+              <View style={styles.leftoversIcon}>
+                <ArrowPathIcon size={16} color={INK} strokeWidth={2} />
+              </View>
+              <Text style={styles.optionalHeading}>Leftovers</Text>
+            </View>
+            <Text style={styles.optionalText}>{meal.leftovers}</Text>
+          </View>
+        )}
+
         {/* Standalone prep techniques linked from an ingredient above
             (see the "pork belly" example this was built for) -- one
             section per relevant sub-recipe, at the very bottom of the
@@ -806,6 +822,27 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   optionalHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  // Leftovers card: white fill, the same orange outline as Note/Optional
+  // with a heavier 2px bottom edge (Anabelle, 2026-10-07), and a round
+  // ACCENT icon badge by the heading.
+  leftoversCard: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderBottomWidth: 2,
+    borderColor: '#FF7A2A',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 16,
+  },
+  leftoversHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  leftoversIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   optionalHeading: {
     fontSize: 13,
     fontWeight: '800',
