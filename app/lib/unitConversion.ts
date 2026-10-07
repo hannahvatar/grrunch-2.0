@@ -955,14 +955,24 @@ export function describeDealPackage(
   recipeUnit: string | undefined,
   ingredientName?: string,
   priceUnit?: string,
-  packageWeightG?: number
+  packageWeightG?: number,
+  bundleCount?: number
 ): string | undefined {
   const ua = parseUnitAmount(recipeQuantity, recipeUnit);
   if (Number.isNaN(ua.amount)) return undefined;
   // Priced by weight, so there's no "package": a bare count of the items
   // ("2" Royal Gala Apples), or "1" for one piece (a pork loin).
   if (ua.baseUnit === 'g' && priceUnit && BY_WEIGHT_PRICE_UNITS.includes(priceUnit)) {
-    return String(Math.max(1, Math.ceil(describedItemCount(recipeUnit) ?? 1)));
+    const count = describedItemCount(recipeUnit) ?? 1;
+    // Cloves are bought as whole heads (~10 cloves each): "about 4
+    // cloves" is 1 head, not 4 (Anabelle, 2026-10-07).
+    if (/\bcloves?\b/i.test(recipeUnit ?? '')) return String(Math.max(1, Math.ceil(count / 10)));
+    return String(Math.max(1, Math.ceil(count)));
+  }
+  // A multi-pack (naan 15-pack, 2-for cans): how many packs to buy.
+  if (ua.baseUnit === 'each' && bundleCount && ua.amount >= 1) {
+    const packs = Math.ceil(ua.amount / bundleCount - 1e-9);
+    return packs === 1 ? '1 package' : `${packs} packages`;
   }
   // More than one known-size package (900 g of ground beef in 450 g packs
   // is 2), not a flat "1 package".
@@ -1058,7 +1068,7 @@ export function shouldShowUseQuantityText(
   // Also hidden for an exact whole number of packages (900 g of a 450 g
   // pack at 2x servings is just "2" on the badge, not "900 g of the package").
   if (ua.baseUnit === 'g') {
-    if (packageWeightG) return ua.amount % packageWeightG !== 0;
+    // A whole package is spelled out too ("375 g, the whole package").
     return true;
   }
   if (ua.baseUnit === 'ml') {
@@ -1221,6 +1231,8 @@ const DEAL_ITEM_UNIT_LABELS: Record<string, { singular: string; plural: string }
   // green onion never reads as a cooking onion.
   onions: { singular: 'onion', plural: 'onions' },
   onion: { singular: 'onion', plural: 'onions' },
+  // Paneer Pressure -- Anabelle: "Recipe uses 8 naans".
+  naan: { singular: 'naan', plural: 'naans' },
 };
 
 // Deal items where even a WHOLE container quantity (amount >= 1, not a
@@ -1297,6 +1309,15 @@ export function describeUseQuantityText(
   const described = describedAmount(unit, multiplier);
   if (described) return `Recipe uses about ${described}`;
   const ua = parseUnitAmount(quantity, unit);
+  // Exactly whole packages (Anabelle, 2026-10-07: "Recipe uses 375 g,
+  // the whole package").
+  if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g' && packageWeightG) {
+    const grams = ua.amount * multiplier;
+    const packs = Math.round((grams / packageWeightG) * 1000) / 1000;
+    if (Number.isInteger(packs) && packs >= 1) {
+      return `Recipe uses ${Math.round(grams)} g, ${packs === 1 ? 'the whole package' : `${packs} whole packages`}`;
+    }
+  }
   if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g' && packageWeightG) {
     const ingWords = normalizeWords(ingredientName);
     const wholeEntry = Object.entries(FRACTION_OF_WHOLE_LABELS).find(([name]) => {
@@ -1341,7 +1362,7 @@ export function describeUseQuantityText(
       // branch below.
       const count = Math.round(parseQuantity(quantity) * multiplier);
       const containerWord = (unit ?? '').trim();
-      return `Recipe uses ${count} of ${bundleCount} ${pluralizeContainerWord(containerWord)}`;
+      return `Recipe uses ${count} ${count === 1 ? containerWord : pluralizeContainerWord(containerWord)}`;
     }
   }
   // Counterpart to ALWAYS_SHOW_CONTAINER_COUNT in shouldShowUseQuantityText
@@ -1420,7 +1441,9 @@ export function describeUseQuantityText(
   // cubed", not "900 g, peeled and cubed of the package".
   const [unitBase, ...prep] = (unit ?? '').split(',');
   const prepTail = prep.length ? `,${prep.join(',')}` : '';
-  return `Recipe uses ${scaledQuantity} ${unitBase.trim()} of the package${prepTail}`.replace(/\s+/g, ' ').trim();
+  // A volume ("1/3 cup") reads fine on its own (Anabelle, 2026-10-07).
+  const ofPackage = ua.baseUnit === 'ml' ? '' : ' of the package';
+  return `Recipe uses ${scaledQuantity} ${unitBase.trim()}${ofPackage}${prepTail}`.replace(/\s+/g, ' ').trim();
 }
 
 // Staples conventionally bought and measured as whole discrete items (a
@@ -1541,6 +1564,7 @@ export function portionCost(
     packageVolumeMl?: number;
     bundleCount?: number;
     priceUnit?: string;
+    rawPrice?: number;
   },
   multiplier = 1
 ): number | undefined {
@@ -1570,7 +1594,11 @@ export function portionCost(
     if (entry) fraction = (ua.amount * entry[1]) / deal.packageWeightG;
   }
   if (fraction === undefined || fraction >= 1) return undefined;
-  return Math.round(deal.price * fraction * multiplier * 100) / 100;
+  // A multi-pack's tag price is already scaled by the recipe's count
+  // (8 naans -> 8 x the pack price), so the fraction applies to the
+  // flyer price of one pack instead.
+  const base = ua.baseUnit === 'each' && deal.bundleCount ? (deal.rawPrice ?? deal.price) : deal.price;
+  return Math.round(base * fraction * multiplier * 100) / 100;
 }
 
 // "g (about 4 carrots), julienned" -> "4 carrots, julienned" (leading
