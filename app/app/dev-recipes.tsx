@@ -38,10 +38,11 @@ const WEEK_OPTIONS: { value: RecipeWeek; label: string }[] = [
 export default function DevRecipesScreen() {
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const [week, setWeek] = useState<RecipeWeek>('next');
-  // Featured-only by default (Anabelle, 2026-09-30: "I only want to see
-  // this week deals curated 7 recipes") -- the rest of the library stays in
-  // the database, one tap away.
-  const [showAll, setShowAll] = useState(false);
+  // 'new' (default, Anabelle 2026-10-08): only recipes created since the
+  // last publish, so last week's recipes don't crowd this week's batch.
+  const [filter, setFilter] = useState<'new' | 'featured' | 'all'>('new');
+  const [createdAtById, setCreatedAtById] = useState<Record<string, string>>({});
+  const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null);
   const [meals, setMeals] = useState<Meal[]>([]);
   // Anabelle: "reoder (just on this page) per newest first so its
   // easier for me to review recipes". fetchAllRecipes()'s Meal type
@@ -115,14 +116,18 @@ export default function DevRecipesScreen() {
     setLoading(true);
     Promise.all([
       fetchAllRecipes(week),
+      supabase.from('recipes').select('id, updated_at, created_at').then(({ data }) => data ?? []),
       supabase
-        .from('recipes')
-        .select('id, updated_at')
-        .then(({ data }) => Object.fromEntries((data ?? []).map((r) => [r.id, r.updated_at]))),
+        .from('published_week')
+        .select('published_at')
+        .maybeSingle()
+        .then(({ data }) => data?.published_at ?? null),
     ])
-      .then(([recipeMeals, updatedAt]) => {
+      .then(([recipeMeals, rows, publishedAt]) => {
         setMeals(recipeMeals);
-        setUpdatedAtById(updatedAt);
+        setUpdatedAtById(Object.fromEntries(rows.map((r) => [r.id, r.updated_at])));
+        setCreatedAtById(Object.fromEntries(rows.map((r) => [r.id, r.created_at])));
+        setLastPublishedAt(publishedAt);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -178,14 +183,23 @@ export default function DevRecipesScreen() {
         <SegmentedControl
           wrap
           options={[
+            { value: 'new', label: 'New this week' },
             { value: 'featured', label: 'Featured only' },
             { value: 'all', label: 'All recipes' },
           ]}
-          value={showAll ? 'all' : 'featured'}
-          onChange={(value) => setShowAll(value === 'all')}
+          value={filter}
+          onChange={(value) => setFilter(value as typeof filter)}
         />
 
-        {sorted.filter((meal) => showAll || meal.featured).map((meal) => (
+        {sorted
+          .filter((meal) =>
+            filter === 'all'
+              ? true
+              : filter === 'featured'
+                ? meal.featured
+                : !lastPublishedAt || (createdAtById[meal.id] ?? '') > lastPublishedAt
+          )
+          .map((meal) => (
           <View key={meal.id} style={styles.recipeBlock}>
             <View style={styles.toggleRow}>
             <Pressable
