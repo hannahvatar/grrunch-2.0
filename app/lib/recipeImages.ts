@@ -222,6 +222,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Lentil Me Tell You Mujadara': require('../assets/lentils-me-tell-you.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Larb at First Bite': require('../assets/larb-at-first-bite.jpeg'),
+  // 1376x768, a touch wider than the card's ~1.7:1; `cover` trims the edges.
+  'Breakfast for Dinner — Breakfast Burritos': require('../assets/breakfast-for-dinner-burrots.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
