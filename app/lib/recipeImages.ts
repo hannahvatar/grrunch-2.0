@@ -214,6 +214,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Paneer Pressure': require('../assets/paneer-pressure.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Scallop to It': require('../assets/scallop-it-up.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Perogy Party': require('../assets/perogy-party.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
