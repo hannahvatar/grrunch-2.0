@@ -155,7 +155,7 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // oregano's flakes). See the staple_densities table (Supabase) for the
   // server-side twin.
   rosemary: 58,
-  // Pumpkin Spice Is Nice -- rubbed dried sage, ~0.7 g/tsp (fluffy, like
+  // Pumpkin Pasta Plot Twist -- rubbed dried sage, ~0.7 g/tsp (fluffy, like
   // oregano). See the staple_densities table (Supabase) for the twin.
   sage: 34,
   // Ham & Bean Bonanza -- dried thyme leaves, ~1 g/tsp (between
