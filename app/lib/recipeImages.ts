@@ -212,6 +212,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Mussel Up, Buttercup': require('../assets/mussels-up-buttercup.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Paneer Pressure': require('../assets/paneer-pressure.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Scallop to It': require('../assets/scallop-it-up.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
