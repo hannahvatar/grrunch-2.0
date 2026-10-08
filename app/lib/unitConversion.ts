@@ -1116,6 +1116,17 @@ export function shouldShowUseQuantityText(
       // on Green Onions' real "2 bunches for $3" flyer promo: "I dont
       // know how much is one we cant assume its 1.5."
       if (bundleCount && ua.amount < bundleCount) return true;
+      // Counted in its own pieces ("3 slices" of bacon) with a friendly
+      // label for them (Anabelle, 2026-10-08: "add how many slices of
+      // bacon the recipe uses").
+      if (
+        /^slices?\b/i.test((unit ?? '').trim()) &&
+        Object.keys(DEAL_ITEM_UNIT_LABELS).some((name) => {
+          const words = normalizeWords(name);
+          return words.length > 0 && words.every((w) => ingWords.includes(w));
+        })
+      )
+        return true;
       // A deliberate, opt-in EXCEPTION to "whole container needs no
       // note" -- Anabelle: "Add 'Recipe uses 1 can' under the coconut
       // milk". Most whole-container cases genuinely don't need a
