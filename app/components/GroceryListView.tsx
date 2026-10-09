@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ArrowPathIcon, BuildingStorefrontIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
-import { type Deal, fetchAllDeals, fetchDealsByIds, isReferencePriced, matchItemStore } from '../lib/curatedDeals';
+import { type Deal, fetchDealsByIds, isReferencePriced } from '../lib/curatedDeals';
 import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
@@ -74,13 +74,10 @@ interface GroceryItem {
   // these undefined.
   quantity?: string;
   unit?: string;
-  // The store this item is grouped under -- only ever set from a real
-  // match (either the ingredient's own deal, or, for non-deal
-  // ingredients, a genuine match against this week's flyers -- see
-  // lib/curatedDeals.ts matchItemStore). Never guessed from "well this
-  // recipe's other ingredients are at Store X" -- a true pantry staple
-  // with no flyer presence stays in "Other items" rather than implying a
-  // store we have no data for.
+  // The store this item is grouped under: the ingredient's own deal.
+  // An ingredient the recipe doesn't use a deal for stays in "Other
+  // items", even if some flyer has it (Anabelle, 2026-10-09: cilantro
+  // "should be in other items since its not a deal").
   store?: string;
 }
 
@@ -143,10 +140,6 @@ export function GroceryListView() {
   const { selectedDealIds } = useSelectedDeals();
   const [rawSelectedMeals, setRawSelectedMeals] = useState<Meal[]>([]);
   const [selectedDeals, setSelectedDeals] = useState<Deal[]>([]);
-  // This week's full deal list, used only to look up which store carries a
-  // non-deal ingredient (e.g. "Watermelon" -> T&T) -- separate from
-  // dealTags/price crediting, see lib/curatedDeals.ts matchItemStore.
-  const [allDeals, setAllDeals] = useState<Deal[]>([]);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   // How many times to make each recipe (1 = the recipe's real serving
   // count as-is, 2 = double the ingredients, etc.) -- multiples of the
@@ -195,9 +188,6 @@ export function GroceryListView() {
   // deals added from Weekly Deals are left alone -- picked on purpose.
   const { hiddenChains } = useStoreFilter();
   const selectedMeals = rawSelectedMeals.map((meal) => applyStoreFilter(meal, hiddenChains));
-  // Store lookup for non-deal ingredients skips unselected chains too,
-  // so an item moved off sale isn't still filed under that store.
-  const lookupDeals = hiddenChains.size === 0 ? allDeals : allDeals.filter((deal) => !hiddenChains.has(deal.chainName));
 
   useEffect(() => {
     if (selectedDealIds.size === 0) {
@@ -208,12 +198,6 @@ export function GroceryListView() {
       .then(setSelectedDeals)
       .catch(() => setSelectedDeals([]));
   }, [selectedDealIds]);
-
-  useEffect(() => {
-    fetchAllDeals()
-      .then(setAllDeals)
-      .catch(() => setAllDeals([]));
-  }, []);
 
   function toggleChecked(itemKey: string) {
     setChecked((prev) => {
@@ -340,19 +324,9 @@ export function GroceryListView() {
         text: scaled.groceryText ?? scaled.text,
         source: meal.name,
         dealTag: ingredient.dealTag,
-        // Only a real match against this week's flyers earns a store --
-        // never guessed from "well you're already buying other stuff at
-        // Store X for this recipe." A true pantry staple with no flyer
-        // presence belongs in "Other items", not implied to be at a store
-        // we have no actual data for.
-        store: ingredient.offSale
-          ? NOT_ON_SALE
-          : ingredient.dealTag?.store ??
-            matchItemStore(
-              ingredient.name,
-              lookupDeals,
-              new Set(meal.dealTags.map((tag) => tag.store).filter((store): store is string => !!store))
-            ),
+        // Only the ingredient's own deal earns a store; anything else
+        // goes to "Other items" (see GroceryItem.store).
+        store: ingredient.offSale ? NOT_ON_SALE : ingredient.dealTag?.store,
         // Withheld once this item has a manual quantity override.
         // IngredientRow's dealQuantity badge folds `multiplier` directly
         // into the leading number of `text` for display, which is only

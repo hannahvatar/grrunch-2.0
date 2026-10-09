@@ -96,8 +96,8 @@ const VARIETY_DESCRIPTORS = new Set([
 // "rice" with "Rice"), "Spaghetti"/"Macaroni"/"Rigatoni" share NO word
 // at all with "pasta", so this needs a real synonym map rather than a
 // descriptor fallback. Scoped to staple-reference-price matching only --
-// never deal-credit matching (matchItemStore/refresh_recipe_deal_tags'
-// deal loop), which correctly stays literal per architecture item 12:
+// never deal-credit matching (refresh_recipe_deal_tags' deal loop),
+// which correctly stays literal per architecture item 12:
 // a recipe naming a specific branded pasta on deal should still only
 // match that exact deal, not any pasta-shaped ingredient.
 const STAPLE_ALIASES: Record<string, string> = {

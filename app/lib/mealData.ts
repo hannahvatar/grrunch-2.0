@@ -103,10 +103,8 @@ export interface DealTag {
 // never both at once, and never invented when neither applies.
 export interface IngredientLine {
   text: string;
-  // The raw ingredient name (no quantity/unit) -- kept alongside the
-  // flattened display text so the grocery list can match it against this
-  // week's deals for store attribution even when it isn't deal-tagged
-  // (see lib/curatedDeals.ts matchItemStore).
+  // The raw ingredient name (no quantity/unit), kept alongside the
+  // flattened display text.
   name: string;
   dealTag?: DealTag;
   // 'regular' = an off-sale deal ingredient priced at its deal's own
