@@ -227,6 +227,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // 1376x768, a touch wider than the card's ~1.7:1; `cover` trims the edges.
   'Salmon Chanted Evening': require('../assets/salmon-chanted-evening.jpeg'),
   // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
+  'Angus, Set, Dip!': require('../assets/angus-set-dip.jpeg'),
+  // Uploaded at the card's ~1.7:1 target (1344x784), uncropped.
   'Shakshuka Shake-Up': require('../assets/shakshuka-shake-up.jpeg'),
 };
 
