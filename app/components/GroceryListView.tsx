@@ -347,7 +347,12 @@ export function GroceryListView() {
         // we have no actual data for.
         store: ingredient.offSale
           ? NOT_ON_SALE
-          : ingredient.dealTag?.store ?? matchItemStore(ingredient.name, lookupDeals),
+          : ingredient.dealTag?.store ??
+            matchItemStore(
+              ingredient.name,
+              lookupDeals,
+              new Set(meal.dealTags.map((tag) => tag.store).filter((store): store is string => !!store))
+            ),
         // Withheld once this item has a manual quantity override.
         // IngredientRow's dealQuantity badge folds `multiplier` directly
         // into the leading number of `text` for display, which is only
