@@ -338,7 +338,13 @@ const MAX_EXTRA_WORDS = 1;
 // specific false match like this is actually found, not preemptively.
 const DIFFERENT_PRODUCT_WORDS = new Set(['green']);
 
-export function matchItemStore(ingredientName: string, deals: Deal[]): string | undefined {
+//
+// `preferredChains`: the stores the recipe already sends you to. Among
+// equally close matches, one of those wins, so an item on sale at several
+// chains lands where you're already shopping (Anabelle, 2026-10-09:
+// Paneer Pressure's cilantro was filed under Real Canadian Superstore,
+// a store the recipe doesn't use, over No Frills, which it does).
+export function matchItemStore(ingredientName: string, deals: Deal[], preferredChains?: Set<string>): string | undefined {
   const ingredientWords = normalizeWords(ingredientName);
   if (ingredientWords.length === 0) return undefined;
   let best: string | undefined;
@@ -349,7 +355,10 @@ export function matchItemStore(ingredientName: string, deals: Deal[]): string | 
       const extraWords = dealWords.filter((word) => !ingredientWords.includes(word));
       if (extraWords.some((word) => DIFFERENT_PRODUCT_WORDS.has(word))) continue;
       const extra = extraWords.length;
-      if (extra <= MAX_EXTRA_WORDS && extra < bestExtraWords) {
+      if (extra > MAX_EXTRA_WORDS) continue;
+      const preferredTie =
+        extra === bestExtraWords && !!preferredChains?.has(deal.chainName) && !preferredChains.has(best ?? '');
+      if (extra < bestExtraWords || preferredTie) {
         best = deal.chainName;
         bestExtraWords = extra;
       }
