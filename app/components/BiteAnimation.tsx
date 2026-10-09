@@ -7,28 +7,28 @@ import { GrrunchMascot } from './GrrunchMascot';
 // price tags; the mascot drops from the top, slams down on it, and the
 // whole pile bursts into crumbs and disappears (Anabelle, 2026-10-09:
 // "There should be a pile of price tags. The mascot comes from the top and
-// lands with force on it and the pile disappears in crumbs"). It then jumps
-// back out of frame, the pile pops back in, and it loops while the slide
+// lands with force on it and the pile disappears in crumbs"). It plays
+// once each time the slide
 // is active. Same React Native Animated approach as the other onboarding
-// illustrations; holds still (mascot resting on the pile) with reduced
-// motion.
+// illustrations; with reduced motion it just shows the mascot, no pile.
 
 const INK = '#111';
 const ACCENT = '#FFA955';
 
 const STAGE_W = 300;
 const STAGE_H = 230;
-const MASCOT = 140;
-const GROUND = STAGE_H - 8; // y of the floor line
+// A little under the other slides' visuals (FlyerAnimation is 300 x 230).
+const MASCOT = 190;
+const GROUND = STAGE_H; // y of the floor line
 
 type TagSpec = { price: string; x: number; y: number; rotate: string };
 // The pile, bottom tags first, centred under the mascot.
 const PILE: TagSpec[] = [
-  { price: '$12.99', x: 58, y: GROUND - 58, rotate: '-8deg' },
-  { price: '$15.99', x: 146, y: GROUND - 56, rotate: '7deg' },
-  { price: '$8.49', x: 102, y: GROUND - 64, rotate: '2deg' },
-  { price: '$9.99', x: 74, y: GROUND - 104, rotate: '10deg' },
-  { price: '$11.49', x: 130, y: GROUND - 102, rotate: '-9deg' },
+  { price: '$12.99', x: STAGE_W / 2 - 46, y: GROUND - 58, rotate: '-8deg' },
+  { price: '$15.99', x: STAGE_W / 2 + 46, y: GROUND - 56, rotate: '7deg' },
+  { price: '$8.49', x: STAGE_W / 2, y: GROUND - 64, rotate: '2deg' },
+  { price: '$9.99', x: STAGE_W / 2 - 26, y: GROUND - 104, rotate: '10deg' },
+  { price: '$11.49', x: STAGE_W / 2 + 26, y: GROUND - 102, rotate: '-9deg' },
 ];
 const PILE_TOP = GROUND - 104;
 const PILE_CENTRE = { x: STAGE_W / 2, y: GROUND - 60 };
@@ -57,15 +57,17 @@ export function BiteAnimation({ active }: { active: boolean }) {
     burst.setValue(0);
     shake.setValue(0);
     if (!active || reduceMotion) {
-      drop.setValue(1);
-      pile.setValue(1);
+      drop.setValue(reduceMotion ? 2 : 0);
+      pile.setValue(reduceMotion ? 0 : 1);
       return;
     }
     drop.setValue(0);
     pile.setValue(1);
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(450),
+    // Plays once: after the smash the mascot stays put (Anabelle,
+    // 2026-10-09: "Dont make it loop ... let it sit there").
+    const run = Animated.sequence([
+        // Let the pile sit on screen a moment before the smash.
+        Animated.delay(1400),
         // Fall from the top and slam onto the pile.
         Animated.timing(drop, { toValue: 1, duration: 420, easing: Easing.in(Easing.quad), useNativeDriver: true }),
         // Impact: squash, jolt, the pile bursts into crumbs and vanishes,
@@ -88,15 +90,9 @@ export function BiteAnimation({ active }: { active: boolean }) {
             Animated.spring(drop, { toValue: 2, friction: 5, tension: 140, useNativeDriver: true }),
           ]),
         ]),
-        Animated.delay(900),
-        // Jump back up out of frame; a fresh pile pops in.
-        Animated.timing(drop, { toValue: 0, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-        Animated.timing(burst, { toValue: 0, duration: 1, useNativeDriver: true }),
-        Animated.spring(pile, { toValue: 1, friction: 5, tension: 110, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
+      ]);
+    run.start();
+    return () => run.stop();
   }, [active, reduceMotion, drop, squash, pile, burst, shake]);
 
   // Mascot's bottom edge: off the top (0), on the pile (1), on the floor (2).
