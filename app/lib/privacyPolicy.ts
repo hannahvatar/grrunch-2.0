@@ -3,9 +3,11 @@
 import { bullets, LegalSection, text } from './legalContent';
 
 // Bumped from September 15, 2026 for the Waitlist subsection in §1
-// (Anabelle, 2026-09-24) -- a genuine content change, same as the
-// earlier bump for the legal entity disclosure.
-export const PRIVACY_POLICY_EFFECTIVE_DATE = 'September 24, 2026';
+// (Anabelle, 2026-09-24), then from September 24 for the Membership
+// and Purchases subsection (2026-10-09, before external TestFlight
+// testing) -- genuine content changes, same as the earlier bump for the
+// legal entity disclosure.
+export const PRIVACY_POLICY_EFFECTIVE_DATE = 'October 9, 2026';
 
 // Legal entity disclosure -- see termsOfUse.ts's own comment on this
 // same addition (Anabelle, 2026-09-15). Named here in the intro (this
@@ -71,6 +73,24 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
         'We use this to let you know when Grrunch becomes available in your area, to send you news and offers about Grrunch, and to understand where demand is coming from. We don’t sell it or share it with third parties for their own marketing.'
       ),
       text('You can unsubscribe at any time using the link in any email we send, or by writing to privacy@grrunch.com.'),
+      // Paid membership (2026-10-09) -- purchases go through Apple's
+      // in-app purchase (Google Play later), with subscription status
+      // managed by RevenueCat (react-native-purchases). Grrunch never
+      // sees card details.
+      text('Membership and Purchases'),
+      text(
+        'If you buy a Grrunch membership, the purchase is handled by the Apple App Store (or Google Play, where available). We do not receive or store your payment card details.'
+      ),
+      text('To provide your membership, we receive limited purchase information, including:'),
+      bullets([
+        'the membership plan you chose;',
+        'purchase, renewal, and expiry dates;',
+        'whether your membership is active, in a free trial, or cancelled;',
+        'a transaction identifier and the country of your app store account.',
+      ]),
+      text(
+        'We use this to unlock member features, restore your membership on your devices, and handle support requests. You can manage or cancel your membership at any time in your Apple ID or Google Play subscription settings.'
+      ),
     ],
   },
   {
@@ -145,6 +165,8 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
         'cloud hosting;',
         'authentication;',
         'database services;',
+        'subscription and purchase management;',
+        'store and location search (to find grocery stores near you);',
         'customer support;',
         'infrastructure monitoring;',
         'analytics;',
