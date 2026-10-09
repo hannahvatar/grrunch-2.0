@@ -202,14 +202,14 @@ export default function BestDealsScreen() {
           <Text style={[styles.title, styles.titleFlex]}>Grrunch Picks</Text>
           <View style={styles.sortSection}>
             <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
-              <Text style={styles.sortPillText}>{sortMode === 'store' ? 'Per store' : 'Best value'}</Text>
+              <Text style={styles.sortPillText}>{sortMode === 'store' ? 'Per store' : 'Best savings'}</Text>
               <ChevronDownIcon size={16} color={INK} strokeWidth={2} />
             </Pressable>
             {sortMenuOpen && (
               <View style={styles.sortMenu}>
                 {(
                   [
-                    { mode: 'value', label: 'Best value' },
+                    { mode: 'value', label: 'Best savings' },
                     { mode: 'store', label: 'Per store' },
                   ] as const
                 ).map((option) => (
