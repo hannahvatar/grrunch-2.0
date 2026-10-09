@@ -252,11 +252,16 @@ export function groupDealsByCategory(deals: Deal[]): Map<string, Deal[]> {
 // already shown (showsRealDiscount's blue badge outranks
 // isGreatReferenceValue's purple one), so "most savings" sorts the same
 // way the page visually communicates savings.
+// Highest percentage first (Anabelle, 2026-10-09: "highest percentage
+// item should be up then down from there"); a real store discount only
+// wins a tie at the same percentage. Previously every real discount sorted
+// above every reference comparison, so a 10% sale could top a 60% one.
 function bySavingsDesc(a: Deal, b: Deal): number {
+  if (b.discountPct !== a.discountPct) return b.discountPct - a.discountPct;
   const aReal = showsRealDiscount(a.discountPct, a.originalPriceSource);
   const bReal = showsRealDiscount(b.discountPct, b.originalPriceSource);
   if (aReal !== bReal) return aReal ? -1 : 1;
-  return b.discountPct - a.discountPct;
+  return 0;
 }
 
 // Strict per-category cap (Anabelle, 2026-09-08: "we should see one deal

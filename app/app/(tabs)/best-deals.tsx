@@ -263,11 +263,17 @@ export default function BestDealsScreen() {
           </View>
         {categories.map((category, categoryIndex) => {
           const categoryDeals = groups.get(category) ?? [];
-          const { visibleDeals, lockedDealCount } = selectVisibleDeals(
+          const { visibleDeals: rankedDeals, lockedDealCount } = selectVisibleDeals(
             categoryDeals,
             isSubscribed,
             FREE_DEALS_PER_CATEGORY
           );
+          // Per store: grouped by category inside the store (stable sort,
+          // so each category keeps its best-value-first order).
+          const visibleDeals =
+            sortMode === 'store'
+              ? [...rankedDeals].sort((a, b) => a.category.localeCompare(b.category))
+              : rankedDeals;
           const isEmpty = categoryDeals.length === 0;
           const isExpanded = !isEmpty && expandedCategories.has(category);
           const badge = countBadgeColors(categoryDeals.length, allGroups.get(category)!.length);
@@ -301,8 +307,12 @@ export default function BestDealsScreen() {
                 <View style={styles.dealsGrid}>
                   {visibleDeals.map((deal, dealIndex) => {
                     const isAdded = selectedDealIds.has(deal.id);
+                    const startsCategory =
+                      sortMode === 'store' && (dealIndex === 0 || visibleDeals[dealIndex - 1].category !== deal.category);
                     return (
-                      <View key={deal.id} style={[styles.dealCard, dealIndex > 0 && styles.dealCardDivider]}>
+                      <View key={deal.id}>
+                      {startsCategory && <Text style={styles.storeCategoryHeader}>{deal.category}</Text>}
+                      <View style={[styles.dealCard, dealIndex > 0 && !startsCategory && styles.dealCardDivider]}>
                         <Pressable style={styles.dealCardTop} onPress={() => Linking.openURL(deal.productUrl)}>
                           {/* Tapping the thumbnail zooms the cutout (same as
                               recipe and grocery cards); the rest of the row
@@ -407,6 +417,7 @@ export default function BestDealsScreen() {
                             <PlusIcon size={20} color={INK} />
                           )}
                         </Pressable>
+                      </View>
                       </View>
                     );
                   })}
@@ -583,6 +594,17 @@ const styles = StyleSheet.create({
   // separator") -- was its own 2px-INK-bordered rounded card, which
   // read as a card inside a card. position: relative anchors the
   // icon-only Add button (absolute) to the row's top-right corner.
+  // Category label inside a store section (Per store view).
+  storeCategoryHeader: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: 'OpenSans_800ExtraBold',
+    color: '#888',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
   dealCard: {
     width: '100%',
     position: 'relative',
