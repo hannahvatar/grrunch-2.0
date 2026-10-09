@@ -7,6 +7,7 @@ import { type Deal, fetchDealsByIds, isReferencePriced } from '../lib/curatedDea
 import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
+import { formatScaledQuantity } from '../lib/unitConversion';
 import { useLiveWeek } from '../lib/liveWeek';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
@@ -79,6 +80,27 @@ interface GroceryItem {
   // items", even if some flyer has it (Anabelle, 2026-10-09: cilantro
   // "should be in other items since its not a deal").
   store?: string;
+}
+
+// Splits a list line into its leading amount and the rest, keeping a
+// mixed number whole: "1 1/2 tsp turmeric" -> ["1 1/2", "tsp turmeric"]
+// (splitting on the first space would take just "1").
+function splitLeadingAmount(text: string): [string, string] {
+  const match = text.match(/^(\d+\s+\d+\/\d+|\S+)\s*(.*)$/);
+  return match ? [match[1], match[2]] : [text, ''];
+}
+
+// "1/4" -> 0.25 (denominator 4), "1 1/2" -> 1.5 (2), "2" / "0.5" -> as is.
+// Undefined for anything else (a cleared field, a typo).
+function parseSheetAmount(text: string): { value: number; denominator?: number } | undefined {
+  const trimmed = text.trim();
+  const mixed = trimmed.match(/^(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)$/);
+  if (mixed) {
+    const denominator = parseInt(mixed[3], 10);
+    if (denominator === 0) return undefined;
+    return { value: parseInt(mixed[1] ?? '0', 10) + parseInt(mixed[2], 10) / denominator, denominator };
+  }
+  return /^\d+(\.\d+)?$/.test(trimmed) ? { value: parseFloat(trimmed) } : undefined;
 }
 
 function mapDealToGroceryItem(deal: Deal): GroceryItem {
@@ -253,8 +275,8 @@ export function GroceryListView() {
   // already uses (deal items: the quantity badge; staple items: the
   // first word of the line, e.g. "340" in "340 g Spaghetti").
   function openQuantityEditor(item: GroceryItem) {
-    const [firstToken] = resolveDisplayText(item).split(' ');
-    setSheetQuantityDraft(firstToken);
+    const [amount] = splitLeadingAmount(resolveDisplayText(item));
+    setSheetQuantityDraft(amount);
     setEditingItem(item);
   }
 
@@ -276,8 +298,8 @@ export function GroceryListView() {
     if (!editingItem) return;
     const trimmed = sheetQuantityDraft.trim();
     if (trimmed) {
-      const [, ...rest] = resolveDisplayText(editingItem).split(' ');
-      const nextText = [trimmed, ...rest].join(' ');
+      const [, rest] = splitLeadingAmount(resolveDisplayText(editingItem));
+      const nextText = [trimmed, rest].filter(Boolean).join(' ');
       // Back at the original amount (or Done tapped with no change)
       // isn't an edit -- drop the override instead of storing a copy of
       // the original, so Reset stays greyed out until something really
@@ -297,11 +319,21 @@ export function GroceryListView() {
   // a fraction, or having cleared the field) just leaves the stepper a
   // no-op rather than guessing -- the field itself is still free-typed
   // via the keyboard regardless.
+  //
+  // A fraction steps by the recipe's own fraction and stays a fraction:
+  // 1/4 cup goes 1/2, 3/4, 1 (Anabelle, 2026-10-09: + took "1/4" to 2, since
+  // parseFloat read it as 1).
   function adjustSheetQuantity(delta: number) {
-    const current = parseFloat(sheetQuantityDraft);
-    if (Number.isNaN(current)) return;
-    const next = Math.max(0, Math.round((current + delta) * 100) / 100);
-    setSheetQuantityDraft(String(next));
+    const current = parseSheetAmount(sheetQuantityDraft);
+    if (current === undefined) return;
+    // Step by the recipe's own fraction, so 1/4 keeps stepping by 1/4
+    // after it reads 1/2.
+    const original = editingItem ? parseSheetAmount(splitLeadingAmount(editingItem.text)[0]) : undefined;
+    const denominator = original?.denominator ?? current.denominator;
+    const step = denominator ? 1 / denominator : 1;
+    const next = Math.max(0, Math.round((current.value + delta * step) * 1000) / 1000);
+    const [, rest] = editingItem ? splitLeadingAmount(resolveDisplayText(editingItem)) : ['', ''];
+    setSheetQuantityDraft(formatScaledQuantity(String(next), rest) ?? String(next));
   }
 
   const recipeItems: GroceryItem[] = selectedMeals.flatMap((meal) => {
