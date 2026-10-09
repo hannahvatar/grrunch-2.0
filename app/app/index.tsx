@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { FlyerAnimation } from '../components/FlyerAnimation';
+import { BiteAnimation } from '../components/BiteAnimation';
 import { LoyaltyCardStack } from '../components/LoyaltyCardStack';
 import { SauteAnimation } from '../components/SauteAnimation';
 import { useAuth } from '../lib/auth';
@@ -29,6 +30,11 @@ const SLIDES = [
     headline: 'Member prices count, too',
     body: 'Some of our deals include loyalty pricing, so keep your grocery rewards cards handy.',
   },
+  // Anabelle, 2026-10-09: a closing mission slide with the mascot.
+  {
+    headline: "Let's bite back at grocery prices.",
+    body: "Grocery prices keep climbing. We're here to fight back, one delicious meal at a time.",
+  },
 ] as const;
 
 // Every slide now has its own animated illustration (FlyerAnimation.tsx /
@@ -38,6 +44,7 @@ const SLIDES = [
 const FLYER_SLIDE = SLIDES.findIndex((s) => s.headline === 'Leave the deal hunting to us');
 const SAUTE_SLIDE = SLIDES.findIndex((s) => s.headline === 'Let the deals decide dinner');
 const CARD_SLIDE = SLIDES.findIndex((s) => s.headline === 'Member prices count, too');
+const MASCOT_SLIDE = SLIDES.findIndex((s) => s.headline === "Let's bite back at grocery prices.");
 
 // New first screen (2026-09-03) — value-prop onboarding carousel, ahead of
 // the pre-existing Terms & consent screen (moved to terms.tsx unchanged).
@@ -98,6 +105,8 @@ export default function OnboardingScreen() {
               <FlyerAnimation active={step === FLYER_SLIDE} />
             ) : step === SAUTE_SLIDE ? (
               <SauteAnimation active={step === SAUTE_SLIDE} />
+            ) : step === MASCOT_SLIDE ? (
+              <BiteAnimation active={step === MASCOT_SLIDE} />
             ) : (
               <LoyaltyCardStack active={step === CARD_SLIDE} />
             )}
