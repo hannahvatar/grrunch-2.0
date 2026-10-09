@@ -101,6 +101,7 @@ const MVP_CHAINS: ChainConfig[] = [
 
 interface GooglePlace {
   id: string;
+  types?: string[];
   displayName?: { text: string };
   formattedAddress?: string;
   location?: { latitude: number; longitude: number };
@@ -179,7 +180,7 @@ async function searchPlaces(query: string, lat: number, lng: number): Promise<Go
       "Content-Type": "application/json",
       "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY ?? "",
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.location,places.regularOpeningHours,places.nationalPhoneNumber",
+        "places.id,places.types,places.displayName,places.formattedAddress,places.location,places.regularOpeningHours,places.nationalPhoneNumber",
     },
     body: JSON.stringify({
       textQuery: query,
@@ -189,7 +190,7 @@ async function searchPlaces(query: string, lat: number, lng: number): Promise<Go
           radius: SEARCH_RADIUS_METERS,
         },
       },
-      maxResultCount: 5,
+      maxResultCount: 10,
     }),
   });
 
@@ -201,13 +202,35 @@ async function searchPlaces(query: string, lat: number, lng: number): Promise<Go
   return data.places ?? [];
 }
 
+// Letters and digits only, lowercased: "Save-On-Foods" and "Save On
+// Foods" compare equal.
+function squash(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+// A text search returns whatever is closest and loosely relevant, so the
+// nearest hit isn't always the chain's grocery store (Anabelle,
+// 2026-10-09: "No Frills" came back as No Limits Motorsports, "Walmart"
+// as Walmart Pharmacy, and "Safeway" as the Save-On-Foods next door,
+// which then got deduped away so Safeway went missing). Only a place
+// named after the chain AND typed as a grocery store counts -- that also
+// drops the pharmacy, photo centre, optician (Specsavers inside a
+// Superstore) and arena (Save-On-Foods Memorial Centre) listings. Every
+// real store checked, Walmart Supercentre included, has grocery_store.
+function isChainStore(place: GooglePlace, query: string): boolean {
+  const name = place.displayName?.text ?? "";
+  return squash(name).includes(squash(query)) && (place.types ?? []).includes("grocery_store");
+}
+
 async function findNearestForChain(
   chain: ChainConfig,
   lat: number,
   lng: number
 ): Promise<StoreResult | null> {
   const candidateLists = await Promise.all(
-    chain.queries.map((query) => searchPlaces(query, lat, lng))
+    chain.queries.map(async (query) =>
+      (await searchPlaces(query, lat, lng)).filter((place) => isChainStore(place, query))
+    )
   );
   const candidates = candidateLists.flat().filter((place) => place.location);
 
