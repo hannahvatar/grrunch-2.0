@@ -80,6 +80,18 @@ async function isOffline(): Promise<boolean> {
   }
 }
 
+// Apple's reviewer can't open a magic link sent to our inbox, so this one
+// demo account signs in with a password instead (Anabelle, 2026-10-09,
+// before Beta App Review). Typing this address shows a password field;
+// every other email still gets the link. The account itself is created
+// in Supabase (Auth > Users) with a BC postal code on its profile, so
+// lib/serviceArea.ts lets the reviewer past the BC-only gate.
+const APP_REVIEW_EMAIL = 'appreview@grrunch.com';
+
+function isAppReviewEmail(value: string): boolean {
+  return value.trim().toLowerCase() === APP_REVIEW_EMAIL;
+}
+
 export default function LoginScreen() {
   // Same one screen either way -- Apple/Google/email all use the same
   // request to create an account or sign into an existing one, so there's
@@ -107,6 +119,7 @@ export default function LoginScreen() {
   // confirmation link is tapped (see app/_layout.tsx's deep-link handler and
   // lib/supabase.ts's detectSessionInUrl for the web case).
   const [email, setEmail] = useState('');
+  const [reviewPassword, setReviewPassword] = useState('');
   const [emailSent, setEmailSent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -280,6 +293,16 @@ export default function LoginScreen() {
     if (!email.trim()) return;
     setEmailError(null);
     setEmailLoading(true);
+    if (isAppReviewEmail(email)) {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: reviewPassword });
+      setEmailLoading(false);
+      if (error) {
+        setEmailError(error.message);
+        return;
+      }
+      navigateAfterSignIn();
+      return;
+    }
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: { emailRedirectTo: getRedirectUri() },
@@ -369,6 +392,16 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             error={emailError ?? undefined}
           />
+          {isAppReviewEmail(email) && (
+            <InputField
+              placeholder="Password"
+              secureTextEntry
+              autoCapitalize="none"
+              value={reviewPassword}
+              onChangeText={setReviewPassword}
+              style={styles.reviewPasswordInput}
+            />
+          )}
           <Pressable
             onPress={handleEmailContinue}
             disabled={emailLoading}
@@ -416,6 +449,7 @@ const ACCENT_DISABLED_BORDER = '#BFB3A3';
 const ACCENT_DISABLED_TEXT = '#8F8577';
 
 const styles = StyleSheet.create({
+  reviewPasswordInput: { marginTop: 8 },
   gradient: { flex: 1 },
   // flexGrow:1 + justifyContent:'center' on a ScrollView's contentContainerStyle
   // vertically centers the block when it fits, same pattern as index.tsx's
