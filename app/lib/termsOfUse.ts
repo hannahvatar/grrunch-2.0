@@ -4,9 +4,10 @@
 import { bullets, LegalSection, text } from './legalContent';
 
 // Bumped from August 4, 2026 alongside the legal entity disclosure
-// added below (Anabelle, 2026-09-15) -- a genuine content change to a
-// live legal document, not a cosmetic edit.
-export const TERMS_OF_USE_EFFECTIVE_DATE = 'September 15, 2026';
+// added below (Anabelle, 2026-09-15), then from September 15 for the
+// retailer/third-party content wording in §5 and §9 (2026-10-09) --
+// genuine content changes to a live legal document, not cosmetic edits.
+export const TERMS_OF_USE_EFFECTIVE_DATE = 'October 9, 2026';
 
 // Legal entity disclosure (Anabelle, 2026-09-15, mid-Apple-Developer-
 // Organization-enrollment: "i realize somewhere in the app it should
@@ -26,7 +27,7 @@ export const TERMS_OF_USE_SECTIONS: LegalSection[] = [
     title: '1. About Grrunch',
     blocks: [
       text(
-        'Grrunch helps users discover affordable recipes based on current grocery flyer deals, compare promotions from participating retailers, build grocery lists, and save money on groceries.'
+        'Grrunch helps users discover affordable recipes based on current grocery flyer deals, compare promotions from grocery retailers, build grocery lists, and save money on groceries.'
       ),
       text(
         'Over time, Grrunch may introduce additional features, including artificial intelligence, personalized recommendations, analytics, and other shopping-related services.'
@@ -76,7 +77,15 @@ export const TERMS_OF_USE_SECTIONS: LegalSection[] = [
   {
     title: '5. Grocery Prices and Flyer Information',
     blocks: [
-      text('Grrunch displays grocery promotions from participating retailers for informational purposes.'),
+      // "participating retailers" implied the stores take part; they
+      // don't (Anabelle, 2026-10-09). Says where the data comes from and
+      // that there's no affiliation, without naming a source.
+      text(
+        'Grrunch displays grocery promotions from grocery retailers for informational purposes. This information comes from publicly available sources, such as retailer flyers and websites, and from third-party data providers.'
+      ),
+      text(
+        'Grrunch is independent. Unless we expressly say otherwise, we are not affiliated with, endorsed by, or sponsored by any retailer, brand, or flyer provider shown in the Service.'
+      ),
       text('Although we strive for accuracy:'),
       bullets(['prices may change;', 'promotions may expire;', 'availability varies by location;', 'stores may correct pricing errors.']),
       text('The price charged by the retailer at the time of purchase always prevails.'),
@@ -133,6 +142,12 @@ export const TERMS_OF_USE_SECTIONS: LegalSection[] = [
         'Except as expressly permitted, you may not copy, reproduce, distribute, or create derivative works from our content without written permission.'
       ),
       text("Third-party trademarks, retailer names, and logos remain the property of their respective owners."),
+      text(
+        'Product images, product names, and descriptions shown with a promotion belong to the retailer, brand, or other rights holder. Grrunch does not claim ownership of them. They are shown only to identify the promotion so you can find it in the retailer’s flyer or store.'
+      ),
+      text(
+        'If you own content shown in Grrunch and would like it removed or credited differently, contact us at support@grrunch.com and we will respond promptly.'
+      ),
     ],
   },
   {
