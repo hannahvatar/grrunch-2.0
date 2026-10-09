@@ -67,7 +67,7 @@ export function BiteAnimation({ active }: { active: boolean }) {
     // 2026-10-09: "Dont make it loop ... let it sit there").
     const run = Animated.sequence([
         // Let the pile sit on screen a moment before the smash.
-        Animated.delay(1400),
+        Animated.delay(800),
         // Fall from the top and slam onto the pile.
         Animated.timing(drop, { toValue: 1, duration: 420, easing: Easing.in(Easing.quad), useNativeDriver: true }),
         // Impact: squash, jolt, the pile bursts into crumbs and vanishes,
