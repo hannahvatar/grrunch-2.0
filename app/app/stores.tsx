@@ -246,7 +246,9 @@ export default function StoresScreen() {
                   </View>
                   <View style={styles.storeInfo}>
                     <View style={styles.storeTopRow}>
-                      <Text style={styles.storeName}>{store.name}</Text>
+                      <Text style={styles.storeName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                        {store.name}
+                      </Text>
                       {store.distanceKm !== null && (
                         <Text style={styles.distance}>{store.distanceKm.toFixed(1)} km</Text>
                       )}
@@ -331,9 +333,11 @@ const styles = StyleSheet.create({
   },
   storeInfo: { flex: 1 },
   storeTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  storeName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // Shrinks to leave room for the distance: "Real Canadian Superstore"
+  // pushed "44.1 km" off the card (Anabelle, 2026-10-09).
+  storeName: { flexShrink: 1, marginRight: 8, fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   storeSubtitle: { fontSize: 13, color: '#888' },
-  distance: { fontSize: 13, color: INK },
+  distance: { flexShrink: 0, fontSize: 13, color: INK },
   floatingButtonOuter: { padding: 24, paddingTop: 20 },
   primaryButton: {
     width: '100%',
