@@ -24,6 +24,7 @@ import {
   selectVisibleDeals,
   showsRealDiscount,
 } from '../../lib/curatedDeals';
+import { STORE_CHAINS } from '../../lib/storeFilter';
 import { AlertBanner } from '../../components/AlertBanner';
 import { CutoutViewer } from '../../components/CutoutViewer';
 import { ExpiredBadge } from '../../components/ExpiredBadge';
@@ -85,6 +86,10 @@ export default function BestDealsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  // Anabelle, 2026-10-09: reorganise by best value (category sections,
+  // best value first -- the default) or per store (one section per store).
+  const [sortMode, setSortMode] = useState<'value' | 'store'>('value');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   // Cutout shown full screen (tap a deal's thumbnail) -- one viewer for
   // the whole page rather than one per deal.
   const [zoomUri, setZoomUri] = useState<string | null>(null);
@@ -175,16 +180,56 @@ export default function BestDealsScreen() {
   // Categories come from ALL deals (every store) so a category the store
   // chips have emptied stays listed, greyed out; counts come from the
   // deals still shown.
-  const allGroups = groupDealsByCategory(deals);
-  const groups = groupDealsByCategory(shownDeals);
-  const categories = Array.from(allGroups.keys()).sort();
+  const byStore = (list: Deal[]) => {
+    const map = new Map<string, Deal[]>();
+    for (const deal of list) map.set(deal.chainName, [...(map.get(deal.chainName) ?? []), deal]);
+    return map;
+  };
+  const allGroups = sortMode === 'store' ? byStore(deals) : groupDealsByCategory(deals);
+  const groups = sortMode === 'store' ? byStore(shownDeals) : groupDealsByCategory(shownDeals);
+  // Stores in the same order as the store chips; categories alphabetical.
+  const categories =
+    sortMode === 'store'
+      ? STORE_CHAINS.filter((chain) => allGroups.has(chain))
+      : Array.from(allGroups.keys()).sort();
 
   return (
     <View style={styles.container}>
       <ClosingSoonBanner />
       {zoomUri && <CutoutViewer uri={zoomUri} visible onClose={() => setZoomUri(null)} />}
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Grrunch Picks</Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.title, styles.titleFlex]}>Grrunch Picks</Text>
+          <View style={styles.sortSection}>
+            <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
+              <Text style={styles.sortPillText}>{sortMode === 'store' ? 'Per store' : 'Best value'}</Text>
+              <ChevronDownIcon size={16} color={INK} strokeWidth={2} />
+            </Pressable>
+            {sortMenuOpen && (
+              <View style={styles.sortMenu}>
+                {(
+                  [
+                    { mode: 'value', label: 'Best value' },
+                    { mode: 'store', label: 'Per store' },
+                  ] as const
+                ).map((option) => (
+                  <Pressable
+                    key={option.mode}
+                    style={styles.sortMenuItem}
+                    onPress={() => {
+                      setSortMode(option.mode);
+                      setExpandedCategories(new Set());
+                      setSortMenuOpen(false);
+                    }}
+                  >
+                    <Text style={styles.sortMenuItemText}>{option.label}</Text>
+                    {sortMode === option.mode && <CheckIcon size={16} color={INK} strokeWidth={2} />}
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
         {weekExpired && (
           <AlertBanner variant="info" title={FRESH_DEALS_BANNER_TITLE} description={FRESH_DEALS_BANNER_BODY} />
         )}
@@ -372,7 +417,10 @@ export default function BestDealsScreen() {
                         router.push({
                           pathname: '/upgrade',
                           params: {
-                            reason: `see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`,
+                            reason:
+                              sortMode === 'store'
+                                ? `see ${lockedDealCount} more deal${lockedDealCount === 1 ? '' : 's'} from ${category}`
+                                : `see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`,
                           },
                         })
                       }
@@ -413,6 +461,48 @@ const styles = StyleSheet.create({
   // the white nav bar and the title below it -- previously had none.
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 20 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // Same sort pill + menu as the Meals tab (meals.tsx). zIndex on the row
+  // so the open menu paints over the deal card below.
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 20 },
+  titleFlex: { flex: 1, marginRight: 12 },
+  sortSection: { alignItems: 'flex-end' },
+  sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  sortPillText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
+  sortMenu: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    marginTop: 6,
+    minWidth: 160,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: INK,
+    borderRadius: 14,
+    paddingVertical: 4,
+    zIndex: 10,
+    elevation: 4,
+  },
+  sortMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  sortMenuItemText: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK, flex: 1 },
   tagline: { fontSize: 14, color: INK, marginTop: -12 },
   // First section of categoryContainer (count title), divided off like
   // a category row.
