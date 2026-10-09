@@ -3,35 +3,49 @@ import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from 'rea
 
 import { GrrunchMascot } from './GrrunchMascot';
 
-// Onboarding slide 4 ("Let's bite back at grocery prices.") -- the mascot
-// lunges and bites a price tag, which bursts into crumbs and disappears
-// (Anabelle, 2026-10-09: "It should just bite a price tag that explode in
-// crumbs and disappear"). A fresh tag pops back in and it loops while the
-// slide is active. Same React Native Animated approach as the other
-// onboarding illustrations; holds still with reduced motion.
+// Onboarding slide 4 ("Let's bite back at grocery prices.") -- a pile of
+// price tags; the mascot drops from the top, slams down on it, and the
+// whole pile bursts into crumbs and disappears (Anabelle, 2026-10-09:
+// "There should be a pile of price tags. The mascot comes from the top and
+// lands with force on it and the pile disappears in crumbs"). It then jumps
+// back out of frame, the pile pops back in, and it loops while the slide
+// is active. Same React Native Animated approach as the other onboarding
+// illustrations; holds still (mascot resting on the pile) with reduced
+// motion.
 
 const INK = '#111';
 const ACCENT = '#FFA955';
 
-// Crumb burst directions (dx, dy, size) from the tag's centre.
+const STAGE_W = 300;
+const STAGE_H = 230;
+const MASCOT = 140;
+const GROUND = STAGE_H - 8; // y of the floor line
+
+type TagSpec = { price: string; x: number; y: number; rotate: string };
+// The pile, bottom tags first, centred under the mascot.
+const PILE: TagSpec[] = [
+  { price: '$12.99', x: 58, y: GROUND - 58, rotate: '-8deg' },
+  { price: '$15.99', x: 146, y: GROUND - 56, rotate: '7deg' },
+  { price: '$8.49', x: 102, y: GROUND - 64, rotate: '2deg' },
+  { price: '$9.99', x: 74, y: GROUND - 104, rotate: '10deg' },
+  { price: '$11.49', x: 130, y: GROUND - 102, rotate: '-9deg' },
+];
+const PILE_TOP = GROUND - 104;
+const PILE_CENTRE = { x: STAGE_W / 2, y: GROUND - 60 };
+
+// Crumb burst (dx, dy, size) from the pile's centre.
 const CRUMBS: Array<[number, number, number]> = [
-  [-46, -38, 12],
-  [-10, -62, 9],
-  [34, -50, 11],
-  [58, -8, 10],
-  [44, 40, 12],
-  [6, 60, 9],
-  [-36, 48, 10],
-  [-60, 6, 8],
-  [20, -24, 7],
-  [-22, 22, 7],
+  [-120, -40, 12], [-90, -90, 10], [-50, -120, 11], [0, -130, 9], [52, -118, 12],
+  [96, -86, 10], [126, -36, 11], [118, 20, 9], [84, 40, 12], [-80, 40, 10],
+  [-124, 16, 9], [-30, -70, 8], [36, -64, 8], [-140, -70, 7], [146, -80, 7],
 ];
 
 export function BiteAnimation({ active }: { active: boolean }) {
-  const lunge = useRef(new Animated.Value(0)).current; // 0 rest, 1 at the tag
-  const chomp = useRef(new Animated.Value(0)).current; // squash on the bite
-  const tag = useRef(new Animated.Value(1)).current; // 1 whole, 0 gone
-  const burst = useRef(new Animated.Value(0)).current; // 0 none, 1 crumbs flown
+  const drop = useRef(new Animated.Value(0)).current; // 0 above frame, 1 on pile, 2 on floor
+  const squash = useRef(new Animated.Value(0)).current; // impact squash
+  const pile = useRef(new Animated.Value(1)).current; // 1 whole, 0 gone
+  const burst = useRef(new Animated.Value(0)).current; // crumbs
+  const shake = useRef(new Animated.Value(0)).current; // stage jolt
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -39,124 +53,151 @@ export function BiteAnimation({ active }: { active: boolean }) {
   }, []);
 
   useEffect(() => {
-    lunge.setValue(0);
-    chomp.setValue(0);
-    tag.setValue(1);
+    squash.setValue(0);
     burst.setValue(0);
-    if (!active || reduceMotion) return;
-    const ease = Easing.bezier(0.3, 0.7, 0.3, 1);
+    shake.setValue(0);
+    if (!active || reduceMotion) {
+      drop.setValue(1);
+      pile.setValue(1);
+      return;
+    }
+    drop.setValue(0);
+    pile.setValue(1);
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.delay(600),
-        // Wind up, then lunge.
-        Animated.timing(lunge, { toValue: -0.15, duration: 220, easing: ease, useNativeDriver: true }),
-        Animated.timing(lunge, { toValue: 1, duration: 240, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-        // Chomp: the tag vanishes in a burst of crumbs.
+        Animated.delay(450),
+        // Fall from the top and slam onto the pile.
+        Animated.timing(drop, { toValue: 1, duration: 420, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        // Impact: squash, jolt, the pile bursts into crumbs and vanishes,
+        // and the mascot keeps going down to the floor.
         Animated.parallel([
           Animated.sequence([
-            Animated.timing(chomp, { toValue: 1, duration: 110, useNativeDriver: true }),
-            Animated.timing(chomp, { toValue: 0, duration: 180, easing: ease, useNativeDriver: true }),
+            Animated.timing(squash, { toValue: 1, duration: 90, useNativeDriver: true }),
+            Animated.spring(squash, { toValue: 0, friction: 4, tension: 160, useNativeDriver: true }),
           ]),
-          Animated.timing(tag, { toValue: 0, duration: 140, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.timing(burst, { toValue: 1, duration: 750, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.sequence([
+            Animated.timing(shake, { toValue: 1, duration: 50, useNativeDriver: true }),
+            Animated.timing(shake, { toValue: -1, duration: 60, useNativeDriver: true }),
+            Animated.timing(shake, { toValue: 0.5, duration: 60, useNativeDriver: true }),
+            Animated.timing(shake, { toValue: 0, duration: 60, useNativeDriver: true }),
+          ]),
+          Animated.timing(pile, { toValue: 0, duration: 140, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(burst, { toValue: 1, duration: 850, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.sequence([
+            Animated.delay(60),
+            Animated.spring(drop, { toValue: 2, friction: 5, tension: 140, useNativeDriver: true }),
+          ]),
         ]),
-        // Back off, satisfied.
-        Animated.timing(lunge, { toValue: 0, duration: 420, easing: ease, useNativeDriver: true }),
-        Animated.delay(700),
-        // A new tag pops in for the next round.
+        Animated.delay(900),
+        // Jump back up out of frame; a fresh pile pops in.
+        Animated.timing(drop, { toValue: 0, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }),
         Animated.timing(burst, { toValue: 0, duration: 1, useNativeDriver: true }),
-        Animated.spring(tag, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }),
+        Animated.spring(pile, { toValue: 1, friction: 5, tension: 110, useNativeDriver: true }),
       ])
     );
     loop.start();
     return () => loop.stop();
-  }, [active, reduceMotion, lunge, chomp, tag, burst]);
+  }, [active, reduceMotion, drop, squash, pile, burst, shake]);
 
+  // Mascot's bottom edge: off the top (0), on the pile (1), on the floor (2).
+  const restTop = GROUND - MASCOT; // standing on the floor
   const mascotStyle = {
     transform: [
-      { translateX: lunge.interpolate({ inputRange: [-0.15, 0, 1], outputRange: [-8, 0, 50] }) },
-      { rotate: lunge.interpolate({ inputRange: [-0.15, 0, 1], outputRange: ['-4deg', '0deg', '8deg'] }) },
-      { scaleX: chomp.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] }) },
-      { scaleY: chomp.interpolate({ inputRange: [0, 1], outputRange: [1, 0.88] }) },
+      {
+        translateY: drop.interpolate({
+          inputRange: [0, 1, 2],
+          outputRange: [-STAGE_H - MASCOT, PILE_TOP - MASCOT + 18, restTop],
+        }),
+      },
+      { scaleX: squash.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] }) },
+      { scaleY: squash.interpolate({ inputRange: [0, 1], outputRange: [1, 0.78] }) },
     ],
   };
-  const tagStyle = {
-    opacity: tag,
-    transform: [{ rotate: '8deg' }, { scale: tag.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
+  const stageStyle = {
+    transform: [{ translateX: shake.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] }) }],
   };
 
   return (
-    <View
-      style={styles.stage}
+    <Animated.View
+      style={[styles.stage, stageStyle]}
       accessible
-      accessibilityLabel="The Grrunch mascot bites a price tag, which bursts into crumbs"
+      accessibilityLabel="The Grrunch mascot lands on a pile of price tags, which bursts into crumbs"
     >
-      <View style={styles.tagWrap}>
-        <Animated.View style={[styles.tag, tagStyle]}>
+      {PILE.map((tag) => (
+        <Animated.View
+          key={tag.price}
+          style={[
+            styles.tag,
+            {
+              left: tag.x - 42,
+              top: tag.y,
+              opacity: pile,
+              transform: [
+                { rotate: tag.rotate },
+                { scale: pile.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) },
+              ],
+            },
+          ]}
+        >
           <View style={styles.tagHole} />
-          <Text style={styles.price}>$12.99</Text>
+          <Text style={styles.price}>{tag.price}</Text>
         </Animated.View>
-        {CRUMBS.map(([dx, dy, size], i) => (
-          <Animated.View
-            key={i}
-            style={[
-              styles.crumb,
-              {
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-                backgroundColor: i % 3 === 0 ? '#fff' : ACCENT,
-                opacity: burst.interpolate({ inputRange: [0, 0.05, 0.7, 1], outputRange: [0, 1, 1, 0] }),
-                transform: [
-                  { translateX: burst.interpolate({ inputRange: [0, 1], outputRange: [0, dx] }) },
-                  { translateY: burst.interpolate({ inputRange: [0, 1], outputRange: [0, dy] }) },
-                  { scale: burst.interpolate({ inputRange: [0, 1], outputRange: [1.2, 0.6] }) },
-                ],
-              },
-            ]}
-          />
-        ))}
-      </View>
+      ))}
+      {CRUMBS.map(([dx, dy, size], c) => (
+        <Animated.View
+          key={c}
+          style={[
+            styles.crumb,
+            {
+              left: PILE_CENTRE.x - size / 2,
+              top: PILE_CENTRE.y - size / 2,
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              backgroundColor: c % 3 === 0 ? '#fff' : ACCENT,
+              opacity: burst.interpolate({ inputRange: [0, 0.04, 0.7, 1], outputRange: [0, 1, 1, 0] }),
+              transform: [
+                { translateX: burst.interpolate({ inputRange: [0, 1], outputRange: [0, dx] }) },
+                // A little arc: up and out, then falling back.
+                { translateY: burst.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, dy, dy + 40] }) },
+                { scale: burst.interpolate({ inputRange: [0, 1], outputRange: [1.2, 0.7] }) },
+              ],
+            },
+          ]}
+        />
+      ))}
       <Animated.View style={[styles.mascot, mascotStyle]}>
-        <GrrunchMascot size={170} showCrumbs={false} />
+        <GrrunchMascot size={MASCOT} showCrumbs={false} />
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  stage: { width: 300, height: 220, justifyContent: 'center' },
-  mascot: { position: 'absolute', left: 0, top: 25 },
-  tagWrap: {
-    position: 'absolute',
-    right: 6,
-    top: 52,
-    width: 118,
-    height: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  stage: { width: STAGE_W, height: STAGE_H, overflow: 'hidden' },
+  mascot: { position: 'absolute', left: (STAGE_W - MASCOT) / 2, top: 0 },
   tag: {
-    width: 118,
-    height: 100,
+    position: 'absolute',
+    width: 84,
+    height: 54,
     backgroundColor: '#fff',
     borderWidth: 2.5,
     borderColor: INK,
-    borderRadius: 18,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tagHole: {
     position: 'absolute',
-    top: 10,
-    right: 12,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2.5,
+    top: 6,
+    right: 8,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    borderWidth: 2,
     borderColor: INK,
     backgroundColor: ACCENT,
   },
-  price: { fontSize: 26, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  price: { fontSize: 17, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   crumb: { position: 'absolute', borderWidth: 1.5, borderColor: INK },
 });
