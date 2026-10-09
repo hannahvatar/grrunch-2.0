@@ -290,6 +290,15 @@ function isBareOrSizeCount(unit: string | undefined): boolean {
   return normalized === '' || normalized === 'each' || normalized === 'large' || /^whole\b/.test(normalized);
 }
 
+// A container counted one by one ("1 can", "2 jars"). On a multi-buy
+// deal ("2 for $4" cans) the bundle is how the store prices it, not a
+// package to buy whole, so these still count cans (Anabelle,
+// 2026-10-09: Paneer Pressure's diced tomatoes stayed at 1 when
+// scaled to 8 servings).
+function isContainerUnit(unit: string | undefined): boolean {
+  return /^(cans?|jars?|bottles?|cartons?|tins?|tubs?)\b/i.test((unit ?? '').trim());
+}
+
 // Parses a quantity+unit into a normalized (amount, base_unit) pair.
 // Handles both recipe-style units (tsp/tbsp/cup/g/ml/each) and
 // reference-style units (StatCan's "500 grams", "per kilogram", "unit",
@@ -326,6 +335,27 @@ export function scaleQuantityString(quantity: string | undefined, multiplier: nu
   return String(Math.round(amount * multiplier * 100) / 100);
 }
 
+// A scaled amount as a kitchen fraction for display: 1/3 cup at 2x reads
+// "2/3 cup", 1/2 tsp at 3x "1 1/2 tsp", not "0.67 cup" / "1.5 tsp"
+// (Anabelle, 2026-10-09: "keep original unit e.g. if 1/3 cup, then its
+// 2/3 cup"). Metric weights/volumes keep their decimals, and an amount
+// that lands on no halves/thirds/quarters/eighths is left as is.
+export function formatScaledQuantity(quantity: string | undefined, unit: string | undefined): string | undefined {
+  const qtyText = (quantity ?? '').trim();
+  if (!/^\d+\.\d+$/.test(qtyText)) return quantity;
+  if (/^(g|kg|ml|l|lbs?|oz)\b/i.test((unit ?? '').trim())) return quantity;
+  const amount = parseFloat(qtyText);
+  const whole = Math.floor(amount);
+  const frac = amount - whole;
+  for (const d of [2, 3, 4, 8]) {
+    const n = Math.round(frac * d);
+    if (n > 0 && n < d && Math.abs(frac - n / d) < 0.011) {
+      return whole > 0 ? `${whole} ${n}/${d}` : `${n}/${d}`;
+    }
+  }
+  return quantity;
+}
+
 // Builds an ingredient's display text/groceryText from its name and
 // quantity/unit -- factored out of mapIngredient() (lib/recipes.ts) so
 // scaleIngredientDisplay (lib/mealScaling.ts) can rebuild the same
@@ -348,7 +378,7 @@ export function describeQuantityText(
   const scaledQuantity = scaleQuantityString(quantity, multiplier);
   const dryEquivalent = describeDryEquivalent(name, scaledQuantity, unit);
   const unitCount = describeUnitCount(name, quantity, unit, multiplier);
-  const rawText = [scaledQuantity, unit, name].filter(Boolean).join(' ').trim();
+  const rawText = [formatScaledQuantity(scaledQuantity, unit), unit, name].filter(Boolean).join(' ').trim();
   // "(cooked)" only on the recipe-page text -- a bare "2 cups Rice"
   // reads as if 2 cups is what to buy, when it's actually the dish's
   // cooked amount (see describeDryEquivalent). The name itself (used for
@@ -883,6 +913,9 @@ export function computeDealPackageCount(
   // 2026-10-01: "if the recipe uses 2 apples, why does the number show 1").
   if (priceUnit && BY_WEIGHT_PRICE_UNITS.includes(priceUnit)) {
     const items = describedItemCount(unit);
+    // Cloves are bought as whole heads (~10 each), same as
+    // describeDealPackage: 12 cloves at 3x is 2 heads, not 12.
+    if (items !== undefined && /\bcloves?\b/i.test(unit ?? '')) return Math.max(1, Math.ceil((items * multiplier) / 10));
     if (items !== undefined) return Math.max(1, Math.ceil(items * multiplier));
   }
   // Whole items counted with a container word ("2 cans", "2 packs",
@@ -890,7 +923,7 @@ export function computeDealPackageCount(
   // "the kidney beans don't scale" -- the fallback below returned just
   // the batch count, so 2 cans x 2 batches still read "2".
   const counted = parseUnitAmount(quantity, unit);
-  if (!Number.isNaN(counted.amount) && counted.baseUnit === 'each' && !(fragmentByWeight && bundleCount)) {
+  if (!Number.isNaN(counted.amount) && counted.baseUnit === 'each' && (!(fragmentByWeight && bundleCount) || isContainerUnit(unit))) {
     // Whole items bought loose from a weighed bag (onions): a second bag
     // only once the onions outweigh one bag.
     if (fragmentByWeight && packageWeightG && ingredientName) {
@@ -976,7 +1009,7 @@ export function describeDealPackage(
     return String(Math.max(1, Math.ceil(count)));
   }
   // A multi-pack (naan 15-pack, 2-for cans): how many packs to buy.
-  if (ua.baseUnit === 'each' && bundleCount && ua.amount >= 1) {
+  if (ua.baseUnit === 'each' && bundleCount && ua.amount >= 1 && !isContainerUnit(recipeUnit)) {
     const packs = Math.ceil(ua.amount / bundleCount - 1e-9);
     return packs === 1 ? '1 package' : `${packs} packages`;
   }
@@ -1438,7 +1471,7 @@ export function describeUseQuantityText(
       const exact = (isBareCount ? ua.amount : parseQuantity(quantity)) * multiplier;
       // "1/2 onion", not a rounded "1 onion" (or "0 onions").
       if (!Number.isInteger(exact) && isBareCount) {
-        return `Recipe uses ${scaleQuantityString(quantity, multiplier)} ${exact <= 1 ? label.singular : label.plural}`;
+        return `Recipe uses ${formatScaledQuantity(scaleQuantityString(quantity, multiplier), unit)} ${exact <= 1 ? label.singular : label.plural}`;
       }
       const count = Math.round(exact);
       return `Recipe uses ${count} ${count === 1 ? label.singular : label.plural}`;
@@ -1455,7 +1488,7 @@ export function describeUseQuantityText(
     const grams = ua.amount * multiplier;
     const pounds = grams >= 200 ? ` (about ${Math.round((grams / 453.6) * 10) / 10} lb)` : '';
     const tail = rest.length ? `,${rest.join(',')}` : '';
-    return `Recipe uses ${scaledQuantity} ${base.trim()}${pounds}${tail}`.trim();
+    return `Recipe uses ${formatScaledQuantity(scaledQuantity, unit)} ${base.trim()}${pounds}${tail}`.trim();
   }
   // Prep note after "of the package": "900 g of the package, peeled and
   // cubed", not "900 g, peeled and cubed of the package".
@@ -1463,7 +1496,7 @@ export function describeUseQuantityText(
   const prepTail = prep.length ? `,${prep.join(',')}` : '';
   // A volume ("1/3 cup") reads fine on its own (Anabelle, 2026-10-07).
   const ofPackage = ua.baseUnit === 'ml' ? '' : ' of the package';
-  return `Recipe uses ${scaledQuantity} ${unitBase.trim()}${ofPackage}${prepTail}`.replace(/\s+/g, ' ').trim();
+  return `Recipe uses ${formatScaledQuantity(scaledQuantity, unit)} ${unitBase.trim()}${ofPackage}${prepTail}`.replace(/\s+/g, ' ').trim();
 }
 
 // Staples conventionally bought and measured as whole discrete items (a
