@@ -1265,13 +1265,16 @@ const ALWAYS_SHOW_CONTAINER_COUNT: string[] = [
   'aroy-d coconut milk',
   // Ham & Bean Bonanza -- Anabelle: "Recipe uses 1 package of 900ml".
   'chicken broth',
+  // Dip It Real Good -- the jus uses the whole carton.
+  'beef broth',
 ];
 
 // Package size spelled out after the count for an entry above. Kept out
 // of the recipe's own unit on purpose: "package of 900 mL" there would
 // parse as 900 mL and change the pricing.
 const CONTAINER_SIZE_LABELS: Record<string, string> = {
-  'chicken broth': '900\u00A0mL', // non-breaking space: never wraps between 900 and mL
+  'chicken broth': '900\u00A0mL',
+  'beef broth': '900\u00A0mL', // non-breaking space: never wraps between 900 and mL
 };
 
 // English pluralization for a kitchen container word (bunch, pack, box,
