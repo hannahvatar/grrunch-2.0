@@ -825,7 +825,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   instructionStepBadgeText: { fontSize: 15, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  instructionStepText: { flex: 1, fontSize: 15, lineHeight: 22, color: '#333' },
+  // 21.99, not 22: at 22 the text box came out a hair short (197.9998
+  // for 9 lines) and iOS squeezed the last line in and cut it off
+  // (Paneer Pressure step 2, 2026-10-09). Looks the same on screen.
+  instructionStepText: { flex: 1, fontSize: 15, lineHeight: 21.99, color: '#333' },
   // Sub-recipe Instructions only now (main recipe's own switched to
   // instructionStepCard above).
   listItem: { fontSize: 15, lineHeight: 24, color: '#333' },
