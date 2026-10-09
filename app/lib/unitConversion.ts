@@ -290,6 +290,15 @@ function isBareOrSizeCount(unit: string | undefined): boolean {
   return normalized === '' || normalized === 'each' || normalized === 'large' || /^whole\b/.test(normalized);
 }
 
+// A container counted one by one ("1 can", "2 jars"). On a multi-buy
+// deal ("2 for $4" cans) the bundle is how the store prices it, not a
+// package to buy whole, so these still count cans (Anabelle,
+// 2026-10-09: Paneer Pressure's diced tomatoes stayed at 1 when
+// scaled to 8 servings).
+function isContainerUnit(unit: string | undefined): boolean {
+  return /^(cans?|jars?|bottles?|cartons?|tins?|tubs?)\b/i.test((unit ?? '').trim());
+}
+
 // Parses a quantity+unit into a normalized (amount, base_unit) pair.
 // Handles both recipe-style units (tsp/tbsp/cup/g/ml/each) and
 // reference-style units (StatCan's "500 grams", "per kilogram", "unit",
@@ -883,6 +892,9 @@ export function computeDealPackageCount(
   // 2026-10-01: "if the recipe uses 2 apples, why does the number show 1").
   if (priceUnit && BY_WEIGHT_PRICE_UNITS.includes(priceUnit)) {
     const items = describedItemCount(unit);
+    // Cloves are bought as whole heads (~10 each), same as
+    // describeDealPackage: 12 cloves at 3x is 2 heads, not 12.
+    if (items !== undefined && /\bcloves?\b/i.test(unit ?? '')) return Math.max(1, Math.ceil((items * multiplier) / 10));
     if (items !== undefined) return Math.max(1, Math.ceil(items * multiplier));
   }
   // Whole items counted with a container word ("2 cans", "2 packs",
@@ -890,7 +902,7 @@ export function computeDealPackageCount(
   // "the kidney beans don't scale" -- the fallback below returned just
   // the batch count, so 2 cans x 2 batches still read "2".
   const counted = parseUnitAmount(quantity, unit);
-  if (!Number.isNaN(counted.amount) && counted.baseUnit === 'each' && !(fragmentByWeight && bundleCount)) {
+  if (!Number.isNaN(counted.amount) && counted.baseUnit === 'each' && (!(fragmentByWeight && bundleCount) || isContainerUnit(unit))) {
     // Whole items bought loose from a weighed bag (onions): a second bag
     // only once the onions outweigh one bag.
     if (fragmentByWeight && packageWeightG && ingredientName) {
@@ -976,7 +988,7 @@ export function describeDealPackage(
     return String(Math.max(1, Math.ceil(count)));
   }
   // A multi-pack (naan 15-pack, 2-for cans): how many packs to buy.
-  if (ua.baseUnit === 'each' && bundleCount && ua.amount >= 1) {
+  if (ua.baseUnit === 'each' && bundleCount && ua.amount >= 1 && !isContainerUnit(recipeUnit)) {
     const packs = Math.ceil(ua.amount / bundleCount - 1e-9);
     return packs === 1 ? '1 package' : `${packs} packages`;
   }
