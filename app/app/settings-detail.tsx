@@ -19,6 +19,11 @@ const ABOUT_PARAGRAPHS: { text: string; bold?: boolean }[][] = [
   [{ text: 'That’s why I created Grrunch.' }],
   [
     {
+      text: 'I may not be able to solve food insecurity on my own, but I believe meaningful change starts somewhere. And if Grrunch can make life a little easier for even one person, put a good meal on someone’s table, or take a little worry out of grocery shopping, that alone would mean the world to me.',
+    },
+  ],
+  [
+    {
       text: 'We dig through grocery flyers, uncover deals that are actually worth it, and turn them into delicious, affordable meals. Because eating well shouldn’t mean spending a fortune, and making ends meet shouldn’t mean sacrificing good food.',
     },
   ],
@@ -94,7 +99,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   bodyText: { fontSize: 14, color: '#888', textAlign: 'center' },
-  aboutContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  // Bottom room so the last line scrolls clear of the chat button.
+  aboutContent: { paddingHorizontal: 20, paddingBottom: 120 },
   aboutCard: {
     gap: 16,
     backgroundColor: '#fff',
