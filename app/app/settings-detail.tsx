@@ -37,11 +37,16 @@ export default function SettingsDetailScreen() {
       </View>
       {isAbout ? (
         <ScrollView contentContainerStyle={styles.aboutContent}>
-          {ABOUT_PARAGRAPHS.map((paragraph, i) => (
-            <Text key={i} style={[styles.aboutParagraph, paragraph.bold && styles.aboutParagraphBold]}>
-              {paragraph.text}
-            </Text>
-          ))}
+          {/* White card, same treatment as My list's store cards
+              (Anabelle, 2026-10-12: "move the about text into a white
+              container"). */}
+          <View style={styles.aboutCard}>
+            {ABOUT_PARAGRAPHS.map((paragraph, i) => (
+              <Text key={i} style={[styles.aboutParagraph, paragraph.bold && styles.aboutParagraphBold]}>
+                {paragraph.text}
+              </Text>
+            ))}
+          </View>
         </ScrollView>
       ) : (
         <View style={styles.body}>
@@ -75,7 +80,15 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   bodyText: { fontSize: 14, color: '#888', textAlign: 'center' },
-  aboutContent: { paddingHorizontal: 24, paddingBottom: 40, gap: 16 },
+  aboutContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  aboutCard: {
+    gap: 16,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#111',
+    borderRadius: 16,
+    padding: 20,
+  },
   aboutParagraph: { fontSize: 15, lineHeight: 22, color: '#111' },
   aboutParagraphBold: { fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });
