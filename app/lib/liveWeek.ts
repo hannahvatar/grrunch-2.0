@@ -306,6 +306,24 @@ function vancouverParts(date: Date): { weekday: string; hour: number } | null {
   }
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// "2026-10-08" -> "Oct 8". Read straight from the string: these are BC
+// calendar dates, and going through Date would shift them by time zone.
+function formatFlyerDay(date: string): string {
+  const [, month, day] = date.split('-').map(Number);
+  return `${MONTHS[month - 1]} ${day}`;
+}
+
+// "Valid Oct 8 to Oct 14", shown under the Meals and Weekly Deals titles
+// (Anabelle, 2026-10-12: "add from and until when those are valid").
+// Null while the week isn't known yet or once it has closed.
+export function useWeekValidityLabel(): string | null {
+  const week = useLiveWeek();
+  if (!week || week.closed) return null;
+  return `Valid ${formatFlyerDay(week.validFrom)} to ${formatFlyerDay(week.validTo)}`;
+}
+
 export function useLiveWeekExpired(): boolean {
   return useLiveWeek()?.expired ?? false;
 }
