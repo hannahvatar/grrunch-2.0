@@ -30,7 +30,7 @@ import { CutoutViewer } from '../../components/CutoutViewer';
 import { ExpiredBadge } from '../../components/ExpiredBadge';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
-import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
+import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek, useWeekValidityLabel } from '../../lib/liveWeek';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { StoreChips } from '../../components/StoreChips';
 import { WeekGapState } from '../../components/WeekGapState';
@@ -103,6 +103,7 @@ export default function BestDealsScreen() {
   // Weekly gap: between the Wednesday 11:59 pm close and the Thursday noon
   // publish, the whole screen is the "new deals are coming" state.
   const liveWeek = useLiveWeek();
+  const weekValidity = useWeekValidityLabel();
   const weekExpired = liveWeek?.expired ?? false;
   const weekClosed = liveWeek?.closed ?? false;
 
@@ -199,7 +200,10 @@ export default function BestDealsScreen() {
       {zoomUri && <CutoutViewer uri={zoomUri} visible onClose={() => setZoomUri(null)} />}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
-          <Text style={[styles.title, styles.titleFlex]}>Grrunch Picks</Text>
+          <View style={styles.titleFlex}>
+            <Text style={styles.title}>Grrunch Picks</Text>
+            {weekValidity && <Text style={styles.weekValidity}>{weekValidity}</Text>}
+          </View>
           <View style={styles.sortSection}>
             <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
               <Text style={styles.sortPillText}>{sortMode === 'store' ? 'Per store' : 'Best savings'}</Text>
@@ -476,6 +480,7 @@ const styles = StyleSheet.create({
   // so the open menu paints over the deal card below.
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 20 },
   titleFlex: { flex: 1, marginRight: 12 },
+  weekValidity: { marginTop: 4, fontSize: 14, color: '#555' },
   sortSection: { alignItems: 'flex-end' },
   sortPill: {
     flexDirection: 'row',
