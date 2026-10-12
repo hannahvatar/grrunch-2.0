@@ -2,18 +2,32 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { XMarkIcon } from 'react-native-heroicons/outline';
 
-// About is real copy (Anabelle, 2026-08-28, revised same day -- felt over
-// explained, not a step-by-step of the machinery) -- everything else on
-// this shared stub screen is still the honest "not built yet" placeholder.
-const ABOUT_PARAGRAPHS: { text: string; bold?: boolean }[] = [
-  { text: 'Grrunch turns grocery deals into real, affordable meals.' },
-  {
-    text: 'Every week, we sort through the noise to find the grocery deals actually worth bringing home. Then we turn them into practical, delicious recipes designed around what’s good right now and what it really costs.',
-  },
-  {
-    text: 'No hunting through flyers. No wondering if a sale is really a deal. Just smarter ways to shop, cook, and make your grocery budget go further.',
-  },
-  { text: 'Spend less. Cook something good. Grrunch the deals.', bold: true },
+// About is real copy -- Anabelle's own founder note (2026-10-12; replaces
+// the 2026-08-28 product blurb). Everything else on this shared stub
+// screen is still the honest "not built yet" placeholder. Each paragraph
+// is a list of runs so part of a sentence can be bold.
+const ABOUT_PARAGRAPHS: { text: string; bold?: boolean }[][] = [
+  [
+    { text: 'Grrunch was born from a belief I’ve carried for years: ' },
+    { text: 'everyone deserves to eat well, no matter their budget.', bold: true },
+  ],
+  [
+    {
+      text: 'Food insecurity and rising grocery prices are struggles I’ve cared deeply about for a long time. Watching something as essential as a good meal become increasingly unaffordable is something I refuse to simply accept.',
+    },
+  ],
+  [{ text: 'That’s why I created Grrunch.' }],
+  [
+    {
+      text: 'I may not be able to solve food insecurity on my own, but I believe meaningful change starts somewhere. And if Grrunch can make life a little easier for even one person, put a good meal on someone’s table, or take a little worry out of grocery shopping, that alone would mean the world to me.',
+    },
+  ],
+  [
+    {
+      text: 'We dig through grocery flyers, uncover deals that are actually worth it, and turn them into delicious, affordable meals. Because eating well shouldn’t mean spending a fortune, and making ends meet shouldn’t mean sacrificing good food.',
+    },
+  ],
+  [{ text: 'Spend less. Cook something good. Grrunch the deals.', bold: true }],
 ];
 
 // Shared stub destination for the Settings rows that don't have real
@@ -37,11 +51,21 @@ export default function SettingsDetailScreen() {
       </View>
       {isAbout ? (
         <ScrollView contentContainerStyle={styles.aboutContent}>
-          {ABOUT_PARAGRAPHS.map((paragraph, i) => (
-            <Text key={i} style={[styles.aboutParagraph, paragraph.bold && styles.aboutParagraphBold]}>
-              {paragraph.text}
-            </Text>
-          ))}
+          {/* White card, same treatment as My list's store cards
+              (Anabelle, 2026-10-12: "move the about text into a white
+              container"). */}
+          <View style={styles.aboutCard}>
+            <Text style={styles.aboutHeart}>🧡</Text>
+            {ABOUT_PARAGRAPHS.map((runs, i) => (
+              <Text key={i} style={styles.aboutParagraph}>
+                {runs.map((run, r) => (
+                  <Text key={r} style={run.bold && styles.aboutParagraphBold}>
+                    {run.text}
+                  </Text>
+                ))}
+              </Text>
+            ))}
+          </View>
         </ScrollView>
       ) : (
         <View style={styles.body}>
@@ -75,7 +99,17 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   bodyText: { fontSize: 14, color: '#888', textAlign: 'center' },
-  aboutContent: { paddingHorizontal: 24, paddingBottom: 40, gap: 16 },
+  // Bottom room so the last line scrolls clear of the chat button.
+  aboutContent: { paddingHorizontal: 20, paddingBottom: 120 },
+  aboutCard: {
+    gap: 16,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#111',
+    borderRadius: 16,
+    padding: 20,
+  },
+  aboutHeart: { fontSize: 32 },
   aboutParagraph: { fontSize: 15, lineHeight: 22, color: '#111' },
   aboutParagraphBold: { fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });
