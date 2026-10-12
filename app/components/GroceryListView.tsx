@@ -8,7 +8,7 @@ import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
 import { formatScaledQuantity } from '../lib/unitConversion';
-import { useLiveWeek } from '../lib/liveWeek';
+import { useLiveWeek, useWeekValidityLabel } from '../lib/liveWeek';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
 import { useSelectedMeals } from '../lib/selectedMeals';
@@ -158,6 +158,7 @@ export function GroceryListView() {
   const [newItemUnit, setNewItemUnit] = useState('unit');
   const nextCustomItemId = useRef(0);
   const weekClosed = useLiveWeek()?.closed ?? false;
+  const weekValidity = useWeekValidityLabel();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { selectedDealIds } = useSelectedDeals();
   const [rawSelectedMeals, setRawSelectedMeals] = useState<Meal[]>([]);
@@ -455,6 +456,10 @@ export function GroceryListView() {
               guest-locked or empty-state copy right below it even
               explains why there's nothing yet. Still shows once there's
               real content to summarize. */}
+          {/* Same "Valid Oct 8 to Oct 14" line as Meals and Weekly Deals
+              (Anabelle, 2026-10-12). Only with items: an empty list has
+              no prices for the dates to apply to. */}
+          {items.length > 0 && weekValidity && <Text style={styles.subtitle}>{weekValidity}</Text>}
           {items.length > 0 && (
             <Text style={styles.subtitle}>
               {items.length} item{items.length === 1 ? '' : 's'} · {dealItemCount} on sale ·{' '}
