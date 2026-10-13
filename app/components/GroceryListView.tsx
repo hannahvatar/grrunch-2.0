@@ -204,6 +204,23 @@ export function GroceryListView() {
       .catch(() => setRawSelectedMeals([]));
   }, [selectedIds]);
 
+  // A recipe taken off the list takes its item edits with it, so adding
+  // it back starts fresh (Anabelle, 2026-10-13: an ingredient she had
+  // removed was still gone after removing and re-adding the recipe).
+  // Recipe item keys are `${meal.id}-${index}`.
+  useEffect(() => {
+    const belongsToRemovedMeal = (key: string) =>
+      !key.startsWith('deal-') && !key.startsWith('custom-') && !selectedIds.has(key.slice(0, key.lastIndexOf('-')));
+    setRemovedKeys((prev) => {
+      const next = new Set([...prev].filter((key) => !belongsToRemovedMeal(key)));
+      return next.size === prev.size ? prev : next;
+    });
+    setQuantityOverrides((prev) => {
+      const next = new Map([...prev].filter(([key]) => !belongsToRemovedMeal(key)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [selectedIds]);
+
   // Each recipe's real, un-scaled serving size/price/nutrition -- see
   // lib/mealScaling.ts for why nothing here gets resized to a target --
   // re-priced for the stores unselected in the shared store chips
@@ -261,8 +278,11 @@ export function GroceryListView() {
   // Bulk version of the above -- the top-of-screen note's own "Reset"
   // button, for clearing every manual edit at once rather than one item
   // at a time via each row's own sheet.
+  // Also brings back removed items: removing one is an edit to the list
+  // too (Anabelle, 2026-10-13: Reset stayed disabled after a removal).
   function resetAllQuantityOverrides() {
     setQuantityOverrides(new Map());
+    setRemovedKeys(new Set());
   }
 
   function resolveDisplayText(item: GroceryItem): string {
@@ -386,6 +406,9 @@ export function GroceryListView() {
   const items: GroceryItem[] = [...recipeItems, ...dealItems, ...customGroceryItems].filter(
     (item) => !removedKeys.has(item.key)
   );
+
+  // Anything Reset would undo: an edited quantity or a removed item.
+  const hasListEdits = quantityOverrides.size > 0 || removedKeys.size > 0;
 
   function openAddItemSheet() {
     setNewItemName('');
@@ -551,7 +574,7 @@ export function GroceryListView() {
             reads as two clearly labeled sections (the recipes you've
             picked, then what to actually buy for them) instead of the
             store cards just starting with no heading of their own. */}
-        {storeNames.length > 0 && (
+        {(storeNames.length > 0 || removedKeys.size > 0) && (
           <View style={styles.yourListHeaderRow}>
             <Text style={styles.selectedSectionTitle}>Your list</Text>
             {/* Bulk version of each row's own sheet-level "Reset to
@@ -563,9 +586,9 @@ export function GroceryListView() {
                 minus button. Same tertiary treatment (white fill, INK
                 border) as IngredientRow's editButton/removeMealButton. */}
             <Pressable
-              style={[styles.resetAllButton, quantityOverrides.size === 0 && styles.resetAllButtonDisabled]}
+              style={[styles.resetAllButton, !hasListEdits && styles.resetAllButtonDisabled]}
               onPress={resetAllQuantityOverrides}
-              disabled={quantityOverrides.size === 0}
+              disabled={!hasListEdits}
               hitSlop={8}
             >
               <Text style={styles.resetAllButtonText}>Reset</Text>
