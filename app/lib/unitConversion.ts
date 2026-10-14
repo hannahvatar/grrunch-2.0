@@ -306,6 +306,10 @@ function isContainerUnit(unit: string | undefined): boolean {
 function parseQuantity(quantity: string | undefined): number {
   const qtyText = (quantity ?? '').trim();
   if (qtyText === '') return 1;
+  // Mixed number ("1 1/2 cups"); parse_unit_amount's server twin reads
+  // these too (20261014010000_mixed_number_quantities.sql).
+  const mixed = qtyText.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
+  if (mixed) return parseInt(mixed[1], 10) + parseInt(mixed[2], 10) / parseInt(mixed[3], 10);
   const fraction = qtyText.match(/^(\d+)\s*\/\s*(\d+)$/);
   if (fraction) return parseInt(fraction[1], 10) / parseInt(fraction[2], 10);
   if (/^\d+(\.\d+)?$/.test(qtyText)) return parseFloat(qtyText);
@@ -322,12 +326,7 @@ function parseQuantity(quantity: string | undefined): number {
 export function scaleQuantityString(quantity: string | undefined, multiplier: number): string | undefined {
   const qtyText = (quantity ?? '').trim();
   if (multiplier === 1 || qtyText === '') return quantity;
-  const fraction = qtyText.match(/^(\d+)\s*\/\s*(\d+)$/);
-  const amount = fraction
-    ? parseInt(fraction[1], 10) / parseInt(fraction[2], 10)
-    : /^\d+(\.\d+)?$/.test(qtyText)
-      ? parseFloat(qtyText)
-      : NaN;
+  const amount = parseQuantity(qtyText);
   if (Number.isNaN(amount)) return quantity;
   // Rounded to 2 decimals to clear binary-float noise (e.g. 0.1 + 0.2),
   // not because the display itself wants 2 decimal places -- an integer
