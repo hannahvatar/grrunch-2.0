@@ -468,6 +468,11 @@ export function parseUnitAmount(quantity: string | undefined, unitText: string |
 // table (Supabase) for the server-side twin -- keep both in sync.
 export const STAPLE_AVG_WEIGHT_G_PER_EACH: Record<string, number> = {
   eggs: 50,
+  // One head, matching the server's staple_avg_weights row. Without it
+  // the app couldn't turn "2 cloves" into grams for garlic's verified
+  // per-50 g price, so garlic lines showed no "$X avg." even though the
+  // recipe price already counted it (Anabelle, 2026-10-14).
+  garlic: 30,
   'egg yolks': 17,
   // One pack is 85g -- see 20260812100000_ramen_avg_weight.sql for the
   // server-side twin.
