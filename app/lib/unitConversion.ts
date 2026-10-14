@@ -174,6 +174,8 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // server-side twins.
   'smoked paprika': 100,
   'chili powder': 100,
+  // Spicy Chicken Sandwich (2026-10-14), same ground-spice figure.
+  'cayenne pepper': 100,
   'ground cumin': 100,
   // Coconut Tofu Curry Feast -- ~100 g/cup for ground turmeric, same
   // fine-ground-spice figure as every other one above. See the
