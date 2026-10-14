@@ -238,6 +238,10 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Roll With It': require('../assets/roll-with-it.jpeg'),
   // 1344x784, the card's ~1.7:1 target, uncropped.
   'Adobo-lutely Delicious': require('../assets/adobo-lutely-delicious.jpeg'),
+  // 1376x768, a touch wider than the card's ~1.7:1; `cover` trims the edges.
+  'Shawarma Drama': require('../assets/shawarma-drama.jpeg'),
+  // 1376x768, a touch wider than the card's ~1.7:1; `cover` trims the edges.
+  'Soup-er Tortilla': require('../assets/soup-er-tortillas.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
