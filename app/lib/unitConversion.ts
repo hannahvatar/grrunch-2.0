@@ -1347,6 +1347,26 @@ const FRACTION_OF_WHOLE_LABELS: Record<string, string> = {
   'sweet peppers': 'the peppers',
 };
 
+// A share of a package in words: 0.5 -> "about half the package",
+// 1 -> "the whole package", 1.5 -> "about 1 1/2 packages".
+function describePackageShare(share: number): string {
+  if (Math.abs(share - 1) < 0.05) return 'the whole package';
+  const words: Array<[number, string]> = [
+    [1 / 4, 'a quarter of the package'],
+    [1 / 3, 'a third of the package'],
+    [1 / 2, 'half the package'],
+    [2 / 3, 'two thirds of the package'],
+    [3 / 4, 'three quarters of the package'],
+  ];
+  if (share < 1) {
+    const [, label] = words.reduce((best, w) => (Math.abs(w[0] - share) < Math.abs(best[0] - share) ? w : best));
+    return `about ${label}`;
+  }
+  const packs = Math.round(share * 2) / 2;
+  if (Number.isInteger(packs)) return `about ${packs} packages`;
+  return `about ${formatScaledQuantity(String(packs), '')} packages`;
+}
+
 export function describeUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,
@@ -1359,9 +1379,15 @@ export function describeUseQuantityText(
   // "1200 g (1 small or medium squash), peeled and cubed" -- reads as that
   // description, not the grams (Anabelle, 2026-09-30: "Recipe uses about
   // 1 small or medium squash, peeled and cubed").
+  const ua = parseUnitAmount(quantity, unit);
+  // "g (about half the package)": the share of the package, worked out
+  // at the current servings so 2x reads "the whole package", not "half"
+  // again (Anabelle, 2026-10-14, cremini in Home on the Squash).
+  if (/\(\s*about [^)]*\bpackage\b/i.test(unit ?? '') && !Number.isNaN(ua.amount) && ua.baseUnit === 'g' && packageWeightG) {
+    return `Recipe uses ${describePackageShare((ua.amount * multiplier) / packageWeightG)}`;
+  }
   const described = describedAmount(unit, multiplier);
   if (described) return `Recipe uses about ${described}`;
-  const ua = parseUnitAmount(quantity, unit);
   // Exactly whole packages (Anabelle, 2026-10-07: "Recipe uses 375 g,
   // the whole package").
   if (!Number.isNaN(ua.amount) && ua.baseUnit === 'g' && packageWeightG) {
