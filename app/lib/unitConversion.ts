@@ -1080,6 +1080,12 @@ export function describeDealPackage(
 // "1" regardless of the real count -- this second condition restores
 // that count as its own note ("Recipe uses 5 plantains") independent
 // of packageWeightG, gated on ingredientName instead.
+// A whole container with its size in brackets: "1 can (540 mL)",
+// "2 cans (398 mL each)", "1 carton (900 mL)". Always worth a "Recipe
+// uses" line, since the badge alone says "1 package" (Anabelle,
+// 2026-10-14: "mention what is the can qty used for chickpeas").
+const CONTAINER_WITH_SIZE = /^(cans?|cartons?|jars?|bottles?|tins?|tubs?)\s*\(([^)]+)\)\s*$/i;
+
 export function shouldShowUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,
@@ -1088,6 +1094,7 @@ export function shouldShowUseQuantityText(
   packageVolumeMl?: number,
   bundleCount?: number
 ): boolean {
+  if (CONTAINER_WITH_SIZE.test((unit ?? '').trim()) && !Number.isNaN(parseQuantity(quantity))) return true;
   const ua = parseUnitAmount(quantity, unit);
   if (Number.isNaN(ua.amount)) return false;
   // A measured weight/volume quantity (as opposed to a whole-container
@@ -1388,6 +1395,13 @@ export function describeUseQuantityText(
   // "1200 g (1 small or medium squash), peeled and cubed" -- reads as that
   // description, not the grams (Anabelle, 2026-09-30: "Recipe uses about
   // 1 small or medium squash, peeled and cubed").
+  const container = (unit ?? '').trim().match(CONTAINER_WITH_SIZE);
+  if (container && !Number.isNaN(parseQuantity(quantity))) {
+    const count = parseQuantity(quantity) * multiplier;
+    const singular = container[1].toLowerCase().replace(/s$/, '');
+    const word = count === 1 ? singular : pluralizeContainerWord(singular);
+    return `Recipe uses ${formatScaledQuantity(String(count), '') ?? count} ${word} (${container[2].trim()})`;
+  }
   const ua = parseUnitAmount(quantity, unit);
   // "g (about half the package)": the share of the package, worked out
   // at the current servings so 2x reads "the whole package", not "half"
