@@ -234,6 +234,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Home on the Squash': require('../assets/home-of-the-squash.jpeg'),
   // 1376x768, a touch wider than the card's ~1.7:1; `cover` trims the edges.
   'Fast Food Fakeout — Spicy Chicken Sandwich': require('../assets/fast-food-fakeout-spicy-chicken-sandwich.jpeg'),
+  // 1344x784, the card's ~1.7:1 target, uncropped.
+  'Roll With It': require('../assets/roll-with-it.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
