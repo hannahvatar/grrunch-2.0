@@ -71,6 +71,9 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // ~100 g/cup for ground black pepper -- see
   // 20260812130000_black_pepper_density.sql for the server-side twin.
   'black pepper': 100,
+  // Whole peppercorns pack denser than ground (~2.9 g/tsp). See the
+  // staple_densities table (Supabase) for the server-side twin.
+  'black peppercorns': 140,
   // ~145 g/cup for frozen peas -- see
   // 20260812140000_frozen_peas_density.sql for the server-side twin.
   'frozen peas': 145,
