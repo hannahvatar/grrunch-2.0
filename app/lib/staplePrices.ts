@@ -206,13 +206,28 @@ export function matchReferencePrice(
   unit: string | undefined,
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
-  staplePrices: StaplePrice[]
+  staplePrices: StaplePrice[],
+  matchTags?: string[]
 ): { avgPrice: number; unit: string; source: 'statcan' | 'produce' | 'staple' } | undefined {
   const tiers: Array<[StaplePrice[], 'statcan' | 'produce' | 'staple']> = [
     [statcanPrices, 'statcan'],
     [producePrices, 'produce'],
     [staplePrices, 'staple'],
   ];
+  // An ingredient's own match tags first, like refresh_recipe_deal_tags:
+  // a reference named exactly like a tag wins. Covers names the word
+  // matching can't see, e.g. "Egg" (3-letter words are ignored) priced
+  // through its "eggs" tag (Anabelle, 2026-10-15).
+  const tags = new Set((matchTags ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean));
+  if (tags.size > 0) {
+    for (const [prices, source] of tiers) {
+      const match = prices.find((staple) => tags.has(staple.ingredientName.trim().toLowerCase()));
+      if (!match) continue;
+      const scaled = scaleReferencePrice(quantity, unit, ingredientName, match.avgPrice, match.unit);
+      if (scaled === undefined) continue;
+      return { avgPrice: scaled, unit: match.unit, source };
+    }
+  }
   for (const [prices, source] of tiers) {
     const match = matchStaplePrice(ingredientName, prices);
     if (!match) continue;
