@@ -235,6 +235,7 @@ function mapRowToMeal(
     rating_count: number;
     featured: boolean | null;
     free_preview?: boolean | null;
+    image_url?: string | null;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -274,6 +275,7 @@ function mapRowToMeal(
     optionalAdditions,
     descriptor: row.descriptor ?? undefined,
     notes: row.notes ?? undefined,
+    imageUrl: row.image_url ?? undefined,
     leftovers: row.leftovers ?? undefined,
     timeNote: row.time_note ?? undefined,
     // The sub-recipes this meal's own ingredients name (exact match),

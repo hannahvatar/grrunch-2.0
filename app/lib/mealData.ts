@@ -198,6 +198,9 @@ export interface Meal {
   ingredients: IngredientLine[];
   instructions: string[];
   optionalAdditions: OptionalAddition[];
+  // Online photo (recipes.image_url, recipe-photos bucket). Null falls
+  // back to the photo bundled in the app (lib/recipeImages.ts).
+  imageUrl?: string;
   // Plain one-line description shown under the fun title.
   descriptor?: string;
   // Tip shown under the instructions that isn't a step (freezing etc.).

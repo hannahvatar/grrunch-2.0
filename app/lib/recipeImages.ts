@@ -1,10 +1,8 @@
 import type { ImageSourcePropType } from 'react-native';
 
-// Local recipe photos, keyed by exact recipe name. Recipes come from
-// Supabase with no image_url column yet (see architecture notes on the
-// Airtable-approval pipeline for recipe data) -- until that's added,
-// photos the user drops into assets/ are wired in here by name so the
-// Meals tab can show a real photo instead of the CakeIcon placeholder.
+// Bundled recipe photos, keyed by exact recipe name. Since 2026-10-15
+// photos live online (recipes.image_url, see getRecipeImage below); this
+// map is the fallback for builds before that and needs no new entries.
 // Falls back to the placeholder for any recipe not listed.
 const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   // Uploaded as-is, uncropped (Anabelle's explicit call after an
@@ -256,6 +254,11 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Let Them Eat Fish Cake': require('../assets/let-them-eat-fishcakes.jpeg'),
 };
 
-export function getRecipeImage(name: string): ImageSourcePropType | undefined {
+// The recipe's online photo (recipes.image_url, uploaded with
+// scripts/upload_recipe_photo.py) when it has one, so new photos show
+// without an app build (Anabelle, 2026-10-15). Otherwise the bundled
+// photo above, kept for older builds and as a fallback.
+export function getRecipeImage(name: string, imageUrl?: string): ImageSourcePropType | undefined {
+  if (imageUrl) return { uri: imageUrl };
   return RECIPE_IMAGES[name];
 }
