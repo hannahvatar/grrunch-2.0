@@ -917,6 +917,11 @@ export function computeDealPackageCount(
   ingredientName?: string,
   priceUnit?: string
 ): number {
+  // "2 cans (398 mL each)" at 2x is 4 cans (see describeDealPackage).
+  const container = (unit ?? '').trim().match(CONTAINER_WITH_SIZE);
+  if (container && !Number.isNaN(parseQuantity(quantity))) {
+    return Math.max(1, Math.ceil(parseQuantity(quantity) * multiplier - 1e-9));
+  }
   // Loose produce priced by weight (apples at $1.49/lb) has no package:
   // the badge counts the items, "(about 2 apples)" x batches (Anabelle,
   // 2026-10-01: "if the recipe uses 2 apples, why does the number show 1").
@@ -1006,6 +1011,13 @@ export function describeDealPackage(
   packageWeightG?: number,
   bundleCount?: number
 ): string | undefined {
+  // "2 cans (398 mL each)": the badge counts the containers. Read as
+  // 796 mL it fell through to a flat "1 package" (Anabelle, 2026-10-14:
+  // Tom Kha-Ching's coconut milk showed 1).
+  const container = (recipeUnit ?? '').trim().match(CONTAINER_WITH_SIZE);
+  if (container && !Number.isNaN(parseQuantity(recipeQuantity))) {
+    return String(Math.max(1, Math.ceil(parseQuantity(recipeQuantity) - 1e-9)));
+  }
   const ua = parseUnitAmount(recipeQuantity, recipeUnit);
   if (Number.isNaN(ua.amount)) return undefined;
   // Priced by weight, so there's no "package": a bare count of the items
