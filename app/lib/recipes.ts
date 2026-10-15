@@ -23,6 +23,9 @@ interface RecipeIngredient {
   // server-side twin (recipes.price itself).
   price_quantity?: string;
   price_unit?: string;
+  // Matching tags (see docs/recipe-match-tags.json); the "$X avg." lookup
+  // tries them before the name, same as the server.
+  match_tags?: string[];
 }
 
 interface RecipeDealTagRow {
@@ -183,7 +186,8 @@ function mapIngredient(
     ingredient.name,
     ingredient.price_quantity ?? ingredient.quantity,
     ingredient.price_unit ?? ingredient.unit,
-    statcanPrices, producePrices, staplePrices
+    statcanPrices, producePrices, staplePrices,
+    ingredient.match_tags
   );
   return {
     text,
