@@ -248,6 +248,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Tom Kha-Ching': require('../assets/tom-kha-ching.jpeg'),
   // `cover` trims to the card's ~1.7:1.
   'Squash-ghetti & Meatballs': require('../assets/squash-ghetti-and-meatballs.jpeg'),
+  // `cover` trims to the card's ~1.7:1.
+  'Schnitzel Happens': require('../assets/schnitzel-happens.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
