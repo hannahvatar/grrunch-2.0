@@ -244,6 +244,8 @@ const RECIPE_IMAGES: Record<string, ImageSourcePropType> = {
   'Soup-er Tortilla': require('../assets/soup-er-tortillas.jpeg'),
   // 1344x784, the card's ~1.7:1 target, uncropped.
   'Soy Meets World': require('../assets/soy-meet-world.jpeg'),
+  // 1344x784, the card's ~1.7:1 target, uncropped.
+  'Tom Kha-Ching': require('../assets/tom-kha-ching.jpeg'),
 };
 
 export function getRecipeImage(name: string): ImageSourcePropType | undefined {
