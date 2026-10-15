@@ -44,13 +44,14 @@ interface MealCardProps {
 export function MealCard({ meal, isSelected, onToggleSelected, locked, dealsExpired, week }: MealCardProps) {
   const weekExpired = useLiveWeekExpired();
   const expired = dealsExpired ?? weekExpired;
+  const photo = getRecipeImage(meal.name, meal.imageUrl);
   return (
     <View style={styles.mealCardOuter}>
       <View pointerEvents="none" style={styles.mealCardShadow} />
       <View style={styles.mealCard}>
-        <View style={[styles.mealImagePlaceholder, getRecipeImage(meal.name) && styles.mealImagePlaceholderPhoto]}>
-          {getRecipeImage(meal.name) ? (
-            <Image source={getRecipeImage(meal.name)} style={styles.mealImage} resizeMode="cover" />
+        <View style={[styles.mealImagePlaceholder, !!photo && styles.mealImagePlaceholderPhoto]}>
+          {photo ? (
+            <Image source={photo} style={styles.mealImage} resizeMode="cover" />
           ) : (
             <CakeIcon size={28} color="#ccc" />
           )}
