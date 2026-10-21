@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LightBulbIcon, MagnifyingGlassPlusIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { MagnifyingGlassPlusIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
 // @deprecated (upstream) in favor of the Reanimated-based rewrite --
 // still fully functional in gesture-handler 2.28 (no reanimated
 // dependency needed, confirmed), just flagged for a future migration
@@ -36,7 +36,7 @@ import { useLiveWeekExpired } from '../lib/liveWeek';
 import type { DealTag } from '../lib/mealData';
 import { computeDealPackageCount } from '../lib/unitConversion';
 import { ExpiredBadge } from './ExpiredBadge';
-import { ArrowOutwardIcon } from './MaterialSymbols';
+import { ArrowOutwardIcon, ChefHatIcon } from './MaterialSymbols';
 
 const INK = '#111';
 
@@ -143,7 +143,7 @@ interface IngredientRowProps {
   // staple rows in practice (see recipe.tsx).
   linkedText?: string;
   onLinkedTextPress?: () => void;
-  // Recipe-page-only: a light bulb after the text that jumps to the
+  // Recipe-page-only: a chef hat badge after the text that jumps to the
   // recipe's "Did you know?" card (Anabelle, 2026-10-21).
   onTipPress?: () => void;
   // "Use 217 g" -- only set for a dealTag.fragmentByWeight ingredient
@@ -340,8 +340,8 @@ export function IngredientRow({
           <Text style={[styles.itemName, styles.nameWithTipText, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
             {itemNameContent}
           </Text>
-          <Pressable onPress={onTipPress} hitSlop={10} accessibilityLabel="Did you know? Jump to the tip">
-            <LightBulbIcon size={18} color={INK} strokeWidth={2} />
+          <Pressable style={styles.tipBadge} onPress={onTipPress} hitSlop={10} accessibilityLabel="Did you know? Jump to the tip">
+            <ChefHatIcon size={14} color={INK} />
           </Pressable>
         </View>
       ) : (
@@ -620,9 +620,19 @@ export function IngredientRow({
 
 const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  // Name followed by the "Did you know?" light bulb, right after the text.
+  // Name followed by the "Did you know?" chef hat badge, right after the text.
   nameWithTip: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   nameWithTipText: { flexShrink: 1 },
+  // Orange circle around the chef hat, matching the "Did you know?" card's
+  // heading badge (recipe.tsx leftoversIcon), smaller to sit in the line.
+  tipBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFA955',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // stackedLayout only -- plain, no border of its own (see the
   // no-nested-cards comment above); just the vertical gap between its
   // two rows (top row, price row).

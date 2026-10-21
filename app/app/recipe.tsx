@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ArrowPathIcon, BuildingStorefrontIcon, ClockIcon, LightBulbIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { ArrowPathIcon, BuildingStorefrontIcon, ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
@@ -53,7 +53,7 @@ export default function RecipeScreen() {
   // ScrollView, the same one everything else on this screen lives in.
   const scrollViewRef = useRef<ScrollView>(null);
   const [subRecipeOffsets, setSubRecipeOffsets] = useState<Record<string, number>>({});
-  // Where the "Did you know?" card sits, for the light bulb next to its
+  // Where the "Did you know?" card sits, for the chef hat next to its
   // ingredient (same onLayout approach as the companion recipes).
   const [didYouKnowY, setDidYouKnowY] = useState<number | null>(null);
   function scrollToDidYouKnow() {
@@ -618,7 +618,7 @@ export default function RecipeScreen() {
 
         {/* "Did you know?" (Anabelle, 2026-10-21): a note about an
             unfamiliar ingredient (what it is, where to find it, what to
-            swap in), at the very bottom. The light bulb next to that
+            swap in), at the very bottom. The chef hat next to that
             ingredient jumps here. Same card look as Leftovers. */}
         {!!meal.didYouKnow && (
           <View
@@ -630,7 +630,7 @@ export default function RecipeScreen() {
           >
             <View style={styles.leftoversHeadingRow}>
               <View style={styles.leftoversIcon}>
-                <LightBulbIcon size={16} color={INK} strokeWidth={2} />
+                <ChefHatIcon size={16} color={INK} />
               </View>
               <Text style={styles.optionalHeading}>Did you know?</Text>
             </View>
