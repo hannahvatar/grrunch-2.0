@@ -106,6 +106,9 @@ export interface IngredientLine {
   // The raw ingredient name (no quantity/unit), kept alongside the
   // flattened display text.
   name: string;
+  // Light bulb next to the ingredient, jumping to the recipe's "Did you
+  // know?" card (ingredients JSON "did_you_know": true).
+  didYouKnow?: boolean;
   dealTag?: DealTag;
   // 'regular' = an off-sale deal ingredient priced at its deal's own
   // regular price (lib/storeFilter.ts's applyStoreFilter).
@@ -198,6 +201,9 @@ export interface Meal {
   ingredients: IngredientLine[];
   instructions: string[];
   optionalAdditions: OptionalAddition[];
+  // "Did you know?" note at the bottom of the recipe page
+  // (recipes.did_you_know).
+  didYouKnow?: string;
   // Online photo (recipes.image_url, recipe-photos bucket). Null falls
   // back to the photo bundled in the app (lib/recipeImages.ts).
   imageUrl?: string;

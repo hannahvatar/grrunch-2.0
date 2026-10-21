@@ -53,6 +53,12 @@ export default function RecipeScreen() {
   // ScrollView, the same one everything else on this screen lives in.
   const scrollViewRef = useRef<ScrollView>(null);
   const [subRecipeOffsets, setSubRecipeOffsets] = useState<Record<string, number>>({});
+  // Where the "Did you know?" card sits, for the chef hat next to its
+  // ingredient (same onLayout approach as the companion recipes).
+  const [didYouKnowY, setDidYouKnowY] = useState<number | null>(null);
+  function scrollToDidYouKnow() {
+    if (didYouKnowY !== null) scrollViewRef.current?.scrollTo({ y: didYouKnowY, animated: true });
+  }
   function scrollToSubRecipe(title: string) {
     const y = subRecipeOffsets[title];
     if (y !== undefined) scrollViewRef.current?.scrollTo({ y, animated: true });
@@ -440,6 +446,7 @@ export default function RecipeScreen() {
                         bulleted
                         linkedText={subRecipe ? ingredient.name : undefined}
                         onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
+                        onTipPress={ingredient.didYouKnow && meal.didYouKnow ? scrollToDidYouKnow : undefined}
                         useQuantityText={ingredient.useQuantityText}
                       />
                     );
@@ -608,6 +615,32 @@ export default function RecipeScreen() {
             />
           </View>
         ))}
+
+        {/* "Did you know?" (Anabelle, 2026-10-21): a note about an
+            unfamiliar ingredient (what it is, where to find it, what to
+            swap in), at the very bottom. The chef hat next to that
+            ingredient jumps here. Same card look as Leftovers. */}
+        {!!meal.didYouKnow && (
+          <View
+            style={styles.leftoversCard}
+            onLayout={(e) => {
+              const y = e.nativeEvent.layout.y;
+              setDidYouKnowY(y);
+            }}
+          >
+            <View style={styles.leftoversHeadingRow}>
+              <View style={styles.leftoversIcon}>
+                <ChefHatIcon size={16} color={INK} />
+              </View>
+              <Text style={styles.optionalHeading}>Did you know?</Text>
+            </View>
+            {meal.didYouKnow.split('\n\n').map((paragraph, i) => (
+              <Text key={i} style={[styles.optionalText, i > 0 && styles.didYouKnowParagraph]}>
+                {paragraph}
+              </Text>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -655,7 +688,8 @@ const styles = StyleSheet.create({
   },
   // paddingTop clears the floating close button so the title doesn't
   // scroll up underneath it before the page has scrolled at all.
-  scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40, gap: 4 },
+  // Bottom room so the last card scrolls clear of the floating chat button.
+  scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 120, gap: 4 },
   // Mirrors MealCard's own priceNutritionRow/priceBlock/nutritionRow
   // values (fontSize/weight/gap), except color (black here vs
   // MealCard's grey secondary text/icons), one line always (MealCard
@@ -859,6 +893,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   leftoversHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  didYouKnowParagraph: { marginTop: 10 },
   leftoversIcon: {
     width: 28,
     height: 28,
