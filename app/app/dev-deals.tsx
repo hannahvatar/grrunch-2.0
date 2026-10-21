@@ -264,6 +264,8 @@ export default function DevDealsScreen() {
   const [deals, setDeals] = useState<CuratedDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [rowRejecting, setRowRejecting] = useState<Set<string>>(new Set());
+  const [rowRejectError, setRowRejectError] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   // null until chosen: defaults to the draft when there is one, else live.
@@ -463,6 +465,34 @@ export default function DevDealsScreen() {
   // Approved tab would read as nonsense otherwise.
   const unreviewedCount = statusScoped.filter((d) => d.pricing_reviewed_at === null).length;
 
+  // One-tap Reject on a list card (Anabelle, 2026-10-21: "a button on the
+  // deal thumbnail to reject it right away without opening it"). Rejects
+  // every product in the cutout, like "Reject whole cutout".
+  async function rejectCutoutFromList(key: string, targets: CuratedDeal[]) {
+    const open = targets.filter((d) => d.status !== 'rejected');
+    if (open.length === 0 || rowRejecting.has(key)) return;
+    setRowRejecting((prev) => new Set(prev).add(key));
+    setRowRejectError((prev) => ({ ...prev, [key]: '' }));
+    const updated: CuratedDeal[] = [];
+    for (const deal of open) {
+      const result = await rejectDeal(deal);
+      if ('error' in result) {
+        setRowRejectError((prev) => ({ ...prev, [key]: result.error }));
+        break;
+      }
+      updated.push(result.deal);
+    }
+    if (updated.length > 0) {
+      const byId = new Map(updated.map((d) => [d.id, d]));
+      setDeals((prev) => prev.map((d) => byId.get(d.id) ?? d));
+    }
+    setRowRejecting((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -558,7 +588,26 @@ export default function DevDealsScreen() {
                     )}
                   </View>
                 )}
+                {!!rowRejectError[cutout.key] && <Text style={styles.saveError}>{rowRejectError[cutout.key]}</Text>}
               </View>
+              {cutout.deals.some((d) => d.status !== 'rejected') && (
+                <Pressable
+                  style={styles.rowRejectButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    rejectCutoutFromList(cutout.key, cutout.deals);
+                  }}
+                  disabled={rowRejecting.has(cutout.key)}
+                  hitSlop={8}
+                  accessibilityLabel={`Reject ${title}`}
+                >
+                  {rowRejecting.has(cutout.key) ? (
+                    <ActivityIndicator color={INK} size="small" />
+                  ) : (
+                    <Text style={[styles.tertiaryButtonText, styles.rejectText]}>Reject</Text>
+                  )}
+                </Pressable>
+              )}
             </Pressable>
           );
         })}
@@ -703,6 +752,36 @@ function toSentSize(
   return base >= 5 ? { volume_ml: Math.round(base) } : 'invalid';
 }
 
+// Rejects one deal through update-curated-deal-pricing (keeping its other
+// fields as they are). Shared by the cutout screen and the list's
+// one-tap Reject button.
+async function rejectDeal(deal: CuratedDeal): Promise<{ deal: CuratedDeal } | { error: string }> {
+  const { data, error: invokeError } = await supabase.functions.invoke<{ deal?: CuratedDeal; error?: string }>(
+    'update-curated-deal-pricing',
+    {
+      body: {
+        deal_id: deal.id,
+        item_name: deal.item_name,
+        price: deal.price,
+        original_price: deal.original_price,
+        original_price_source: deal.original_price_source,
+        price_unit: deal.price_unit,
+        package_weight_g: deal.package_weight_g,
+        package_weight_g_source: deal.package_weight_g_source,
+        quantity_estimated: deal.quantity_estimated,
+        usage: deal.usage,
+        keyword_matches: deal.keyword_matches,
+        zone: deal.zone,
+        reject: true,
+      },
+    }
+  );
+  if (invokeError || !data?.deal) {
+    return { error: await functionErrorMessage(invokeError, data?.error, `Could not reject ${deal.item_name}.`) };
+  }
+  return { deal: data.deal };
+}
+
 function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, startSplit = false }: CutoutViewProps) {
   const photo = cutout.deals.find((d) => d.image_url)?.image_url ?? null;
 
@@ -758,31 +837,12 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, start
     setRejectError(null);
     const updated: CuratedDeal[] = [];
     for (const deal of open) {
-      const { data, error: invokeError } = await supabase.functions.invoke<{ deal?: CuratedDeal; error?: string }>(
-        'update-curated-deal-pricing',
-        {
-          body: {
-            deal_id: deal.id,
-            item_name: deal.item_name,
-            price: deal.price,
-            original_price: deal.original_price,
-            original_price_source: deal.original_price_source,
-            price_unit: deal.price_unit,
-            package_weight_g: deal.package_weight_g,
-            package_weight_g_source: deal.package_weight_g_source,
-            quantity_estimated: deal.quantity_estimated,
-            usage: deal.usage,
-            keyword_matches: deal.keyword_matches,
-            zone: deal.zone,
-            reject: true,
-          },
-        }
-      );
-      if (invokeError || !data?.deal) {
-        setRejectError(await functionErrorMessage(invokeError, data?.error, `Could not reject ${deal.item_name}.`));
+      const result = await rejectDeal(deal);
+      if ('error' in result) {
+        setRejectError(result.error);
         break;
       }
-      updated.push(data.deal);
+      updated.push(result.deal);
     }
     setRejecting(false);
     if (updated.length > 0) onDealsUpdated(updated);
@@ -2281,6 +2341,18 @@ const styles = StyleSheet.create({
   },
   cardAboveNext: { zIndex: 30 },
   rejectText: { color: '#B42318' },
+  // One-tap Reject on a list card, top right.
+  rowRejectButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minHeight: 32,
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#B42318',
+    borderRadius: 16,
+    backgroundColor: '#fff',
+  },
   cutoutDealRow: { alignItems: 'center' },
   splitFromDeal: { alignSelf: 'flex-start' },
   referenceBlock: { gap: 6 },
