@@ -36,9 +36,11 @@ Schedule (Anabelle, 2026-09-24), Vancouver time -- Flipp's own
   - Wednesday 12:00 am -> "wednesday" group: Save-On-Foods, Safeway, Walmart
 GitHub cron has no time zones, so .github/workflows/weekly-flyer-fetch.yml
 fires at every UTC hour those two moments can fall on (PDT and PST), and
-`--group auto` here decides from the actual Vancouver time which group,
-if any, is due. A group whose draft rows for that flyer week already
-exist is skipped, so the extra cron firings are harmless.
+`--group auto` here decides from the actual Vancouver time which groups
+are due: Tuesday's from 8:45 pm, both all day Wednesday. Only chains with
+no draft rows yet for that flyer week are fetched, so the extra firings
+are harmless and any later run catches up on a skipped trigger or a
+flyer that wasn't posted yet.
 
 Usage:
     cd scripts && pip install -r requirements-flyers.txt
@@ -141,16 +143,22 @@ def say(msg):
 
 # ---------------------------------------------------------------- timing
 
-def group_due(now):
-    """Which group the schedule says is due at `now`, or None. Windows
-    are wide enough to absorb GitHub's cron start delays; duplicate
-    firings inside a window are harmless (see already_fetched)."""
+def groups_due(now):
+    """Every group whose start time has passed this week, in order.
+
+    Catch-up rather than a narrow window (Anabelle, 2026-10-21): GitHub
+    skipped the Tuesday 9 pm and 10 pm starts two weeks running and only
+    fired at Wednesday 2 am, which used to fetch just the Wednesday group.
+    Now any run from Tuesday 8:45 pm to the end of Wednesday fetches
+    whatever is due and still missing (see missing_chains), so a late or
+    dropped trigger, or a flyer that wasn't posted yet, is caught by the
+    next run. Repeat runs are harmless: chains already fetched are skipped."""
     local = now.astimezone(VANCOUVER)
     if local.weekday() == 1 and (local.hour, local.minute) >= (20, 45):
-        return "tuesday"
-    if local.weekday() == 2 and local.hour < 5:
-        return "wednesday"
-    return None
+        return ["tuesday"]
+    if local.weekday() == 2:
+        return ["tuesday", "wednesday"]
+    return []
 
 
 def target_thursday(now):
@@ -499,14 +507,16 @@ def supabase(path, method="GET", body=None, prefer=None, content_type="applicati
     return http_json(f"{SUPABASE_URL}{path}", headers=headers, data=data, method=method)
 
 
-def already_fetched(chains, week_from):
-    """True when every chain in the group already has candidate rows for
-    this flyer week in the draft -- a repeat cron firing, nothing to do."""
+def missing_chains(chains, week_from):
+    """The chains with no candidate rows yet for this flyer week in the
+    draft, in their original order. Chains already fetched are skipped, so
+    a repeat run only retries what's missing (e.g. a late Walmart flyer)."""
     rows = supabase(
         "/rest/v1/curated_deals?published=eq.false&select=chain_name"
         f"&flyer_valid_from=eq.{week_from}&chain_name=in.{in_list(chains)}"
     ) or []
-    return {r["chain_name"] for r in rows} >= set(chains)
+    have = {r["chain_name"] for r in rows}
+    return [c for c in chains if c not in have]
 
 
 def reviewed_pricing():
@@ -686,17 +696,20 @@ def main():
         return
 
     now = datetime.now(VANCOUVER)
-    group = group_due(now) if args.group == "auto" else args.group
-    if not group:
+    groups = groups_due(now) if args.group == "auto" else [args.group]
+    if not groups:
         say(f"Nothing scheduled at {now:%a %H:%M} Vancouver time -- exiting.")
         return
-    chains = GROUPS[group]
+    chains = [c for g in groups for c in GROUPS[g]]
     thursday = target_thursday(now)
-    say(f"{group} fetch for the week starting {thursday}: {', '.join(chains)}")
+    say(f"{' + '.join(groups)} fetch for the week starting {thursday}: {', '.join(chains)}")
 
-    if not args.force and not args.dry_run and already_fetched(chains, thursday.isoformat()):
-        say("Already fetched for this week -- nothing to do.")
-        return
+    if not args.force and not args.dry_run:
+        chains = missing_chains(chains, thursday.isoformat())
+        if not chains:
+            say("Already fetched for this week -- nothing to do.")
+            return
+        say(f"Still missing: {', '.join(chains)}")
 
     client = anthropic.Anthropic()
     prior = {} if args.dry_run else reviewed_pricing()
@@ -738,7 +751,7 @@ def main():
         refresh_draft_recipes()
         say(f"Saved {inserted} new candidates ({kept} already-reviewed rows kept); draft recipes re-priced.")
 
-    label = "Tuesday" if group == "tuesday" else "Wednesday"
+    label = " + ".join(g.capitalize() for g in groups)
     if problems:
         subject = f"Grrunch {label} flyer fetch: needs attention"
     else:

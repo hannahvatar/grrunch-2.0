@@ -16,7 +16,12 @@ on:
   # Schedule ON (Anabelle, 2026-10-09: "ready to move on to automatic
   # weekly fetch"). Off from 2026-09-24 while the process was settled.
   schedule:
-    - cron: '0 4,5,7,8 * * 3'
+    # 04/05 and 07/08 UTC are the Tuesday 9 pm and Wednesday midnight
+    # starts (PDT/PST). 12, 16 and 20 UTC are catch-up runs Wednesday
+    # morning and afternoon: GitHub sometimes drops a scheduled start, and
+    # a flyer (Walmart, 2026-10-21) can be posted late. Each run only
+    # fetches the chains still missing.
+    - cron: '0 4,5,7,8,12,16,20 * * 3'
   # By hand from the Actions tab ("Run workflow"), e.g. to re-run a group.
   workflow_dispatch:
     inputs:
@@ -33,6 +38,12 @@ on:
         description: 'Only send a test email (checks the SMTP secrets, fetches nothing)'
         type: boolean
         default: false
+
+# One run at a time: two runs re-pricing the draft recipes at once hit a
+# lock timeout (2026-10-21). Later runs wait for the current one.
+concurrency:
+  group: weekly-flyer-fetch
+  cancel-in-progress: false
 
 jobs:
   fetch:
