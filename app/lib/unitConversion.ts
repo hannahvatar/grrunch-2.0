@@ -1098,6 +1098,11 @@ export function describeDealPackage(
 // 2026-10-14: "mention what is the can qty used for chickpeas").
 const CONTAINER_WITH_SIZE = /^(cans?|cartons?|jars?|bottles?|tins?|tubs?)\s*\(([^)]+)\)\s*$/i;
 
+// A whole bunch or head with no size ("1 bunch" of kale or spinach):
+// spelled out too, "Recipe uses 1 bunch" (Anabelle, 2026-10-21: "Mention
+// how much kale the recipe uses").
+const WHOLE_BUNCH = /^(bunch(es)?|heads?)$/i;
+
 export function shouldShowUseQuantityText(
   quantity: string | undefined,
   unit: string | undefined,
@@ -1107,6 +1112,7 @@ export function shouldShowUseQuantityText(
   bundleCount?: number
 ): boolean {
   if (CONTAINER_WITH_SIZE.test((unit ?? '').trim()) && !Number.isNaN(parseQuantity(quantity))) return true;
+  if (WHOLE_BUNCH.test((unit ?? '').trim()) && parseQuantity(quantity) >= 1) return true;
   const ua = parseUnitAmount(quantity, unit);
   if (Number.isNaN(ua.amount)) return false;
   // A measured weight/volume quantity (as opposed to a whole-container
@@ -1407,6 +1413,12 @@ export function describeUseQuantityText(
   // "1200 g (1 small or medium squash), peeled and cubed" -- reads as that
   // description, not the grams (Anabelle, 2026-09-30: "Recipe uses about
   // 1 small or medium squash, peeled and cubed").
+  const bunch = (unit ?? '').trim().match(WHOLE_BUNCH);
+  if (bunch && parseQuantity(quantity) >= 1) {
+    const count = parseQuantity(quantity) * multiplier;
+    const singular = bunch[0].toLowerCase().startsWith('bunch') ? 'bunch' : 'head';
+    return `Recipe uses ${formatScaledQuantity(String(count), '') ?? count} ${count === 1 ? singular : pluralizeContainerWord(singular)}`;
+  }
   const container = (unit ?? '').trim().match(CONTAINER_WITH_SIZE);
   if (container && !Number.isNaN(parseQuantity(quantity))) {
     const count = parseQuantity(quantity) * multiplier;
