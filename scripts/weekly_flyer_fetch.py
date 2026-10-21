@@ -177,12 +177,12 @@ def parse_ts(value):
 
 # ----------------------------------------------------------------- Flipp
 
-def http_json(url, params=None, headers=None, data=None, method=None):
+def http_json(url, params=None, headers=None, data=None, method=None, timeout=40):
     if params:
         url = f"{url}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, data=data, method=method, headers=headers or FLIPP_HEADERS)
     try:
-        with urllib.request.urlopen(req, timeout=40) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = resp.read()
     except urllib.error.HTTPError as exc:
         # Surface the server's own reason (PostgREST explains every 400).
@@ -497,14 +497,14 @@ def in_list(values):
     return urllib.parse.quote("(" + ",".join(json.dumps(v) for v in values) + ")", safe="")
 
 
-def supabase(path, method="GET", body=None, prefer=None, content_type="application/json"):
+def supabase(path, method="GET", body=None, prefer=None, content_type="application/json", timeout=40):
     headers = {"apikey": SERVICE_ROLE, "Authorization": f"Bearer {SERVICE_ROLE}"}
     if body is not None:
         headers["Content-Type"] = content_type
     if prefer:
         headers["Prefer"] = prefer
     data = body if isinstance(body, (bytes, type(None))) else json.dumps(body).encode()
-    return http_json(f"{SUPABASE_URL}{path}", headers=headers, data=data, method=method)
+    return http_json(f"{SUPABASE_URL}{path}", headers=headers, data=data, method=method, timeout=timeout)
 
 
 def missing_chains(chains, week_from):
@@ -652,7 +652,10 @@ def replace_group_draft(chains, week_from, rows):
 
 
 def refresh_draft_recipes():
-    supabase("/rest/v1/rpc/refresh_recipe_deal_tags", method="POST", body={"p_published": False})
+    # Re-pricing every recipe takes about a minute now (2026-10-21), longer
+    # than the default 40 s request timeout, so allow up to 3 minutes. The
+    # database allows 5 (20261021020000_pricing_time_limits.sql).
+    supabase("/rest/v1/rpc/refresh_recipe_deal_tags", method="POST", body={"p_published": False}, timeout=180)
 
 
 # ----------------------------------------------------------------- email
