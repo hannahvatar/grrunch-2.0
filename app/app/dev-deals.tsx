@@ -748,7 +748,10 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, start
   // reject: true.
   const [rejecting, setRejecting] = useState(false);
   const [rejectError, setRejectError] = useState<string | null>(null);
-  async function rejectDeals(targets: CuratedDeal[]) {
+  // backToList: after rejecting the whole cutout, return to the deals list
+  // (Anabelle, 2026-10-21: "When i reject a cutout, i want to be bring
+  // back to the dev-deals main page list").
+  async function rejectDeals(targets: CuratedDeal[], backToList = false) {
     const open = targets.filter((d) => d.status !== 'rejected');
     if (open.length === 0 || rejecting) return;
     setRejecting(true);
@@ -783,6 +786,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, start
     }
     setRejecting(false);
     if (updated.length > 0) onDealsUpdated(updated);
+    if (backToList && updated.length === open.length) onBack();
   }
 
   // Anabelle, 2026-09-30: the automatic split only cuts at "or", so
@@ -874,7 +878,7 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, start
         {cutout.deals.some((d) => d.status !== 'rejected') && (
           <Pressable
             style={[styles.tertiaryButton, styles.splitFromDeal]}
-            onPress={() => rejectDeals(cutout.deals)}
+            onPress={() => rejectDeals(cutout.deals, true)}
             disabled={rejecting}
           >
             {rejecting ? (
