@@ -26,6 +26,7 @@ interface RecipeIngredient {
   // Matching tags (see docs/recipe-match-tags.json); the "$X avg." lookup
   // tries them before the name, same as the server.
   match_tags?: string[];
+  did_you_know?: boolean;
 }
 
 interface RecipeDealTagRow {
@@ -175,6 +176,7 @@ function mapIngredient(
     const cost = portionCost(ingredient.quantity, ingredient.unit, ingredient.name, dealTag);
     return {
       text, name: ingredient.name, dealTag, groceryText, dealDisplayText,
+      didYouKnow: ingredient.did_you_know || undefined,
       useQuantityText: withPortionCost(useQuantityText, cost),
       quantity: ingredient.quantity, unit: ingredient.unit,
     };
@@ -192,6 +194,7 @@ function mapIngredient(
   return {
     text,
     name: ingredient.name,
+    didYouKnow: ingredient.did_you_know || undefined,
     estimatedPrice: match ? { avgPrice: match.avgPrice, unit: match.unit, source: match.source } : undefined,
     groceryText,
     quantity: ingredient.quantity,
@@ -236,6 +239,7 @@ function mapRowToMeal(
     featured: boolean | null;
     free_preview?: boolean | null;
     image_url?: string | null;
+    did_you_know?: string | null;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -276,6 +280,7 @@ function mapRowToMeal(
     descriptor: row.descriptor ?? undefined,
     notes: row.notes ?? undefined,
     imageUrl: row.image_url ?? undefined,
+    didYouKnow: row.did_you_know ?? undefined,
     leftovers: row.leftovers ?? undefined,
     timeNote: row.time_note ?? undefined,
     // The sub-recipes this meal's own ingredients name (exact match),

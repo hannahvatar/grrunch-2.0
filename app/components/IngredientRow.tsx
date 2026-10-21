@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { MagnifyingGlassPlusIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { LightBulbIcon, MagnifyingGlassPlusIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
 // @deprecated (upstream) in favor of the Reanimated-based rewrite --
 // still fully functional in gesture-handler 2.28 (no reanimated
 // dependency needed, confirmed), just flagged for a future migration
@@ -143,6 +143,9 @@ interface IngredientRowProps {
   // staple rows in practice (see recipe.tsx).
   linkedText?: string;
   onLinkedTextPress?: () => void;
+  // Recipe-page-only: a light bulb after the text that jumps to the
+  // recipe's "Did you know?" card (Anabelle, 2026-10-21).
+  onTipPress?: () => void;
   // "Use 217 g" -- only set for a dealTag.fragmentByWeight ingredient
   // (see lib/recipes.ts mapIngredient), since only those have a price
   // that actually reflects less than the whole package. Rendered as a
@@ -175,6 +178,7 @@ export function IngredientRow({
   onEditQuantity,
   linkedText,
   onLinkedTextPress,
+  onTipPress,
   useQuantityText,
   quantity,
   unit,
@@ -331,9 +335,20 @@ export function IngredientRow({
 
   const infoEl = (
     <View style={styles.itemInfo}>
-      <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
-        {itemNameContent}
-      </Text>
+      {onTipPress ? (
+        <View style={styles.nameWithTip}>
+          <Text style={[styles.itemName, styles.nameWithTipText, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
+            {itemNameContent}
+          </Text>
+          <Pressable onPress={onTipPress} hitSlop={10} accessibilityLabel="Did you know? Jump to the tip">
+            <LightBulbIcon size={18} color={INK} strokeWidth={2} />
+          </Pressable>
+        </View>
+      ) : (
+        <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
+          {itemNameContent}
+        </Text>
+      )}
       {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
       {showStoreLink && dealTag && (
         <Pressable
@@ -605,6 +620,9 @@ export function IngredientRow({
 
 const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Name followed by the "Did you know?" light bulb, right after the text.
+  nameWithTip: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  nameWithTipText: { flexShrink: 1 },
   // stackedLayout only -- plain, no border of its own (see the
   // no-nested-cards comment above); just the vertical gap between its
   // two rows (top row, price row).
