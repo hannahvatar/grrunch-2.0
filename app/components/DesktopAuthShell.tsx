@@ -27,6 +27,7 @@ export function DesktopAuthShell({
   artWidth = 1,
   artHeight = 1,
   artFill = 0.82,
+  artPanel = true,
   headerRight,
   grid = false,
   span,
@@ -37,6 +38,9 @@ export function DesktopAuthShell({
   artWidth?: number;
   artHeight?: number;
   artFill?: number;
+  // Outlined cream panel behind the art; onboarding turns it off so the
+  // animation sits straight on the page (Anabelle, 2026-10-22).
+  artPanel?: boolean;
   headerRight?: ReactNode;
   grid?: boolean;
   span?: number;
@@ -72,7 +76,7 @@ export function DesktopAuthShell({
           {aside && <View style={halfWidth}>{aside}</View>}
           {art && (
             <View
-              style={[styles.artPanel, halfWidth]}
+              style={[styles.artPanel, halfWidth, !artPanel && styles.artPanelPlain]}
               onLayout={(e) => {
                 const { width, height } = e.nativeEvent.layout;
                 setScale(Math.min(width / artWidth, height / artHeight) * artFill);
@@ -150,6 +154,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  artPanelPlain: { borderWidth: 0, backgroundColor: 'transparent' },
   // ScrollView grows to fill the row by default, which overrode the grid
   // widths; contentFlex (non-grid pages) turns growing back on.
   contentScroll: { maxHeight: '100%', flexGrow: 0 },

@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../../components/AlertBanner';
 import { MealCard } from '../../components/MealCard';
+import { gridSpan, useIsDesktop } from '../../lib/layout';
 import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek, useWeekValidityLabel } from '../../lib/liveWeek';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { WeekGapState } from '../../components/WeekGapState';
@@ -74,6 +75,11 @@ function eligibleMeals(allMeals: Meal[], sortMode: MealSortMode): Meal[] {
 }
 
 export default function MealsScreen() {
+  // Desktop web: content on the middle 8 of 12 grid columns (2-8-2,
+  // Anabelle 2026-10-22), on the full-width page background.
+  const isDesktop = useIsDesktop();
+  const { width: windowWidth } = useWindowDimensions();
+  const desktopContent = isDesktop ? { width: gridSpan(windowWidth, 8), alignSelf: 'center' as const, paddingHorizontal: 0 } : null;
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const { isSubscribed } = useSubscription();
   // Last week's flyers have ended but this week isn't published yet --
@@ -152,7 +158,7 @@ export default function MealsScreen() {
   return (
     <View style={[styles.gradient, styles.container]}>
       <ClosingSoonBanner />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View style={styles.headerRow}>
           <View style={styles.titleFlex}>
             <Text style={styles.title}>Meals from This Week's Deals</Text>

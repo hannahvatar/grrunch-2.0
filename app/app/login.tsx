@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
   },
-  emailSentText: { fontSize: 14, color: INK },
+  emailSentText: { fontSize: 16, lineHeight: 24, color: INK },
   emailSentLink: { color: INK, textDecorationLine: 'underline' },
   oauthButton: {
     height: 56,
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
   appleButton: { width: '100%', height: 56 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 8 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#343837' },
-  dividerText: { color: '#343837', fontSize: 13 },
+  dividerText: { color: '#343837', fontSize: 14 },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',

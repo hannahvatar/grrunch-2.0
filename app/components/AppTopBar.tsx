@@ -1,9 +1,11 @@
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
+import { ComponentType } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '../lib/auth';
+import { GRID_MARGIN, GRID_MAX_WIDTH, useIsDesktop } from '../lib/layout';
 import { GrrunchMascot } from './GrrunchMascot';
-import { PersonIcon } from './MaterialSymbols';
+import { ListAltIcon, PersonIcon, RestaurantIcon, SellIcon } from './MaterialSymbols';
 import { NotificationBell } from './NotificationBell';
 
 const ACCENT = '#FFA955';
@@ -21,8 +23,74 @@ const INK = '#111';
 // now the one place showing guest Sign in/Sign up or the signed-in
 // profile shortcut, instead of that plus a second inline banner repeating
 // the same auth actions further down the page.
+//
+// Desktop web (2026-10-22): becomes the app's main navigation, replacing
+// the bottom tab bar (hidden in (tabs)/_layout.tsx): brand, then the 4 tabs
+// as links, then the same auth actions on the right. The round profile
+// button is left out there since Profile is already one of the links.
+const NAV_LINKS: { path: string; label: string; Icon: ComponentType<{ size?: number; color?: string }> }[] = [
+  { path: '/best-deals', label: 'Weekly Deals', Icon: SellIcon },
+  { path: '/meals', label: 'Meals', Icon: RestaurantIcon },
+  { path: '/grocery', label: 'My list', Icon: ListAltIcon },
+  { path: '/profile', label: 'Profile', Icon: PersonIcon },
+];
+
+function AuthButtons() {
+  return (
+    <View style={styles.authButtons}>
+      <Pressable
+        style={styles.signInButton}
+        onPress={() => router.push({ pathname: '/login', params: { mode: 'signin' } })}
+        hitSlop={8}
+      >
+        <Text style={styles.signInText}>Sign in</Text>
+      </Pressable>
+      <Pressable
+        style={styles.signUpButton}
+        onPress={() => router.push({ pathname: '/login', params: { mode: 'signup' } })}
+      >
+        <Text style={styles.signUpText}>Sign up</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function DesktopTopBar() {
+  const { isGuest } = useAuth();
+  const pathname = usePathname();
+  return (
+    <View style={styles.desktopBar}>
+      <View style={styles.desktopInner}>
+        <View style={styles.desktopLeft}>
+          <View style={styles.brand}>
+            <GrrunchMascot size={44} showCrumbs={false} />
+            <Text style={styles.wordmark}>GRRUNCH</Text>
+          </View>
+          <View style={styles.navLinks}>
+            {NAV_LINKS.map(({ path, label, Icon }) => {
+              const active = pathname === path;
+              return (
+                <Pressable key={path} style={styles.navLink} onPress={() => router.navigate(path as never)}>
+                  <View style={styles.navLinkRow}>
+                    <Icon size={20} color={active ? INK : '#767676'} />
+                    <Text style={[styles.navLinkText, active && styles.navLinkTextActive]}>{label}</Text>
+                  </View>
+                  <View style={[styles.navUnderline, active && styles.navUnderlineActive]} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+        {isGuest ? <AuthButtons /> : <NotificationBell />}
+      </View>
+    </View>
+  );
+}
+
 export function AppTopBar() {
   const { isGuest } = useAuth();
+  const isDesktop = useIsDesktop();
+  if (isDesktop) return <DesktopTopBar />;
 
   return (
     <View style={styles.bar}>
@@ -39,19 +107,7 @@ export function AppTopBar() {
               there's no separate form to route to. mode just swaps that
               screen's headline copy so "Sign in" doesn't land on
               new-account-creation framing. */}
-          <Pressable
-            style={styles.signInButton}
-            onPress={() => router.push({ pathname: '/login', params: { mode: 'signin' } })}
-            hitSlop={8}
-          >
-            <Text style={styles.signInText}>Sign in</Text>
-          </Pressable>
-          <Pressable
-            style={styles.signUpButton}
-            onPress={() => router.push({ pathname: '/login', params: { mode: 'signup' } })}
-          >
-            <Text style={styles.signUpText}>Sign up</Text>
-          </Pressable>
+          <AuthButtons />
         </View>
       ) : (
         <View style={styles.signedInButtons}>
@@ -87,6 +143,32 @@ const styles = StyleSheet.create({
     // plain white strip that sits above the peach page background.
     backgroundColor: '#fff',
   },
+  desktopBar: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0C9AE',
+  },
+  desktopInner: {
+    width: '100%',
+    maxWidth: GRID_MAX_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: GRID_MARGIN,
+    height: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  desktopLeft: { flexDirection: 'row', alignItems: 'center', gap: 48, height: '100%' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  wordmark: { fontSize: 22, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, letterSpacing: 1 },
+  navLinks: { flexDirection: 'row', alignItems: 'stretch', gap: 32, height: '100%' },
+  navLink: { justifyContent: 'center', height: '100%' },
+  navLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  navLinkText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: '#767676' },
+  navLinkTextActive: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  // Active tab: ink bar along the bottom edge of the nav bar.
+  navUnderline: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: 'transparent' },
+  navUnderlineActive: { backgroundColor: INK },
   authButtons: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   signedInButtons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   signInButton: { paddingVertical: 6, paddingHorizontal: 4, minHeight: 44, justifyContent: 'center' },

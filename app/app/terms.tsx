@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
-import { GrrunchMascot } from '../components/GrrunchMascot';
 import { LegalDocumentModal } from '../components/LegalDocumentModal';
 import { PRIVACY_POLICY_EFFECTIVE_DATE, PRIVACY_POLICY_INTRO, PRIVACY_POLICY_SECTIONS } from '../lib/privacyPolicy';
 import { useIsDesktop } from '../lib/layout';
@@ -74,9 +73,11 @@ export default function TermsScreen() {
 
   if (isDesktop) {
     return (
-      <DesktopAuthShell art={<GrrunchMascot size={200} />} artWidth={200} artHeight={200} artFill={0.62}>
-        <Text style={desktopText.headline}>Turns weekly deals into affordable meals</Text>
-        <Text style={[desktopText.body, desktop.consent]}>{consentLinks}</Text>
+      // No illustration, centered on the middle 8 of 12 grid columns
+      // (Anabelle, 2026-10-22).
+      <DesktopAuthShell grid span={8}>
+        <Text style={[desktopText.headline, desktopText.centered]}>Turns weekly deals into affordable meals</Text>
+        <Text style={[desktopText.body, desktop.consent, desktopText.centered]}>{consentLinks}</Text>
         <View style={desktop.buttons}>
           <Pressable onPress={() => router.push('/login')} style={[styles.primaryButton, desktop.button]}>
             <Text style={styles.primaryButtonText}>I agree</Text>
@@ -100,9 +101,6 @@ export default function TermsScreen() {
             contentContainerStyle keeps it centered when it fits, scrolls
             when it doesn't. */}
         <ScrollView contentContainerStyle={styles.middle} showsVerticalScrollIndicator={false}>
-          <View style={styles.logo}>
-            <GrrunchMascot size={200} />
-          </View>
           <Text style={styles.title}>Grrunch</Text>
           <Text style={styles.tagline}>Turns weekly deals into affordable meals</Text>
           <Text style={styles.body}>{consentLinks}</Text>
@@ -136,11 +134,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 24 },
   middle: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   bottomBlock: { paddingBottom: 160 },
-  logo: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
   title: {
     fontSize: 28,
     fontWeight: '800',
@@ -149,14 +142,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tagline: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     fontFamily: 'OpenSans_700Bold',
     textAlign: 'center',
     color: '#343837',
     marginBottom: 16,
   },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
+  // 16px body / 14px labels on every layout (Anabelle, 2026-10-22).
+  body: { fontSize: 16, lineHeight: 24, textAlign: 'center', color: '#343837' },
   link: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline', color: INK },
   primaryButton: {
     width: '100%',
@@ -186,6 +180,6 @@ const styles = StyleSheet.create({
 // Desktop web layout -- see DesktopAuthShell.
 const desktop = StyleSheet.create({
   consent: { color: '#343837' },
-  buttons: { flexDirection: 'row', gap: 16 },
+  buttons: { flexDirection: 'row', gap: 16, justifyContent: 'center' },
   button: { width: 180, marginBottom: 0 },
 });

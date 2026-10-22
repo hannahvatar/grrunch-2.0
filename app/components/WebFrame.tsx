@@ -10,11 +10,15 @@ import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 const COLUMN_WIDTH = 480;
 
 // Exact routes with a real desktop layout.
-const DESKTOP_READY = new Set(['/', '/terms', '/login', '/location', '/stores']);
+const DESKTOP_READY = new Set(['/', '/terms', '/login', '/location', '/stores', '/recipe']);
 
 export function isDesktopReadyRoute(pathname: string): boolean {
   return DESKTOP_READY.has(pathname);
 }
+
+// The 4 tab screens frame themselves: on desktop (tabs)/_layout.tsx puts
+// the top nav bar full width and only the page below it in PhoneColumn.
+export const TAB_ROUTES = new Set(['/best-deals', '/meals', '/grocery', '/profile']);
 
 // Internal review tools keep the full window -- they're used on a laptop
 // and want the room (dev-deals is reviewed on web).
@@ -24,8 +28,14 @@ export function WebFrame({ children }: { children: ReactNode }) {
   const { width } = useWindowDimensions();
   const pathname = usePathname();
   if (Platform.OS !== 'web') return <>{children}</>;
-  if (isDesktopReadyRoute(pathname)) return <>{children}</>;
+  if (isDesktopReadyRoute(pathname) || TAB_ROUTES.has(pathname)) return <>{children}</>;
   if (FULL_WIDTH_PREFIXES.some((p) => pathname.startsWith(p))) return <>{children}</>;
+  return <PhoneColumn width={width}>{children}</PhoneColumn>;
+}
+
+// The centered phone-width column itself, also used under the desktop
+// top nav for tab pages that don't have a desktop layout yet.
+export function PhoneColumn({ width, children }: { width: number; children: ReactNode }) {
   const framed = width > COLUMN_WIDTH;
   return (
     <View style={[styles.backdrop, framed && styles.backdropFramed]}>

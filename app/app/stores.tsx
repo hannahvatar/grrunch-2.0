@@ -1,8 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ArrowRightIcon, BuildingStorefrontIcon, MapPinIcon } from 'react-native-heroicons/outline';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ArrowRightIcon, BuildingStorefrontIcon } from 'react-native-heroicons/outline';
 
 import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { useIsDesktop } from '../lib/layout';
@@ -26,6 +26,10 @@ const INK = '#111';
 const ROW_HEIGHT = 40 + 14 * 2 + 1;
 const MAX_VISIBLE_ROWS = 5;
 const LIST_MAX_HEIGHT = ROW_HEIGHT * MAX_VISIBLE_ROWS + 4 * 2;
+// Everything on the desktop page that isn't the list: shell header (96)
+// and bottom padding (96), headline (52 + 20), two-line subtitle (48 + 24),
+// Continue (56 + 24), plus breathing room.
+const DESKTOP_LIST_CHROME = 460;
 
 // Guest-mode wireframe step 4 — Stores near you.
 // Wired to the deployed nearest-stores Edge Function (see
@@ -78,6 +82,14 @@ export default function StoresScreen() {
   const { setStores: setSelectedStores } = useSelectedStores();
   const { isSubscribed: storesEditable } = useSubscription();
   const isDesktop = useIsDesktop();
+  const { height: windowHeight } = useWindowDimensions();
+  // Desktop: the store list scrolls inside its card, sized to whatever the
+  // window leaves after the header, headline, text and Continue, so the
+  // page itself never scrolls (Anabelle, 2026-10-22). At least 2 rows.
+  const desktopListMaxHeight = Math.max(
+    ROW_HEIGHT * 2 + 8,
+    Math.min(LIST_MAX_HEIGHT, windowHeight - DESKTOP_LIST_CHROME)
+  );
 
   const [loading, setLoading] = useState(true);
   const [stores, setStores] = useState<DisplayStore[]>([]);
@@ -179,15 +191,13 @@ export default function StoresScreen() {
   }
 
   // Desktop web layout -- see DesktopAuthShell. Same three states as the
-  // phone layout below (loading, no location, store list).
+  // phone layout below (loading, no location, store list). No
+  // illustration, centered on the middle 8 of 12 grid columns (Anabelle,
+  // 2026-10-22), same as terms and location; the list and buttons sit in
+  // a narrower centered column inside it.
   function desktopShell(children: ReactNode) {
     return (
-      <DesktopAuthShell
-        art={<BuildingStorefrontIcon size={100} color={INK} strokeWidth={1} />}
-        artWidth={100}
-        artHeight={100}
-        artFill={0.45}
-      >
+      <DesktopAuthShell grid span={8}>
         {children}
       </DesktopAuthShell>
     );
@@ -221,17 +231,19 @@ export default function StoresScreen() {
     if (isDesktop) {
       return desktopShell(
         <>
-          <Text style={desktopText.headline}>No location yet</Text>
-          <Text style={desktopText.body}>
+          <Text style={[desktopText.headline, desktopText.centered]}>No location yet</Text>
+          <Text style={[desktopText.body, desktopText.centered]}>
             Turn on location to see the stores nearest you. Manual store search isn't available yet.
           </Text>
-          <Pressable style={styles.primaryButton} onPress={() => router.back()}>
-            <Text style={styles.primaryButtonText}>Enable location</Text>
-          </Pressable>
-          <Pressable style={[styles.skipButton, desktop.skip]} onPress={goToFirstTab} hitSlop={12}>
-            <Text style={styles.skipText}>Skip for now</Text>
-            <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
-          </Pressable>
+          <View style={desktop.column}>
+            <Pressable style={styles.primaryButton} onPress={() => router.back()}>
+              <Text style={styles.primaryButtonText}>Enable location</Text>
+            </Pressable>
+            <Pressable style={styles.skipButton} onPress={goToFirstTab} hitSlop={12}>
+              <Text style={styles.skipText}>Skip for now</Text>
+              <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
+            </Pressable>
+          </View>
         </>
       );
     }
@@ -239,7 +251,6 @@ export default function StoresScreen() {
       <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
         <View style={styles.container}>
           <View style={styles.emptyState}>
-            <MapPinIcon size={48} color={INK} strokeWidth={1} />
             <Text style={styles.title}>No location yet</Text>
             <Text style={styles.subtitle}>
               Turn on location to see the stores nearest you. Manual store search isn't available yet.
@@ -260,17 +271,22 @@ export default function StoresScreen() {
     );
   }
 
-  const subtitleText = storesEditable
-              ? 'Select the stores you want to track. You can refine this anytime in Profile settings.'
-              : precise
-                ? "Based on your location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."
-                : "Based on your approximate location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings.";
+  // Same wording for members and guests (Anabelle, 2026-10-22): the old
+  // members-only "Select the stores you want to track" line promised a
+  // selection this screen doesn't offer. "approximate" drops out only when
+  // real device coordinates were used.
+  const subtitleText = precise
+    ? "Based on your location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."
+    : "Based on your approximate location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings.";
 
   const storeList = (
         <View style={styles.listCardOuter}>
       <View style={styles.listCardShadow} />
       <View style={styles.listCard}>
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+        <ScrollView
+          style={[styles.list, isDesktop && { maxHeight: desktopListMaxHeight }]}
+          contentContainerStyle={styles.listContent}
+        >
           {stores.map((store, index) => (
             <Pressable
               key={store.id}
@@ -301,12 +317,14 @@ export default function StoresScreen() {
   if (isDesktop) {
     return desktopShell(
       <>
-        <Text style={desktopText.headline}>Stores near you</Text>
-        <Text style={[desktopText.body, desktop.subtitle]}>{subtitleText}</Text>
-        <View style={desktop.list}>{storeList}</View>
-        <Pressable style={styles.primaryButton} onPress={confirmStores}>
-          <Text style={styles.primaryButtonText}>Continue</Text>
-        </Pressable>
+        <Text style={[desktopText.headline, desktopText.centered]}>Stores near you</Text>
+        <Text style={[desktopText.body, desktop.subtitle, desktopText.centered]}>{subtitleText}</Text>
+        <View style={desktop.column}>
+          <View style={desktop.list}>{storeList}</View>
+          <Pressable style={styles.primaryButton} onPress={confirmStores}>
+            <Text style={styles.primaryButtonText}>Continue</Text>
+          </Pressable>
+        </View>
       </>
     );
   }
@@ -316,7 +334,7 @@ export default function StoresScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Stores near you</Text>
-          <Text style={[styles.subtitle, !storesEditable && styles.subtitleInk]}>
+          <Text style={[styles.subtitle, styles.subtitleInk]}>
             {subtitleText}
           </Text>
         </View>
@@ -345,7 +363,7 @@ const styles = StyleSheet.create({
   // flex:1 inner View (centered/emptyState), so this is a no-op there.
   container: { flex: 1, justifyContent: 'center' },
   centered: { alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { fontSize: 14, color: '#343837' },
+  loadingText: { fontSize: 16, color: '#343837' },
   // paddingTop was 64 (clearing the status bar) back when this pinned to
   // the top of the screen -- now that the whole block centers vertically,
   // that would just show up as a lopsided gap above the title, so this
@@ -374,7 +392,8 @@ const styles = StyleSheet.create({
   list: { maxHeight: LIST_MAX_HEIGHT },
   listContent: { paddingHorizontal: 20, paddingVertical: 4 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  subtitle: { fontSize: 14, color: '#343837', marginBottom: 8 },
+  // 16px body / 14px labels on every layout (Anabelle, 2026-10-22).
+  subtitle: { fontSize: 16, lineHeight: 24, color: '#343837', marginBottom: 8 },
   subtitleInk: { color: INK },
   emptyState: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
   storeRow: {
@@ -398,8 +417,8 @@ const styles = StyleSheet.create({
   // Shrinks to leave room for the distance: "Real Canadian Superstore"
   // pushed "44.1 km" off the card (Anabelle, 2026-10-09).
   storeName: { flexShrink: 1, marginRight: 8, fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  storeSubtitle: { fontSize: 13, color: '#888' },
-  distance: { flexShrink: 0, fontSize: 13, color: INK },
+  storeSubtitle: { fontSize: 14, color: '#888' },
+  distance: { flexShrink: 0, fontSize: 14, color: INK },
   floatingButtonOuter: { padding: 24, paddingTop: 20 },
   primaryButton: {
     width: '100%',
@@ -419,9 +438,9 @@ const styles = StyleSheet.create({
 
 // Desktop web layout -- see DesktopAuthShell.
 const desktop = StyleSheet.create({
-  loading: { alignItems: 'flex-start', gap: 12 },
-  subtitle: { marginBottom: 0 },
+  loading: { alignItems: 'center', gap: 12 },
+  subtitle: { marginBottom: 24 },
+  column: { width: 460, alignSelf: 'center' },
   // listCardOuter's 24px side margins are for the phone's screen edges.
-  list: { marginHorizontal: -24, marginBottom: 24 },
-  skip: { justifyContent: 'flex-start' },
+  list: { marginHorizontal: -24, marginTop: -20, marginBottom: 24 },
 });

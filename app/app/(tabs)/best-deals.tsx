@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -30,6 +30,7 @@ import { CutoutViewer } from '../../components/CutoutViewer';
 import { ExpiredBadge } from '../../components/ExpiredBadge';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
+import { gridSpan, useIsDesktop } from '../../lib/layout';
 import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek, useWeekValidityLabel } from '../../lib/liveWeek';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { StoreChips } from '../../components/StoreChips';
@@ -81,6 +82,11 @@ const FREE_DEALS_PER_CATEGORY = 1;
 // can be added straight to the grocery list without going through a
 // recipe.
 export default function BestDealsScreen() {
+  // Desktop web: content on the middle 8 of 12 grid columns (2-8-2,
+  // Anabelle 2026-10-22), on the full-width page background.
+  const isDesktop = useIsDesktop();
+  const { width: windowWidth } = useWindowDimensions();
+  const desktopContent = isDesktop ? { width: gridSpan(windowWidth, 8), alignSelf: 'center' as const, paddingHorizontal: 0 } : null;
   const { isSubscribed } = useSubscription();
   const [allDeals, setAllDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,7 +204,7 @@ export default function BestDealsScreen() {
     <View style={styles.container}>
       <ClosingSoonBanner />
       {zoomUri && <CutoutViewer uri={zoomUri} visible onClose={() => setZoomUri(null)} />}
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View style={styles.headerRow}>
           <View style={styles.titleFlex}>
             <Text style={styles.title}>Grrunch Picks</Text>

@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { FlyerAnimation } from '../components/FlyerAnimation';
 import { BiteAnimation } from '../components/BiteAnimation';
+import { ArrowLink } from '../components/ArrowLink';
 import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { LoyaltyCardStack } from '../components/LoyaltyCardStack';
 import { SauteAnimation } from '../components/SauteAnimation';
@@ -119,14 +120,11 @@ export default function OnboardingScreen() {
     return (
       <DesktopAuthShell
         grid
+        artPanel={false}
         art={<SlideArt step={step} />}
         artWidth={300}
         artHeight={230}
-        headerRight={
-          <Pressable onPress={proceedPastOnboarding} hitSlop={12}>
-            <Text style={desktop.skipText}>Skip</Text>
-          </Pressable>
-        }
+        headerRight={<ArrowLink label="Skip" onPress={proceedPastOnboarding} />}
       >
         <Text style={desktopText.headline}>{slide.headline}</Text>
         <Text style={desktopText.body}>{slide.body}</Text>
@@ -156,9 +154,9 @@ export default function OnboardingScreen() {
   return (
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <View style={styles.container}>
-        <Pressable style={styles.skip} onPress={proceedPastOnboarding} hitSlop={12}>
-          <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
+        <View style={styles.skip}>
+          <ArrowLink label="Skip" onPress={proceedPastOnboarding} />
+        </View>
 
         {/* ScrollView, not a fixed-height flex-centered View -- guards the
             same overflow-behind-the-button risk found live on terms.tsx
@@ -199,7 +197,6 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   container: { flex: 1, padding: 24 },
   skip: { position: 'absolute', top: 60, right: 24, padding: 8, zIndex: 1 },
-  skipText: { fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: '#343837' },
   middle: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   logo: {
     alignItems: 'center',
@@ -213,7 +210,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 12,
   },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#111' },
+  // 16px body / 14px labels on every layout (Anabelle, 2026-10-22).
+  body: { fontSize: 16, lineHeight: 24, textAlign: 'center', color: '#111' },
   bottomBlock: { paddingBottom: 160 },
   dots: { flexDirection: 'row', gap: 8, marginBottom: 24, alignSelf: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0C9AE' },
@@ -234,7 +232,6 @@ const styles = StyleSheet.create({
 
 // Desktop web layout (>= DESKTOP_MIN_WIDTH) -- see DesktopAuthShell.
 const desktop = StyleSheet.create({
-  skipText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: '#343837' },
   dots: { flexDirection: 'row', gap: 8, marginBottom: 32, alignItems: 'center' },
   buttons: { flexDirection: 'row', gap: 16 },
   // Share the 4-column half evenly -- fixed widths overflowed it on a

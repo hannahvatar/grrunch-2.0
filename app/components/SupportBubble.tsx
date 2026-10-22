@@ -3,7 +3,7 @@ import { Pressable, StyleSheet } from 'react-native';
 import { ChatBubbleOvalLeftEllipsisIcon } from 'react-native-heroicons/solid';
 
 import { useIsDesktop } from '../lib/layout';
-import { isDesktopReadyRoute } from './WebFrame';
+import { isDesktopReadyRoute, TAB_ROUTES } from './WebFrame';
 
 // Rendered once, in the root layout, so it floats over every screen in the
 // app -- not just reachable from Settings > Get support. Same destination
@@ -20,7 +20,7 @@ export function SupportBubble() {
   if (pathname.startsWith('/dev-deals')) return null;
   // Desktop pages have no bottom tab bar to clear, so the bubble sits in
   // the window's corner instead of over the content column.
-  const desktopCorner = isDesktop && isDesktopReadyRoute(pathname);
+  const desktopCorner = isDesktop && (isDesktopReadyRoute(pathname) || TAB_ROUTES.has(pathname));
   return (
     <Pressable style={[styles.bubble, desktopCorner && styles.bubbleDesktop]} onPress={() => router.push('/get-support')} hitSlop={8}>
       <ChatBubbleOvalLeftEllipsisIcon size={24} color="#fff" />
