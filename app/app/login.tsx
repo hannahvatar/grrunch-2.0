@@ -1,7 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Network from 'expo-network';
 import * as WebBrowser from 'expo-web-browser';
@@ -10,10 +10,12 @@ import { Alert, ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, 
 import { ArrowRightIcon, EnvelopeIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
+import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { AppleIcon } from '../components/icons/AppleIcon';
 import { GoogleIcon } from '../components/icons/GoogleIcon';
 import { InputField } from '../components/InputField';
 import { useSelectedStores } from '../lib/selectedStores';
+import { useIsDesktop } from '../lib/layout';
 import { supabase } from '../lib/supabase';
 
 // makeRedirectUri() is meant to auto-detect web vs. native, but in
@@ -31,7 +33,17 @@ import { supabase } from '../lib/supabase';
 // silently fell back to the Site URL instead of reopening the app.
 function getRedirectUri(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    return window.location.origin;
+    // Trailing slash matters: Supabase's allow-list globs
+    // (http://localhost:8081/**, https://app.grrunch.com/**) need a "/"
+    // after the host, so a bare origin silently misses them and falls back
+    // to the grrunch:// Site URL. Each localhost port needs its own entry --
+    // a wildcard port (localhost:*/**) never matched (2026-10-22).
+    //
+    // Lands on /location, the next step after sign-in: on web the session
+    // is read from the URL while the client starts up, before
+    // AuthRedirect's SIGNED_IN listener exists, so that redirect never
+    // fired and people landed back on the onboarding carousel.
+    return `${window.location.origin}/location`;
   }
   return makeRedirectUri({ native: 'grrunch://' });
 }
@@ -92,6 +104,27 @@ function isAppReviewEmail(value: string): boolean {
   return value.trim().toLowerCase() === APP_REVIEW_EMAIL;
 }
 
+// Web only: which OAuth providers are actually turned on in Supabase, read
+// from Auth's public settings endpoint. Buttons for providers that aren't
+// set up yet stay hidden instead of failing silently (2026-10-22: neither
+// Google nor Apple was enabled), and appear on their own once they are.
+function useWebOAuthProviders(): { google: boolean; apple: boolean } {
+  const [providers, setProviders] = useState({ google: false, apple: false });
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return;
+    fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } })
+      .then((res) => res.json())
+      .then((settings) =>
+        setProviders({ google: !!settings?.external?.google, apple: !!settings?.external?.apple })
+      )
+      .catch(() => {});
+  }, []);
+  return providers;
+}
+
 export default function LoginScreen() {
   // Same one screen either way -- Apple/Google/email all use the same
   // request to create an account or sign into an existing one, so there's
@@ -102,8 +135,12 @@ export default function LoginScreen() {
   // defaulting to 'signup' everywhere else (cold-start onboarding, the
   // signup nudge, after deleting an account), since most people reaching
   // this screen without that context are new.
-  const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const isSignIn = mode === 'signin';
+  // One headline for both modes (Anabelle, 2026-10-22): Apple, Google and
+  // email all sign in OR create the account, so "sign in" vs "create an
+  // account" was an inconsistency, not a real difference. `mode` is still
+  // passed by callers but no longer changes anything.
+  const isDesktop = useIsDesktop();
+  const webProviders = useWebOAuthProviders();
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   // Shared across Apple/Google/email -- whichever method gets cancelled
   // shows the same banner.
@@ -204,7 +241,29 @@ export default function LoginScreen() {
     }
   }
 
+  // Web: plain full-page redirect to the provider and back. The popup-style
+  // openAuthSessionAsync below is built for native; in a browser it failed
+  // silently. The provider sends people back to /location (see
+  // getRedirectUri), where detectSessionInUrl picks up the session.
+  async function handleWebOAuth(provider: 'google' | 'apple') {
+    setCancelledMessage(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: getRedirectUri() },
+    });
+    if (error) {
+      router.push({
+        pathname: '/error',
+        params: { body: `Sign-in failed: ${error.message}` },
+      });
+    }
+  }
+
   async function handleGoogleSignIn() {
+    if (Platform.OS === 'web') {
+      await handleWebOAuth('google');
+      return;
+    }
     setCancelledMessage(null);
     if (await isOffline()) {
       router.push('/offline');
@@ -335,18 +394,17 @@ export default function LoginScreen() {
     ]);
   }
 
-  return (
-    <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
-      <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.subtitle}>
-        {isSignIn ? 'Sign in to your account.' : 'Create a free account to start saving.'}
-      </Text>
+  const subtitle = 'Sign in or create a free account';
+  const showApple = Platform.OS !== 'web' || webProviders.apple;
+  const showGoogle = Platform.OS !== 'web' || webProviders.google;
 
+  const form = (
+    <>
       {cancelledMessage && (
         <AlertBanner variant="neutral" title={cancelledMessage} onDismiss={() => setCancelledMessage(null)} />
       )}
 
-      {appleAuthAvailable ? (
+      {!showApple ? null : appleAuthAvailable ? (
         <AppleAuthentication.AppleAuthenticationButton
           buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
           buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
@@ -354,6 +412,13 @@ export default function LoginScreen() {
           style={styles.appleButton}
           onPress={handleAppleSignIn}
         />
+      ) : Platform.OS === 'web' ? (
+        <Pressable style={styles.oauthButton} onPress={() => handleWebOAuth('apple')}>
+          <View style={styles.oauthRow}>
+            <AppleIcon size={18} color={INK} />
+            <Text style={styles.oauthText}>Continue with Apple</Text>
+          </View>
+        </Pressable>
       ) : (
         <Pressable style={styles.oauthButton} onPress={handleAppleSignInFallback}>
           <View style={styles.oauthRow}>
@@ -362,18 +427,20 @@ export default function LoginScreen() {
           </View>
         </Pressable>
       )}
-      <Pressable style={[styles.oauthButton, styles.googleButton]} onPress={handleGoogleSignIn}>
-        <View style={styles.oauthRow}>
-          <GoogleIcon size={18} color={INK} />
-          <Text style={styles.oauthText}>Continue with Google</Text>
-        </View>
-      </Pressable>
+      {showGoogle && (
+        <Pressable style={[styles.oauthButton, styles.googleButton]} onPress={handleGoogleSignIn}>
+          <View style={styles.oauthRow}>
+            <GoogleIcon size={18} color={INK} />
+            <Text style={styles.oauthText}>Continue with Google</Text>
+          </View>
+        </Pressable>
+      )}
 
       {emailSent ? (
         <View style={styles.emailSentBanner}>
           <EnvelopeIcon size={16} color={INK} />
           <View style={styles.emailSentTextBlock}>
-            <Text style={styles.emailSentText}>
+            <Text style={[styles.emailSentText, isDesktop && desktopText.body, isDesktop && desktop.emailSentText]}>
               We sent a confirmation link to {email}. Open it to finish signing in. Check your junk/spam folder if you don't see it.
             </Text>
             <Pressable onPress={() => setEmailSent(false)}>
@@ -431,6 +498,23 @@ export default function LoginScreen() {
         <Text style={styles.guestText}>Continue as guest</Text>
         <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
       </Pressable>
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <DesktopAuthShell grid span={3}>
+        <Text style={desktop.title}>{subtitle}</Text>
+        <View style={desktop.form}>{form}</View>
+      </DesktopAuthShell>
+    );
+  }
+
+  return (
+    <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
+      <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.subtitle}>{subtitle}</Text>
+      {form}
       </ScrollView>
     </LinearGradient>
   );
@@ -512,4 +596,14 @@ const styles = StyleSheet.create({
   emailSentTextBlock: { flex: 1, gap: 8 },
   guestButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   guestText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
+});
+
+// Desktop web layout -- see DesktopAuthShell. Same 12px rhythm as the
+// phone layout's container gap.
+const desktop = StyleSheet.create({
+  form: { gap: 12 },
+  // Small enough that the whole sign-in column fits a laptop screen
+  // without the page scrolling (Anabelle, 2026-10-22).
+  title: { fontSize: 24, lineHeight: 32, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginBottom: 20 },
+  emailSentText: { marginBottom: 0 },
 });

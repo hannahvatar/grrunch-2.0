@@ -6,7 +6,9 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ArrowRightIcon, MapPinIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
+import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { OutsideAreaModal } from '../components/OutsideAreaModal';
+import { useIsDesktop } from '../lib/layout';
 import { isInBC } from '../lib/serviceArea';
 
 // GRRUNCH DS -- matches login.tsx/index.tsx's palette.
@@ -43,6 +45,7 @@ export default function LocationScreen() {
   // "isn't in your area yet" waitlist modal, and is what gets stored
   // (rounded) if they join.
   const [outsideCoords, setOutsideCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const isDesktop = useIsDesktop();
 
   async function handleAllowLocation() {
     setStatusMessage(null);
@@ -88,19 +91,12 @@ export default function LocationScreen() {
     }
   }
 
-  return (
-    <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
-      <View style={styles.container}>
-        <View style={styles.spacer} />
-        <View style={styles.iconCircle}>
-          <MapPinIcon size={48} color={INK} strokeWidth={1} />
-        </View>
-        <Text style={styles.title}>Find deals near you</Text>
-        <Text style={styles.body}>
-          Grrunch can use your location to show nearby stores. This is optional. You can skip for now and
-          turn it on anytime, right from here.
-        </Text>
+  const bodyText =
+    'Grrunch can use your location to show nearby stores. This is optional. You can skip for now and ' +
+    'turn it on anytime, right from here.';
 
+  const statusBanner = (
+    <>
         {statusMessage && (
           <AlertBanner
             variant="error"
@@ -111,7 +107,11 @@ export default function LocationScreen() {
           />
         )}
 
-        <View style={styles.spacer} />
+    </>
+  );
+
+  const actions = (
+    <>
         <Pressable
           style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
           onPress={handleAllowLocation}
@@ -147,6 +147,37 @@ export default function LocationScreen() {
           source="onboarding"
           coords={outsideCoords}
         />
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <DesktopAuthShell
+        art={<MapPinIcon size={100} color={INK} strokeWidth={1} />}
+        artWidth={100}
+        artHeight={100}
+        artFill={0.45}
+      >
+        <Text style={desktopText.headline}>Find deals near you</Text>
+        <Text style={[desktopText.body, desktop.body]}>{bodyText}</Text>
+        {statusBanner}
+        <View style={desktop.actions}>{actions}</View>
+      </DesktopAuthShell>
+    );
+  }
+
+  return (
+    <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
+      <View style={styles.container}>
+        <View style={styles.spacer} />
+        <View style={styles.iconCircle}>
+          <MapPinIcon size={48} color={INK} strokeWidth={1} />
+        </View>
+        <Text style={styles.title}>Find deals near you</Text>
+        <Text style={styles.body}>{bodyText}</Text>
+        {statusBanner}
+        <View style={styles.spacer} />
+        {actions}
       </View>
     </LinearGradient>
   );
@@ -192,4 +223,10 @@ const styles = StyleSheet.create({
   secondaryButtonText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
   skipButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   skipText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
+});
+
+// Desktop web layout -- see DesktopAuthShell.
+const desktop = StyleSheet.create({
+  body: { marginBottom: 8 },
+  actions: { marginTop: 24, alignItems: 'flex-start' },
 });

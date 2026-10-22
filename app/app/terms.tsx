@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { GrrunchMascot } from '../components/GrrunchMascot';
 import { LegalDocumentModal } from '../components/LegalDocumentModal';
 import { PRIVACY_POLICY_EFFECTIVE_DATE, PRIVACY_POLICY_INTRO, PRIVACY_POLICY_SECTIONS } from '../lib/privacyPolicy';
+import { useIsDesktop } from '../lib/layout';
 import { TERMS_OF_USE_EFFECTIVE_DATE, TERMS_OF_USE_INTRO, TERMS_OF_USE_OUTRO, TERMS_OF_USE_SECTIONS } from '../lib/termsOfUse';
 
 // GRRUNCH DS accent -- matches login.tsx's palette.
@@ -20,8 +22,72 @@ export default function TermsScreen() {
   const [showTerms, setShowTerms] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
 
+  const isDesktop = useIsDesktop();
+
   function decline() {
+    // Alert.alert is a no-op on web, so Decline silently did nothing there.
+    if (Platform.OS === 'web') {
+      window.alert('Terms required\n\nYou need to agree to the terms to use Grrunch.');
+      return;
+    }
     Alert.alert('Terms required', 'You need to agree to the terms to use Grrunch.');
+  }
+
+  const consentLinks = (
+    <>
+      By continuing, you agree to our{' '}
+      <Text style={styles.link} onPress={() => setShowTerms(true)}>
+        Terms of Use
+      </Text>{' '}
+      and{' '}
+      <Text style={styles.link} onPress={() => setShowPrivacy(true)}>
+        Privacy Policy
+      </Text>
+      . We collect information to provide and improve Grrunch, including showing deals,
+      building grocery lists, and enhancing your experience.
+    </>
+  );
+
+  const legalModals = (
+    <>
+      <LegalDocumentModal
+        visible={showTerms}
+        onClose={() => setShowTerms(false)}
+        title="Terms of Use"
+        effectiveDate={TERMS_OF_USE_EFFECTIVE_DATE}
+        intro={TERMS_OF_USE_INTRO}
+        sections={TERMS_OF_USE_SECTIONS}
+        outro={TERMS_OF_USE_OUTRO}
+        showCloseButton
+      />
+      <LegalDocumentModal
+        visible={showPrivacy}
+        onClose={() => setShowPrivacy(false)}
+        title="Privacy Policy"
+        effectiveDate={PRIVACY_POLICY_EFFECTIVE_DATE}
+        intro={PRIVACY_POLICY_INTRO}
+        sections={PRIVACY_POLICY_SECTIONS}
+        showCloseButton
+      />
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <DesktopAuthShell art={<GrrunchMascot size={200} />} artWidth={200} artHeight={200} artFill={0.62}>
+        <Text style={desktopText.headline}>Turns weekly deals into affordable meals</Text>
+        <Text style={[desktopText.body, desktop.consent]}>{consentLinks}</Text>
+        <View style={desktop.buttons}>
+          <Pressable onPress={() => router.push('/login')} style={[styles.primaryButton, desktop.button]}>
+            <Text style={styles.primaryButtonText}>I agree</Text>
+          </Pressable>
+          <Pressable onPress={decline} style={[styles.declineButton, desktop.button]}>
+            <Text style={styles.declineText}>Decline</Text>
+          </Pressable>
+        </View>
+        {legalModals}
+      </DesktopAuthShell>
+    );
   }
 
   return (
@@ -39,18 +105,7 @@ export default function TermsScreen() {
           </View>
           <Text style={styles.title}>Grrunch</Text>
           <Text style={styles.tagline}>Turns weekly deals into affordable meals</Text>
-          <Text style={styles.body}>
-            By continuing, you agree to our{' '}
-            <Text style={styles.link} onPress={() => setShowTerms(true)}>
-              Terms of Use
-            </Text>{' '}
-            and{' '}
-            <Text style={styles.link} onPress={() => setShowPrivacy(true)}>
-              Privacy Policy
-            </Text>
-            . We collect information to provide and improve Grrunch, including showing deals,
-            building grocery lists, and enhancing your experience.
-          </Text>
+          <Text style={styles.body}>{consentLinks}</Text>
         </ScrollView>
 
         {/* pinned via its own paddingBottom, not flex centering, so both
@@ -71,25 +126,7 @@ export default function TermsScreen() {
         </View>
       </View>
 
-      <LegalDocumentModal
-        visible={showTerms}
-        onClose={() => setShowTerms(false)}
-        title="Terms of Use"
-        effectiveDate={TERMS_OF_USE_EFFECTIVE_DATE}
-        intro={TERMS_OF_USE_INTRO}
-        sections={TERMS_OF_USE_SECTIONS}
-        outro={TERMS_OF_USE_OUTRO}
-        showCloseButton
-      />
-      <LegalDocumentModal
-        visible={showPrivacy}
-        onClose={() => setShowPrivacy(false)}
-        title="Privacy Policy"
-        effectiveDate={PRIVACY_POLICY_EFFECTIVE_DATE}
-        intro={PRIVACY_POLICY_INTRO}
-        sections={PRIVACY_POLICY_SECTIONS}
-        showCloseButton
-      />
+      {legalModals}
     </LinearGradient>
   );
 }
@@ -144,4 +181,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   declineText: { color: INK, fontSize: 15, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
+});
+
+// Desktop web layout -- see DesktopAuthShell.
+const desktop = StyleSheet.create({
+  consent: { color: '#343837' },
+  buttons: { flexDirection: 'row', gap: 16 },
+  button: { width: 180, marginBottom: 0 },
 });

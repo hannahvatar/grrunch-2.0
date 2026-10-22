@@ -1,9 +1,11 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ArrowRightIcon, BuildingStorefrontIcon, MapPinIcon } from 'react-native-heroicons/outline';
 
+import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
+import { useIsDesktop } from '../lib/layout';
 import { useSelectedStores } from '../lib/selectedStores';
 import { useSubscription } from '../lib/subscription';
 import { supabase } from '../lib/supabase';
@@ -75,6 +77,7 @@ export default function StoresScreen() {
   const hasPreciseLocation = typeof lat === 'string' && typeof lng === 'string';
   const { setStores: setSelectedStores } = useSelectedStores();
   const { isSubscribed: storesEditable } = useSubscription();
+  const isDesktop = useIsDesktop();
 
   const [loading, setLoading] = useState(true);
   const [stores, setStores] = useState<DisplayStore[]>([]);
@@ -175,7 +178,30 @@ export default function StoresScreen() {
     router.push('/best-deals');
   }
 
+  // Desktop web layout -- see DesktopAuthShell. Same three states as the
+  // phone layout below (loading, no location, store list).
+  function desktopShell(children: ReactNode) {
+    return (
+      <DesktopAuthShell
+        art={<BuildingStorefrontIcon size={100} color={INK} strokeWidth={1} />}
+        artWidth={100}
+        artHeight={100}
+        artFill={0.45}
+      >
+        {children}
+      </DesktopAuthShell>
+    );
+  }
+
   if (loading) {
+    if (isDesktop) {
+      return desktopShell(
+        <View style={desktop.loading}>
+          <ActivityIndicator size="large" color={INK} />
+          <Text style={[styles.loadingText, desktopText.body]}>Finding stores near you…</Text>
+        </View>
+      );
+    }
     return (
       <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
         <View style={[styles.container, styles.centered]}>
@@ -192,6 +218,23 @@ export default function StoresScreen() {
   // weren't sent anymore (2026-08-26 -- that case now goes through the
   // fallback instead of skipping the fetch entirely).
   if (locationUnavailable) {
+    if (isDesktop) {
+      return desktopShell(
+        <>
+          <Text style={desktopText.headline}>No location yet</Text>
+          <Text style={desktopText.body}>
+            Turn on location to see the stores nearest you. Manual store search isn't available yet.
+          </Text>
+          <Pressable style={styles.primaryButton} onPress={() => router.back()}>
+            <Text style={styles.primaryButtonText}>Enable location</Text>
+          </Pressable>
+          <Pressable style={[styles.skipButton, desktop.skip]} onPress={goToFirstTab} hitSlop={12}>
+            <Text style={styles.skipText}>Skip for now</Text>
+            <ArrowRightIcon size={16} color={INK} strokeWidth={2} />
+          </Pressable>
+        </>
+      );
+    }
     return (
       <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
         <View style={styles.container}>
@@ -217,49 +260,68 @@ export default function StoresScreen() {
     );
   }
 
+  const subtitleText = storesEditable
+              ? 'Select the stores you want to track. You can refine this anytime in Profile settings.'
+              : precise
+                ? "Based on your location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."
+                : "Based on your approximate location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings.";
+
+  const storeList = (
+        <View style={styles.listCardOuter}>
+      <View style={styles.listCardShadow} />
+      <View style={styles.listCard}>
+        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+          {stores.map((store, index) => (
+            <Pressable
+              key={store.id}
+              style={[styles.storeRow, index === stores.length - 1 && styles.storeRowLast]}
+              onPress={storesEditable ? undefined : showUpgradePrompt}
+            >
+              <View style={styles.avatar}>
+                <BuildingStorefrontIcon size={32} color={INK} />
+              </View>
+              <View style={styles.storeInfo}>
+                <View style={styles.storeTopRow}>
+                  <Text style={styles.storeName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                    {store.name}
+                  </Text>
+                  {store.distanceKm !== null && (
+                    <Text style={[styles.distance, isDesktop && desktopText.label]}>{store.distanceKm.toFixed(1)} km</Text>
+                  )}
+                </View>
+                <Text style={[styles.storeSubtitle, isDesktop && desktopText.label]}>{store.subtitle}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+    </View>
+  );
+
+  if (isDesktop) {
+    return desktopShell(
+      <>
+        <Text style={desktopText.headline}>Stores near you</Text>
+        <Text style={[desktopText.body, desktop.subtitle]}>{subtitleText}</Text>
+        <View style={desktop.list}>{storeList}</View>
+        <Pressable style={styles.primaryButton} onPress={confirmStores}>
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </Pressable>
+      </>
+    );
+  }
+
   return (
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Stores near you</Text>
           <Text style={[styles.subtitle, !storesEditable && styles.subtitleInk]}>
-            {storesEditable
-              ? 'Select the stores you want to track. You can refine this anytime in Profile settings.'
-              : precise
-                ? "Based on your location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."
-                : "Based on your approximate location, these are the stores we'll use for recipes and grocery deals. You can change them anytime in Settings."}
+            {subtitleText}
           </Text>
         </View>
 
-        <View style={styles.listCardOuter}>
-          <View style={styles.listCardShadow} />
-          <View style={styles.listCard}>
-            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-              {stores.map((store, index) => (
-                <Pressable
-                  key={store.id}
-                  style={[styles.storeRow, index === stores.length - 1 && styles.storeRowLast]}
-                  onPress={storesEditable ? undefined : showUpgradePrompt}
-                >
-                  <View style={styles.avatar}>
-                    <BuildingStorefrontIcon size={32} color={INK} />
-                  </View>
-                  <View style={styles.storeInfo}>
-                    <View style={styles.storeTopRow}>
-                      <Text style={styles.storeName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                        {store.name}
-                      </Text>
-                      {store.distanceKm !== null && (
-                        <Text style={styles.distance}>{store.distanceKm.toFixed(1)} km</Text>
-                      )}
-                    </View>
-                    <Text style={styles.storeSubtitle}>{store.subtitle}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
+        {storeList}
 
         <View style={styles.floatingButtonOuter}>
           <Pressable
@@ -353,4 +415,13 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   skipButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
   skipText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
+});
+
+// Desktop web layout -- see DesktopAuthShell.
+const desktop = StyleSheet.create({
+  loading: { alignItems: 'flex-start', gap: 12 },
+  subtitle: { marginBottom: 0 },
+  // listCardOuter's 24px side margins are for the phone's screen edges.
+  list: { marginHorizontal: -24, marginBottom: 24 },
+  skip: { justifyContent: 'flex-start' },
 });
