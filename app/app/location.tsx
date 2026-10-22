@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ArrowRightIcon, MapPinIcon } from 'react-native-heroicons/outline';
+import { ArrowRightIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
 import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
@@ -152,14 +152,11 @@ export default function LocationScreen() {
 
   if (isDesktop) {
     return (
-      <DesktopAuthShell
-        art={<MapPinIcon size={100} color={INK} strokeWidth={1} />}
-        artWidth={100}
-        artHeight={100}
-        artFill={0.45}
-      >
-        <Text style={desktopText.headline}>Find deals near you</Text>
-        <Text style={[desktopText.body, desktop.body]}>{bodyText}</Text>
+      // No illustration, centered on the middle 8 of 12 grid columns
+      // (Anabelle, 2026-10-22), same as terms.
+      <DesktopAuthShell grid span={8}>
+        <Text style={[desktopText.headline, desktopText.centered]}>Find deals near you</Text>
+        <Text style={[desktopText.body, desktop.body, desktopText.centered]}>{bodyText}</Text>
         {statusBanner}
         <View style={desktop.actions}>{actions}</View>
       </DesktopAuthShell>
@@ -170,9 +167,6 @@ export default function LocationScreen() {
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <View style={styles.container}>
         <View style={styles.spacer} />
-        <View style={styles.iconCircle}>
-          <MapPinIcon size={48} color={INK} strokeWidth={1} />
-        </View>
         <Text style={styles.title}>Find deals near you</Text>
         <Text style={styles.body}>{bodyText}</Text>
         {statusBanner}
@@ -187,13 +181,9 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   container: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
   spacer: { height: 24 },
-  iconCircle: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 12, textAlign: 'center' },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: '#343837' },
+  // 16px body / 14px labels on every layout (Anabelle, 2026-10-22).
+  body: { fontSize: 16, lineHeight: 24, textAlign: 'center', color: '#343837' },
   // Only the spacing/width this screen needs -- AlertBanner supplies its
   // own colors/padding/radius per the DS spec.
   statusBanner: { marginTop: 16, width: '100%' },
@@ -228,5 +218,7 @@ const styles = StyleSheet.create({
 // Desktop web layout -- see DesktopAuthShell.
 const desktop = StyleSheet.create({
   body: { marginBottom: 8 },
-  actions: { marginTop: 24, alignItems: 'flex-start' },
+  // Buttons keep a comfortable width instead of stretching across all 8
+  // columns.
+  actions: { marginTop: 24, width: 360, alignSelf: 'center' },
 });

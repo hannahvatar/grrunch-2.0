@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { ArrowPathIcon, BuildingStorefrontIcon, ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
 import { AvocadoBeanIcon, ChefHatIcon, RestaurantIcon, ShoppingModeIcon } from '../components/MaterialSymbols';
 import { RecipeRating } from '../components/RecipeRating';
 import { SubRecipeCard } from '../components/SubRecipeCard';
+import { gridSpan, useIsDesktop } from '../lib/layout';
 import { useAuth } from '../lib/auth';
 import { markSignupNudgeShown, recordRecipeView, shouldShowSignupNudge } from '../lib/guestNudge';
 import type { Meal } from '../lib/mealData';
@@ -25,6 +26,12 @@ const INK = '#111';
 // meal card's "View recipe" button. Not covered by a wireframe yet, so this
 // stays plain/functional like the rest of the guest-mode flow.
 export default function RecipeScreen() {
+  // Desktop web: content on the middle 8 of 12 grid columns (2-8-2,
+  // Anabelle 2026-10-22), on the full-width page background; no sheet
+  // handle, since it isn't a bottom sheet there.
+  const isDesktop = useIsDesktop();
+  const { width: windowWidth } = useWindowDimensions();
+  const desktopContent = isDesktop ? { width: gridSpan(windowWidth, 8), alignSelf: 'center' as const, paddingHorizontal: 0 } : null;
   const { id, week: weekParam } = useLocalSearchParams<{ id: string; week?: string }>();
   // Opened from dev-recipes' "Next week": price and tag it with the draft deals.
   const week = weekParam === 'next' ? 'next' : 'live';
@@ -52,24 +59,18 @@ export default function RecipeScreen() {
   // never collide either). scrollViewRef targets the page's own outer
   // ScrollView, the same one everything else on this screen lives in.
   const scrollViewRef = useRef<ScrollView>(null);
-  const [subRecipeOffsets, setSubRecipeOffsets] = useState<Record<string, number>>({});
   // Where the "Did you know?" card sits, for the chef hat next to its
   // ingredient (same onLayout approach as the companion recipes).
   const [didYouKnowY, setDidYouKnowY] = useState<number | null>(null);
   function scrollToDidYouKnow() {
     if (didYouKnowY !== null) scrollViewRef.current?.scrollTo({ y: didYouKnowY, animated: true });
   }
-  function scrollToSubRecipe(title: string) {
-    const y = subRecipeOffsets[title];
-    if (y !== undefined) scrollViewRef.current?.scrollTo({ y, animated: true });
-  }
-  // Companion recipe cards default open (a key never explicitly set to
-  // false reads as expanded) -- tapping the linked ingredient should
-  // reveal the full technique immediately, not a collapsed teaser; the
-  // chevron just lets you collapse it back down afterward.
+  // Companion recipe cards default closed (Anabelle, 2026-10-22; were
+  // open): only a key explicitly set to true reads as expanded; the
+  // chevron opens it.
   const [expandedSubRecipes, setExpandedSubRecipes] = useState<Record<string, boolean>>({});
   function isSubRecipeExpanded(title: string) {
-    return expandedSubRecipes[title] !== false;
+    return expandedSubRecipes[title] === true;
   }
   function toggleSubRecipe(title: string) {
     setExpandedSubRecipes((prev) => ({ ...prev, [title]: !isSubRecipeExpanded(title) }));
@@ -205,7 +206,7 @@ export default function RecipeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.handle} />
+      {!isDesktop && <View style={styles.handle} />}
       {/* Floating over the ScrollView (not a sibling row above it) so it
           reads as pinned in place over whatever scrolls beneath it,
           rather than sitting in its own opaque bar. Positioned outside
@@ -213,7 +214,7 @@ export default function RecipeScreen() {
       <Pressable style={styles.closeButton} onPress={handleClose}>
         <XMarkIcon size={20} color={INK} />
       </Pressable>
-      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View style={styles.headerText}>
           <Text style={styles.title}>{meal.name}</Text>
           {!!meal.descriptor && <Text style={styles.descriptor}>{meal.descriptor}</Text>}
@@ -330,17 +331,6 @@ export default function RecipeScreen() {
                 </View>
                 <View style={styles.dealIngredientsList}>
                   {dealIngredients.map((ingredient, index) => {
-                    // Same jump-link lookup as the pantry list below --
-                    // a deal-tagged ingredient (e.g. Cauliflower on sale
-                    // this week) can just as easily match a sub-recipe as
-                    // a pantry-priced one; this branch just never wired
-                    // it up. Found live on "BBQ Ribs 'n' Cauli Nuggets"
-                    // once Cauliflower Rice was added as a companion --
-                    // the section rendered, but "cauliflower" here had no
-                    // link to it since it happened to be deal-tagged.
-                    const subRecipe = meal.subRecipes.find(
-                      (sr) => sr.matchIngredientName.toLowerCase() === ingredient.name.toLowerCase()
-                    );
                     return (
                     <View key={index}>
                       {index > 0 && <View style={styles.dealDivider} />}
@@ -349,8 +339,6 @@ export default function RecipeScreen() {
                         text={ingredient.dealDisplayText ?? ingredient.text}
                         dealTag={ingredient.dealTag}
                         estimatedPrice={ingredient.estimatedPrice}
-                        linkedText={subRecipe ? ingredient.name : undefined}
-                        onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
                         useQuantityText={ingredient.useQuantityText}
                         // Deal-tagged lines' own text never scales with the
                         // batch multiplier -- see scaleIngredientDisplay.
@@ -430,13 +418,6 @@ export default function RecipeScreen() {
                 </View>
                 <View style={styles.staplesList}>
                   {stapleIngredients.map((ingredient, index) => {
-                    // At most one match -- match_ingredient_name is
-                    // unique in the sub_recipes table (see lib/
-                    // subRecipes.ts / the migration), so an ingredient
-                    // can never ambiguously link to two sections.
-                    const subRecipe = meal.subRecipes.find(
-                      (sr) => sr.matchIngredientName.toLowerCase() === ingredient.name.toLowerCase()
-                    );
                     return (
                       <IngredientRow
                         key={index}
@@ -444,8 +425,6 @@ export default function RecipeScreen() {
                         text={ingredient.text}
                         estimatedPrice={ingredient.estimatedPrice}
                         bulleted
-                        linkedText={subRecipe ? ingredient.name : undefined}
-                        onLinkedTextPress={subRecipe ? () => scrollToSubRecipe(subRecipe.title) : undefined}
                         onTipPress={ingredient.didYouKnow && meal.didYouKnow ? scrollToDidYouKnow : undefined}
                         useQuantityText={ingredient.useQuantityText}
                       />
@@ -497,30 +476,6 @@ export default function RecipeScreen() {
             </View>
             <View style={styles.optionalList}>
               {meal.optionalAdditions.map((addition, index) => {
-                // Same jump-link mechanism as an ingredient row's
-                // linkedText (IngredientRow.tsx) -- a companion recipe
-                // mentioned only in this prose, not in the ingredient
-                // list itself (see lib/recipes.ts's mapRowToMeal,
-                // optionalText matching), still gets a tappable link to
-                // its section instead of just naming it inertly.
-                const subRecipe = meal.subRecipes.find((sr) =>
-                  addition.description.toLowerCase().includes(sr.matchIngredientName.toLowerCase())
-                );
-                const linkIndex = subRecipe
-                  ? addition.description.toLowerCase().indexOf(subRecipe.matchIngredientName.toLowerCase())
-                  : -1;
-                const descriptionContent =
-                  subRecipe && linkIndex >= 0 ? (
-                    <>
-                      {addition.description.slice(0, linkIndex)}
-                      <Text style={styles.optionalLink} onPress={() => scrollToSubRecipe(subRecipe.title)}>
-                        {addition.description.slice(linkIndex, linkIndex + subRecipe.matchIngredientName.length)}
-                      </Text>
-                      {addition.description.slice(linkIndex + subRecipe.matchIngredientName.length)}
-                    </>
-                  ) : (
-                    addition.description
-                  );
                 return (
                   <Text key={addition.title || index} style={styles.optionalText}>
                     {/* A blank title (Anabelle's call for some additions --
@@ -533,7 +488,7 @@ export default function RecipeScreen() {
                         {' '}
                       </>
                     ) : null}
-                    {descriptionContent}
+                    {addition.description}
                   </Text>
                 );
               })}
@@ -553,58 +508,16 @@ export default function RecipeScreen() {
               </View>
               <Text style={styles.optionalHeading}>Leftovers</Text>
             </View>
-            {(() => {
-              // A companion recipe named in the tip ("the Ham Spread
-              // below") becomes the same jump link the Optional card uses.
-              const text = meal.leftovers;
-              const subRecipe = meal.subRecipes.find((sr) =>
-                text.toLowerCase().includes(sr.matchIngredientName.toLowerCase())
-              );
-              const at = subRecipe ? text.toLowerCase().indexOf(subRecipe.matchIngredientName.toLowerCase()) : -1;
-              if (!subRecipe || at < 0) return <Text style={styles.optionalText}>{text}</Text>;
-              const end = at + subRecipe.matchIngredientName.length;
-              return (
-                <Text style={styles.optionalText}>
-                  {text.slice(0, at)}
-                  <Text style={styles.optionalLink} onPress={() => scrollToSubRecipe(subRecipe.title)}>
-                    {text.slice(at, end)}
-                  </Text>
-                  {text.slice(end)}
-                </Text>
-              );
-            })()}
+            <Text style={styles.optionalText}>{meal.leftovers}</Text>
           </View>
         )}
 
-        {/* Standalone prep techniques linked from an ingredient above
-            (see the "pork belly" example this was built for) -- one
-            section per relevant sub-recipe, at the very bottom of the
-            page. onLayout (on the outer wrapper, so the eyebrow label
-            scrolls into view too, not just the card) captures each
-            section's own Y offset the moment it renders, so
-            scrollToSubRecipe (triggered by tapping the linked
-            ingredient) has something to scroll to; no offset is known
-            until then, so the jump link is a no-op on the very first
-            render frame only. Collapsible (Anabelle's call, with a
-            design reference) -- defaults open so the jump link still
-            lands on visible content; the chevron just lets you tuck it
-            away afterward. */}
+        {/* Companion recipes: versatile standalone recipes attached to
+            this one, shown on their own at the bottom. Never linked from
+            the ingredients, Optional or Leftovers text (Anabelle,
+            2026-10-22). Collapsible, default closed. */}
         {meal.subRecipes.map((subRecipe) => (
-          <View
-            key={subRecipe.title}
-            onLayout={(e) => {
-              // Read layout.y synchronously, right here -- React reuses/
-              // nullifies the synthetic event object after this handler
-              // returns, so reading e.nativeEvent lazily inside the
-              // setState updater below (which React may not invoke until
-              // a later batch) was hitting a released event and throwing
-              // "This synthetic event is reused for performance reasons"
-              // on every recipe page with a companion recipe. Capturing
-              // the plain number up front sidesteps that entirely.
-              const y = e.nativeEvent.layout.y;
-              setSubRecipeOffsets((prev) => ({ ...prev, [subRecipe.title]: y }));
-            }}
-          >
+          <View key={subRecipe.title}>
             <View style={styles.companionEyebrowRow}>
               <Text style={styles.companionEyebrowText}>Companion Recipe</Text>
             </View>
@@ -921,7 +834,6 @@ const styles = StyleSheet.create({
   // Same treatment as IngredientRow's itemNameLink -- underlined,
   // otherwise inherits optionalText's own size/color so it reads as
   // part of the sentence, not a separate button.
-  optionalLink: { textDecorationLine: 'underline' },
   // Sub-recipe sections (e.g. "Basic Crispy Pork Belly") at the very
   // bottom of the page, jump-linked from a matching ingredient above --
   // "Companion Recipe" eyebrow label sits outside/above a dashed-border
