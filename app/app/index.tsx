@@ -1,13 +1,15 @@
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { FlyerAnimation } from '../components/FlyerAnimation';
 import { BiteAnimation } from '../components/BiteAnimation';
+import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { LoyaltyCardStack } from '../components/LoyaltyCardStack';
 import { SauteAnimation } from '../components/SauteAnimation';
 import { useAuth } from '../lib/auth';
+import { useIsDesktop } from '../lib/layout';
 
 // GRRUNCH DS accent -- matches terms.tsx/login.tsx's palette.
 const ACCENT = '#FFA955';
@@ -46,6 +48,13 @@ const SAUTE_SLIDE = SLIDES.findIndex((s) => s.headline === 'Let the deals decide
 const CARD_SLIDE = SLIDES.findIndex((s) => s.headline === 'Member prices count, too');
 const MASCOT_SLIDE = SLIDES.findIndex((s) => s.headline === "Let's bite back at grocery prices.");
 
+function SlideArt({ step }: { step: number }) {
+  if (step === FLYER_SLIDE) return <FlyerAnimation active />;
+  if (step === SAUTE_SLIDE) return <SauteAnimation active />;
+  if (step === MASCOT_SLIDE) return <BiteAnimation active />;
+  return <LoyaltyCardStack active={step === CARD_SLIDE} />;
+}
+
 // New first screen (2026-09-03) — value-prop onboarding carousel, ahead of
 // the pre-existing Terms & consent screen (moved to terms.tsx unchanged).
 // Deliberately shown on every cold start, same as the rest of this guest-mode
@@ -71,6 +80,7 @@ export default function OnboardingScreen() {
   const isLast = step === SLIDES.length - 1;
   const slide = SLIDES[step];
   const { session, loading } = useAuth();
+  const isDesktop = useIsDesktop();
 
   function proceedPastOnboarding() {
     if (!loading && session) {
@@ -88,6 +98,61 @@ export default function OnboardingScreen() {
     }
   }
 
+  function back() {
+    setStep((s) => Math.max(0, s - 1));
+  }
+
+  // Desktop only: arrow keys page through the slides, the way people
+  // expect a carousel to behave on a computer. Not Enter -- a focused
+  // Next button already handles Enter itself, so it would double-step.
+  useEffect(() => {
+    if (!isDesktop) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowRight') next();
+      else if (e.key === 'ArrowLeft') back();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  if (isDesktop) {
+    return (
+      <DesktopAuthShell
+        grid
+        art={<SlideArt step={step} />}
+        artWidth={300}
+        artHeight={230}
+        headerRight={
+          <Pressable onPress={proceedPastOnboarding} hitSlop={12}>
+            <Text style={desktop.skipText}>Skip</Text>
+          </Pressable>
+        }
+      >
+        <Text style={desktopText.headline}>{slide.headline}</Text>
+        <Text style={desktopText.body}>{slide.body}</Text>
+
+        <View style={desktop.dots}>
+          {SLIDES.map((s, i) => (
+            <Pressable key={s.headline} onPress={() => setStep(i)} hitSlop={6}>
+              <View style={[styles.dot, i === step && styles.dotActive]} />
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={desktop.buttons}>
+          {step > 0 && (
+            <Pressable onPress={back} style={desktop.secondaryButton}>
+              <Text style={styles.primaryButtonText}>Back</Text>
+            </Pressable>
+          )}
+          <Pressable onPress={next} style={[styles.primaryButton, desktop.primaryButton]}>
+            <Text style={styles.primaryButtonText}>{isLast ? 'Get started' : 'Next'}</Text>
+          </Pressable>
+        </View>
+      </DesktopAuthShell>
+    );
+  }
+
   return (
     <LinearGradient colors={['#fff', '#FFEAD4']} style={styles.gradient}>
       <View style={styles.container}>
@@ -101,15 +166,7 @@ export default function OnboardingScreen() {
             keeps it centered when it fits, scrolls when it doesn't. */}
         <ScrollView contentContainerStyle={styles.middle} showsVerticalScrollIndicator={false}>
           <View style={styles.logo}>
-            {step === FLYER_SLIDE ? (
-              <FlyerAnimation active={step === FLYER_SLIDE} />
-            ) : step === SAUTE_SLIDE ? (
-              <SauteAnimation active={step === SAUTE_SLIDE} />
-            ) : step === MASCOT_SLIDE ? (
-              <BiteAnimation active={step === MASCOT_SLIDE} />
-            ) : (
-              <LoyaltyCardStack active={step === CARD_SLIDE} />
-            )}
+            <SlideArt step={step} />
           </View>
           <Text style={styles.headline}>{slide.headline}</Text>
           <Text style={styles.body}>{slide.body}</Text>
@@ -173,4 +230,24 @@ const styles = StyleSheet.create({
   },
   primaryButtonPressed: { borderColor: INK },
   primaryButtonText: { color: INK, fontSize: 17, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+});
+
+// Desktop web layout (>= DESKTOP_MIN_WIDTH) -- see DesktopAuthShell.
+const desktop = StyleSheet.create({
+  skipText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: '#343837' },
+  dots: { flexDirection: 'row', gap: 8, marginBottom: 32, alignItems: 'center' },
+  buttons: { flexDirection: 'row', gap: 16 },
+  // Share the 4-column half evenly -- fixed widths overflowed it on a
+  // smaller laptop.
+  primaryButton: { flex: 2, width: 'auto' },
+  secondaryButton: {
+    flex: 1,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: INK,
+    borderRadius: 28,
+    backgroundColor: '#fff',
+  },
 });
