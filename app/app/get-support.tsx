@@ -49,16 +49,17 @@ export function GetSupportBody() {
 
   return (
     <>
-      <Pressable
-        style={[styles.contactButton, !SUPPORT_EMAIL && styles.contactButtonDisabled]}
-        onPress={handleContactUs}
-      >
-        <EnvelopeIcon size={18} color={INK} />
-        <Text style={styles.contactButtonText}>
-          {SUPPORT_EMAIL ? 'Email support' : 'Email support (not set up yet)'}
+      {/* Intro with the support address spelled out (Anabelle,
+          2026-10-23), tappable like the button below. */}
+      {SUPPORT_EMAIL && (
+        <Text style={styles.intro}>
+          Have a question or something not working the way it should? Check the answers below, or email us at{' '}
+          <Text style={styles.introLink} onPress={handleContactUs}>
+            {SUPPORT_EMAIL}
+          </Text>{' '}
+          and we'll get back to you.
         </Text>
-      </Pressable>
-
+      )}
       <Text style={styles.faqHeading}>FAQ</Text>
       <View style={styles.faqContainer}>
         {FAQ_ITEMS.map((item, i) => {
@@ -80,6 +81,18 @@ export function GetSupportBody() {
           );
         })}
       </View>
+
+      {/* At the bottom of the section, after the FAQ (Anabelle,
+          2026-10-23): read the answers first, then email if still stuck. */}
+      <Pressable
+        style={[styles.contactButton, !SUPPORT_EMAIL && styles.contactButtonDisabled]}
+        onPress={handleContactUs}
+      >
+        <EnvelopeIcon size={18} color={INK} />
+        <Text style={styles.contactButtonText}>
+          {SUPPORT_EMAIL ? 'Email support' : 'Email support (not set up yet)'}
+        </Text>
+      </Pressable>
     </>
   );
 }
@@ -131,6 +144,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', marginBottom: 20 },
+  // 16px body (Anabelle, 2026-10-22); link in the app's link style.
+  intro: { fontSize: 16, lineHeight: 24, color: INK, marginBottom: 24 },
+  introLink: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', textDecorationLine: 'underline' },
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,7 +157,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 26,
-    marginBottom: 28,
+    marginTop: 24,
   },
   contactButtonDisabled: { opacity: 0.6 },
   contactButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
