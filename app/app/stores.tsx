@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDi
 import { ArrowRightIcon, BuildingStorefrontIcon } from 'react-native-heroicons/outline';
 
 import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
-import { useIsDesktop } from '../lib/layout';
+import { HOME_ROUTE, useIsDesktop } from '../lib/layout';
 import { useSelectedStores } from '../lib/selectedStores';
 import { useSubscription } from '../lib/subscription';
 import { supabase } from '../lib/supabase';
@@ -170,7 +170,7 @@ export default function StoresScreen() {
   }, [hasPreciseLocation, lat, lng]);
 
   function goToFirstTab() {
-    router.push('/best-deals');
+    router.push(HOME_ROUTE);
   }
 
   // Only persists on the deliberate "Continue" confirmation, not
@@ -187,7 +187,7 @@ export default function StoresScreen() {
         lng: store.lng ?? undefined,
       }))
     );
-    router.push('/best-deals');
+    router.push(HOME_ROUTE);
   }
 
   // Desktop web layout -- see DesktopAuthShell. Same three states as the

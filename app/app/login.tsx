@@ -15,7 +15,7 @@ import { AppleIcon } from '../components/icons/AppleIcon';
 import { GoogleIcon } from '../components/icons/GoogleIcon';
 import { InputField } from '../components/InputField';
 import { useSelectedStores } from '../lib/selectedStores';
-import { useIsDesktop } from '../lib/layout';
+import { HOME_ROUTE, useIsDesktop } from '../lib/layout';
 import { supabase } from '../lib/supabase';
 
 // makeRedirectUri() is meant to auto-detect web vs. native, but in
@@ -185,7 +185,7 @@ export default function LoginScreen() {
   // full onboarding rather than guessing.
   function navigateAfterSignIn() {
     if (storesLoaded && existingStores.length > 0) {
-      router.push('/best-deals');
+      router.push(HOME_ROUTE);
     } else {
       router.push('/location');
     }

@@ -186,7 +186,7 @@ export default function RecipeScreen() {
       router.replace('/signup-nudge');
       return;
     }
-    router.canGoBack() ? router.back() : router.replace('/meals');
+    router.canGoBack() ? router.back() : router.replace('/recipes');
   }
 
   // Membership-gated, same as meals.tsx's own handleToggleSelected

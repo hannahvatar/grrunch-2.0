@@ -33,3 +33,7 @@ export function useDesktopModalWidth(columns: number): { width: number } | null 
   const isDesktop = Platform.OS === 'web' && width >= DESKTOP_MIN_WIDTH;
   return isDesktop ? { width: gridSpan(width, columns) } : null;
 }
+
+// Where people land after onboarding / sign-in: the web-only Home tab on
+// web (Anabelle, 2026-10-23), Weekly Deals on the iPhone app.
+export const HOME_ROUTE = Platform.OS === 'web' ? '/home' : '/best-deals';

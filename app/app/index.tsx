@@ -10,7 +10,7 @@ import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { LoyaltyCardStack } from '../components/LoyaltyCardStack';
 import { SauteAnimation } from '../components/SauteAnimation';
 import { useAuth } from '../lib/auth';
-import { useIsDesktop } from '../lib/layout';
+import { HOME_ROUTE, useIsDesktop } from '../lib/layout';
 
 // GRRUNCH DS accent -- matches terms.tsx/login.tsx's palette.
 const ACCENT = '#FFA955';
@@ -27,7 +27,7 @@ const SLIDES = [
   },
   {
     headline: 'Let the deals decide dinner',
-    body: "We turn this week's best deals into affordable and delicious meals.",
+    body: "We turn this week's best deals into affordable and delicious recipes.",
   },
   {
     headline: 'Member prices count, too',
@@ -85,7 +85,7 @@ export default function OnboardingScreen() {
 
   function proceedPastOnboarding() {
     if (!loading && session) {
-      router.replace('/best-deals');
+      router.replace(HOME_ROUTE);
     } else {
       router.push('/terms');
     }

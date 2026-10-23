@@ -28,7 +28,7 @@ export function ClosingSoonBanner() {
         <Text style={styles.title}>
           This week ends in <Text style={styles.time}>{formatLeft(left)}</Text>
         </Text>
-        <Text style={styles.body}>Meals, deals and your grocery list reset at 11:59 pm.</Text>
+        <Text style={styles.body}>Recipes, deals and your grocery list reset at 11:59 pm.</Text>
       </View>
     </View>
   );

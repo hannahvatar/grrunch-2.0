@@ -19,7 +19,7 @@ type Screen = 'meals' | 'deals' | 'list';
 
 const COPY: Record<Screen, { headline: string; body: string }> = {
   meals: {
-    headline: 'New meals are cooking',
+    headline: 'New recipes are cooking',
     body: "We're turning this week's best deals into fresh recipes. They drop in:",
   },
   deals: {
@@ -28,7 +28,7 @@ const COPY: Record<Screen, { headline: string; body: string }> = {
   },
   list: {
     headline: 'Ready for a fresh list',
-    body: "Last week's list is cleared. New meals and deals drop in:",
+    body: "Last week's list is cleared. New recipes and deals drop in:",
   },
 };
 
@@ -117,7 +117,7 @@ export function WeekGapState({ screen }: { screen: Screen }) {
           <CauldronAnimation active />
         </View>
         <Text style={styles.headline}>{copy.headline}</Text>
-        <Text style={styles.body}>{anyMinute ? 'New meals and deals are dropping any minute now.' : copy.body}</Text>
+        <Text style={styles.body}>{anyMinute ? 'New recipes and deals are dropping any minute now.' : copy.body}</Text>
 
         {left !== null && !anyMinute && (
           <>
