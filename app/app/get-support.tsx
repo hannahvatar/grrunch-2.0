@@ -14,7 +14,10 @@ const INK = '#111';
 // 3rd-party provider Anabelle hasn't set up), so "Contact us" composes a
 // real email via the device's mail client instead of a chat widget that
 // wouldn't actually connect to anyone.
-export default function GetSupportScreen() {
+// The page's own content (Email support button + FAQ), without its title
+// and close button: rendered here and inline in Profile's Settings
+// accordion (Anabelle, 2026-10-23).
+export function GetSupportBody() {
   const [openFaq, setOpenFaq] = useState<Set<number>>(new Set());
   const { configured: purchasesConfigured } = usePurchases();
 
@@ -45,40 +48,48 @@ export default function GetSupportScreen() {
   }
 
   return (
+    <>
+      <Pressable
+        style={[styles.contactButton, !SUPPORT_EMAIL && styles.contactButtonDisabled]}
+        onPress={handleContactUs}
+      >
+        <EnvelopeIcon size={18} color={INK} />
+        <Text style={styles.contactButtonText}>
+          {SUPPORT_EMAIL ? 'Email support' : 'Email support (not set up yet)'}
+        </Text>
+      </Pressable>
+
+      <Text style={styles.faqHeading}>FAQ</Text>
+      <View style={styles.faqContainer}>
+        {FAQ_ITEMS.map((item, i) => {
+          const isOpen = openFaq.has(i);
+          const isLast = i === FAQ_ITEMS.length - 1;
+          const answer = typeof item.answer === 'function' ? item.answer(purchasesConfigured) : item.answer;
+          return (
+            <View key={item.question} style={[styles.faqRow, isLast && styles.faqRowLast]}>
+              <Pressable style={styles.faqHeader} onPress={() => toggleFaq(i)} hitSlop={8}>
+                <Text style={styles.faqQuestion}>{item.question}</Text>
+                {isOpen ? (
+                  <ChevronUpIcon size={16} color={INK} />
+                ) : (
+                  <ChevronDownIcon size={16} color={INK} />
+                )}
+              </Pressable>
+              {isOpen && <Text style={styles.faqAnswer}>{answer}</Text>}
+            </View>
+          );
+        })}
+      </View>
+    </>
+  );
+}
+
+export default function GetSupportScreen() {
+  return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Get support</Text>
-        <Pressable
-          style={[styles.contactButton, !SUPPORT_EMAIL && styles.contactButtonDisabled]}
-          onPress={handleContactUs}
-        >
-          <EnvelopeIcon size={18} color={INK} />
-          <Text style={styles.contactButtonText}>
-            {SUPPORT_EMAIL ? 'Email support' : 'Email support (not set up yet)'}
-          </Text>
-        </Pressable>
-
-        <Text style={styles.faqHeading}>FAQ</Text>
-        <View style={styles.faqContainer}>
-          {FAQ_ITEMS.map((item, i) => {
-            const isOpen = openFaq.has(i);
-            const isLast = i === FAQ_ITEMS.length - 1;
-            const answer = typeof item.answer === 'function' ? item.answer(purchasesConfigured) : item.answer;
-            return (
-              <View key={item.question} style={[styles.faqRow, isLast && styles.faqRowLast]}>
-                <Pressable style={styles.faqHeader} onPress={() => toggleFaq(i)} hitSlop={8}>
-                  <Text style={styles.faqQuestion}>{item.question}</Text>
-                  {isOpen ? (
-                    <ChevronUpIcon size={16} color={INK} />
-                  ) : (
-                    <ChevronDownIcon size={16} color={INK} />
-                  )}
-                </Pressable>
-                {isOpen && <Text style={styles.faqAnswer}>{answer}</Text>}
-              </View>
-            );
-          })}
-        </View>
+        <GetSupportBody />
       </ScrollView>
       {/* Floating over the ScrollView (not a row sharing space with the
           title) so it stays fixed in the top-right corner regardless of

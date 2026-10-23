@@ -10,7 +10,7 @@ import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 const COLUMN_WIDTH = 480;
 
 // Exact routes with a real desktop layout.
-const DESKTOP_READY = new Set(['/', '/terms', '/login', '/location', '/stores', '/recipe', '/settings-detail']);
+const DESKTOP_READY = new Set(['/', '/terms', '/login', '/location', '/stores', '/recipe', '/settings-detail', '/how-it-works']);
 
 export function isDesktopReadyRoute(pathname: string): boolean {
   return DESKTOP_READY.has(pathname);

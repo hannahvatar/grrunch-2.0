@@ -1,10 +1,9 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { ComponentType, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   ChevronUpIcon,
   LockClosedIcon,
   PencilIcon,
@@ -16,7 +15,12 @@ import { NotificationsSection } from '../../components/NotificationsSection';
 import { StoreSelectorModal } from '../../components/StoreSelectorModal';
 import { useAuth } from '../../lib/auth';
 import { gridSpan, useIsDesktop } from '../../lib/layout';
-import { openSettingsSection, SETTINGS_SECTIONS } from '../settings';
+import { GetSupportBody } from '../get-support';
+import { HowItWorksBody } from '../how-it-works';
+import { TermsOfUseBody } from '../legal';
+import { PrivacyPolicyBody } from '../privacy-policy';
+import { SETTINGS_SECTIONS } from '../settings';
+import { AboutBody } from '../settings-detail';
 import { supabase } from '../../lib/supabase';
 import { type SelectedStore, useSelectedStores } from '../../lib/selectedStores';
 import { useSubscription } from '../../lib/subscription';
@@ -33,6 +37,15 @@ const INK = '#111';
 // of each other, not a strict single-open accordion; Membership joined
 // My stores 2026-09-11, having briefly been the one section kept
 // always-visible).
+// What each Settings accordion opens (same content as its standalone page).
+const SETTINGS_BODIES: Record<string, ComponentType> = {
+  About: AboutBody,
+  'How it works': HowItWorksBody,
+  'Get support': GetSupportBody,
+  Privacy: PrivacyPolicyBody,
+  Legal: TermsOfUseBody,
+};
+
 function SectionHeader({
   title,
   subtitle,
@@ -116,6 +129,15 @@ export default function ProfileScreen() {
   const [storesOpen, setStoresOpen] = useState(false);
   const [manageAccountOpen, setManageAccountOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [openSettings, setOpenSettings] = useState<Set<string>>(new Set());
+  function toggleSettingsSection(section: string) {
+    setOpenSettings((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  }
 
   function handleSignOut() {
     supabase.auth.signOut();
@@ -290,20 +312,31 @@ export default function ProfileScreen() {
         </>
       )}
 
-      {/* Settings as its own section below Profile, same heading and row
-          treatment (Anabelle, 2026-10-23); was a separate screen behind a
-          gear button next to the Profile title. Each row opens its page,
-          hence the right arrow instead of an expand chevron. */}
+      {/* Settings as its own section below Profile (Anabelle, 2026-10-23),
+          same heading treatment; was a separate screen behind a gear
+          button. Each row is an accordion like the Profile sections above,
+          collapsed by default, opening that page's content in place (the
+          standalone pages still exist for the support bubble and the
+          Terms links). */}
       <Text style={[styles.title, styles.settingsTitle]}>Settings</Text>
-      {SETTINGS_SECTIONS.map((section, index) => (
-        <View key={section}>
-          {index > 0 && <View style={styles.sectionDivider} />}
-          <Pressable style={styles.sectionHeaderRow} onPress={() => openSettingsSection(section)} hitSlop={8}>
-            <Text style={styles.sectionTitle}>{section}</Text>
-            <ChevronRightIcon size={18} color={INK} />
-          </Pressable>
-        </View>
-      ))}
+      {SETTINGS_SECTIONS.map((section, index) => {
+        const Body = SETTINGS_BODIES[section];
+        return (
+          <View key={section}>
+            {index > 0 && <View style={styles.sectionDivider} />}
+            <SectionHeader
+              title={section}
+              expanded={openSettings.has(section)}
+              onToggle={() => toggleSettingsSection(section)}
+            />
+            {openSettings.has(section) && Body && (
+              <View style={styles.settingsBody}>
+                <Body />
+              </View>
+            )}
+          </View>
+        );
+      })}
 
       {!isGuest && (
         <>
@@ -361,6 +394,7 @@ const styles = StyleSheet.create({
   signOutButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   settingsTitle: { marginTop: 32 },
+  settingsBody: { marginTop: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   sectionHeaderRow: {
     flexDirection: 'row',

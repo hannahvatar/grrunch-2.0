@@ -36,6 +36,25 @@ const ABOUT_PARAGRAPHS: { text: string; bold?: boolean }[][] = [
 // content yet (Privacy, Legal) -- one honest "not built yet" screen
 // rather than several fabricated ones. Get support used to land here too
 // (title="Get support") but now has its own real screen, get-support.tsx.
+// The founder note card on its own: rendered here and inline in Profile's
+// Settings accordion (Anabelle, 2026-10-23).
+export function AboutBody() {
+  return (
+    <View style={styles.aboutCard}>
+      <Text style={styles.aboutHeart}>🧡</Text>
+      {ABOUT_PARAGRAPHS.map((runs, i) => (
+        <Text key={i} style={styles.aboutParagraph}>
+          {runs.map((run, r) => (
+            <Text key={r} style={run.bold && styles.aboutParagraphBold}>
+              {run.text}
+            </Text>
+          ))}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 export default function SettingsDetailScreen() {
   const { title } = useLocalSearchParams<{ title?: string }>();
   const isAbout = title === 'About';
@@ -61,18 +80,7 @@ export default function SettingsDetailScreen() {
           {/* White card, same treatment as My list's store cards
               (Anabelle, 2026-10-12: "move the about text into a white
               container"). */}
-          <View style={styles.aboutCard}>
-            <Text style={styles.aboutHeart}>🧡</Text>
-            {ABOUT_PARAGRAPHS.map((runs, i) => (
-              <Text key={i} style={styles.aboutParagraph}>
-                {runs.map((run, r) => (
-                  <Text key={r} style={run.bold && styles.aboutParagraphBold}>
-                    {run.text}
-                  </Text>
-                ))}
-              </Text>
-            ))}
-          </View>
+          <AboutBody />
         </ScrollView>
       ) : (
         <View style={styles.body}>

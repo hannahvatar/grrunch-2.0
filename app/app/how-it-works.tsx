@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { ArrowLongRightIcon, XMarkIcon } from 'react-native-heroicons/outline';
+
+import { gridSpan, useIsDesktop } from '../lib/layout';
 
 const INK = '#111';
 
@@ -78,83 +80,111 @@ const TAG_ROWS: TagRow[] = [
   },
 ];
 
+// The page's own content, without its header/close button: rendered here
+// and inline in Profile's Settings accordion (Anabelle, 2026-10-23).
+export function HowItWorksBody() {
+  const isDesktop = useIsDesktop();
+  const table = (
+      <View style={[styles.table, isDesktop && styles.tableDesktop]}>
+        <View style={[styles.tableRow, styles.tableHeaderRow]}>
+          <Text style={[styles.headerCell, styles.colTag, isDesktop && styles.colTagDesktop]}>Tag</Text>
+          <Text style={[styles.headerCell, styles.colText, isDesktop && styles.colTextDesktop]}>What it means</Text>
+          <Text style={[styles.headerCell, styles.colText, isDesktop && styles.colTextDesktop]}>Where it's from</Text>
+        </View>
+        {TAG_ROWS.map((row) => (
+          <View key={row.tag} style={styles.tableRow}>
+            <View style={[styles.colTag, isDesktop && styles.colTagDesktop]}>
+              {row.noChip ? (
+                <Text style={[styles.plainTagText, { color: row.tagColor }]}>{row.tag}</Text>
+              ) : (
+                <View style={[styles.tagChip, { backgroundColor: row.tagBg }]}>
+                  <Text style={[styles.tagChipText, { color: row.tagColor }]}>{row.tag}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.cellText, styles.colText, isDesktop && styles.colTextDesktop]}>{row.meaning}</Text>
+            <Text style={[styles.cellText, styles.colText, isDesktop && styles.colTextDesktop]}>{row.source}</Text>
+          </View>
+        ))}
+      </View>
+  );
+  return (
+    <>
+      <Text style={styles.intro}>
+        Every price you see on a recipe or your grocery list carries a tag that shows how it compares to
+        typical pricing, and where the number comes from. Here's what each one means.
+      </Text>
+
+      {/* Desktop: the whole table fits, so no swipe hint and no sideways
+          scroll; its columns share the width (Anabelle, 2026-10-23).
+          Phone keeps the swipeable table with the hint above it. */}
+      {isDesktop ? (
+        table
+      ) : (
+        <>
+          {/* Moved above the table (was below) and given an icon, so the
+              "this scrolls" affordance is seen before you'd have to
+              discover it yourself -- Anabelle's call, back to the original
+              3-column swipeable table, just clearer that it scrolls.
+              showsHorizontalScrollIndicator flipped to true for the same
+              reason -- the native scrollbar itself is a real-time, always-
+              visible cue while the hint text is a one-time read. */}
+          <View style={styles.swipeHintRow}>
+            <Text style={styles.swipeHint}>Swipe to see it all</Text>
+            <ArrowLongRightIcon size={16} color={INK} />
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroll}>
+            {table}
+          </ScrollView>
+        </>
+      )}
+
+      <Text style={styles.footnote}>
+        One item without a colored tag just means it's a plain ingredient with an estimated everyday price,
+        not part of this week's deals at all.
+      </Text>
+
+      <Text style={styles.sectionHeading}>Calories, protein & serving size</Text>
+      <View style={styles.nutritionCard}>
+        {NUTRITION_PARAGRAPHS.map((paragraph, i) => (
+          <Text key={i} style={styles.nutritionParagraph}>
+            {paragraph}
+          </Text>
+        ))}
+        {/* Real disclaimer, matches lib/termsOfUse.ts's own "Recipes"
+            section ("Grrunch does not provide medical or nutritional
+            advice"... "determining whether a recipe meets their dietary
+            requirements") -- not new legal language, just surfaced here
+            too since this is where people are actually looking at the
+            numbers (Anabelle, 2026-08-28). */}
+        <View style={styles.warningBanner}>
+          <Text style={styles.warningText}>
+            Grrunch does not provide medical or nutritional advice. Please consider whether a recipe and its
+            serving size are appropriate for your individual needs. We do our best to provide accurate
+            nutritional information, but estimates may vary and errors can occur.
+          </Text>
+        </View>
+      </View>
+    </>
+  );
+}
+
 export default function HowItWorksScreen() {
+  // Desktop web: header and content on the middle 8 of 12 grid columns
+  // (2-8-2, Anabelle 2026-10-23).
+  const isDesktop = useIsDesktop();
+  const { width: windowWidth } = useWindowDimensions();
+  const desktopColumn = isDesktop ? { width: gridSpan(windowWidth, 8), alignSelf: 'center' as const, paddingHorizontal: 0 } : null;
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, desktopColumn]}>
         <Text style={styles.title}>How it works</Text>
         <Pressable style={styles.closeButton} onPress={() => router.back()} hitSlop={8}>
           <XMarkIcon size={20} color={INK} />
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.intro}>
-          Every price you see on a recipe or your grocery list carries a tag that shows how it compares to
-          typical pricing, and where the number comes from. Here's what each one means.
-        </Text>
-
-        {/* Moved above the table (was below) and given an icon, so the
-            "this scrolls" affordance is seen before you'd have to
-            discover it yourself -- Anabelle's call, back to the original
-            3-column swipeable table, just clearer that it scrolls.
-            showsHorizontalScrollIndicator flipped to true for the same
-            reason -- the native scrollbar itself is a real-time, always-
-            visible cue while the hint text is a one-time read. */}
-        <View style={styles.swipeHintRow}>
-          <Text style={styles.swipeHint}>Swipe to see it all</Text>
-          <ArrowLongRightIcon size={16} color={INK} />
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroll}>
-          <View style={styles.table}>
-            <View style={[styles.tableRow, styles.tableHeaderRow]}>
-              <Text style={[styles.headerCell, styles.colTag]}>Tag</Text>
-              <Text style={[styles.headerCell, styles.colText]}>What it means</Text>
-              <Text style={[styles.headerCell, styles.colText]}>Where it's from</Text>
-            </View>
-            {TAG_ROWS.map((row) => (
-              <View key={row.tag} style={styles.tableRow}>
-                <View style={styles.colTag}>
-                  {row.noChip ? (
-                    <Text style={[styles.plainTagText, { color: row.tagColor }]}>{row.tag}</Text>
-                  ) : (
-                    <View style={[styles.tagChip, { backgroundColor: row.tagBg }]}>
-                      <Text style={[styles.tagChipText, { color: row.tagColor }]}>{row.tag}</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.cellText, styles.colText]}>{row.meaning}</Text>
-                <Text style={[styles.cellText, styles.colText]}>{row.source}</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-
-        <Text style={styles.footnote}>
-          One item without a colored tag just means it's a plain ingredient with an estimated everyday price,
-          not part of this week's deals at all.
-        </Text>
-
-        <Text style={styles.sectionHeading}>Calories, protein & serving size</Text>
-        <View style={styles.nutritionCard}>
-          {NUTRITION_PARAGRAPHS.map((paragraph, i) => (
-            <Text key={i} style={styles.nutritionParagraph}>
-              {paragraph}
-            </Text>
-          ))}
-          {/* Real disclaimer, matches lib/termsOfUse.ts's own "Recipes"
-              section ("Grrunch does not provide medical or nutritional
-              advice"... "determining whether a recipe meets their dietary
-              requirements") -- not new legal language, just surfaced here
-              too since this is where people are actually looking at the
-              numbers (Anabelle, 2026-08-28). */}
-          <View style={styles.warningBanner}>
-            <Text style={styles.warningText}>
-              Grrunch does not provide medical or nutritional advice. Please consider whether a recipe and its
-              serving size are appropriate for your individual needs. We do our best to provide accurate
-              nutritional information, but estimates may vary and errors can occur.
-            </Text>
-          </View>
-        </View>
+      <ScrollView contentContainerStyle={[styles.content, desktopColumn]}>
+        <HowItWorksBody />
       </ScrollView>
     </View>
   );
@@ -182,7 +212,8 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   content: { paddingHorizontal: 24, paddingBottom: 40 },
-  intro: { fontSize: 15, lineHeight: 22, color: INK, marginBottom: 20 },
+  // 16px body / 14px labels and captions on every layout (Anabelle, 2026-10-22).
+  intro: { fontSize: 16, lineHeight: 24, color: INK, marginBottom: 20 },
   swipeHintRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   tableScroll: { marginHorizontal: -24 },
   table: {
@@ -201,15 +232,20 @@ const styles = StyleSheet.create({
   tableHeaderRow: { borderTopWidth: 0, backgroundColor: '#FFD8AC' },
   colTag: { width: 130, padding: 10, justifyContent: 'center', borderRightWidth: 1, borderRightColor: INK },
   colText: { width: 190, padding: 10, borderRightWidth: 1, borderRightColor: INK },
+  // Desktop: full-width table, no phone side margins; tag column fixed,
+  // the two text columns split the rest.
+  tableDesktop: { marginHorizontal: 0 },
+  colTagDesktop: { width: 160 },
+  colTextDesktop: { width: 'auto', flex: 1 },
   headerCell: { fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  cellText: { fontSize: 13, lineHeight: 18, color: INK },
+  cellText: { fontSize: 14, lineHeight: 20, color: INK },
   tagChip: { alignSelf: 'flex-start', borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 },
   tagChipText: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // Plain (no chip) rows aren't a badge in the real app -- shouldn't read
   // as bold/emphasized like an actual tag does.
   plainTagText: { fontSize: 13, fontWeight: '400', fontFamily: 'OpenSans_400Regular' },
   swipeHint: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  footnote: { fontSize: 13, lineHeight: 19, color: INK, marginTop: 20 },
+  footnote: { fontSize: 14, lineHeight: 20, color: INK, marginTop: 20 },
   sectionHeading: {
     fontSize: 20,
     fontWeight: '800',
@@ -228,7 +264,7 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 14,
   },
-  nutritionParagraph: { fontSize: 14, lineHeight: 20, color: INK },
+  nutritionParagraph: { fontSize: 16, lineHeight: 24, color: INK },
   // GRRUNCH DS peach/orange treatment -- deliberately distinct from the
   // plain-text paragraphs above it, so the disclaimer still reads as its
   // own notice, in the app's own accent colors rather than a generic
@@ -240,5 +276,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
   },
-  warningText: { fontSize: 13, lineHeight: 19, color: INK },
+  warningText: { fontSize: 14, lineHeight: 20, color: INK },
 });
