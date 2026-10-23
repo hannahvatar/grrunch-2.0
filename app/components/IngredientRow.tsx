@@ -542,10 +542,23 @@ export function IngredientRow({
   // -- Anabelle's call, was a bare icon with just padding before -- and
   // INK (was muted #999) to actually read as a real, tappable control
   // rather than decoration.
-  const editButtonEl = onEditQuantity && (
-    <Pressable style={styles.editButton} onPress={onEditQuantity} hitSlop={8}>
-      <PencilIcon size={20} color={INK} />
-    </Pressable>
+  // Web has no swipe-to-remove, so removal gets its own trash button
+  // beside the pencil, same treatment (Anabelle, 2026-10-22). Native
+  // keeps the swipe below and shows no trash button.
+  const showTrash = Platform.OS === 'web' && !!onRemove;
+  const editButtonEl = (onEditQuantity || showTrash) && (
+    <View style={styles.rowActions}>
+      {onEditQuantity && (
+        <Pressable style={styles.editButton} onPress={onEditQuantity} hitSlop={8} accessibilityLabel="Edit quantity">
+          <PencilIcon size={20} color={INK} />
+        </Pressable>
+      )}
+      {showTrash && (
+        <Pressable style={styles.editButton} onPress={onRemove} hitSlop={8} accessibilityLabel="Remove from list">
+          <TrashIcon size={20} color={INK} />
+        </Pressable>
+      )}
+    </View>
   );
 
   // No checkbox control anymore (Anabelle's call) -- the tap-to-check
@@ -600,7 +613,7 @@ export function IngredientRow({
   // calls onRemove -- a full swipe just reveals the action rather than
   // instant-deleting on overswipe, so an accidental far swipe can't
   // silently drop an item.
-  if (!onRemove) {
+  if (!onRemove || Platform.OS === 'web') {
     return content;
   }
   return (
@@ -670,6 +683,7 @@ const styles = StyleSheet.create({
   // ellipse/circle at this square size) -- matches the DS's own
   // "native-hollow-btn" component shape (Anabelle's final call, after a
   // brief detour through a rounded-square version).
+  rowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   editButton: {
     width: 44,
     height: 44,

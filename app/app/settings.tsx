@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronRightIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
-const SECTIONS = [
+export const SETTINGS_SECTIONS = [
   'About',
   'How it works',
   'Get support',
@@ -32,6 +32,23 @@ const SECTIONS = [
 // (the same real Privacy Policy/Terms of Use shown on index.tsx's
 // first-run consent screen), how-it-works.tsx (the deal-tag reference
 // table, Anabelle's call 2026-08-28 -- "a very important section").
+// Where each Settings row goes. Shared with Profile, which now lists these
+// rows itself in its own Settings section (Anabelle, 2026-10-23) instead
+// of linking here through a gear button.
+export function openSettingsSection(section: string) {
+  if (section === 'Get support') {
+    router.push('/get-support');
+  } else if (section === 'How it works') {
+    router.push('/how-it-works');
+  } else if (section === 'Privacy') {
+    router.push('/privacy-policy');
+  } else if (section === 'Legal') {
+    router.push('/legal');
+  } else {
+    router.push({ pathname: '/settings-detail', params: { title: section } });
+  }
+}
+
 export default function SettingsScreen() {
   return (
     <View style={styles.container}>
@@ -44,24 +61,8 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {SECTIONS.map((section) => (
-          <Pressable
-            key={section}
-            style={styles.row}
-            onPress={() => {
-              if (section === 'Get support') {
-                router.push('/get-support');
-              } else if (section === 'How it works') {
-                router.push('/how-it-works');
-              } else if (section === 'Privacy') {
-                router.push('/privacy-policy');
-              } else if (section === 'Legal') {
-                router.push('/legal');
-              } else {
-                router.push({ pathname: '/settings-detail', params: { title: section } });
-              }
-            }}
-          >
+        {SETTINGS_SECTIONS.map((section) => (
+          <Pressable key={section} style={styles.row} onPress={() => openSettingsSection(section)}>
             <Text style={styles.rowText}>{section}</Text>
             <ChevronRightIcon size={16} color="#111" />
           </Pressable>

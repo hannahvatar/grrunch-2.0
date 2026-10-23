@@ -14,7 +14,7 @@ import { useIsDesktop } from '../../lib/layout';
 // becomes a full-width top nav with the 4 tabs as links. Each page sits
 // in PhoneColumn under it until it gets its own desktop layout; tab pages
 // listed in DESKTOP_READY_TABS lay themselves out on the full width.
-const DESKTOP_READY_TABS = new Set(['/best-deals', '/meals']);
+const DESKTOP_READY_TABS = new Set(['/best-deals', '/meals', '/grocery', '/profile']);
 
 export default function TabsLayout() {
   const isDesktop = useIsDesktop();
