@@ -323,6 +323,7 @@ export type Database = {
           servings: number
           source: Database["public"]["Enums"]["recipe_source"]
           source_deal_ids: string[] | null
+          star_deals: string[]
           updated_at: string
         }
         Insert: {
@@ -351,6 +352,7 @@ export type Database = {
           servings?: number
           source?: Database["public"]["Enums"]["recipe_source"]
           source_deal_ids?: string[] | null
+          star_deals?: string[]
           updated_at?: string
         }
         Update: {
@@ -379,6 +381,7 @@ export type Database = {
           servings?: number
           source?: Database["public"]["Enums"]["recipe_source"]
           source_deal_ids?: string[] | null
+          star_deals?: string[]
           updated_at?: string
         }
         Relationships: []

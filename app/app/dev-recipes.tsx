@@ -112,6 +112,29 @@ export default function DevRecipesScreen() {
     }
   }
 
+  // Home card "star" deals (Anabelle, 2026-10-23): tap a deal ingredient
+  // to feature it on the recipe's Home card, up to 3, in tap order. Same
+  // optimistic-then-revert pattern as handleToggleFeatured, via the
+  // set-recipe-star-deals Edge Function.
+  async function handleToggleStarDeal(meal: Meal, dealName: string) {
+    const current = meal.starDeals;
+    const next = current.includes(dealName)
+      ? current.filter((name) => name !== dealName)
+      : current.length >= 3
+        ? current
+        : [...current, dealName];
+    if (next === current) return;
+    setMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, starDeals: next } : m)));
+    const { data, error: invokeError } = await supabase.functions.invoke<{ id?: string; error?: string }>(
+      'set-recipe-star-deals',
+      { body: { recipe_id: meal.id, star_deals: next } }
+    );
+    if (invokeError || !data?.id) {
+      setMeals((prev) => prev.map((m) => (m.id === meal.id ? { ...m, starDeals: current } : m)));
+      Alert.alert('Could not update Home card deals', data?.error ?? invokeError?.message ?? 'Could not save.');
+    }
+  }
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -233,6 +256,33 @@ export default function DevRecipesScreen() {
               <Text style={[styles.freeToggleText, meal.freePreview && styles.freeToggleTextActive]}>Free</Text>
             </Pressable>
             </View>
+            {meal.dealTags.length > 0 && (
+              <View style={styles.starDealsRow}>
+                <Text style={styles.starDealsLabel}>
+                  Home card deals{meal.starDeals.length === 0 ? ' (auto: biggest savings)' : ''}
+                </Text>
+                <View style={styles.starDealsChips}>
+                  {meal.dealTags.map((tag) => {
+                    const picked = meal.starDeals.includes(tag.name);
+                    const full = !picked && meal.starDeals.length >= 3;
+                    return (
+                      <Pressable
+                        key={tag.name}
+                        style={[styles.starDealChip, picked && styles.starDealChipPicked, full && styles.starDealChipFull]}
+                        onPress={() => handleToggleStarDeal(meal, tag.name)}
+                        disabled={full}
+                        accessibilityLabel={picked ? `Remove ${tag.name} from the Home card` : `Feature ${tag.name} on the Home card`}
+                      >
+                        <Text style={[styles.starDealChipText, picked && styles.starDealChipTextPicked]}>
+                          {picked ? `${meal.starDeals.indexOf(tag.name) + 1}. ` : ''}
+                          {tag.name} · {Math.round(tag.discountPct)}%
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
             <MealCard
               meal={meal}
               isSelected={selectedIds.has(meal.id)}
@@ -249,6 +299,21 @@ export default function DevRecipesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFEAD4' },
+  starDealsRow: { gap: 6 },
+  starDealsLabel: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  starDealsChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  starDealChip: {
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#fff',
+  },
+  starDealChipPicked: { backgroundColor: INK },
+  starDealChipFull: { opacity: 0.35 },
+  starDealChipText: { fontSize: 13, color: INK },
+  starDealChipTextPicked: { color: '#fff', fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   centered: { alignItems: 'center', justifyContent: 'center' },
   notDevText: { padding: 24, fontSize: 15, color: '#888', textAlign: 'center' },
   scrollContent: { padding: 20, paddingTop: 60, gap: 16 },

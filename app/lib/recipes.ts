@@ -240,6 +240,7 @@ function mapRowToMeal(
     free_preview?: boolean | null;
     image_url?: string | null;
     did_you_know?: string | null;
+    star_deals?: string[] | null;
   },
   statcanPrices: StaplePrice[],
   producePrices: StaplePrice[],
@@ -279,6 +280,7 @@ function mapRowToMeal(
     ratingCount: row.rating_count,
     featured: row.featured ?? false,
     freePreview: row.free_preview ?? false,
+    starDeals: row.star_deals ?? [],
   };
 }
 
