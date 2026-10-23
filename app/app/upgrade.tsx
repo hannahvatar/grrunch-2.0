@@ -374,6 +374,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     right: 20,
+    // Above the content block below: on web every view is position:
+    // relative, so that later sibling painted over this button and
+    // swallowed the click (the X did nothing on web).
+    zIndex: 1,
     width: 44,
     height: 44,
     borderRadius: 22,

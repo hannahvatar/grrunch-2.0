@@ -114,6 +114,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     right: 20,
+    // Above the content below; on web the later sibling otherwise paints
+    // over this button and swallows the click (same fix as upgrade.tsx).
+    zIndex: 1,
     width: 44,
     height: 44,
     borderRadius: 22,
