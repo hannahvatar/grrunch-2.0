@@ -215,22 +215,28 @@ function RecipeCarousel({ meals, isDesktop, windowWidth }: { meals: Meal[]; isDe
 // Home's promotional recipe card, laid out after Anabelle's mockup
 // (2026-10-23): photo on the left (with a "Best deal" badge on the
 // carousel's first recipe, which is the best-deal sort's top pick); on the
-// right the time and servings, the title, the two biggest deal savings as
-// chips, the stores those deals come from, then the price per serving
+// right the time and servings, the title, the recipe's star deals (picked in
+// dev-recipes; else the two biggest savings) as chips, the stores those deals come from, then the price per serving
 // (black, no total), and a View recipe button. Percent chips
 // keep the standing "Up to" wording (best-case numbers).
 function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width: number; stacked: boolean; bestDeal: boolean }) {
   const photo = getRecipeImage(meal.name, meal.imageUrl);
-  // Only tags that earn a savings badge (a real discount, or a great value
-  // against the reference price), biggest first.
-  const topDeals = [...meal.dealTags]
-    .filter(
-      (tag) =>
-        showsRealDiscount(tag.discountPct, tag.originalPriceSource) ||
-        isGreatReferenceValue(tag.discountPct, tag.originalPriceSource)
-    )
-    .sort((a, b) => b.discountPct - a.discountPct)
-    .slice(0, 2);
+  // Anabelle's picked "star" deals (dev-recipes, recipes.star_deals) in
+  // her order; otherwise the two biggest savings that earn a badge.
+  const picked = meal.starDeals
+    .map((name) => meal.dealTags.find((tag) => tag.name === name))
+    .filter((tag): tag is (typeof meal.dealTags)[number] => !!tag);
+  const topDeals =
+    picked.length > 0
+      ? picked
+      : [...meal.dealTags]
+          .filter(
+            (tag) =>
+              showsRealDiscount(tag.discountPct, tag.originalPriceSource) ||
+              isGreatReferenceValue(tag.discountPct, tag.originalPriceSource)
+          )
+          .sort((a, b) => b.discountPct - a.discountPct)
+          .slice(0, 2);
   const stores = Array.from(new Set(meal.dealTags.map((tag) => tag.store).filter(Boolean)));
   // "save $X" from the mockup is held back: deal tags only carry each
   // deal's full-package price/regular price, while the recipe's own price
@@ -279,13 +285,20 @@ function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width:
                 purple "Up to X% below" against the reference price. */}
             {topDeals.map((tag) => {
               const real = showsRealDiscount(tag.discountPct, tag.originalPriceSource);
+              // A picked star deal can be a plain fair price: no % pill then.
+              const hasBadge = real || isGreatReferenceValue(tag.discountPct, tag.originalPriceSource);
               return (
-                <View key={tag.name} style={[styles.dealChip, real ? styles.dealChipDiscount : styles.dealChipGreat]}>
-                  <View style={[styles.badge, styles.chipBadge]}>
-                    <Text style={[styles.badgeText, real ? styles.badgeDiscountText : styles.badgeGreatText]}>
-                      {real ? formatRealDiscountLabel(tag.discountPct) : formatGreatReferenceValueLabel(tag.discountPct)}
-                    </Text>
-                  </View>
+                <View
+                  key={tag.name}
+                  style={[styles.dealChip, real ? styles.dealChipDiscount : styles.dealChipGreat, !hasBadge && styles.dealChipNoBadge]}
+                >
+                  {hasBadge && (
+                    <View style={[styles.badge, styles.chipBadge]}>
+                      <Text style={[styles.badgeText, real ? styles.badgeDiscountText : styles.badgeGreatText]}>
+                        {real ? formatRealDiscountLabel(tag.discountPct) : formatGreatReferenceValueLabel(tag.discountPct)}
+                      </Text>
+                    </View>
+                  )}
                   <Text
                     style={[styles.dealChipName, real ? styles.badgeDiscountText : styles.badgeGreatText]}
                     numberOfLines={1}
@@ -440,6 +453,7 @@ const styles = StyleSheet.create({
   dealChipGreat: { backgroundColor: '#EADAFF' },
   dealChipDiscount: { backgroundColor: '#DCE7FF' },
   chipBadge: { backgroundColor: '#fff' },
+  dealChipNoBadge: { paddingLeft: 12 },
   storesText: { fontSize: 14, color: '#555' },
   // Wraps: on a narrow card the button drops under the price.
   cardFooter: {

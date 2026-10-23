@@ -234,4 +234,8 @@ export interface Meal {
   // One of the (up to 3) recipes non-members see on Meals, picked by hand
   // in dev-recipes (20261006040000_recipe_free_preview.sql).
   freePreview: boolean;
+  // Up to 3 deal ingredient names (dealTags[].name) Anabelle picked to
+  // feature on this recipe's Home card (recipes.star_deals, 20261023).
+  // Empty = the Home card falls back to the two biggest savings.
+  starDeals: string[];
 }
