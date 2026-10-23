@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MagnifyingGlassIcon, PaperAirplaneIcon, XMarkIcon } from 'react-native-heroicons/outline';
 import { StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
 
@@ -54,6 +54,10 @@ export function StoreSelectorModal({ visible, onClose, chainName, currentStoreId
   // Desktop: the bottom sheet sits on the middle 8 of 12 grid columns
   // (2-8-2, Anabelle 2026-10-23), same as My list's sheets.
   const sheetWidth = useDesktopModalWidth(8);
+  // Web: no dark overlay behind the sheet, just a shadow on the sheet
+  // itself, same as My list's sheets (Anabelle, 2026-10-23). The clear
+  // backdrop still closes it on click.
+  const webSheet = Platform.OS === 'web';
   const [query, setQuery] = useState('');
   const [stores, setStores] = useState<StoreSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -144,8 +148,11 @@ export function StoreSelectorModal({ visible, onClose, chainName, currentStoreId
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.sheet, sheetWidth && { ...sheetWidth, alignSelf: 'center' }]} onPress={(e) => e.stopPropagation()}>
+      <Pressable style={[styles.backdrop, webSheet && styles.backdropWeb]} onPress={onClose}>
+        <Pressable
+          style={[styles.sheet, sheetWidth && { ...sheetWidth, alignSelf: 'center' }, webSheet && styles.sheetWeb]}
+          onPress={(e) => e.stopPropagation()}
+        >
           <View style={styles.grabber} />
           <View style={styles.header}>
             <Text style={styles.title}>Select a Store</Text>
@@ -251,6 +258,8 @@ export function StoreSelectorModal({ visible, onClose, chainName, currentStoreId
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(17,17,17,0.5)', justifyContent: 'flex-end' },
+  backdropWeb: { backgroundColor: 'transparent' },
+  sheetWeb: { boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.18)' },
   sheet: {
     maxHeight: '85%',
     backgroundColor: '#fff',
