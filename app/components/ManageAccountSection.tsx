@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useDesktopModalWidth } from '../lib/layout';
 import { useAuth } from '../lib/auth';
 import { deleteAccount, fetchProfile, Profile, saveProfile } from '../lib/profile';
 import { usePurchases } from '../lib/purchases';
@@ -101,6 +102,9 @@ function ManageAccountForm({
   provider: unknown;
   onSaved?: () => void;
 }) {
+  // Desktop: the two delete-account dialogs are centered, 6 grid columns
+  // wide (Anabelle, 2026-10-23).
+  const modalWidth = useDesktopModalWidth(6);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState<Profile>(EMPTY_PROFILE);
   const [firstName, setFirstName] = useState('');
@@ -347,7 +351,7 @@ function ManageAccountForm({
         onRequestClose={() => setMembershipBlockVisible(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setMembershipBlockVisible(false)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.modalCard, modalWidth]} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Cancel your membership first</Text>
             <Text style={styles.modalBody}>
               You have an active Grrunch membership. Cancel your membership before deleting your account to avoid
@@ -369,7 +373,7 @@ function ManageAccountForm({
           Alert.alert that didn't match the app's own DS. */}
       <Modal visible={confirmDeleteVisible} transparent animationType="fade" onRequestClose={() => setConfirmDeleteVisible(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setConfirmDeleteVisible(false)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.modalCard, modalWidth]} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Delete your account?</Text>
             <Text style={styles.modalBody}>
               This permanently deletes your account and everything saved to it. This can't be undone.

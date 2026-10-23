@@ -23,3 +23,13 @@ export function gridSpan(windowWidth: number, n: number): number {
   const column = (container - GRID_GUTTER * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
   return n * column + (n - 1) * GRID_GUTTER;
 }
+
+// Desktop width for a centered modal card, `columns` grid columns wide
+// (the delete-account dialogs use 6, Anabelle 2026-10-23; they otherwise
+// stretched across the whole window). Spread onto the card's style; null
+// off desktop so the modal keeps its phone sizing.
+export function useDesktopModalWidth(columns: number): { width: number } | null {
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= DESKTOP_MIN_WIDTH;
+  return isDesktop ? { width: gridSpan(width, columns) } : null;
+}
