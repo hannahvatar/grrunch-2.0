@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { ArrowPathIcon, BuildingStorefrontIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { type Deal, fetchDealsByIds, isReferencePriced } from '../lib/curatedDeals';
+import { gridSpan, useIsDesktop } from '../lib/layout';
 import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
@@ -149,6 +150,17 @@ function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
 // rather than being guessed into whichever store the rest of its recipe
 // happens to be at.
 export function GroceryListView() {
+  // Desktop web: content on the middle 8 of 12 grid columns (2-8-2,
+  // Anabelle 2026-10-22), on the full-width page background.
+  const isDesktop = useIsDesktop();
+  const { width: windowWidth } = useWindowDimensions();
+  const desktopContent = isDesktop ? { width: gridSpan(windowWidth, 8), alignSelf: 'center' as const, paddingHorizontal: 0 } : null;
+  // Same 8 columns for the bottom sheets (add item, edit quantity).
+  const desktopSheet = isDesktop ? { width: gridSpan(windowWidth, 8), alignSelf: 'center' as const } : null;
+  // Web: no dark overlay behind the sheets, just a shadow on the sheet
+  // itself (Anabelle, 2026-10-22). The backdrop stays as a clear
+  // click-outside-to-close area.
+  const webSheet = Platform.OS === 'web';
   const { isSubscribed } = useSubscription();
   // Same session-only lifetime as the selected recipes/deals.
   const [customItems, setCustomItems] = useState<CustomItem[]>([]);
@@ -403,12 +415,16 @@ export function GroceryListView() {
   // items"/"N stores" in the header, and which store cards even show
   // up, all reflect what's actually left on the list.
   const customGroceryItems: GroceryItem[] = customItems.map(mapCustomItemToGroceryItem);
-  const items: GroceryItem[] = [...recipeItems, ...dealItems, ...customGroceryItems].filter(
-    (item) => !removedKeys.has(item.key)
-  );
+  const allItems: GroceryItem[] = [...recipeItems, ...dealItems, ...customGroceryItems];
+  const items: GroceryItem[] = allItems.filter((item) => !removedKeys.has(item.key));
 
-  // Anything Reset would undo: an edited quantity or a removed item.
-  const hasListEdits = quantityOverrides.size > 0 || removedKeys.size > 0;
+  // Anything Reset would actually undo: an edited quantity on an item
+  // still on the list, or a removed item whose recipe/deal is still
+  // selected. Edits left behind by a recipe or deal that's since been
+  // taken off the list don't count -- Reset had nothing to bring back
+  // but stayed enabled on an empty list (Anabelle, 2026-10-22).
+  const hasListEdits =
+    items.some((item) => quantityOverrides.has(item.key)) || allItems.some((item) => removedKeys.has(item.key));
 
   function openAddItemSheet() {
     setNewItemName('');
@@ -467,7 +483,7 @@ export function GroceryListView() {
   return (
     <View style={styles.container}>
       <ClosingSoonBanner />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, desktopContent]}>
         {/* Scrolls away with the rest of the content now, matching
             recipe.tsx's own headerText (also the first thing inside its
             ScrollView, not a fixed sibling above it) -- was previously a
@@ -574,7 +590,7 @@ export function GroceryListView() {
             reads as two clearly labeled sections (the recipes you've
             picked, then what to actually buy for them) instead of the
             store cards just starting with no heading of their own. */}
-        {(storeNames.length > 0 || removedKeys.size > 0) && (
+        {(storeNames.length > 0 || hasListEdits) && (
           <View style={styles.yourListHeaderRow}>
             <Text style={styles.selectedSectionTitle}>Your list</Text>
             {/* Bulk version of each row's own sheet-level "Reset to
@@ -672,8 +688,8 @@ export function GroceryListView() {
             the sheet -- without this the keyboard covered the whole sheet
             (stepper, Done) on iOS. Lifts the sheet to sit above it. */}
         <KeyboardAvoidingView style={styles.sheetKeyboardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={styles.sheetBackdrop} onPress={closeQuantityEditor}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <Pressable style={[styles.sheetBackdrop, webSheet && styles.sheetBackdropWeb]} onPress={closeQuantityEditor}>
+          <Pressable style={[styles.sheet, desktopSheet, webSheet && styles.sheetWeb]} onPress={(e) => e.stopPropagation()}>
             <View style={styles.sheetHandle} />
             <Text style={styles.sheetTitle} numberOfLines={2}>
               {editingItem ? resolveDisplayText(editingItem).split(' ').slice(1).join(' ') || editingItem.text : ''}
@@ -720,8 +736,8 @@ export function GroceryListView() {
           editor above, kept above the keyboard the same way. */}
       <Modal visible={addItemSheetOpen} transparent animationType="slide" onRequestClose={closeAddItemSheet}>
         <KeyboardAvoidingView style={styles.sheetKeyboardWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={styles.sheetBackdrop} onPress={closeAddItemSheet}>
-            <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheetBackdrop, webSheet && styles.sheetBackdropWeb]} onPress={closeAddItemSheet}>
+            <Pressable style={[styles.sheet, desktopSheet, webSheet && styles.sheetWeb]} onPress={(e) => e.stopPropagation()}>
               <View style={styles.sheetHandle} />
               <Text style={styles.sheetTitle}>Add item</Text>
               <TextInput
@@ -927,6 +943,8 @@ const styles = StyleSheet.create({
   // backdrop and closing it.
   sheetKeyboardWrap: { flex: 1 },
   sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheetBackdropWeb: { backgroundColor: 'transparent' },
+  sheetWeb: { boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.18)' },
   sheet: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,

@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
   ChevronDownIcon,
+  ChevronRightIcon,
   ChevronUpIcon,
-  Cog6ToothIcon,
   LockClosedIcon,
   PencilIcon,
 } from 'react-native-heroicons/outline';
@@ -15,6 +15,8 @@ import { MembershipStatus } from '../../components/MembershipStatus';
 import { NotificationsSection } from '../../components/NotificationsSection';
 import { StoreSelectorModal } from '../../components/StoreSelectorModal';
 import { useAuth } from '../../lib/auth';
+import { gridSpan, useIsDesktop } from '../../lib/layout';
+import { openSettingsSection, SETTINGS_SECTIONS } from '../settings';
 import { supabase } from '../../lib/supabase';
 import { type SelectedStore, useSelectedStores } from '../../lib/selectedStores';
 import { useSubscription } from '../../lib/subscription';
@@ -93,6 +95,11 @@ function SectionHeader({
 // this screen's member-only *browse-all* list of every companion recipe
 // is gone.
 export default function ProfileScreen() {
+  // Desktop web: content on the middle 8 of 12 grid columns (2-8-2,
+  // Anabelle 2026-10-23), on the full-width page background.
+  const isDesktop = useIsDesktop();
+  const { width: windowWidth } = useWindowDimensions();
+  const desktopContent = isDesktop ? { width: gridSpan(windowWidth, 8), alignSelf: 'center' as const, paddingHorizontal: 0 } : null;
   const { stores: myStores, loaded: storesLoaded, setStores: setMyStores } = useSelectedStores();
   // The single "My stores" row currently open in the Select-a-Store picker
   // -- null when the modal is closed. Tracking the whole row (not just an
@@ -120,12 +127,9 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.gradient}>
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, desktopContent]}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Profile</Text>
-        <Pressable style={styles.settingsButton} onPress={() => router.push('/settings')} hitSlop={8}>
-          <Cog6ToothIcon size={20} color={INK} />
-        </Pressable>
       </View>
 
       {!isGuest && (
@@ -283,6 +287,26 @@ export default function ProfileScreen() {
               used standalone) -- this whole section is already hidden
               for a guest by the wrapping !isGuest above. */}
           {notificationsOpen && <NotificationsSection />}
+        </>
+      )}
+
+      {/* Settings as its own section below Profile, same heading and row
+          treatment (Anabelle, 2026-10-23); was a separate screen behind a
+          gear button next to the Profile title. Each row opens its page,
+          hence the right arrow instead of an expand chevron. */}
+      <Text style={[styles.title, styles.settingsTitle]}>Settings</Text>
+      {SETTINGS_SECTIONS.map((section, index) => (
+        <View key={section}>
+          {index > 0 && <View style={styles.sectionDivider} />}
+          <Pressable style={styles.sectionHeaderRow} onPress={() => openSettingsSection(section)} hitSlop={8}>
+            <Text style={styles.sectionTitle}>{section}</Text>
+            <ChevronRightIcon size={18} color={INK} />
+          </Pressable>
+        </View>
+      ))}
+
+      {!isGuest && (
+        <>
           <View style={styles.sectionDivider} />
           {/* Top level, very bottom of Profile (Anabelle, 2026-10-06) --
               was buried inside Manage account's Security block. */}
@@ -335,22 +359,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   signOutButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  // Same tertiary treatment as IngredientRow's editButton / GroceryListView's
-  // resetAllButton (white fill, 1.5px INK border) -- Anabelle's call, was a
-  // bare icon with just hitSlop before. Ellipse (Anabelle's follow-up call,
-  // for consistency with settings.tsx's own closeButton, which uses the
-  // same tertiary treatment as an ellipse).
-  settingsButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: INK,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  settingsTitle: { marginTop: 32 },
   sectionTitle: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   sectionHeaderRow: {
     flexDirection: 'row',

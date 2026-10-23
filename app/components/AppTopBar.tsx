@@ -1,9 +1,10 @@
 import { router, usePathname } from 'expo-router';
-import { ComponentType } from 'react';
+import { ComponentType, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '../lib/auth';
 import { GRID_MARGIN, GRID_MAX_WIDTH, useIsDesktop } from '../lib/layout';
+import { fetchProfile } from '../lib/profile';
 import { GrrunchMascot } from './GrrunchMascot';
 import { ListAltIcon, PersonIcon, RestaurantIcon, SellIcon } from './MaterialSymbols';
 import { NotificationBell } from './NotificationBell';
@@ -26,14 +27,49 @@ const INK = '#111';
 //
 // Desktop web (2026-10-22): becomes the app's main navigation, replacing
 // the bottom tab bar (hidden in (tabs)/_layout.tsx): brand, then the 4 tabs
-// as links, then the same auth actions on the right. The round profile
-// button is left out there since Profile is already one of the links.
+// as links, then the same auth actions on the right. Profile isn't one of
+// the links: signed in, it's a "Hi, [first name]" button beside the
+// notification bell (Anabelle, 2026-10-23); guests get a plain "Profile"
+// button beside Sign in.
 const NAV_LINKS: { path: string; label: string; Icon: ComponentType<{ size?: number; color?: string }> }[] = [
   { path: '/best-deals', label: 'Weekly Deals', Icon: SellIcon },
   { path: '/meals', label: 'Meals', Icon: RestaurantIcon },
   { path: '/grocery', label: 'My list', Icon: ListAltIcon },
-  { path: '/profile', label: 'Profile', Icon: PersonIcon },
 ];
+
+// First name for the desktop greeting: the one saved in Manage account,
+// else the given name the sign-in provider shared (Google does; Apple
+// only on the very first sign-in), else none.
+function useFirstName(): string | null {
+  const { session } = useAuth();
+  const [savedName, setSavedName] = useState<string | null>(null);
+  const userId = session?.user.id;
+  useEffect(() => {
+    setSavedName(null);
+    if (!userId) return;
+    fetchProfile(userId).then(({ profile }) => setSavedName(profile?.firstName?.trim() || null));
+  }, [userId]);
+  const meta = session?.user.user_metadata ?? {};
+  const providerName =
+    (meta.given_name as string | undefined) ||
+    ((meta.full_name ?? meta.name) as string | undefined)?.trim().split(/\s+/)[0];
+  return savedName || providerName || null;
+}
+
+function ProfileButton({ label }: { label: string }) {
+  const pathname = usePathname();
+  const active = pathname === '/profile';
+  return (
+    <Pressable
+      style={[styles.profilePill, active && styles.profilePillActive]}
+      onPress={() => router.navigate('/profile')}
+      accessibilityLabel="Profile"
+    >
+      <PersonIcon size={20} color={INK} />
+      <Text style={styles.profilePillText}>{label}</Text>
+    </Pressable>
+  );
+}
 
 function AuthButtons() {
   return (
@@ -58,6 +94,7 @@ function AuthButtons() {
 function DesktopTopBar() {
   const { isGuest } = useAuth();
   const pathname = usePathname();
+  const firstName = useFirstName();
   return (
     <View style={styles.desktopBar}>
       <View style={styles.desktopInner}>
@@ -81,7 +118,17 @@ function DesktopTopBar() {
             })}
           </View>
         </View>
-        {isGuest ? <AuthButtons /> : <NotificationBell />}
+        {isGuest ? (
+          <View style={styles.desktopRight}>
+            <ProfileButton label="Profile" />
+            <AuthButtons />
+          </View>
+        ) : (
+          <View style={styles.desktopRight}>
+            <NotificationBell />
+            <ProfileButton label={firstName ? `Hi, ${firstName}!` : 'Hi there!'} />
+          </View>
+        )}
       </View>
     </View>
   );
@@ -169,6 +216,22 @@ const styles = StyleSheet.create({
   // Active tab: ink bar along the bottom edge of the nav bar.
   navUnderline: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: 'transparent' },
   navUnderlineActive: { backgroundColor: INK },
+  desktopRight: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  // Same white-fill / 1.5px ink outline as the mobile round profile button,
+  // stretched into a pill to fit the greeting.
+  profilePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 44,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+  },
+  profilePillActive: { borderWidth: 2.5 },
+  profilePillText: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   authButtons: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   signedInButtons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   signInButton: { paddingVertical: 6, paddingHorizontal: 4, minHeight: 44, justifyContent: 'center' },
