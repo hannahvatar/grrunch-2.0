@@ -1,7 +1,14 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { ChevronLeftIcon, ChevronRightIcon } from 'react-native-heroicons/outline';
+import {
+  ArrowRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  TagIcon,
+  UsersIcon,
+} from 'react-native-heroicons/outline';
 
 import { ArrowLink } from '../../components/ArrowLink';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
@@ -34,11 +41,12 @@ import { useSubscription } from '../../lib/subscription';
 
 const INK = '#111';
 // Recipe carousel (Anabelle, 2026-10-23): horizontal cards with a 400px
-// photo on the left and a text column on the right. On a phone the card
-// is narrower and stacks (photo on top) so it still fits.
+// photo on the left and the details on the right, following her card
+// mockup. On desktop a card is nearly the full content width (the next
+// one peeks in); on a phone it's narrower and stacks (photo on top).
 const IMAGE_WIDTH = 400;
-const TEXT_WIDTH = 320;
-const CARD_WIDTH = IMAGE_WIDTH + TEXT_WIDTH;
+const CARD_MAX_WIDTH = 820;
+const CARD_PEEK = 64;
 const CARD_GAP = 16;
 const DEALS_SHOWN = 5;
 // Same free-tier caps as Meals (3 picked recipes) and Weekly Deals (1 per
@@ -144,7 +152,9 @@ function RecipeCarousel({ meals, isDesktop, windowWidth }: { meals: Meal[]; isDe
   const scrollRef = useRef<ScrollView>(null);
   const [offset, setOffset] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
-  const cardWidth = isDesktop ? CARD_WIDTH : Math.min(CARD_WIDTH, windowWidth - 72);
+  const cardWidth = isDesktop
+    ? Math.min(CARD_MAX_WIDTH, gridSpan(windowWidth, 8) - CARD_PEEK)
+    : Math.min(IMAGE_WIDTH, windowWidth - 72);
   const step = cardWidth + CARD_GAP;
   const contentWidth = meals.length * step - CARD_GAP;
   const atStart = offset <= 1;
@@ -194,63 +204,114 @@ function RecipeCarousel({ meals, isDesktop, windowWidth }: { meals: Meal[]; isDe
         onLayout={(e) => setViewportWidth(e.nativeEvent.layout.width)}
         contentContainerStyle={styles.carouselRow}
       >
-        {meals.map((meal) => (
-          <HomeRecipeCard key={meal.id} meal={meal} width={cardWidth} stacked={!isDesktop} />
+        {meals.map((meal, index) => (
+          <HomeRecipeCard key={meal.id} meal={meal} width={cardWidth} stacked={!isDesktop} bestDeal={index === 0} />
         ))}
       </ScrollView>
     </>
   );
 }
 
-// Home's own promotional recipe card (Anabelle, 2026-10-23): horizontal,
-// the 400px photo on the left; title, descriptor and the recipe's deal
-// driver (its first deal-tagged ingredient, i.e. the main ingredient the
-// recipe is built around) with that deal's savings badge on the right.
-// Tapping opens the recipe.
-function HomeRecipeCard({ meal, width, stacked }: { meal: Meal; width: number; stacked: boolean }) {
+// Home's promotional recipe card, laid out after Anabelle's mockup
+// (2026-10-23): photo on the left (with a "Best deal" badge on the
+// carousel's first recipe, which is the best-deal sort's top pick); on the
+// right the time and servings, the title, the two biggest deal savings as
+// chips, the stores those deals come from, then the price per serving
+// (black, no total), and a View recipe button. Percent chips
+// keep the standing "Up to" wording (best-case numbers).
+function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width: number; stacked: boolean; bestDeal: boolean }) {
   const photo = getRecipeImage(meal.name, meal.imageUrl);
-  const driver = meal.dealTags[0];
+  // Only tags that earn a savings badge (a real discount, or a great value
+  // against the reference price), biggest first.
+  const topDeals = [...meal.dealTags]
+    .filter(
+      (tag) =>
+        showsRealDiscount(tag.discountPct, tag.originalPriceSource) ||
+        isGreatReferenceValue(tag.discountPct, tag.originalPriceSource)
+    )
+    .sort((a, b) => b.discountPct - a.discountPct)
+    .slice(0, 2);
+  const stores = Array.from(new Set(meal.dealTags.map((tag) => tag.store).filter(Boolean)));
+  // "save $X" from the mockup is held back: deal tags only carry each
+  // deal's full-package price/regular price, while the recipe's own price
+  // counts just the share it uses (fragment_by_weight), so summing package
+  // savings overstated it (e.g. "save $13.05" on an $11.32 recipe). Needs
+  // each tag's used share from refresh_recipe_deal_tags() first.
+  const openRecipe = () => router.push({ pathname: '/recipe', params: { id: meal.id } });
+
   return (
     <Pressable
       style={[styles.recipeCard, stacked && styles.recipeCardStacked, { width }]}
-      onPress={() => router.push({ pathname: '/recipe', params: { id: meal.id } })}
+      onPress={openRecipe}
       accessibilityRole="link"
       accessibilityLabel={meal.name}
     >
-      {photo ? (
-        <Image source={photo} style={[styles.recipeCardImage, stacked && styles.recipeCardImageStacked]} resizeMode="cover" />
-      ) : (
-        <View style={[styles.recipeCardImage, stacked && styles.recipeCardImageStacked]} />
-      )}
-      <View style={styles.recipeCardText}>
+      <View style={[styles.recipeCardImageWrap, stacked && styles.recipeCardImageWrapStacked]}>
+        {photo && <Image source={photo} style={styles.recipeCardImage} resizeMode="cover" />}
+        {bestDeal && (
+          <View style={styles.bestDealBadge}>
+            <TagIcon size={16} color="#fff" strokeWidth={2} />
+            <Text style={styles.bestDealBadgeText}>Best deal</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={[styles.recipeCardBody, stacked && styles.recipeCardBodyStacked]}>
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <ClockIcon size={18} color="#555" />
+            <Text style={styles.metaText}>{meal.minutes} min</Text>
+          </View>
+          <View style={styles.metaItem}>
+            <UsersIcon size={18} color="#555" />
+            <Text style={styles.metaText}>{meal.servings} servings</Text>
+          </View>
+        </View>
+
         <Text style={styles.recipeCardTitle} numberOfLines={2}>
           {meal.name}
         </Text>
-        {!!meal.descriptor && (
-          <Text style={styles.recipeCardDescriptor} numberOfLines={3}>
-            {meal.descriptor}
-          </Text>
-        )}
-        {/* Cost-per-serving blurb (Anabelle, 2026-10-23). */}
-        <View style={styles.priceBlurb}>
-          <Text style={styles.priceBlurbText}>${meal.price.toFixed(2)} per serving</Text>
-        </View>
-        {driver && (
-          <View style={styles.driverRow}>
-            {showsRealDiscount(driver.discountPct, driver.originalPriceSource) ? (
-              <View style={[styles.badge, styles.badgeDiscount]}>
-                <Text style={[styles.badgeText, styles.badgeDiscountText]}>{formatRealDiscountLabel(driver.discountPct)}</Text>
-              </View>
-            ) : isGreatReferenceValue(driver.discountPct, driver.originalPriceSource) ? (
-              <View style={[styles.badge, styles.badgeGreat]}>
-                <Text style={[styles.badgeText, styles.badgeGreatText]}>{formatGreatReferenceValueLabel(driver.discountPct)}</Text>
-              </View>
-            ) : null}
-            <Text style={styles.driverName} numberOfLines={1}>
-              {toTitleCase(driver.name)}
-            </Text>
+
+        {topDeals.length > 0 && (
+          <View style={styles.chipsRow}>
+            {/* Same badge colors and wording as the rest of the app (Anabelle,
+                2026-10-23): blue "Up to X% off" for a real store discount,
+                purple "Up to X% below" against the reference price. */}
+            {topDeals.map((tag) => {
+              const real = showsRealDiscount(tag.discountPct, tag.originalPriceSource);
+              return (
+                <View key={tag.name} style={[styles.dealChip, real ? styles.dealChipDiscount : styles.dealChipGreat]}>
+                  <View style={[styles.badge, styles.chipBadge]}>
+                    <Text style={[styles.badgeText, real ? styles.badgeDiscountText : styles.badgeGreatText]}>
+                      {real ? formatRealDiscountLabel(tag.discountPct) : formatGreatReferenceValueLabel(tag.discountPct)}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[styles.dealChipName, real ? styles.badgeDiscountText : styles.badgeGreatText]}
+                    numberOfLines={1}
+                  >
+                    {toTitleCase(tag.name)}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         )}
+
+        {stores.length > 0 && <Text style={styles.storesText}>Deals from {stores.join(', ')}</Text>}
+
+        <View style={styles.cardFooter}>
+          <View>
+            <Text style={styles.servingPriceRow}>
+              <Text style={styles.servingPrice}>${meal.price.toFixed(2)}</Text>
+              <Text style={styles.servingUnit}> / serving</Text>
+            </Text>
+          </View>
+          <Pressable style={styles.viewRecipeButton} onPress={openRecipe}>
+            <Text style={styles.viewRecipeButtonText}>View recipe</Text>
+            <ArrowRightIcon size={18} color="#fff" strokeWidth={2} />
+          </Pressable>
+        </View>
       </View>
     </Pressable>
   );
@@ -320,7 +381,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   arrowButtonDisabled: { opacity: 0.35 },
-  carouselRow: { gap: CARD_GAP, alignItems: 'flex-start', paddingBottom: 4 },
+  // Stretch: every card matches the tallest one (Anabelle, 2026-10-23);
+  // the price row is pinned to the bottom (cardFooter marginTop: 'auto').
+  carouselRow: { gap: CARD_GAP, alignItems: 'stretch', paddingBottom: 4 },
   recipeCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -329,26 +392,79 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
   },
-  // Same proportions as the Recipes tab's photos (1402 x 824).
   recipeCardStacked: { flexDirection: 'column' },
-  recipeCardImage: { width: IMAGE_WIDTH, aspectRatio: 1402 / 824, backgroundColor: '#F5F0EA' },
-  recipeCardImageStacked: { width: '100%' },
-  // Orange pill, same accent as the app's primary buttons.
-  priceBlurb: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFA955',
-    borderWidth: 1.5,
-    borderColor: INK,
+  recipeCardBodyStacked: { width: '100%' },
+  // Photo column: half the card (Anabelle, 2026-10-23: 50% image / 50%
+  // content), as tall as the card (cover-cropped).
+  recipeCardImageWrap: { width: '50%', alignSelf: 'stretch', backgroundColor: '#F5E3CF' },
+  recipeCardImageWrapStacked: { width: '100%', aspectRatio: 1402 / 824 },
+  recipeCardImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  bestDealBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: INK,
     borderRadius: 999,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  bestDealBadgeText: { color: '#fff', fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Content never overflows the card (Anabelle, 2026-10-23): rows wrap
+  // and shrink instead of pushing past the right edge on narrower cards.
+  recipeCardBody: { width: '50%', minWidth: 0, padding: 20, gap: 12 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaText: { fontSize: 14, color: '#555' },
+  recipeCardTitle: { fontSize: 22, lineHeight: 28, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // Light pill around each badge + ingredient (Anabelle, 2026-10-23: keep
+  // the mockup's chip background, with the app's badge colors inside).
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  dealChip: {
+    maxWidth: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 999,
+    paddingLeft: 4,
+    paddingRight: 12,
     paddingVertical: 4,
   },
-  priceBlurbText: { fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  recipeCardText: { flex: 1, padding: 20, justifyContent: 'center', gap: 8 },
-  recipeCardTitle: { fontSize: 20, lineHeight: 26, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  recipeCardDescriptor: { fontSize: 16, lineHeight: 24, color: '#343837' },
-  driverRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  driverName: { flexShrink: 1, fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
+  dealChipName: { fontSize: 14, color: INK, flexShrink: 1 },
+  // Chip colors (Anabelle, 2026-10-23): tinted chip, white percentage pill,
+  // and both texts in the badge's dark color. Purple for "Up to X% below"
+  // (#EADAFF chip, #6B46C1 text); the same treatment in blue for a real
+  // store discount ("Up to X% off": #DCE7FF chip, #2C5FD6 text).
+  dealChipGreat: { backgroundColor: '#EADAFF' },
+  dealChipDiscount: { backgroundColor: '#DCE7FF' },
+  chipBadge: { backgroundColor: '#fff' },
+  storesText: { fontSize: 14, color: '#555' },
+  // Wraps: on a narrow card the button drops under the price.
+  cardFooter: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    columnGap: 16,
+    rowGap: 12,
+    marginTop: 'auto',
+    paddingTop: 8,
+  },
+  servingPriceRow: {},
+  servingPrice: { fontSize: 32, lineHeight: 36, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  servingUnit: { fontSize: 16, color: '#555' },
+  viewRecipeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: INK,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  viewRecipeButtonText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   sectionTitle: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   dealsCard: {
     backgroundColor: '#fff',
