@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { useAuth } from '../lib/auth';
 import {
@@ -95,18 +95,23 @@ function NotificationsForm() {
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.sectionCard}>
-        <Text style={styles.subheading}>Push</Text>
-        {CATEGORY_LABELS.map((c) => (
-          <CategoryToggleRow
-            key={c.key}
-            title={c.title}
-            description={c.description}
-            checked={draft.push[c.key]}
-            onToggle={() => togglePush(c.key)}
-          />
-        ))}
-      </View>
+      {/* Hidden on web (Anabelle, 2026-10-23): a browser can't receive
+          app push notifications without a separate web-push setup, which
+          doesn't exist. Saved push prefs are left untouched. */}
+      {Platform.OS !== 'web' && (
+        <View style={styles.sectionCard}>
+          <Text style={styles.subheading}>Push</Text>
+          {CATEGORY_LABELS.map((c) => (
+            <CategoryToggleRow
+              key={c.key}
+              title={c.title}
+              description={c.description}
+              checked={draft.push[c.key]}
+              onToggle={() => togglePush(c.key)}
+            />
+          ))}
+        </View>
+      )}
 
       <View style={styles.sectionCard}>
         <Text style={styles.subheading}>Email</Text>
@@ -115,8 +120,14 @@ function NotificationsForm() {
           <Switch
             value={draft.emailSubscribed}
             onValueChange={(v) => setDraft((prev) => ({ ...prev, emailSubscribed: v }))}
-            trackColor={{ false: '#ccc', true: INK }}
+            // When on: white thumb on an orange track (Anabelle, 2026-10-23;
+            // a white track disappeared into the white card). Off keeps a
+            // white thumb on grey. activeThumbColor is a react-native-web
+            // prop: without it the web switch used its own default teal for
+            // the "on" thumb.
+            trackColor={{ false: '#ccc', true: ACCENT }}
             thumbColor="#fff"
+            {...({ activeThumbColor: '#fff' } as object)}
           />
         </View>
         {CATEGORY_LABELS.map((c) => (
