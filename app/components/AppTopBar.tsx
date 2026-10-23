@@ -1,6 +1,7 @@
 import { router, usePathname } from 'expo-router';
 import { ComponentType, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { HomeIcon } from 'react-native-heroicons/outline';
 
 import { useAuth } from '../lib/auth';
 import { GRID_MARGIN, GRID_MAX_WIDTH, useIsDesktop } from '../lib/layout';
@@ -32,8 +33,9 @@ const INK = '#111';
 // notification bell (Anabelle, 2026-10-23); guests get a plain "Profile"
 // button beside Sign in.
 const NAV_LINKS: { path: string; label: string; Icon: ComponentType<{ size?: number; color?: string }> }[] = [
+  { path: '/home', label: 'Home', Icon: HomeIcon },
   { path: '/best-deals', label: 'Weekly Deals', Icon: SellIcon },
-  { path: '/meals', label: 'Meals', Icon: RestaurantIcon },
+  { path: '/recipes', label: 'Recipes', Icon: RestaurantIcon },
   { path: '/grocery', label: 'My list', Icon: ListAltIcon },
 ];
 

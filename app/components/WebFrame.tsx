@@ -18,7 +18,7 @@ export function isDesktopReadyRoute(pathname: string): boolean {
 
 // The 4 tab screens frame themselves: on desktop (tabs)/_layout.tsx puts
 // the top nav bar full width and only the page below it in PhoneColumn.
-export const TAB_ROUTES = new Set(['/best-deals', '/meals', '/grocery', '/profile']);
+export const TAB_ROUTES = new Set(['/home', '/best-deals', '/recipes', '/grocery', '/profile']);
 
 // Internal review tools keep the full window -- they're used on a laptop
 // and want the room (dev-deals is reviewed on web).

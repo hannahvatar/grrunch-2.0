@@ -532,7 +532,7 @@ export function GroceryListView() {
             ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
-                  Nothing here yet. Add recipes from Meals, deals from Weekly Deals, or your own item to build
+                  Nothing here yet. Add recipes from the Recipes tab, deals from Weekly Deals, or your own item to build
                   your list.
                 </Text>
               </View>
@@ -542,7 +542,7 @@ export function GroceryListView() {
 
         {selectedMeals.length > 0 && (
           <View style={styles.selectedSection}>
-            <Text style={styles.selectedSectionTitle}>Selected Meals</Text>
+            <Text style={styles.selectedSectionTitle}>Selected Recipes</Text>
             {selectedMeals.map((meal) => {
               const multiplier = multipliers.get(meal.id) ?? 1;
               const totalServings = meal.servings * multiplier;

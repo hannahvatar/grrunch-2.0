@@ -1,5 +1,6 @@
 import { Tabs, usePathname } from 'expo-router';
-import { useWindowDimensions, View } from 'react-native';
+import { Platform, useWindowDimensions, View } from 'react-native';
+import { HomeIcon } from 'react-native-heroicons/outline';
 
 import { AppTopBar } from '../../components/AppTopBar';
 import { ListAltIcon, PersonIcon, RestaurantIcon, SellIcon } from '../../components/MaterialSymbols';
@@ -14,7 +15,7 @@ import { useIsDesktop } from '../../lib/layout';
 // becomes a full-width top nav with the 4 tabs as links. Each page sits
 // in PhoneColumn under it until it gets its own desktop layout; tab pages
 // listed in DESKTOP_READY_TABS lay themselves out on the full width.
-const DESKTOP_READY_TABS = new Set(['/best-deals', '/meals', '/grocery', '/profile']);
+const DESKTOP_READY_TABS = new Set(['/home', '/best-deals', '/recipes', '/grocery', '/profile']);
 
 export default function TabsLayout() {
   const isDesktop = useIsDesktop();
@@ -30,14 +31,27 @@ export default function TabsLayout() {
           tabBarStyle: isDesktop ? { display: 'none' } : undefined,
         }}
       >
+        {/* Web-only Home tab (Anabelle, 2026-10-23); hidden on the iPhone
+            app, which keeps its 4 tabs. */}
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: 'Home',
+            href: Platform.OS === 'web' ? undefined : null,
+            tabBarIcon: ({ color }) => <HomeIcon size={22} color={color} />,
+          }}
+        />
         <Tabs.Screen
           name="best-deals"
           options={{ title: 'Weekly Deals', tabBarIcon: ({ color }) => <SellIcon size={22} color={color} /> }}
         />
         <Tabs.Screen
-          name="meals"
-          options={{ title: 'Meals', tabBarIcon: ({ color }) => <RestaurantIcon size={22} color={color} /> }}
+          name="recipes"
+          options={{ title: 'Recipes', tabBarIcon: ({ color }) => <RestaurantIcon size={22} color={color} /> }}
         />
+        {/* Old /meals address, forwards to /recipes; never shown in the
+            tab bar. */}
+        <Tabs.Screen name="meals" options={{ href: null }} />
         <Tabs.Screen
           name="grocery"
           options={{ title: 'My list', tabBarIcon: ({ color }) => <ListAltIcon size={22} color={color} /> }}

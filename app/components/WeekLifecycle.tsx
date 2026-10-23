@@ -26,11 +26,11 @@ const INK = '#111';
 const POPUPS: Record<WeekChange, { title: string; body: string; button: string }> = {
   closed: {
     title: "That's a wrap for this week",
-    body: "This week's meals and deals have ended, and your grocery list is cleared. New ones drop Thursday at 12:00 pm.",
+    body: "This week's recipes and deals have ended, and your grocery list is cleared. New ones drop Thursday at 12:00 pm.",
     button: 'Got it',
   },
   newWeek: {
-    title: 'New meals and deals are here!',
+    title: 'New recipes and deals are here!',
     body: 'Fresh from this week\'s flyers.',
     button: "Let's see",
   },

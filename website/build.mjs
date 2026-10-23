@@ -141,7 +141,7 @@ ${body}
 
 // -- Pages --
 const landing = page({
-  title: 'Grrunch: meals from this week’s grocery deals',
+  title: 'Grrunch: recipes from this week’s grocery deals',
   description:
     'Grrunch scans BC grocery flyers every week, picks the deals worth buying, and turns them into affordable recipes and your grocery list.',
   pathName: '/',

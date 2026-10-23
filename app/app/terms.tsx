@@ -76,7 +76,7 @@ export default function TermsScreen() {
       // No illustration, centered on the middle 8 of 12 grid columns
       // (Anabelle, 2026-10-22).
       <DesktopAuthShell grid span={8}>
-        <Text style={[desktopText.headline, desktopText.centered]}>Turns weekly deals into affordable meals</Text>
+        <Text style={[desktopText.headline, desktopText.centered]}>Turns weekly deals into affordable recipes</Text>
         <Text style={[desktopText.body, desktop.consent, desktopText.centered]}>{consentLinks}</Text>
         <View style={desktop.buttons}>
           <Pressable onPress={() => router.push('/login')} style={[styles.primaryButton, desktop.button]}>
@@ -102,7 +102,7 @@ export default function TermsScreen() {
             when it doesn't. */}
         <ScrollView contentContainerStyle={styles.middle} showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>Grrunch</Text>
-          <Text style={styles.tagline}>Turns weekly deals into affordable meals</Text>
+          <Text style={styles.tagline}>Turns weekly deals into affordable recipes</Text>
           <Text style={styles.body}>{consentLinks}</Text>
         </ScrollView>
 
