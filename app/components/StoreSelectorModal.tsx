@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleS
 import { MagnifyingGlassIcon, PaperAirplaneIcon, XMarkIcon } from 'react-native-heroicons/outline';
 import { StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
 
+import { useDesktopModalWidth } from '../lib/layout';
 import { searchStoresByChain, type StoreSearchResult } from '../lib/storeSearch';
 
 const ACCENT = '#FFA955';
@@ -50,6 +51,9 @@ interface StoreSelectorModalProps {
 // this app has no bottom-sheet library (no @gorhom/bottom-sheet), so this
 // is built on the same plain RN Modal every other modal in the app uses.
 export function StoreSelectorModal({ visible, onClose, chainName, currentStoreId, onSelectStore }: StoreSelectorModalProps) {
+  // Desktop: the bottom sheet sits on the middle 8 of 12 grid columns
+  // (2-8-2, Anabelle 2026-10-23), same as My list's sheets.
+  const sheetWidth = useDesktopModalWidth(8);
   const [query, setQuery] = useState('');
   const [stores, setStores] = useState<StoreSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -141,7 +145,7 @@ export function StoreSelectorModal({ visible, onClose, chainName, currentStoreId
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <Pressable style={[styles.sheet, sheetWidth && { ...sheetWidth, alignSelf: 'center' }]} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grabber} />
           <View style={styles.header}>
             <Text style={styles.title}>Select a Store</Text>
