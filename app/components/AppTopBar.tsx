@@ -35,7 +35,9 @@ const INK = '#111';
 const NAV_LINKS: { path: string; label: string; Icon: ComponentType<{ size?: number; color?: string }> }[] = [
   { path: '/home', label: 'Home', Icon: HomeIcon },
   { path: '/best-deals', label: 'Weekly Deals', Icon: SellIcon },
-  { path: '/recipes', label: 'Recipes', Icon: RestaurantIcon },
+  // "Weekly Recipes" in the desktop nav, matching "Weekly Deals" beside it
+  // (Anabelle, 2026-10-23); the phone tab bar keeps the short "Recipes".
+  { path: '/recipes', label: 'Weekly Recipes', Icon: RestaurantIcon },
   { path: '/grocery', label: 'My list', Icon: ListAltIcon },
 ];
 
