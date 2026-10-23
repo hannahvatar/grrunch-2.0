@@ -16,6 +16,23 @@ const INK = '#111';
 // consent screen (index.tsx, via LegalDocumentModal), now also reachable
 // from Settings instead of the generic "not built yet" stub (Anabelle,
 // 2026-08-28).
+// The page's own content, without its header/close button: rendered here
+// and inline in Profile's Settings accordion (Anabelle, 2026-10-23).
+export function TermsOfUseBody() {
+  return (
+    <>
+      <View style={styles.card}>
+        <LegalDocumentBody
+          effectiveDate={TERMS_OF_USE_EFFECTIVE_DATE}
+          intro={TERMS_OF_USE_INTRO}
+          sections={TERMS_OF_USE_SECTIONS}
+          outro={TERMS_OF_USE_OUTRO}
+        />
+      </View>
+    </>
+  );
+}
+
 export default function LegalScreen() {
   return (
     <View style={styles.container}>
@@ -26,14 +43,7 @@ export default function LegalScreen() {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <LegalDocumentBody
-            effectiveDate={TERMS_OF_USE_EFFECTIVE_DATE}
-            intro={TERMS_OF_USE_INTRO}
-            sections={TERMS_OF_USE_SECTIONS}
-            outro={TERMS_OF_USE_OUTRO}
-          />
-        </View>
+        <TermsOfUseBody />
       </ScrollView>
     </View>
   );

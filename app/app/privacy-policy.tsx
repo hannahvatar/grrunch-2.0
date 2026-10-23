@@ -11,6 +11,22 @@ const INK = '#111';
 // first-run consent screen (index.tsx, via LegalDocumentModal), now also
 // reachable from Settings instead of the generic "not built yet" stub
 // (Anabelle, 2026-08-28).
+// The page's own content, without its header/close button: rendered here
+// and inline in Profile's Settings accordion (Anabelle, 2026-10-23).
+export function PrivacyPolicyBody() {
+  return (
+    <>
+      <View style={styles.card}>
+        <LegalDocumentBody
+          effectiveDate={PRIVACY_POLICY_EFFECTIVE_DATE}
+          intro={PRIVACY_POLICY_INTRO}
+          sections={PRIVACY_POLICY_SECTIONS}
+        />
+      </View>
+    </>
+  );
+}
+
 export default function PrivacyPolicyScreen() {
   return (
     <View style={styles.container}>
@@ -21,13 +37,7 @@ export default function PrivacyPolicyScreen() {
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.card}>
-          <LegalDocumentBody
-            effectiveDate={PRIVACY_POLICY_EFFECTIVE_DATE}
-            intro={PRIVACY_POLICY_INTRO}
-            sections={PRIVACY_POLICY_SECTIONS}
-          />
-        </View>
+        <PrivacyPolicyBody />
       </ScrollView>
     </View>
   );
