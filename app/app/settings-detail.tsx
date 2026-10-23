@@ -1,6 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { XMarkIcon } from 'react-native-heroicons/outline';
+
+import { gridSpan, useIsDesktop } from '../lib/layout';
 
 // About is real copy -- Anabelle's own founder note (2026-10-12; replaces
 // the 2026-08-28 product blurb). Everything else on this shared stub
@@ -37,10 +39,15 @@ const ABOUT_PARAGRAPHS: { text: string; bold?: boolean }[][] = [
 export default function SettingsDetailScreen() {
   const { title } = useLocalSearchParams<{ title?: string }>();
   const isAbout = title === 'About';
+  // Desktop web: header and content on the middle 8 of 12 grid columns
+  // (2-8-2, Anabelle 2026-10-23), on the full-width page background.
+  const isDesktop = useIsDesktop();
+  const { width: windowWidth } = useWindowDimensions();
+  const desktopColumn = isDesktop ? { width: gridSpan(windowWidth, 8), alignSelf: 'center' as const, paddingHorizontal: 0 } : null;
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, desktopColumn]}>
         <Text style={styles.title}>{title ?? 'Settings'}</Text>
         {/* Same tertiary closing treatment as settings.tsx/manage-account.tsx's
             closeButton -- was a "< Back" text link, Anabelle's call to make
@@ -50,7 +57,7 @@ export default function SettingsDetailScreen() {
         </Pressable>
       </View>
       {isAbout ? (
-        <ScrollView contentContainerStyle={styles.aboutContent}>
+        <ScrollView contentContainerStyle={[styles.aboutContent, desktopColumn]}>
           {/* White card, same treatment as My list's store cards
               (Anabelle, 2026-10-12: "move the about text into a white
               container"). */}
@@ -110,6 +117,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   aboutHeart: { fontSize: 32 },
-  aboutParagraph: { fontSize: 15, lineHeight: 22, color: '#111' },
+  // 16px body on every layout (Anabelle, 2026-10-22).
+  aboutParagraph: { fontSize: 16, lineHeight: 24, color: '#111' },
   aboutParagraphBold: { fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
 });

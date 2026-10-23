@@ -189,8 +189,16 @@ const styles = StyleSheet.create({
     // White (Anabelle's call) -- was the shared peach ('#FFEAD4'), now a
     // plain white strip that sits above the peach page background.
     backgroundColor: '#fff',
+    // Above the page below it so the notification dropdown isn't painted
+    // over by the page on web (same as desktopBar).
+    zIndex: 10,
   },
   desktopBar: {
+    // Above the page below it, so the notification dropdown (which hangs
+    // out of this bar) paints over the page instead of under it. On web
+    // every view is its own stacking context, so the panel's own zIndex
+    // can't escape the bar without this (Anabelle, 2026-10-23).
+    zIndex: 10,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E0C9AE',
