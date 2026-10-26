@@ -183,7 +183,7 @@ export default function HomeScreen() {
         <RecipeCarousel meals={meals} isDesktop={isDesktop} windowWidth={windowWidth} />
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Top deals</Text>
+          <Text style={styles.sectionTitle}>The deals we dig</Text>
           <ArrowLink label="See all deals" onPress={() => router.navigate('/best-deals')} />
         </View>
         <View style={styles.dealsGrid} onLayout={(e) => setDealsGridWidth(e.nativeEvent.layout.width)}>
