@@ -768,7 +768,9 @@ const styles = StyleSheet.create({
   // deals) -- still shown, not hidden, but muted/no-underline to read
   // as disabled rather than a dead link.
   flyerLinkDisabled: { color: '#999', textDecorationLine: 'none' },
-  itemMeta: { fontSize: 12, color: '#999', marginTop: 1 },
+  // My list's per-recipe needs ("Chowder Down: about 1 medium carrot"),
+  // one line per recipe. 14px caption per the type rule.
+  itemMeta: { fontSize: 14, lineHeight: 20, color: '#767676', marginTop: 2 },
   useQuantityText: { fontSize: 12, fontWeight: '400', fontFamily: 'OpenSans_400Regular', color: INK, marginTop: 2 },
   estimatedDisclaimer: { fontSize: 11, color: '#767676', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
