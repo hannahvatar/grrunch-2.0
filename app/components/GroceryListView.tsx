@@ -733,11 +733,8 @@ export function GroceryListView() {
                 // edit, a price computed from the original amount
                 // would read as if it still applied. Recipe page is
                 // unaffected, still passes its own estimatedPrice.
-                meta={
-                  item.usages
-                    ? item.usages.map((u) => (u.usage ? `${u.source}: ${u.usage}` : u.source)).join('\n')
-                    : item.source
-                }
+                meta={item.source}
+                recipeUsages={item.usages}
                 checked={checked.has(item.key)}
                 onToggleCheck={() => toggleChecked(item.key)}
                 multiplier={item.multiplier}
