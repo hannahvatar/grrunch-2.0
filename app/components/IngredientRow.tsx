@@ -67,6 +67,10 @@ interface IngredientRowProps {
   checked?: boolean;
   onToggleCheck?: () => void;
   multiplier?: number;
+  // My list only: the package count for a deal row that merges the same
+  // deal from several recipes (sized from their combined amount, see
+  // GroceryListView). Overrides the per-recipe count below when set.
+  packageCount?: number;
   // The recipe's own real per-batch quantity/unit (e.g. "240"/"g" for
   // Tilda Basmati Rice) -- needed alongside `multiplier` to compute the
   // real package count correctly for a fragmented deal item (see
@@ -169,6 +173,7 @@ export function IngredientRow({
   checked,
   onToggleCheck,
   multiplier,
+  packageCount,
   imageSize = 36,
   blurredBackdrop,
   showStoreLink,
@@ -222,7 +227,9 @@ export function IngredientRow({
   // NON-fragmented item like Hoisin Sauce keeps the old N-packages-per-
   // N-batches behavior).
   const dealQuantity =
-    !!multiplier && multiplier > 1
+    packageCount !== undefined
+      ? String(packageCount)
+      : !!multiplier && multiplier > 1
       ? String(
           computeDealPackageCount(
             quantity,
