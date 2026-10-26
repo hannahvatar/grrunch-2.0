@@ -6,12 +6,16 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ClockIcon,
+  MagnifyingGlassPlusIcon,
   TagIcon,
   UsersIcon,
 } from 'react-native-heroicons/outline';
 
 import { ArrowLink } from '../../components/ArrowLink';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
+import { openInNewTab } from '../../components/IngredientRow';
+import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
+import { CutoutViewer } from '../../components/CutoutViewer';
 import { UpgradeCta } from '../../components/UpgradeCta';
 import { WeekGapState } from '../../components/WeekGapState';
 import {
@@ -132,11 +136,13 @@ export default function HomeScreen() {
   // Anabelle's hand-picked deals first, in her order (dev-deals, Anabelle
   // 2026-10-26), then the biggest savings fill any empty slots. Not
   // limited per category (several picks can share one; each tile names
-  // its category). Only the visitor's own stores. Non-members get the
-  // first 3, followed by the subscribe card.
+  // its category). Only the visitor's own stores. Non-members get the 3
+  // she marked free (like the free recipes; Anabelle 2026-10-26), else
+  // the first 3, followed by the subscribe card.
   const handPicked = shownDeals
     .filter((deal) => deal.homePick !== null)
     .sort((a, b) => (a.homePick ?? 0) - (b.homePick ?? 0));
+  if (!isSubscribed) handPicked.sort((a, b) => Number(b.homeFree) - Number(a.homeFree));
   const topDeals = [
     ...handPicked,
     ...shownDeals.filter((deal) => deal.homePick === null).sort(bySavingsDesc),
@@ -364,16 +370,32 @@ function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width:
 function DealTile({ deal, width }: { deal: Deal; width: number }) {
   const price = formatDealBadgePrice(deal.price, deal.priceUnit, deal.packageWeightG);
   const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG);
+  const [zoomOpen, setZoomOpen] = useState(false);
   return (
-    <Pressable style={[styles.dealTile, { width }]} onPress={() => router.navigate('/best-deals')}>
+    <View style={[styles.dealTile, { width }]}>
       <View style={styles.dealTileImageWrap}>
-        {deal.imageUrl && <Image source={{ uri: deal.imageUrl }} style={styles.dealTileImage} resizeMode="contain" />}
+        {/* Click the cutout to preview it, same as everywhere else
+            (Anabelle, 2026-10-26). */}
+        {deal.imageUrl && (
+          <Pressable
+            style={styles.dealTileImage}
+            onPress={() => setZoomOpen(true)}
+            accessibilityRole="imagebutton"
+            accessibilityLabel="Enlarge flyer cutout"
+          >
+            <Image source={{ uri: deal.imageUrl }} style={styles.dealTileImage} resizeMode="contain" />
+            <View style={styles.zoomHint} pointerEvents="none">
+              <MagnifyingGlassPlusIcon size={14} color="#fff" strokeWidth={2} />
+            </View>
+          </Pressable>
+        )}
         {/* Category on every tile (Anabelle, 2026-10-26): picks can come
             from the same category, so each one says which. */}
         <View style={styles.categoryTag}>
           <Text style={styles.categoryTagText}>{deal.category}</Text>
         </View>
       </View>
+      {deal.imageUrl && <CutoutViewer uri={deal.imageUrl} visible={zoomOpen} onClose={() => setZoomOpen(false)} />}
       <View style={styles.dealTileBody}>
         {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
           <View style={[styles.badge, styles.badgeDiscount]}>
@@ -383,17 +405,45 @@ function DealTile({ deal, width }: { deal: Deal; width: number }) {
           <View style={[styles.badge, styles.badgeGreat]}>
             <Text style={[styles.badgeText, styles.badgeGreatText]}>{formatGreatReferenceValueLabel(deal.discountPct)}</Text>
           </View>
-        ) : null}
+        ) : (
+          // No saving to claim: "Fair price", same as Weekly Deals, so every
+          // tile has a badge (Anabelle, 2026-10-26).
+          <View style={[styles.badge, styles.badgeFair]}>
+            <Text style={[styles.badgeText, styles.badgeFairText]}>Fair price</Text>
+          </View>
+        )}
         <Text style={styles.dealName} numberOfLines={2}>
           {toTitleCase(deal.itemName)}
         </Text>
         <Text style={styles.dealStore}>{deal.chainName}</Text>
-        <Text style={styles.dealPrice}>
-          ${price.toFixed(2)}
-          {suffix}
-        </Text>
+        {/* Same "See in flyer" link as the deals on recipes and My list. */}
+        <Pressable
+          style={styles.flyerLinkRow}
+          onPress={deal.productUrl ? () => openInNewTab(deal.productUrl) : undefined}
+          disabled={!deal.productUrl}
+          hitSlop={12}
+        >
+          <Text style={[styles.flyerLink, !deal.productUrl && styles.flyerLinkDisabled]}>See in flyer</Text>
+          <ArrowOutwardIcon size={14} color={deal.productUrl ? INK : '#999'} />
+        </Pressable>
+        {/* Price, then a "View deal" button like the recipe card's "View
+            recipe" (Anabelle, 2026-10-26); it opens Weekly Deals on this
+            deal, its section open. */}
+        <View style={styles.dealTileFooter}>
+          <Text style={styles.dealPrice}>
+            ${price.toFixed(2)}
+            {suffix}
+          </Text>
+          <Pressable
+            style={styles.viewDealButton}
+            onPress={() => router.navigate({ pathname: '/best-deals', params: { deal: deal.id } })}
+          >
+            <Text style={styles.viewRecipeButtonText}>View deal</Text>
+            <ArrowRightIcon size={18} color="#fff" strokeWidth={2} />
+          </Pressable>
+        </View>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -521,6 +571,15 @@ const styles = StyleSheet.create({
   },
   dealTileImageWrap: { width: '100%', aspectRatio: 4 / 3, padding: 12, backgroundColor: '#fff' },
   dealTileImage: { width: '100%', height: '100%' },
+  // Same magnifier hint as the cutouts on recipe and list rows.
+  zoomHint: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    backgroundColor: 'rgba(17,17,17,0.7)',
+    borderRadius: 999,
+    padding: 5,
+  },
   categoryTag: {
     position: 'absolute',
     top: 10,
@@ -538,7 +597,40 @@ const styles = StyleSheet.create({
   dealTileBody: { flex: 1, padding: 12, paddingTop: 0, gap: 4, alignItems: 'flex-start' },
   dealName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   dealStore: { fontSize: 14, color: '#767676' },
-  dealPrice: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginTop: 'auto', paddingTop: 4 },
+  dealPrice: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  flyerLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  flyerLink: {
+    fontSize: 14,
+    color: INK,
+    fontWeight: '700',
+    fontFamily: 'OpenSans_700Bold',
+    textDecorationLine: 'underline',
+  },
+  flyerLinkDisabled: { color: '#999', textDecorationLine: 'none' },
+  // Pinned to the bottom so every tile in a row lines up; wraps the
+  // button under the price on narrow (phone) tiles.
+  dealTileFooter: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: 12,
+    rowGap: 8,
+    marginTop: 'auto',
+    paddingTop: 8,
+  },
+  // marginLeft auto: right-aligned, also when it wraps under the price.
+  viewDealButton: {
+    marginLeft: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: INK,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
   // Same badge colors as Weekly Deals (blue = real store discount,
   // purple = great value against a reference price).
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
@@ -547,4 +639,7 @@ const styles = StyleSheet.create({
   badgeDiscountText: { color: '#2C5FD6' },
   badgeGreat: { backgroundColor: '#EDE7FE' },
   badgeGreatText: { color: '#6B46C1' },
+  // Weekly Deals' peach "Fair price" badge.
+  badgeFair: { backgroundColor: '#FFEAD4' },
+  badgeFairText: { color: '#FF7A2A' },
 });

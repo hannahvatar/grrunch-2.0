@@ -359,23 +359,43 @@ export default function DevDealsScreen() {
     .filter((d) => d.home_pick !== null)
     .sort((a, b) => (a.home_pick ?? 0) - (b.home_pick ?? 0));
 
-  async function toggleHomePick(deal: CuratedDeal) {
+  const freeCount = homePicks.filter((d) => d.home_free).length;
+
+  async function saveHomePick(deal: CuratedDeal, change: { picked: boolean } | { free: boolean }) {
     if (homePickBusy) return;
-    const picked = deal.home_pick === null;
-    if (picked && homePicks.length >= HOME_PICKS_MAX) {
-      setHomePickError(`Home shows ${HOME_PICKS_MAX} deals. Remove one first.`);
-      return;
-    }
     setHomePickError(null);
     setHomePickBusy(deal.id);
-    const result = await setHomePick(deal, picked);
+    const result = await setHomePick(deal, change);
     setHomePickBusy(null);
     if ('error' in result) {
       setHomePickError(result.error);
       return;
     }
-    const places = new Map(result.picks.map((p) => [p.id, p.home_pick]));
-    setDeals((prev) => prev.map((d) => (places.has(d.id) ? { ...d, home_pick: places.get(d.id) ?? null } : d)));
+    const states = new Map(result.picks.map((p) => [p.id, p]));
+    setDeals((prev) =>
+      prev.map((d) => {
+        const next = states.get(d.id);
+        return next ? { ...d, home_pick: next.home_pick, home_free: next.home_free } : d;
+      })
+    );
+  }
+
+  function toggleHomePick(deal: CuratedDeal) {
+    const picked = deal.home_pick === null;
+    if (picked && homePicks.length >= HOME_PICKS_MAX) {
+      setHomePickError(`Home shows ${HOME_PICKS_MAX} deals. Remove one first.`);
+      return;
+    }
+    saveHomePick(deal, { picked });
+  }
+
+  function toggleHomeFree(deal: CuratedDeal) {
+    const free = !deal.home_free;
+    if (free && freeCount >= HOME_FREE_MAX) {
+      setHomePickError(`Non-members get ${HOME_FREE_MAX} free deals. Unmark one first.`);
+      return;
+    }
+    saveHomePick(deal, { free });
   }
   const selectedDeal = deals.find((d) => d.id === selectedId) ?? null;
   const selectedCutout = selectedCutoutKey ? (cutouts.get(selectedCutoutKey) ?? null) : null;
@@ -557,7 +577,7 @@ export default function DevDealsScreen() {
           <Text style={styles.note}>
             {homePicks.length === 0
               ? 'None picked: Home shows the biggest savings. Tap "+ Home" on a deal to showcase it.'
-              : 'Shown first on Home, in this order. Non-members see the first 3. Empty slots show the biggest savings.'}
+              : 'Shown first on Home, in this order. Mark 3 "Free" for non-members. Empty slots show the biggest savings.'}
           </Text>
           {homePicks.map((d) => (
             <View key={d.id} style={styles.homePickRow}>
@@ -568,11 +588,28 @@ export default function DevDealsScreen() {
                     pick can be missing from Home elsewhere. */}
                 {d.zone ? <Text style={styles.note}> (only in {d.zone})</Text> : null}
               </Text>
+              {/* Same "Free" pill as dev-recipes' free recipes. */}
+              <Pressable
+                style={[styles.freePill, d.home_free && styles.freePillOn]}
+                onPress={() => toggleHomeFree(d)}
+                disabled={homePickBusy !== null}
+                hitSlop={6}
+                accessibilityLabel={d.home_free ? `Make ${d.item_name} members only` : `Make ${d.item_name} free`}
+              >
+                <Text style={[styles.freePillText, d.home_free && styles.freePillTextOn]}>Free</Text>
+              </Pressable>
               <Pressable onPress={() => toggleHomePick(d)} disabled={homePickBusy !== null} hitSlop={8}>
                 <Text style={styles.textLink}>Remove</Text>
               </Pressable>
             </View>
           ))}
+          {homePicks.length > 0 && (
+            <Text style={styles.note}>
+              Free for non-members: {freeCount}/{HOME_FREE_MAX}
+              {freeCount === 0 ? ' (none marked: they see the first 3).' : '.'} Free deals are also unlocked on Weekly
+              Deals.
+            </Text>
+          )}
           {/* Shoppers only see picks from their own stores, so a mix
               keeps most of them on everyone's Home. */}
           {homePicks.length > 0 && (
@@ -879,17 +916,24 @@ async function rejectDeal(deal: CuratedDeal): Promise<{ deal: CuratedDeal } | { 
 // Home's Top deals grid shows this many; the hand-picked ones go first
 // (set-deal-home-pick, Anabelle 2026-10-26).
 const HOME_PICKS_MAX = 12;
+// Free Home deals for non-members, picked among the Home deals (Anabelle,
+// 2026-10-26: "Like the recipes, i should be able to pick the 3 free deals").
+const HOME_FREE_MAX = 3;
 
 // Adds a deal to, or removes it from, Home's hand-picked deals. Returns
 // every pick of that week with its (possibly renumbered) place.
+type HomePickState = { id: string; home_pick: number | null; home_free: boolean };
+
+// `change` is { picked } to add/remove a pick or { free } to mark a pick
+// as one of the 3 free deals for non-members.
 async function setHomePick(
   deal: CuratedDeal,
-  picked: boolean
-): Promise<{ picks: { id: string; home_pick: number | null }[] } | { error: string }> {
+  change: { picked: boolean } | { free: boolean }
+): Promise<{ picks: HomePickState[] } | { error: string }> {
   const { data, error: invokeError } = await supabase.functions.invoke<{
-    picks?: { id: string; home_pick: number | null }[];
+    picks?: HomePickState[];
     error?: string;
-  }>('set-deal-home-pick', { body: { deal_id: deal.id, picked } });
+  }>('set-deal-home-pick', { body: { deal_id: deal.id, ...change } });
   if (invokeError || !data?.picks) {
     return { error: await functionErrorMessage(invokeError, data?.error, 'Could not update the Home deals.') };
   }
@@ -2548,6 +2592,19 @@ const styles = StyleSheet.create({
   homePickButtonOn: { backgroundColor: '#FFA955' },
   homePickButtonBlocked: { borderColor: '#BDBDBD' },
   homePickBlockedText: { color: '#767676' },
+  // Same look as dev-recipes' "Free" toggle: grey outline off, orange on.
+  freePill: {
+    height: 32,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#ccc',
+    borderRadius: 999,
+  },
+  freePillOn: { backgroundColor: '#FFA955', borderColor: INK },
+  freePillText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: '#888' },
+  freePillTextOn: { color: INK },
   homePickRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   homePickName: { flex: 1, fontSize: 14, color: INK },
   splitFromDeal: { alignSelf: 'flex-start' },

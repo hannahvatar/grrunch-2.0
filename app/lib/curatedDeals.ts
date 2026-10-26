@@ -37,6 +37,9 @@ export interface Deal {
   // Place on Home's Top deals grid, hand-picked in dev-deals (1 = first);
   // null when not picked.
   homePick: number | null;
+  // One of the (up to 3) free Home deals for non-members, also always
+  // unlocked on Weekly Deals.
+  homeFree: boolean;
 }
 
 const UNCATEGORIZED = 'Other';
@@ -192,6 +195,7 @@ function mapRowToDeal(row: {
   price_unit?: string | null;
   package_weight_g?: number | null;
   home_pick?: number | null;
+  home_free?: boolean | null;
 }): Deal | null {
   if (row.price == null || row.original_price == null) return null;
   return {
@@ -210,6 +214,7 @@ function mapRowToDeal(row: {
     priceUnit: (row.price_unit ?? undefined) as Deal['priceUnit'],
     packageWeightG: row.package_weight_g ?? undefined,
     homePick: row.home_pick ?? null,
+    homeFree: row.home_free ?? false,
   };
 }
 
@@ -229,7 +234,22 @@ function mapRowToDeal(row: {
 export async function fetchAllDeals(): Promise<Deal[]> {
   const { data, error } = await supabase.from('curated_deals').select('*');
   if (error) throw error;
-  return (data ?? []).map(mapRowToDeal).filter((deal): deal is Deal => deal !== null);
+  return withDefaultFreeDeals((data ?? []).map(mapRowToDeal).filter((deal): deal is Deal => deal !== null));
+}
+
+// No free Home deals marked this week: the first 3 Home picks are the
+// free ones, so what non-members see on Home is also unlocked on Weekly
+// Deals ("View deal" never lands on a locked deal).
+function withDefaultFreeDeals(deals: Deal[]): Deal[] {
+  if (deals.some((deal) => deal.homeFree)) return deals;
+  const firstPicks = new Set(
+    deals
+      .filter((deal) => deal.homePick !== null)
+      .sort((a, b) => (a.homePick ?? 0) - (b.homePick ?? 0))
+      .slice(0, 3)
+      .map((deal) => deal.id)
+  );
+  return deals.map((deal) => (firstPicks.has(deal.id) ? { ...deal, homeFree: true } : deal));
 }
 
 export async function fetchDealsByIds(ids: string[]): Promise<Deal[]> {
@@ -292,7 +312,9 @@ export function selectVisibleDeals(
   if (isSubscribed) {
     return { visibleDeals: sorted, lockedDealCount: 0 };
   }
-  const visibleDeals = sorted.slice(0, freeLimit);
+  // The top `freeLimit`, plus any deal Anabelle marked free for Home
+  // (dev-deals, 2026-10-26) so "View deal" never lands on a locked one.
+  const visibleDeals = sorted.filter((deal, index) => index < freeLimit || deal.homeFree);
   return {
     visibleDeals,
     lockedDealCount: sorted.length - visibleDeals.length,
