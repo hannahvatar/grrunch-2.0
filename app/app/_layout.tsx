@@ -5,6 +5,7 @@ import {
   OpenSans_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/open-sans';
+import { PermanentMarker_400Regular } from '@expo-google-fonts/permanent-marker';
 import * as Linking from 'expo-linking';
 import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -163,6 +164,8 @@ function RootLayout() {
     OpenSans_600SemiBold,
     OpenSans_700Bold,
     OpenSans_800ExtraBold,
+    // Hand-drawn "Wow!" on Home's best deals (Anabelle, 2026-10-26).
+    PermanentMarker_400Regular,
   });
   // Shown right after the native splash hides -- see AnimatedSplashScreen's
   // own header comment for why this is a separate JS-side screen, not a
