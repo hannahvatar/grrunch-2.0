@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   ArrowRightIcon,
@@ -21,10 +21,8 @@ import {
   formatDealBadgePrice,
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
-  groupDealsByCategory,
   isGreatReferenceValue,
   priceUnitSuffix,
-  selectVisibleDeals,
   showsRealDiscount,
   toTitleCase,
 } from '../../lib/curatedDeals';
@@ -49,14 +47,15 @@ const CARD_MAX_WIDTH = 820;
 const CARD_PEEK = 64;
 const CARD_GAP = 16;
 // Top deals grid (Anabelle, 2026-10-26): 3 tiles a row on desktop (4 was
-// too tall and narrow), 2 on a phone; 6 tiles fills both evenly.
-const DEALS_SHOWN = 6;
+// too tall and narrow), 2 on a phone. 12 for members (Anabelle, 2026-10-26:
+// "i want to be able to showcase 12 deals"), which fills both evenly.
+const DEALS_SHOWN = 12;
 const DEAL_COLUMNS_DESKTOP = 3;
 const DEAL_COLUMNS_PHONE = 2;
 const DEAL_GAP = 16;
-// Same free-tier caps as Meals (3 picked recipes) and Weekly Deals (1 per
-// category), so Home never shows a non-member anything those pages lock.
-const FREE_DEALS_PER_CATEGORY = 1;
+// Non-members see the first 3, then the subscribe card (Anabelle,
+// 2026-10-26).
+const FREE_DEALS_SHOWN = 3;
 
 // Web-only Home tab (Anabelle, 2026-10-23: "the web app needs a
 // homepage"), where web visitors land after onboarding/sign-in: this
@@ -94,6 +93,17 @@ export default function HomeScreen() {
       .finally(() => setLoading(false));
   }, [liveWeek?.publishedAt]);
 
+  // Deals again whenever Home comes back into view, so picks changed in
+  // dev-deals (or a deal approved meanwhile) show without a page reload
+  // (Anabelle, 2026-10-26: "what shows up on my hp is not what i picked").
+  useFocusEffect(
+    useCallback(() => {
+      fetchAllDeals()
+        .then(setAllDeals)
+        .catch(() => {});
+    }, [])
+  );
+
   if (weekClosed) {
     return (
       <View style={styles.container}>
@@ -119,10 +129,18 @@ export default function HomeScreen() {
   const meals = isSubscribed ? featured : (picked.length > 0 ? picked : featured).slice(0, 3);
 
   const shownDeals = filterDealsByZone(allDeals, myStores).filter((deal) => !hiddenChains.has(deal.chainName));
-  const visibleDeals = Array.from(groupDealsByCategory(shownDeals).values()).flatMap(
-    (categoryDeals) => selectVisibleDeals(categoryDeals, isSubscribed, FREE_DEALS_PER_CATEGORY).visibleDeals
-  );
-  const topDeals = [...visibleDeals].sort(bySavingsDesc).slice(0, DEALS_SHOWN);
+  // Anabelle's hand-picked deals first, in her order (dev-deals, Anabelle
+  // 2026-10-26), then the biggest savings fill any empty slots. Not
+  // limited per category (several picks can share one; each tile names
+  // its category). Only the visitor's own stores. Non-members get the
+  // first 3, followed by the subscribe card.
+  const handPicked = shownDeals
+    .filter((deal) => deal.homePick !== null)
+    .sort((a, b) => (a.homePick ?? 0) - (b.homePick ?? 0));
+  const topDeals = [
+    ...handPicked,
+    ...shownDeals.filter((deal) => deal.homePick === null).sort(bySavingsDesc),
+  ].slice(0, isSubscribed ? DEALS_SHOWN : FREE_DEALS_SHOWN);
   const dealColumns = isDesktop ? DEAL_COLUMNS_DESKTOP : DEAL_COLUMNS_PHONE;
   // From the grid's own measured width, so tiles fit the phone column on
   // web as well as the full screen on iPhone.
@@ -350,6 +368,11 @@ function DealTile({ deal, width }: { deal: Deal; width: number }) {
     <Pressable style={[styles.dealTile, { width }]} onPress={() => router.navigate('/best-deals')}>
       <View style={styles.dealTileImageWrap}>
         {deal.imageUrl && <Image source={{ uri: deal.imageUrl }} style={styles.dealTileImage} resizeMode="contain" />}
+        {/* Category on every tile (Anabelle, 2026-10-26): picks can come
+            from the same category, so each one says which. */}
+        <View style={styles.categoryTag}>
+          <Text style={styles.categoryTagText}>{deal.category}</Text>
+        </View>
       </View>
       <View style={styles.dealTileBody}>
         {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
@@ -498,6 +521,18 @@ const styles = StyleSheet.create({
   },
   dealTileImageWrap: { width: '100%', aspectRatio: 4 / 3, padding: 12, backgroundColor: '#fff' },
   dealTileImage: { width: '100%', height: '100%' },
+  categoryTag: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  categoryTagText: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // The badge sits first, above the name; flex-start keeps it hugging
   // its text instead of stretching across the tile.
   dealTileBody: { flex: 1, padding: 12, paddingTop: 0, gap: 4, alignItems: 'flex-start' },

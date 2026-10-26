@@ -266,6 +266,9 @@ export default function DevDealsScreen() {
   const [error, setError] = useState(false);
   const [rowRejecting, setRowRejecting] = useState<Set<string>>(new Set());
   const [rowRejectError, setRowRejectError] = useState<Record<string, string>>({});
+  // Home picks: the deal being saved, and the last error.
+  const [homePickBusy, setHomePickBusy] = useState<string | null>(null);
+  const [homePickError, setHomePickError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   // null until chosen: defaults to the draft when there is one, else live.
@@ -352,6 +355,28 @@ export default function DevDealsScreen() {
   const weekDeals = deals.filter((d) => d.published === (week === 'live'));
 
   const cutouts = buildCutouts(weekDeals);
+  const homePicks = weekDeals
+    .filter((d) => d.home_pick !== null)
+    .sort((a, b) => (a.home_pick ?? 0) - (b.home_pick ?? 0));
+
+  async function toggleHomePick(deal: CuratedDeal) {
+    if (homePickBusy) return;
+    const picked = deal.home_pick === null;
+    if (picked && homePicks.length >= HOME_PICKS_MAX) {
+      setHomePickError(`Home shows ${HOME_PICKS_MAX} deals. Remove one first.`);
+      return;
+    }
+    setHomePickError(null);
+    setHomePickBusy(deal.id);
+    const result = await setHomePick(deal, picked);
+    setHomePickBusy(null);
+    if ('error' in result) {
+      setHomePickError(result.error);
+      return;
+    }
+    const places = new Map(result.picks.map((p) => [p.id, p.home_pick]));
+    setDeals((prev) => prev.map((d) => (places.has(d.id) ? { ...d, home_pick: places.get(d.id) ?? null } : d)));
+  }
   const selectedDeal = deals.find((d) => d.id === selectedId) ?? null;
   const selectedCutout = selectedCutoutKey ? (cutouts.get(selectedCutoutKey) ?? null) : null;
 
@@ -395,6 +420,8 @@ export default function DevDealsScreen() {
           setStartSplit(false);
         }}
         onOpenDeal={(deal) => setSelectedId(deal.id)}
+        homePickBusy={homePickBusy}
+        onToggleHomePick={toggleHomePick}
         onDealsUpdated={(updated) => {
           const byId = new Map(updated.map((d) => [d.id, d]));
           setDeals((prev) => prev.map((d) => byId.get(d.id) ?? d));
@@ -519,6 +546,49 @@ export default function DevDealsScreen() {
               </Text>
             </View>
           ))}
+        {/* Home's Top deals (Anabelle, 2026-10-26: "I also want to hand
+            pick myself which deals should showcase"). Picked with "+ Home"
+            on any deal below; empty slots fall back to the biggest
+            savings. */}
+        <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>
+            Home deals ({homePicks.length}/{HOME_PICKS_MAX})
+          </Text>
+          <Text style={styles.note}>
+            {homePicks.length === 0
+              ? 'None picked: Home shows the biggest savings. Tap "+ Home" on a deal to showcase it.'
+              : 'Shown first on Home, in this order. Non-members see the first 3. Empty slots show the biggest savings.'}
+          </Text>
+          {homePicks.map((d) => (
+            <View key={d.id} style={styles.homePickRow}>
+              <Text style={styles.homePickName} numberOfLines={1}>
+                {d.home_pick}. {d.item_name} <Text style={styles.dealRowStore}>{d.chain_name}</Text>
+                {d.status !== 'approved' ? <Text style={styles.note}> (not approved yet)</Text> : null}
+                {/* Zone deals only show to shoppers in that zone, so a
+                    pick can be missing from Home elsewhere. */}
+                {d.zone ? <Text style={styles.note}> (only in {d.zone})</Text> : null}
+              </Text>
+              <Pressable onPress={() => toggleHomePick(d)} disabled={homePickBusy !== null} hitSlop={8}>
+                <Text style={styles.textLink}>Remove</Text>
+              </Pressable>
+            </View>
+          ))}
+          {/* Shoppers only see picks from their own stores, so a mix
+              keeps most of them on everyone's Home. */}
+          {homePicks.length > 0 && (
+            <Text style={styles.note}>
+              By store:{' '}
+              {Array.from(
+                homePicks.reduce((m, d) => m.set(d.chain_name, (m.get(d.chain_name) ?? 0) + 1), new Map<string, number>())
+              )
+                .map(([chain, n]) => `${chain} ${n}`)
+                .join(' · ')}
+              . A shopper only sees the picks from their own stores.
+            </Text>
+          )}
+          {!!homePickError && <Text style={styles.saveError}>{homePickError}</Text>}
+        </View>
+
         <Text style={styles.subtitle}>
           {statusScoped.length} deal{statusScoped.length === 1 ? '' : 's'} · {unreviewedCount} not yet reviewed
         </Text>
@@ -543,6 +613,8 @@ export default function DevDealsScreen() {
         {visibleCutouts.map(({ cutout, title, unreviewed }) => {
           const single = cutout.deals.length === 1 && cutout.missingParts.length === 0;
           const deal = cutout.deals[0];
+          const openDeals = cutout.deals.filter((d) => d.status !== 'rejected');
+          const pickedDeal = openDeals.find((d) => d.home_pick !== null);
           return (
             <Pressable
               key={cutout.key}
@@ -591,22 +663,41 @@ export default function DevDealsScreen() {
                 {!!rowRejectError[cutout.key] && <Text style={styles.saveError}>{rowRejectError[cutout.key]}</Text>}
               </View>
               {cutout.deals.some((d) => d.status !== 'rejected') && (
-                <Pressable
-                  style={styles.rowRejectButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    rejectCutoutFromList(cutout.key, cutout.deals);
-                  }}
-                  disabled={rowRejecting.has(cutout.key)}
-                  hitSlop={8}
-                  accessibilityLabel={`Reject ${title}`}
-                >
-                  {rowRejecting.has(cutout.key) ? (
-                    <ActivityIndicator color={INK} size="small" />
+                <View style={styles.rowActions}>
+                  {/* On every card (Anabelle, 2026-10-26: "why dont all the
+                      deals have a home button"). One product left: toggles
+                      it here. Several: opens the cutout to pick which one. */}
+                  {openDeals.length === 1 ? (
+                    <HomePickButton
+                      deal={openDeals[0]}
+                      busy={homePickBusy === openDeals[0].id}
+                      onPress={() => toggleHomePick(openDeals[0])}
+                    />
                   ) : (
-                    <Text style={[styles.tertiaryButtonText, styles.rejectText]}>Reject</Text>
+                    <HomePickButton
+                      deal={pickedDeal ?? openDeals[0]}
+                      busy={false}
+                      checkZone={false}
+                      onPress={() => setSelectedCutoutKey(cutout.key)}
+                    />
                   )}
-                </Pressable>
+                  <Pressable
+                    style={styles.rowRejectButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      rejectCutoutFromList(cutout.key, cutout.deals);
+                    }}
+                    disabled={rowRejecting.has(cutout.key)}
+                    hitSlop={8}
+                    accessibilityLabel={`Reject ${title}`}
+                  >
+                    {rowRejecting.has(cutout.key) ? (
+                      <ActivityIndicator color={INK} size="small" />
+                    ) : (
+                      <Text style={[styles.tertiaryButtonText, styles.rejectText]}>Reject</Text>
+                    )}
+                  </Pressable>
+                </View>
               )}
             </Pressable>
           );
@@ -672,6 +763,9 @@ interface CutoutViewProps {
   startSplit?: boolean;
   // Rows changed on this screen (rejected without opening them).
   onDealsUpdated: (deals: CuratedDeal[]) => void;
+  // Home picks: which deal is saving, and the toggle itself.
+  homePickBusy: string | null;
+  onToggleHomePick: (deal: CuratedDeal) => void;
 }
 
 // One flyer cutout with more than one product on it: the photo once,
@@ -782,7 +876,84 @@ async function rejectDeal(deal: CuratedDeal): Promise<{ deal: CuratedDeal } | { 
   return { deal: data.deal };
 }
 
-function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, startSplit = false }: CutoutViewProps) {
+// Home's Top deals grid shows this many; the hand-picked ones go first
+// (set-deal-home-pick, Anabelle 2026-10-26).
+const HOME_PICKS_MAX = 12;
+
+// Adds a deal to, or removes it from, Home's hand-picked deals. Returns
+// every pick of that week with its (possibly renumbered) place.
+async function setHomePick(
+  deal: CuratedDeal,
+  picked: boolean
+): Promise<{ picks: { id: string; home_pick: number | null }[] } | { error: string }> {
+  const { data, error: invokeError } = await supabase.functions.invoke<{
+    picks?: { id: string; home_pick: number | null }[];
+    error?: string;
+  }>('set-deal-home-pick', { body: { deal_id: deal.id, picked } });
+  if (invokeError || !data?.picks) {
+    return { error: await functionErrorMessage(invokeError, data?.error, 'Could not update the Home deals.') };
+  }
+  return { picks: data.picks };
+}
+
+// "Home" toggle on a deal: outlined when not picked, orange with its
+// place ("Home 2") when it is.
+//
+// A zone-limited deal can't be picked (Anabelle, 2026-10-26: "how can it
+// be easier for me to ensure I am picking deals that can be shown on the
+// hp"): Home only shows it to shoppers in that zone, so for everyone else
+// the pick silently disappears. It shows "Zone only" instead. Still
+// removable if it was picked before this rule.
+function HomePickButton({
+  deal,
+  busy,
+  onPress,
+  checkZone = true,
+}: {
+  deal: CuratedDeal;
+  busy: boolean;
+  onPress: () => void;
+  // Off for a several-product card, whose button just opens the cutout.
+  checkZone?: boolean;
+}) {
+  const picked = deal.home_pick !== null;
+  if (!picked && checkZone && deal.zone) {
+    return (
+      <View style={[styles.homePickButton, styles.homePickButtonBlocked]} accessibilityLabel={`Only in ${deal.zone}, can't be on Home`}>
+        <Text style={[styles.tertiaryButtonText, styles.homePickBlockedText]}>Zone only</Text>
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      style={[styles.homePickButton, picked && styles.homePickButtonOn]}
+      onPress={(e) => {
+        e.stopPropagation();
+        onPress();
+      }}
+      disabled={busy}
+      hitSlop={8}
+      accessibilityLabel={picked ? `Remove ${deal.item_name} from Home` : `Show ${deal.item_name} on Home`}
+    >
+      {busy ? (
+        <ActivityIndicator color={INK} size="small" />
+      ) : (
+        <Text style={styles.tertiaryButtonText}>{picked ? `Home ${deal.home_pick}` : '+ Home'}</Text>
+      )}
+    </Pressable>
+  );
+}
+
+function CutoutView({
+  cutout,
+  onBack,
+  onOpenDeal,
+  onSplit,
+  onDealsUpdated,
+  startSplit = false,
+  homePickBusy,
+  onToggleHomePick,
+}: CutoutViewProps) {
   const photo = cutout.deals.find((d) => d.image_url)?.image_url ?? null;
 
   // The products still to split, grouped by the combined deal they come
@@ -972,9 +1143,16 @@ function CutoutView({ cutout, onBack, onOpenDeal, onSplit, onDealsUpdated, start
                 )}
               </View>
               {deal.status !== 'rejected' && (
-                <Pressable onPress={() => rejectDeals([deal])} disabled={rejecting} hitSlop={8}>
-                  <Text style={[styles.textLink, styles.rejectText]}>Reject</Text>
-                </Pressable>
+                <View style={styles.rowActions}>
+                  <HomePickButton
+                    deal={deal}
+                    busy={homePickBusy === deal.id}
+                    onPress={() => onToggleHomePick(deal)}
+                  />
+                  <Pressable onPress={() => rejectDeals([deal])} disabled={rejecting} hitSlop={8}>
+                    <Text style={[styles.textLink, styles.rejectText]}>Reject</Text>
+                  </Pressable>
+                </View>
               )}
             </Pressable>
           );
@@ -2354,6 +2532,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   cutoutDealRow: { alignItems: 'center' },
+  rowActions: { alignItems: 'flex-end', gap: 8 },
+  // "+ Home" / "Home 2" toggle; orange once picked.
+  homePickButton: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minHeight: 32,
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: INK,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+  },
+  homePickButtonOn: { backgroundColor: '#FFA955' },
+  homePickButtonBlocked: { borderColor: '#BDBDBD' },
+  homePickBlockedText: { color: '#767676' },
+  homePickRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  homePickName: { flex: 1, fontSize: 14, color: INK },
   splitFromDeal: { alignSelf: 'flex-start' },
   referenceBlock: { gap: 6 },
   referenceNameBox: {
