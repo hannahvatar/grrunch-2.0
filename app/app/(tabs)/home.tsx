@@ -7,7 +7,6 @@ import {
   ChevronRightIcon,
   ClockIcon,
   MagnifyingGlassPlusIcon,
-  TagIcon,
   UsersIcon,
 } from 'react-native-heroicons/outline';
 
@@ -289,8 +288,8 @@ function RecipeCarousel({
         onLayout={(e) => setViewportWidth(e.nativeEvent.layout.width)}
         contentContainerStyle={styles.carouselRow}
       >
-        {meals.map((meal, index) => (
-          <HomeRecipeCard key={meal.id} meal={meal} width={cardWidth} stacked={!isDesktop} bestDeal={index === 0} />
+        {meals.map((meal) => (
+          <HomeRecipeCard key={meal.id} meal={meal} width={cardWidth} stacked={!isDesktop} />
         ))}
         {/* Non-members: a locked 4th card in place of the next recipe
             (Anabelle, 2026-10-26). */}
@@ -308,13 +307,12 @@ function RecipeCarousel({
 }
 
 // Home's promotional recipe card, laid out after Anabelle's mockup
-// (2026-10-23): photo on the left (with a "Best deal" badge on the
-// carousel's first recipe, which is the best-deal sort's top pick); on the
-// right the time and servings, the title, the recipe's star deals (picked in
+// (2026-10-23): photo on the left (no "Best deal" badge, Anabelle
+// 2026-10-26); on the right the time and servings, the title, the recipe's star deals (picked in
 // dev-recipes; else the two biggest savings) as chips, the stores those deals come from, then the price per serving
 // (black, no total), and a View recipe button. Percent chips
 // keep the standing "Up to" wording (best-case numbers).
-function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width: number; stacked: boolean; bestDeal: boolean }) {
+function HomeRecipeCard({ meal, width, stacked }: { meal: Meal; width: number; stacked: boolean }) {
   const photo = getRecipeImage(meal.name, meal.imageUrl);
   // Anabelle's picked "star" deals (dev-recipes, recipes.star_deals) in
   // her order; otherwise the two biggest savings that earn a badge.
@@ -349,12 +347,6 @@ function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width:
     >
       <View style={[styles.recipeCardImageWrap, stacked && styles.recipeCardImageWrapStacked]}>
         {photo && <Image source={photo} style={styles.recipeCardImage} resizeMode="cover" />}
-        {bestDeal && (
-          <View style={styles.bestDealBadge}>
-            <TagIcon size={16} color="#fff" strokeWidth={2} />
-            <Text style={styles.bestDealBadgeText}>Best deal</Text>
-          </View>
-        )}
       </View>
 
       <View style={[styles.recipeCardBody, stacked && styles.recipeCardBodyStacked]}>
@@ -586,19 +578,6 @@ const styles = StyleSheet.create({
   recipeCardImageWrap: { width: '50%', alignSelf: 'stretch', backgroundColor: '#F5E3CF' },
   recipeCardImageWrapStacked: { width: '100%', aspectRatio: 1402 / 824 },
   recipeCardImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  bestDealBadge: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: INK,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  bestDealBadgeText: { color: '#fff', fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Content never overflows the card (Anabelle, 2026-10-23): rows wrap
   // and shrink instead of pushing past the right edge on narrower cards.
   recipeCardBody: { width: '50%', minWidth: 0, padding: CARD_BODY_PADDING, gap: 12 },
