@@ -64,6 +64,10 @@ interface IngredientRowProps {
   // renders the same image/name/price/badge display without a checkbox,
   // source line, or batch multiplier.
   meta?: string;
+  // My list: what each recipe needs, rendered as the recipe name with a
+  // smaller italic amount underneath (Anabelle, 2026-10-26). Replaces
+  // `meta` when set.
+  recipeUsages?: { source: string; usage?: string }[];
   checked?: boolean;
   onToggleCheck?: () => void;
   multiplier?: number;
@@ -170,6 +174,7 @@ export function IngredientRow({
   dealTag,
   estimatedPrice,
   meta,
+  recipeUsages,
   checked,
   onToggleCheck,
   multiplier,
@@ -368,7 +373,16 @@ export function IngredientRow({
           <ArrowOutwardIcon size={12} color={dealTag.productUrl ? INK : '#999'} />
         </Pressable>
       )}
-      {meta && <Text style={styles.itemMeta}>{meta}</Text>}
+      {recipeUsages ? (
+        recipeUsages.map((u, i) => (
+          <View key={`${u.source}-${i}`}>
+            <Text style={styles.itemMeta}>{u.source}</Text>
+            {!!u.usage && <Text style={styles.usageAmount}>{u.usage}</Text>}
+          </View>
+        ))
+      ) : (
+        meta && <Text style={styles.itemMeta}>{meta}</Text>
+      )}
       {useQuantityText && <Text style={styles.useQuantityText}>{useQuantityText}</Text>}
       {dealTag?.quantityEstimated && (
         <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
@@ -397,7 +411,16 @@ export function IngredientRow({
           <ArrowOutwardIcon size={12} color={dealTag.productUrl ? INK : '#999'} />
         </Pressable>
       )}
-      {meta && <Text style={styles.itemMeta}>{meta}</Text>}
+      {recipeUsages ? (
+        recipeUsages.map((u, i) => (
+          <View key={`${u.source}-${i}`}>
+            <Text style={styles.itemMeta}>{u.source}</Text>
+            {!!u.usage && <Text style={styles.usageAmount}>{u.usage}</Text>}
+          </View>
+        ))
+      ) : (
+        meta && <Text style={styles.itemMeta}>{meta}</Text>
+      )}
       {useQuantityText && <Text style={styles.useQuantityText}>{useQuantityText}</Text>}
       {dealTag?.quantityEstimated && (
         <Text style={styles.estimatedDisclaimer}>*Quantity is estimated. See store</Text>
@@ -768,9 +791,10 @@ const styles = StyleSheet.create({
   // deals) -- still shown, not hidden, but muted/no-underline to read
   // as disabled rather than a dead link.
   flyerLinkDisabled: { color: '#999', textDecorationLine: 'none' },
-  // My list's per-recipe needs ("Chowder Down: about 1 medium carrot"),
-  // one line per recipe. 14px caption per the type rule.
+  // My list: the recipe name (14px caption per the type rule), with its
+  // amount in a smaller italic line underneath (usageAmount).
   itemMeta: { fontSize: 14, lineHeight: 20, color: '#767676', marginTop: 2 },
+  usageAmount: { fontSize: 12, lineHeight: 16, fontStyle: 'italic', color: '#767676' },
   useQuantityText: { fontSize: 12, fontWeight: '400', fontFamily: 'OpenSans_400Regular', color: INK, marginTop: 2 },
   estimatedDisclaimer: { fontSize: 11, color: '#767676', fontStyle: 'italic', marginTop: 2 },
   itemRightColumn: { alignItems: 'flex-end', gap: 6 },
