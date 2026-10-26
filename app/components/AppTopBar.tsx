@@ -1,11 +1,12 @@
 import { router, usePathname } from 'expo-router';
 import { ComponentType, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { HomeIcon } from 'react-native-heroicons/outline';
+import { ChevronDownIcon, ChevronUpIcon, HomeIcon } from 'react-native-heroicons/outline';
 
 import { useAuth } from '../lib/auth';
-import { GRID_MARGIN, GRID_MAX_WIDTH, useIsDesktop } from '../lib/layout';
+import { GRID_MARGIN, GRID_MAX_WIDTH, HOME_ROUTE, useIsDesktop } from '../lib/layout';
 import { fetchProfile } from '../lib/profile';
+import { useSelectedMeals } from '../lib/selectedMeals';
 import { GrrunchMascot } from './GrrunchMascot';
 import { ListAltIcon, PersonIcon, RestaurantIcon, SellIcon } from './MaterialSymbols';
 import { NotificationBell } from './NotificationBell';
@@ -60,17 +61,36 @@ function useFirstName(): string | null {
   return savedName || providerName || null;
 }
 
-function ProfileButton({ label }: { label: string }) {
+// The page the profile button returns to when clicked again: the last
+// tab visited before Profile.
+let lastPageBeforeProfile: string = HOME_ROUTE;
+
+// The profile button works like a dropdown toggle (Anabelle, 2026-10-26):
+// the first click opens Profile, a second click closes it and goes back
+// to the page you were on.
+function useProfileToggle() {
   const pathname = usePathname();
-  const active = pathname === '/profile';
+  const open = pathname === '/profile';
+  useEffect(() => {
+    if (!open) lastPageBeforeProfile = pathname;
+  }, [open, pathname]);
+  const toggle = () => router.navigate((open ? lastPageBeforeProfile : '/profile') as never);
+  return { open, toggle };
+}
+
+function ProfileButton({ label }: { label: string }) {
+  const { open, toggle } = useProfileToggle();
+  const Chevron = open ? ChevronUpIcon : ChevronDownIcon;
   return (
     <Pressable
-      style={[styles.profilePill, active && styles.profilePillActive]}
-      onPress={() => router.navigate('/profile')}
-      accessibilityLabel="Profile"
+      style={[styles.profilePill, open && styles.profilePillActive]}
+      onPress={toggle}
+      accessibilityLabel={open ? 'Close profile' : 'Open profile'}
+      accessibilityState={{ expanded: open }}
     >
       <PersonIcon size={20} color={INK} />
       <Text style={styles.profilePillText}>{label}</Text>
+      <Chevron size={16} color={INK} strokeWidth={2.5} />
     </Pressable>
   );
 }
@@ -99,6 +119,9 @@ function DesktopTopBar() {
   const { isGuest } = useAuth();
   const pathname = usePathname();
   const firstName = useFirstName();
+  // Recipes on the list, as a badge by "My list" (Anabelle, 2026-10-26).
+  const { selectedIds } = useSelectedMeals();
+  const listCount = selectedIds.size;
   return (
     <View style={styles.desktopBar}>
       <View style={styles.desktopInner}>
@@ -115,6 +138,11 @@ function DesktopTopBar() {
                   <View style={styles.navLinkRow}>
                     <Icon size={20} color={active ? INK : '#767676'} />
                     <Text style={[styles.navLinkText, active && styles.navLinkTextActive]}>{label}</Text>
+                    {path === '/grocery' && listCount > 0 && (
+                      <View style={styles.countBadge} accessibilityLabel={`${listCount} recipes on your list`}>
+                        <Text style={styles.countBadgeText}>{listCount}</Text>
+                      </View>
+                    )}
                   </View>
                   <View style={[styles.navUnderline, active && styles.navUnderlineActive]} />
                 </Pressable>
@@ -141,6 +169,7 @@ function DesktopTopBar() {
 export function AppTopBar() {
   const { isGuest } = useAuth();
   const isDesktop = useIsDesktop();
+  const profile = useProfileToggle();
   if (isDesktop) return <DesktopTopBar />;
 
   return (
@@ -168,7 +197,12 @@ export function AppTopBar() {
               straight into the existing Profile tab (group segments like
               "(tabs)" don't appear in the URL, so this is just '/profile',
               same pattern stores.tsx already uses for '/best-deals'). */}
-          <Pressable style={styles.profileButton} onPress={() => router.push('/profile')} hitSlop={8}>
+          <Pressable
+            style={[styles.profileButton, profile.open && styles.profilePillActive]}
+            onPress={profile.toggle}
+            hitSlop={8}
+            accessibilityLabel={profile.open ? 'Close profile' : 'Open profile'}
+          >
             <PersonIcon size={20} color={INK} />
           </Pressable>
         </View>
@@ -224,6 +258,17 @@ const styles = StyleSheet.create({
   navLink: { justifyContent: 'center', height: '100%' },
   navLinkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   navLinkText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: '#767676' },
+  // Orange count badge with black type (Anabelle, 2026-10-26).
+  countBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countBadgeText: { fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   navLinkTextActive: { fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   // Active tab: ink bar along the bottom edge of the nav bar.
   navUnderline: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: 'transparent' },
