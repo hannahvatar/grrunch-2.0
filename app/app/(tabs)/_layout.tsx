@@ -6,6 +6,7 @@ import { AppTopBar } from '../../components/AppTopBar';
 import { ListAltIcon, PersonIcon, RestaurantIcon, SellIcon } from '../../components/MaterialSymbols';
 import { PhoneColumn } from '../../components/WebFrame';
 import { useIsDesktop } from '../../lib/layout';
+import { useSelectedMeals } from '../../lib/selectedMeals';
 
 // AppTopBar sits outside <Tabs> entirely (not per-screen) so it's one
 // persistent instance across every tab switch -- see its own header
@@ -19,6 +20,9 @@ const DESKTOP_READY_TABS = new Set(['/home', '/best-deals', '/recipes', '/grocer
 
 export default function TabsLayout() {
   const isDesktop = useIsDesktop();
+  // Recipes on the list, as an orange badge on the My list tab (Anabelle,
+  // 2026-10-26; same badge as the desktop top bar's).
+  const listCount = useSelectedMeals().selectedIds.size;
   const { width } = useWindowDimensions();
   const pathname = usePathname();
   const framed = isDesktop && !DESKTOP_READY_TABS.has(pathname);
@@ -54,7 +58,12 @@ export default function TabsLayout() {
         <Tabs.Screen name="meals" options={{ href: null }} />
         <Tabs.Screen
           name="grocery"
-          options={{ title: 'My list', tabBarIcon: ({ color }) => <ListAltIcon size={22} color={color} /> }}
+          options={{
+            title: 'My list',
+            tabBarIcon: ({ color }) => <ListAltIcon size={22} color={color} />,
+            tabBarBadge: listCount > 0 ? listCount : undefined,
+            tabBarBadgeStyle: { backgroundColor: '#FFA955', color: '#111', fontWeight: '800', fontSize: 11 },
+          }}
         />
         <Tabs.Screen
           name="profile"
