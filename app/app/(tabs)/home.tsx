@@ -48,7 +48,12 @@ const IMAGE_WIDTH = 400;
 const CARD_MAX_WIDTH = 820;
 const CARD_PEEK = 64;
 const CARD_GAP = 16;
-const DEALS_SHOWN = 5;
+// Top deals grid (Anabelle, 2026-10-26): 3 tiles a row on desktop (4 was
+// too tall and narrow), 2 on a phone; 6 tiles fills both evenly.
+const DEALS_SHOWN = 6;
+const DEAL_COLUMNS_DESKTOP = 3;
+const DEAL_COLUMNS_PHONE = 2;
+const DEAL_GAP = 16;
 // Same free-tier caps as Meals (3 picked recipes) and Weekly Deals (1 per
 // category), so Home never shows a non-member anything those pages lock.
 const FREE_DEALS_PER_CATEGORY = 1;
@@ -75,6 +80,7 @@ export default function HomeScreen() {
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
   const [allDeals, setAllDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dealsGridWidth, setDealsGridWidth] = useState(0);
 
   useEffect(() => {
     Promise.all([fetchAllRecipes(), fetchAllDeals()])
@@ -117,6 +123,10 @@ export default function HomeScreen() {
     (categoryDeals) => selectVisibleDeals(categoryDeals, isSubscribed, FREE_DEALS_PER_CATEGORY).visibleDeals
   );
   const topDeals = [...visibleDeals].sort(bySavingsDesc).slice(0, DEALS_SHOWN);
+  const dealColumns = isDesktop ? DEAL_COLUMNS_DESKTOP : DEAL_COLUMNS_PHONE;
+  // From the grid's own measured width, so tiles fit the phone column on
+  // web as well as the full screen on iPhone.
+  const dealTileWidth = Math.floor((dealsGridWidth - DEAL_GAP * (dealColumns - 1)) / dealColumns);
 
   return (
     <View style={styles.container}>
@@ -134,9 +144,9 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Top deals</Text>
           <ArrowLink label="See all deals" onPress={() => router.navigate('/best-deals')} />
         </View>
-        <View style={styles.dealsCard}>
-          {topDeals.map((deal, index) => (
-            <DealRow key={deal.id} deal={deal} first={index === 0} />
+        <View style={styles.dealsGrid} onLayout={(e) => setDealsGridWidth(e.nativeEvent.layout.width)}>
+          {dealsGridWidth > 0 && topDeals.map((deal) => (
+            <DealTile key={deal.id} deal={deal} width={dealTileWidth} />
           ))}
         </View>
 
@@ -330,29 +340,18 @@ function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width:
   );
 }
 
-// Compact deal row: cutout, name, store, price and the same savings badge
-// Weekly Deals shows. Tapping it opens Weekly Deals.
-function DealRow({ deal, first }: { deal: Deal; first: boolean }) {
+// Deal tile for the Top deals grid: the flyer cutout on top (whole, not
+// cropped) with the same savings badge Weekly Deals shows, then name,
+// store and price. Tapping it opens Weekly Deals.
+function DealTile({ deal, width }: { deal: Deal; width: number }) {
   const price = formatDealBadgePrice(deal.price, deal.priceUnit, deal.packageWeightG);
   const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG);
   return (
-    <Pressable style={[styles.dealRow, !first && styles.dealRowDivider]} onPress={() => router.navigate('/best-deals')}>
-      {deal.imageUrl ? (
-        <Image source={{ uri: deal.imageUrl }} style={styles.dealImage} resizeMode="cover" />
-      ) : (
-        <View style={styles.dealImage} />
-      )}
-      <View style={styles.dealInfo}>
-        <Text style={styles.dealName} numberOfLines={2}>
-          {toTitleCase(deal.itemName)}
-        </Text>
-        <Text style={styles.dealStore}>{deal.chainName}</Text>
+    <Pressable style={[styles.dealTile, { width }]} onPress={() => router.navigate('/best-deals')}>
+      <View style={styles.dealTileImageWrap}>
+        {deal.imageUrl && <Image source={{ uri: deal.imageUrl }} style={styles.dealTileImage} resizeMode="contain" />}
       </View>
-      <View style={styles.dealPriceBlock}>
-        <Text style={styles.dealPrice}>
-          ${price.toFixed(2)}
-          {suffix}
-        </Text>
+      <View style={styles.dealTileBody}>
         {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
           <View style={[styles.badge, styles.badgeDiscount]}>
             <Text style={[styles.badgeText, styles.badgeDiscountText]}>{formatRealDiscountLabel(deal.discountPct)}</Text>
@@ -362,6 +361,14 @@ function DealRow({ deal, first }: { deal: Deal; first: boolean }) {
             <Text style={[styles.badgeText, styles.badgeGreatText]}>{formatGreatReferenceValueLabel(deal.discountPct)}</Text>
           </View>
         ) : null}
+        <Text style={styles.dealName} numberOfLines={2}>
+          {toTitleCase(deal.itemName)}
+        </Text>
+        <Text style={styles.dealStore}>{deal.chainName}</Text>
+        <Text style={styles.dealPrice}>
+          ${price.toFixed(2)}
+          {suffix}
+        </Text>
       </View>
     </Pressable>
   );
@@ -480,21 +487,23 @@ const styles = StyleSheet.create({
   },
   viewRecipeButtonText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   sectionTitle: { fontSize: 20, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  dealsCard: {
+  dealsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: DEAL_GAP },
+  // Same white card / 2px ink border as the recipe cards.
+  dealTile: {
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: INK,
     borderRadius: 16,
-    paddingHorizontal: 16,
+    overflow: 'hidden',
   },
-  dealRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  dealRowDivider: { borderTopWidth: 1, borderTopColor: '#E0C9AE' },
-  dealImage: { width: 56, height: 56, borderRadius: 8, backgroundColor: '#F5F0EA' },
-  dealInfo: { flex: 1, gap: 2 },
+  dealTileImageWrap: { width: '100%', aspectRatio: 4 / 3, padding: 12, backgroundColor: '#fff' },
+  dealTileImage: { width: '100%', height: '100%' },
+  // The badge sits first, above the name; flex-start keeps it hugging
+  // its text instead of stretching across the tile.
+  dealTileBody: { flex: 1, padding: 12, paddingTop: 0, gap: 4, alignItems: 'flex-start' },
   dealName: { fontSize: 16, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   dealStore: { fontSize: 14, color: '#767676' },
-  dealPriceBlock: { alignItems: 'flex-end', gap: 4 },
-  dealPrice: { fontSize: 16, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  dealPrice: { fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK, marginTop: 'auto', paddingTop: 4 },
   // Same badge colors as Weekly Deals (blue = real store discount,
   // purple = great value against a reference price).
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
