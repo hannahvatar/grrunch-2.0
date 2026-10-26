@@ -175,7 +175,9 @@ export default function HomeScreen() {
               />
             </View>
           )}
-          <Text style={styles.tagline}>The best deals from this week's flyers, and the recipes we made from them.</Text>
+          <Text style={styles.tagline}>
+            We hunted down this week's grocery bargains and cooked up delicious ways to make the most of them.
+          </Text>
         </View>
 
         <RecipeCarousel meals={meals} isDesktop={isDesktop} windowWidth={windowWidth} />
