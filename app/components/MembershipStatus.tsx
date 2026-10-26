@@ -17,6 +17,7 @@ import {
   TRIAL_URGENCY_STYLES,
   useSubscription,
 } from '../lib/subscription';
+import { ProgressBar } from './ProgressBar';
 import { UpgradeCta } from './UpgradeCta';
 
 const ACCENT = '#FFA955';
@@ -122,16 +123,11 @@ export function MembershipStatus() {
           <urgency.Icon size={14} color={urgency.strong} />
           <Text style={[styles.confirmBadgeText, { color: urgency.strong }]}>Free trial</Text>
         </View>
-        <View style={styles.trialProgressRow}>
-          <View style={styles.trialProgressTrack}>
-            <View
-              style={[styles.trialProgressFill, { width: `${trialProgress * 100}%`, backgroundColor: urgency.strong }]}
-            />
-          </View>
-          <Text style={styles.trialProgressLabel}>
-            {trialDaysLeft} {trialDaysLeft === 1 ? 'day' : 'days'} left
-          </Text>
-        </View>
+        <ProgressBar
+          progress={trialProgress}
+          label={`${trialDaysLeft} ${trialDaysLeft === 1 ? 'day' : 'days'} left`}
+          tier={getTrialUrgencyTier(trialDaysLeft)}
+        />
         <Text style={styles.membershipSubtitle}>
           {activePriceLabel
             ? `Then ${activePriceLabel} · Cancel anytime`
@@ -309,17 +305,6 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   confirmBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
-  trialProgressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  trialProgressTrack: {
-    flex: 1,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#F0F0F0',
-    overflow: 'hidden',
-  },
-  // backgroundColor set inline per urgency tier, same as confirmBadge.
-  trialProgressFill: { height: '100%', borderRadius: 4 },
-  trialProgressLabel: { fontSize: 12, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   trialCardActions: { flexDirection: 'row', gap: 10 },
   // Real btn-secondary-destructive -- same pill shape/height as every
   // other paired-button row in the app (StatusScreen's primary/secondary,

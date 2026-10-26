@@ -16,6 +16,7 @@ import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { openInNewTab } from '../../components/IngredientRow';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { CutoutViewer } from '../../components/CutoutViewer';
+import { ProgressBar } from '../../components/ProgressBar';
 import { UpgradeCta } from '../../components/UpgradeCta';
 import { WeekGapState } from '../../components/WeekGapState';
 import {
@@ -32,7 +33,7 @@ import {
 } from '../../lib/curatedDeals';
 import { filterDealsByZone } from '../../lib/dealZones';
 import { gridSpan, useIsDesktop } from '../../lib/layout';
-import { useLiveWeek, useWeekValidityLabel } from '../../lib/liveWeek';
+import { useLiveWeek, useWeekDaysLeft, useWeekValidityLabel } from '../../lib/liveWeek';
 import type { Meal } from '../../lib/mealData';
 import { sortMealsByBestDeal } from '../../lib/mealScaling';
 import { getRecipeImage } from '../../lib/recipeImages';
@@ -78,6 +79,7 @@ export default function HomeScreen() {
   const { stores: myStores } = useSelectedStores();
   const liveWeek = useLiveWeek();
   const weekValidity = useWeekValidityLabel();
+  const weekDaysLeft = useWeekDaysLeft();
   const weekClosed = liveWeek?.closed ?? false;
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
@@ -159,6 +161,20 @@ export default function HomeScreen() {
         <View>
           <Text style={styles.title}>This week at Grrunch</Text>
           {weekValidity && <Text style={styles.weekValidity}>{weekValidity}</Text>}
+          {/* The free trial's time-left bar under the dates, so it reads
+              as a short window (Anabelle, 2026-10-26). */}
+          {weekDaysLeft && (
+            <View style={styles.weekCountdown}>
+              <ProgressBar
+                progress={weekDaysLeft.daysLeft / weekDaysLeft.totalDays}
+                label={
+                  weekDaysLeft.daysLeft <= 1 ? 'Last day!' : `${weekDaysLeft.daysLeft} days left`
+                }
+                tier={weekDaysLeft.daysLeft <= 1 ? 'error' : weekDaysLeft.daysLeft <= 3 ? 'warning' : 'success'}
+                trackColor="#fff"
+              />
+            </View>
+          )}
           <Text style={styles.tagline}>The best deals from this week's flyers, and the recipes we made from them.</Text>
         </View>
 
@@ -453,6 +469,8 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   weekValidity: { fontSize: 14, color: '#343837', marginTop: 2 },
+  // Bar kept short, like it is in the trial card.
+  weekCountdown: { maxWidth: 320, marginTop: 8 },
   tagline: { fontSize: 16, lineHeight: 24, color: INK, marginTop: 8 },
   sectionHeaderRow: {
     flexDirection: 'row',
