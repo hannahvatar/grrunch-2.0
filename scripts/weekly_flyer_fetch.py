@@ -100,10 +100,12 @@ CHAIN_URLS = {
 }
 
 # The categories the app already groups Weekly Deals by, plus Dairy &
-# Eggs and Beverages -- which previously had nowhere to go but "Other".
+# Eggs. Snacks and Beverages are no longer fetched (Anabelle, 2026-10-26:
+# no beverages, snacks or desserts from the week of 2026-10-29 on), so
+# they're gone from the list the picker can choose from.
 CATEGORIES = [
     "Produce", "Meat & Seafood", "Dairy & Eggs", "Bakery", "Deli",
-    "Frozen", "Pantry", "Snacks", "Beverages",
+    "Frozen", "Pantry",
 ]
 PRICE_UNITS = ["package", "each", "lb", "kg", "100g"]
 
@@ -322,13 +324,13 @@ PICK_PROMPT = """You are sorting this week's grocery flyer for Grrunch, a Britis
 
 Below is part of {chain}'s flyer: one item per line as `id | name | brand | price`. The price is the flyer's sale price when the flyer data has one; the pictures (which you don't see here) carry the rest.
 
-Keep grocery food and drink someone would buy for home cooking or eating: produce, meat and seafood, dairy and eggs, bakery, deli, frozen, pantry staples, snacks, non-alcoholic beverages. Skip everything else: household and cleaning products, personal care, health and pharmacy, baby formula, pet food and supplies, alcohol, tobacco, gift cards, clothing, electronics, home goods, and anything that isn't a product (store banners, coupons, loyalty-points offers with no product).
+Keep grocery food someone would buy for home cooking: produce, meat and seafood, dairy and eggs (milk included), bakery bread, deli, frozen, pantry staples. Skip snacks (chips, crackers, popcorn, pretzels, candy, chocolate, cookies, granola and snack bars, fruit snacks), beverages of any kind (pop, juice, water, sparkling water, coffee, tea, energy and sports drinks, drink mixes, kombucha), and desserts (cakes, pies, pastries, donuts, muffins, ice cream and frozen treats, puddings, sweet spreads like chocolate spread). Also skip everything else: household and cleaning products, personal care, health and pharmacy, baby formula, pet food and supplies, alcohol, tobacco, gift cards, clothing, electronics, home goods, and anything that isn't a product (store banners, coupons, loyalty-points offers with no product).
 
 For each item you keep:
 - name: a clean shopper-facing name -- brand plus product, normal capitalization, no trademark symbols, no size ranges or "up to" text (e.g. "PC® BLUE MENU® EXTRA LEAN CHICKEN BREASTS, up to 420 g" -> "PC Blue Menu Extra Lean Chicken Breasts").
 - category: the best fit from the allowed list.
-- usage: "recipes" when it's a cooking ingredient a recipe could be built around or use (proteins, produce, dairy, grains, sauces, bread...); "deals" when it's mainly eaten as-is (snacks, drinks, desserts, ready meals).
-- recipe_ingredient: true when it's a good, versatile ingredient for affordable home cooking in general -- the kind of thing many everyday recipes use (chicken thighs, ground beef, eggs, rice, pasta, canned tomatoes, onions, cheese, frozen vegetables). false for snacks, drinks, desserts, ready meals, and niche specialty items.
+- usage: "recipes" when it's a cooking ingredient a recipe could be built around or use (proteins, produce, dairy, grains, sauces, bread...); "deals" when it's mainly eaten as-is (ready meals).
+- recipe_ingredient: true when it's a good, versatile ingredient for affordable home cooking in general -- the kind of thing many everyday recipes use (chicken thighs, ground beef, eggs, rice, pasta, canned tomatoes, onions, cheese, frozen vegetables). false for ready meals and niche specialty items.
 
 Return only the items you keep.
 
