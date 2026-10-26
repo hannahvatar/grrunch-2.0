@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   CheckIcon,
@@ -99,6 +99,18 @@ export default function BestDealsScreen() {
   // Cutout shown full screen (tap a deal's thumbnail) -- one viewer for
   // the whole page rather than one per deal.
   const [zoomUri, setZoomUri] = useState<string | null>(null);
+  // Opened from a Home deal's "View deal" (/best-deals?deal=<id>, Anabelle
+  // 2026-10-26: "drive to the exact deal, landing on an open accordion"):
+  // its section opens, the page scrolls to it and it's tinted briefly.
+  const { deal: focusDealParam } = useLocalSearchParams<{ deal?: string }>();
+  const [focusDealId, setFocusDealId] = useState<string | null>(null);
+  const [highlightDealId, setHighlightDealId] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  // Layout offsets for scrolling to a deal: each section's y in the page,
+  // its deal list's y in the section, and each deal's y in that list.
+  const sectionY = useRef(new Map<string, number>());
+  const gridY = useRef(new Map<string, number>());
+  const dealY = useRef(new Map<string, number>());
   // Store chips (shared with Meals and My list, lib/storeFilter.tsx):
   // an unselected chain's deals are hidden here.
   const { hiddenChains } = useStoreFilter();
@@ -146,6 +158,46 @@ export default function BestDealsScreen() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [liveWeek?.publishedAt]);
+
+  // Take the requested deal once the deals are in, then clear the param
+  // so coming back to the tab doesn't jump again.
+  useEffect(() => {
+    if (!focusDealParam || loading) return;
+    const target = allDeals.find((d) => d.id === focusDealParam);
+    router.setParams({ deal: undefined });
+    if (!target) return;
+    setSortMode('value');
+    setExpandedCategories((prev) => new Set(prev).add(target.category));
+    setFocusDealId(target.id);
+    setHighlightDealId(target.id);
+  }, [focusDealParam, loading, allDeals]);
+
+  useEffect(() => {
+    if (!highlightDealId) return;
+    const timer = setTimeout(() => setHighlightDealId(null), 2500);
+    return () => clearTimeout(timer);
+  }, [highlightDealId]);
+
+  // Section was already open: the deal won't lay out again, so scroll
+  // from the offsets already recorded.
+  useEffect(() => {
+    if (!focusDealId || !dealY.current.has(focusDealId)) return;
+    const target = allDeals.find((d) => d.id === focusDealId);
+    if (target) scrollToFocusDeal(target.category);
+  }, [focusDealId]);
+
+  // Called from the deal's own onLayout once its section has opened.
+  function scrollToFocusDeal(category: string) {
+    if (!focusDealId) return;
+    const id = focusDealId;
+    // Next frame, so the section's and list's own layouts are in too.
+    setTimeout(() => {
+      const y =
+        (sectionY.current.get(category) ?? 0) + (gridY.current.get(category) ?? 0) + (dealY.current.get(id) ?? 0);
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+      setFocusDealId(null);
+    }, 50);
+  }
 
   function toggleCategory(category: string) {
     setExpandedCategories((prev) => {
@@ -204,7 +256,7 @@ export default function BestDealsScreen() {
     <View style={styles.container}>
       <ClosingSoonBanner />
       {zoomUri && <CutoutViewer uri={zoomUri} visible onClose={() => setZoomUri(null)} />}
-      <ScrollView contentContainerStyle={[styles.scrollContent, desktopContent]}>
+      <ScrollView ref={scrollRef} contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View style={styles.headerRow}>
           <View style={styles.titleFlex}>
             <Text style={styles.title}>Grrunch Picks</Text>
@@ -291,6 +343,7 @@ export default function BestDealsScreen() {
             <View
               key={category}
               style={[styles.categorySection, categoryIndex === categories.length - 1 && styles.categorySectionLast]}
+              onLayout={(e) => sectionY.current.set(category, e.nativeEvent.layout.y)}
             >
               <Pressable
                 style={styles.categoryHeader}
@@ -314,15 +367,27 @@ export default function BestDealsScreen() {
               </Pressable>
 
               {isExpanded && (
-                <View style={styles.dealsGrid}>
+                <View style={styles.dealsGrid} onLayout={(e) => gridY.current.set(category, e.nativeEvent.layout.y)}>
                   {visibleDeals.map((deal, dealIndex) => {
                     const isAdded = selectedDealIds.has(deal.id);
                     const startsCategory =
                       sortMode === 'store' && (dealIndex === 0 || visibleDeals[dealIndex - 1].category !== deal.category);
                     return (
-                      <View key={deal.id}>
+                      <View
+                        key={deal.id}
+                        onLayout={(e) => {
+                          dealY.current.set(deal.id, e.nativeEvent.layout.y);
+                          if (deal.id === focusDealId) scrollToFocusDeal(category);
+                        }}
+                      >
                       {startsCategory && <Text style={styles.storeCategoryHeader}>{deal.category}</Text>}
-                      <View style={[styles.dealCard, dealIndex > 0 && !startsCategory && styles.dealCardDivider]}>
+                      <View
+                        style={[
+                          styles.dealCard,
+                          dealIndex > 0 && !startsCategory && styles.dealCardDivider,
+                          deal.id === highlightDealId && styles.dealCardHighlight,
+                        ]}
+                      >
                         <Pressable style={styles.dealCardTop} onPress={() => Linking.openURL(deal.productUrl)}>
                           {/* Tapping the thumbnail zooms the cutout (same as
                               recipe and grocery cards); the rest of the row
@@ -626,6 +691,8 @@ const styles = StyleSheet.create({
   // dividers between categories so categories still read as the
   // sections and deals as the list inside one.
   dealCardDivider: { borderTopWidth: 1, borderTopColor: '#B8B0A7' },
+  // The deal "View deal" on Home pointed to, tinted for a moment.
+  dealCardHighlight: { backgroundColor: '#FFD9B3', borderRadius: 12, marginHorizontal: -8, paddingHorizontal: 8 },
   // Image left, name/store/price column right -- same horizontal-row
   // shape as IngredientRow's own default (non-stacked) layout.
   dealCardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },

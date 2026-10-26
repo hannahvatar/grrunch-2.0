@@ -45,7 +45,7 @@ const INK = '#111';
 // web behavior. On native there's no tab concept -- Linking.openURL
 // hands off to the system browser / an in-app browser view instead,
 // the closest equivalent.
-function openInNewTab(url: string) {
+export function openInNewTab(url: string) {
   if (Platform.OS === 'web') {
     window.open(url, '_blank', 'noopener,noreferrer');
   } else {

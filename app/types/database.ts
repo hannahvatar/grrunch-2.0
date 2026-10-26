@@ -51,6 +51,7 @@ export type Database = {
           flyer_valid_from: string
           flyer_valid_to: string
           fragment_by_weight: boolean
+          home_free: boolean
           home_pick: number | null
           id: string
           image_url: string | null
@@ -86,6 +87,7 @@ export type Database = {
           flyer_valid_from: string
           flyer_valid_to: string
           fragment_by_weight?: boolean
+          home_free?: boolean
           home_pick?: number | null
           id?: string
           image_url?: string | null
@@ -121,6 +123,7 @@ export type Database = {
           flyer_valid_from?: string
           flyer_valid_to?: string
           fragment_by_weight?: boolean
+          home_free?: boolean
           home_pick?: number | null
           id?: string
           image_url?: string | null
