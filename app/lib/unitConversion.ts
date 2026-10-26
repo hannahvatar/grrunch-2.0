@@ -1003,6 +1003,45 @@ export function computeDealPackageCount(
   return Math.max(1, Math.round(multiplier));
 }
 
+// How much of ONE package a fragmented deal line uses, as a fraction
+// (e.g. 60 g of a 2268 g carrot bag -> 0.026). Lets My list merge the same
+// deal used by several recipes into one row sized from the combined amount
+// (Anabelle, 2026-10-26: carrots from two recipes showed as two packages).
+// Undefined when the line isn't fragmented by weight or its amount can't
+// be turned into a share of the package -- the caller then counts whole
+// packages per recipe instead. Mirrors computeDealPackageCount's
+// fragmented branches (g, mL, mL-to-g density bridge, whole items via the
+// average-weight bridge).
+export function dealPackageShare(
+  quantity: string | undefined,
+  unit: string | undefined,
+  packageWeightG: number | undefined,
+  fragmentByWeight: boolean | undefined,
+  multiplier: number,
+  packageVolumeMl?: number,
+  ingredientName?: string
+): number | undefined {
+  if (!fragmentByWeight) return undefined;
+  const ua = parseUnitAmount(quantity, unit);
+  if (Number.isNaN(ua.amount)) return undefined;
+  if (ua.baseUnit === 'g' && packageWeightG) return (ua.amount * multiplier) / packageWeightG;
+  if (ua.baseUnit === 'ml' && packageVolumeMl) return (ua.amount * multiplier) / packageVolumeMl;
+  const ingWords = ingredientName ? normalizeWords(ingredientName) : [];
+  const matches = (name: string) => {
+    const words = normalizeWords(name);
+    return words.length > 0 && words.every((w) => ingWords.includes(w));
+  };
+  if (ua.baseUnit === 'ml' && packageWeightG && ingredientName) {
+    const density = Object.entries(STAPLE_DENSITIES_G_PER_CUP).find(([name]) => matches(name));
+    if (density) return ((ua.amount / 236.588) * density[1] * multiplier) / packageWeightG;
+  }
+  if (ua.baseUnit === 'each' && packageWeightG && ingredientName) {
+    const avg = Object.entries(STAPLE_AVG_WEIGHT_G_PER_EACH).find(([name]) => matches(name));
+    if (avg) return (ua.amount * avg[1] * multiplier) / packageWeightG;
+  }
+  return undefined;
+}
+
 export function describeDealPackage(
   recipeQuantity: string | undefined,
   recipeUnit: string | undefined,

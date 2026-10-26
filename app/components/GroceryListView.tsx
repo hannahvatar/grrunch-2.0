@@ -8,7 +8,7 @@ import { gridSpan, useIsDesktop } from '../lib/layout';
 import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
 import { scaleIngredientDisplay } from '../lib/mealScaling';
-import { formatScaledQuantity } from '../lib/unitConversion';
+import { computeDealPackageCount, dealPackageShare, formatScaledQuantity } from '../lib/unitConversion';
 import { useLiveWeek, useWeekValidityLabel } from '../lib/liveWeek';
 import { fetchRecipesByIds } from '../lib/recipes';
 import { useSelectedDeals } from '../lib/selectedDeals';
@@ -76,6 +76,9 @@ interface GroceryItem {
   // these undefined.
   quantity?: string;
   unit?: string;
+  // Set on a row that merges the same deal from several recipes: the
+  // packages their combined amount needs (see mergeSameDealItems).
+  packageCount?: number;
   // The store this item is grouped under: the ingredient's own deal.
   // An ingredient the recipe doesn't use a deal for stays in "Other
   // items", even if some flyer has it (Anabelle, 2026-10-09: cilantro
@@ -127,6 +130,72 @@ function mapDealToGroceryItem(deal: Deal): GroceryItem {
       originalPriceSource: deal.originalPriceSource,
     },
   };
+}
+
+// The same deal pulled in by several recipes becomes ONE row (Anabelle,
+// 2026-10-26: carrots for Sauce Boss Chicken and Chowder Down showed as
+// two packages). Its package count comes from the recipes' combined
+// amount when every line converts to a share of the package (60 g + 100 g
+// of a 2268 g bag = 1 bag); otherwise each recipe's own whole-package
+// count is added up. Rows are matched on store + the deal's own item name.
+// A manual quantity edit on the merged row (keyed `deal-...`) wins, same
+// as on any other row.
+function mergeSameDealItems(items: GroceryItem[], quantityOverrides: Map<string, string>): GroceryItem[] {
+  const dealKey = (item: GroceryItem) =>
+    `${item.dealTag!.store ?? ''}|${(item.dealTag!.dealItemName ?? item.dealTag!.name).toLowerCase()}`;
+  const groups = new Map<string, GroceryItem[]>();
+  for (const item of items) {
+    if (!item.dealTag) continue;
+    const key = dealKey(item);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
+  const seen = new Set<string>();
+  const merged: GroceryItem[] = [];
+  for (const item of items) {
+    if (!item.dealTag) {
+      merged.push(item);
+      continue;
+    }
+    const key = dealKey(item);
+    const group = groups.get(key)!;
+    if (group.length === 1) {
+      merged.push(item);
+      continue;
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const tag = item.dealTag;
+    const shares = group.map((g) =>
+      dealPackageShare(g.quantity, g.unit, tag.packageWeightG, tag.fragmentByWeight, g.multiplier ?? 1, tag.packageVolumeMl, tag.name)
+    );
+    const packageCount = shares.every((share) => share !== undefined)
+      ? Math.max(1, Math.ceil(shares.reduce((sum, share) => sum! + share!, 0)! - 1e-9))
+      : group.reduce(
+          (sum, g) =>
+            sum +
+            computeDealPackageCount(
+              g.quantity,
+              g.unit,
+              tag.packageWeightG,
+              tag.fragmentByWeight,
+              g.multiplier ?? 1,
+              tag.packageVolumeMl,
+              tag.bundleCount,
+              tag.name,
+              tag.priceUnit
+            ),
+          0
+        );
+    const mergedKey = `deal-${key}`;
+    merged.push({
+      ...item,
+      key: mergedKey,
+      source: Array.from(new Set(group.map((g) => g.source))).join(', '),
+      multiplier: undefined,
+      packageCount: quantityOverrides.has(mergedKey) ? undefined : packageCount,
+    });
+  }
+  return merged;
 }
 
 function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
@@ -415,7 +484,7 @@ export function GroceryListView() {
   // items"/"N stores" in the header, and which store cards even show
   // up, all reflect what's actually left on the list.
   const customGroceryItems: GroceryItem[] = customItems.map(mapCustomItemToGroceryItem);
-  const allItems: GroceryItem[] = [...recipeItems, ...dealItems, ...customGroceryItems];
+  const allItems: GroceryItem[] = [...mergeSameDealItems(recipeItems, quantityOverrides), ...dealItems, ...customGroceryItems];
   const items: GroceryItem[] = allItems.filter((item) => !removedKeys.has(item.key));
 
   // Anything Reset would actually undo: an edited quantity on an item
@@ -640,6 +709,7 @@ export function GroceryListView() {
                 checked={checked.has(item.key)}
                 onToggleCheck={() => toggleChecked(item.key)}
                 multiplier={item.multiplier}
+                packageCount={item.packageCount}
                 quantity={item.quantity}
                 unit={item.unit}
                 // Deal-tagged rows only -- same blurred-backdrop/
