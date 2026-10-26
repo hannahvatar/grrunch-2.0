@@ -16,6 +16,7 @@ import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { openInNewTab } from '../../components/IngredientRow';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { CutoutViewer } from '../../components/CutoutViewer';
+import { PriceBurst } from '../../components/PriceBurst';
 import { ProgressBar } from '../../components/ProgressBar';
 import { UpgradeCta } from '../../components/UpgradeCta';
 import { WeekGapState } from '../../components/WeekGapState';
@@ -55,9 +56,14 @@ const CARD_GAP = 16;
 // too tall and narrow), 2 on a phone. 12 for members (Anabelle, 2026-10-26:
 // "i want to be able to showcase 12 deals"), which fills both evenly.
 const DEALS_SHOWN = 12;
+// Price-per-serving starburst on the recipe cards.
+const BURST_SIZE = 104;
+const BURST_SIZE_STACKED = 96;
+const CARD_BODY_PADDING = 20;
 const DEAL_COLUMNS_DESKTOP = 3;
 const DEAL_COLUMNS_PHONE = 2;
 const DEAL_GAP = 16;
+const WOW_DISCOUNT_PCT = 60;
 // Non-members see the first 3, then the subscribe card (Anabelle,
 // 2026-10-26).
 const FREE_DEALS_SHOWN = 3;
@@ -315,7 +321,8 @@ function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width:
       </View>
 
       <View style={[styles.recipeCardBody, stacked && styles.recipeCardBodyStacked]}>
-        <View style={styles.metaRow}>
+        {/* On a phone the burst's lower half sits beside this row. */}
+        <View style={[styles.metaRow, stacked && { paddingRight: BURST_SIZE_STACKED }]}>
           <View style={styles.metaItem}>
             <ClockIcon size={18} color="#555" />
             <Text style={styles.metaText}>{meal.minutes} min</Text>
@@ -365,19 +372,34 @@ function HomeRecipeCard({ meal, width, stacked, bestDeal }: { meal: Meal; width:
 
         {stores.length > 0 && <Text style={styles.storesText}>Deals from {stores.join(', ')}</Text>}
 
+        {/* Price per serving in Anabelle's starburst (Home only, 2026-10-26),
+            half on the photo, half on the content. Desktop: on the button's
+            row, so the card stays short ("the price blurb align with the
+            button"), pulled left so its centre sits on the photo/content
+            seam (later sibling, so it paints over the photo). */}
         <View style={styles.cardFooter}>
-          <View>
-            <Text style={styles.servingPriceRow}>
-              <Text style={styles.servingPrice}>${meal.price.toFixed(2)}</Text>
-              <Text style={styles.servingUnit}> / serving</Text>
-            </Text>
-          </View>
+          {!stacked && (
+            <View style={{ marginLeft: -(CARD_BODY_PADDING + BURST_SIZE / 2) }}>
+              <PriceBurst price={meal.price} size={BURST_SIZE} />
+            </View>
+          )}
           <Pressable style={styles.viewRecipeButton} onPress={openRecipe}>
             <Text style={styles.viewRecipeButtonText}>View recipe</Text>
             <ArrowRightIcon size={18} color="#fff" strokeWidth={2} />
           </Pressable>
         </View>
       </View>
+
+      {/* Phone (photo on top): the burst sits across the photo's bottom
+          edge at the right, half on each. Last child so it paints over both. */}
+      {stacked && (
+        <View
+          pointerEvents="none"
+          style={[styles.priceBurstStacked, { top: ((width - 4) * 824) / 1402 + 2 - BURST_SIZE_STACKED / 2 }]}
+        >
+          <PriceBurst price={meal.price} size={BURST_SIZE_STACKED} />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -389,6 +411,10 @@ function DealTile({ deal, width }: { deal: Deal; width: number }) {
   const price = formatDealBadgePrice(deal.price, deal.priceUnit, deal.packageWeightG);
   const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG);
   const [zoomOpen, setZoomOpen] = useState(false);
+  const wow =
+    deal.discountPct >= WOW_DISCOUNT_PCT &&
+    (showsRealDiscount(deal.discountPct, deal.originalPriceSource) ||
+      isGreatReferenceValue(deal.discountPct, deal.originalPriceSource));
   return (
     <View style={[styles.dealTile, { width }]}>
       <View style={styles.dealTileImageWrap}>
@@ -412,24 +438,35 @@ function DealTile({ deal, width }: { deal: Deal; width: number }) {
         <View style={styles.categoryTag}>
           <Text style={styles.categoryTagText}>{deal.category}</Text>
         </View>
+
       </View>
       {deal.imageUrl && <CutoutViewer uri={deal.imageUrl} visible={zoomOpen} onClose={() => setZoomOpen(false)} />}
       <View style={styles.dealTileBody}>
-        {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
-          <View style={[styles.badge, styles.badgeDiscount]}>
-            <Text style={[styles.badgeText, styles.badgeDiscountText]}>{formatRealDiscountLabel(deal.discountPct)}</Text>
-          </View>
-        ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
-          <View style={[styles.badge, styles.badgeGreat]}>
-            <Text style={[styles.badgeText, styles.badgeGreatText]}>{formatGreatReferenceValueLabel(deal.discountPct)}</Text>
-          </View>
-        ) : (
-          // No saving to claim: "Fair price", same as Weekly Deals, so every
-          // tile has a badge (Anabelle, 2026-10-26).
-          <View style={[styles.badge, styles.badgeFair]}>
-            <Text style={[styles.badgeText, styles.badgeFairText]}>Fair price</Text>
-          </View>
-        )}
+        {/* Badge, plus a hand-drawn "Wow!" beside it on deals of 60% or
+            more (Anabelle, 2026-10-26); on the white body so it never
+            disappears into a busy cutout. */}
+        <View style={styles.badgeRow}>
+          {showsRealDiscount(deal.discountPct, deal.originalPriceSource) ? (
+            <View style={[styles.badge, styles.badgeDiscount]}>
+              <Text style={[styles.badgeText, styles.badgeDiscountText]}>{formatRealDiscountLabel(deal.discountPct)}</Text>
+            </View>
+          ) : isGreatReferenceValue(deal.discountPct, deal.originalPriceSource) ? (
+            <View style={[styles.badge, styles.badgeGreat]}>
+              <Text style={[styles.badgeText, styles.badgeGreatText]}>{formatGreatReferenceValueLabel(deal.discountPct)}</Text>
+            </View>
+          ) : (
+            // No saving to claim: "Fair price", same as Weekly Deals, so every
+            // tile has a badge (Anabelle, 2026-10-26).
+            <View style={[styles.badge, styles.badgeFair]}>
+              <Text style={[styles.badgeText, styles.badgeFairText]}>Fair price</Text>
+            </View>
+          )}
+          {wow && (
+            <Text style={styles.wow} accessibilityLabel="Wow">
+              Wow!
+            </Text>
+          )}
+        </View>
         <Text style={styles.dealName} numberOfLines={2}>
           {toTitleCase(deal.itemName)}
         </Text>
@@ -527,7 +564,8 @@ const styles = StyleSheet.create({
   bestDealBadgeText: { color: '#fff', fontSize: 14, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   // Content never overflows the card (Anabelle, 2026-10-23): rows wrap
   // and shrink instead of pushing past the right edge on narrower cards.
-  recipeCardBody: { width: '50%', minWidth: 0, padding: 20, gap: 12 },
+  recipeCardBody: { width: '50%', minWidth: 0, padding: CARD_BODY_PADDING, gap: 12 },
+  priceBurstStacked: { position: 'absolute', right: 16 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaText: { fontSize: 14, color: '#555' },
@@ -559,17 +597,16 @@ const styles = StyleSheet.create({
   cardFooter: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     columnGap: 16,
     rowGap: 12,
     marginTop: 'auto',
     paddingTop: 8,
   },
-  servingPriceRow: {},
-  servingPrice: { fontSize: 32, lineHeight: 36, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  servingUnit: { fontSize: 16, color: '#555' },
+  // Right-aligned now the price moved into the starburst.
   viewRecipeButton: {
+    marginLeft: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -599,6 +636,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17,17,17,0.7)',
     borderRadius: 999,
     padding: 5,
+  },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 2 },
+  // Marker-style word, tilted, next to the savings badge.
+  wow: {
+    fontSize: 22,
+    lineHeight: 26,
+    fontFamily: 'PermanentMarker_400Regular',
+    // Black (Anabelle, 2026-10-26).
+    color: INK,
+    transform: [{ rotate: '-10deg' }],
   },
   categoryTag: {
     position: 'absolute',
