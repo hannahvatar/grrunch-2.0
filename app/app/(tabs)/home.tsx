@@ -155,6 +155,8 @@ export default function HomeScreen() {
     ...handPicked,
     ...shownDeals.filter((deal) => deal.homePick === null).sort(bySavingsDesc),
   ].slice(0, isSubscribed ? DEALS_SHOWN : FREE_DEALS_SHOWN);
+  // Every other deal at the visitor's stores sits behind the locked tile.
+  const lockedDealCount = isSubscribed ? 0 : Math.max(0, shownDeals.length - topDeals.length);
   const dealColumns = isDesktop ? DEAL_COLUMNS_DESKTOP : DEAL_COLUMNS_PHONE;
   // From the grid's own measured width, so tiles fit the phone column on
   // web as well as the full screen on iPhone.
@@ -186,7 +188,12 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        <RecipeCarousel meals={meals} isDesktop={isDesktop} windowWidth={windowWidth} />
+        <RecipeCarousel
+          meals={meals}
+          lockedCount={featured.length - meals.length}
+          isDesktop={isDesktop}
+          windowWidth={windowWidth}
+        />
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>The deals we dig</Text>
@@ -196,9 +203,17 @@ export default function HomeScreen() {
           {dealsGridWidth > 0 && topDeals.map((deal) => (
             <DealTile key={deal.id} deal={deal} width={dealTileWidth} />
           ))}
+          {/* Non-members: a locked 4th tile in place of the next deal. */}
+          {dealsGridWidth > 0 && lockedDealCount > 0 && (
+            <UpgradeCta
+              variant="tile"
+              reason="see every deal"
+              title={`Unlock ${lockedDealCount} more deal${lockedDealCount === 1 ? '' : 's'}`}
+              style={{ width: dealTileWidth }}
+            />
+          )}
         </View>
 
-        {!isSubscribed && <UpgradeCta reason="unlock every recipe and deal" />}
       </ScrollView>
     </View>
   );
@@ -206,7 +221,18 @@ export default function HomeScreen() {
 
 // Horizontal, snapping row of recipe cards. Desktop gets arrow buttons
 // (a mouse can't swipe); phone swipes.
-function RecipeCarousel({ meals, isDesktop, windowWidth }: { meals: Meal[]; isDesktop: boolean; windowWidth: number }) {
+function RecipeCarousel({
+  meals,
+  lockedCount,
+  isDesktop,
+  windowWidth,
+}: {
+  meals: Meal[];
+  // Recipes a non-member can't open: shown as one locked card at the end.
+  lockedCount: number;
+  isDesktop: boolean;
+  windowWidth: number;
+}) {
   const scrollRef = useRef<ScrollView>(null);
   const [offset, setOffset] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
@@ -214,7 +240,8 @@ function RecipeCarousel({ meals, isDesktop, windowWidth }: { meals: Meal[]; isDe
     ? Math.min(CARD_MAX_WIDTH, gridSpan(windowWidth, 8) - CARD_PEEK)
     : Math.min(IMAGE_WIDTH, windowWidth - 72);
   const step = cardWidth + CARD_GAP;
-  const contentWidth = meals.length * step - CARD_GAP;
+  const cardCount = meals.length + (lockedCount > 0 ? 1 : 0);
+  const contentWidth = cardCount * step - CARD_GAP;
   const atStart = offset <= 1;
   const atEnd = offset >= contentWidth - viewportWidth - 1;
 
@@ -228,7 +255,7 @@ function RecipeCarousel({ meals, isDesktop, windowWidth }: { meals: Meal[]; isDe
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>This week's recipes</Text>
         <View style={styles.sectionHeaderActions}>
-          {isDesktop && meals.length > 1 && (
+          {isDesktop && cardCount > 1 && (
             <View style={styles.arrows}>
               <Pressable
                 style={[styles.arrowButton, atStart && styles.arrowButtonDisabled]}
@@ -265,6 +292,16 @@ function RecipeCarousel({ meals, isDesktop, windowWidth }: { meals: Meal[]; isDe
         {meals.map((meal, index) => (
           <HomeRecipeCard key={meal.id} meal={meal} width={cardWidth} stacked={!isDesktop} bestDeal={index === 0} />
         ))}
+        {/* Non-members: a locked 4th card in place of the next recipe
+            (Anabelle, 2026-10-26). */}
+        {lockedCount > 0 && (
+          <UpgradeCta
+            variant="tile"
+            reason="unlock every recipe"
+            title={`Unlock ${lockedCount} more recipe${lockedCount === 1 ? '' : 's'}`}
+            style={{ width: cardWidth }}
+          />
+        )}
       </ScrollView>
     </>
   );

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { ANNUAL_MONTHLY_EQUIVALENT_DISPLAY } from '../lib/purchases';
@@ -35,15 +35,43 @@ const INK = '#111';
 // per-caller `outlineFill` prop (defaulting to white, only Grocery
 // list's own call site opted into transparent) for 'outline' -- same
 // look now everywhere, no prop needed to ask for it.
+//
+// variant 'tile' is a locked card that takes the place of the next card
+// in a row or grid (Home's recipe carousel and deals grid for
+// non-members, Anabelle 2026-10-26: "there should be a 4th recipes card
+// ... showing the subscription message. Same for the deals"). Same dashed
+// card, content centred, with its own `title` ("Unlock 9 more recipes");
+// the caller sizes it (`style`) to match its neighbours.
 export function UpgradeCta({
   reason,
   variant = 'solid',
+  title,
+  style,
 }: {
   reason: string;
-  variant?: 'solid' | 'outline';
+  variant?: 'solid' | 'outline' | 'tile';
+  title?: string;
+  style?: StyleProp<ViewStyle>;
 }) {
   function goToUpgrade() {
     router.push({ pathname: '/upgrade', params: { reason } });
+  }
+
+  if (variant === 'tile') {
+    return (
+      <View style={[styles.card, styles.tile, style]}>
+        <View style={styles.tileIcon}>
+          <LockClosedIcon size={22} color={INK} />
+        </View>
+        <Text style={styles.tileTitle}>{title ?? 'Unlock everything'}</Text>
+        <Text style={styles.tileSubtitle}>
+          30-day free trial · Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime
+        </Text>
+        <Pressable style={[styles.ctaButton, styles.tileButton]} onPress={goToUpgrade}>
+          <Text style={[styles.ctaButtonText, styles.tileButtonText]}>Start 30-day free trial</Text>
+        </Pressable>
+      </View>
+    );
   }
 
   if (variant === 'outline') {
@@ -126,4 +154,32 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   ctaButtonText: { color: INK, fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
+  // tile variant only.
+  tile: { alignItems: 'center', justifyContent: 'center', padding: 16, gap: 8 },
+  tileIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: ACCENT,
+    borderWidth: 2,
+    borderColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  tileTitle: { color: INK, fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', textAlign: 'center' },
+  tileSubtitle: { color: '#555', fontSize: 14, lineHeight: 20, textAlign: 'center', maxWidth: 320 },
+  // Full tile width on narrow tiles, capped on the wide desktop card.
+  // Grows to two lines on a narrow phone tile instead of overflowing.
+  tileButton: {
+    alignSelf: 'stretch',
+    maxWidth: 320,
+    width: '100%',
+    marginHorizontal: 'auto',
+    height: 'auto',
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  tileButtonText: { textAlign: 'center' },
 });
