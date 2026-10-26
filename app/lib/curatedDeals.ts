@@ -34,6 +34,9 @@ export interface Deal {
   zone: string | null;
   priceUnit?: 'package' | 'each' | 'lb' | 'kg' | '100g';
   packageWeightG?: number;
+  // Place on Home's Top deals grid, hand-picked in dev-deals (1 = first);
+  // null when not picked.
+  homePick: number | null;
 }
 
 const UNCATEGORIZED = 'Other';
@@ -188,6 +191,7 @@ function mapRowToDeal(row: {
   zone: string | null;
   price_unit?: string | null;
   package_weight_g?: number | null;
+  home_pick?: number | null;
 }): Deal | null {
   if (row.price == null || row.original_price == null) return null;
   return {
@@ -205,6 +209,7 @@ function mapRowToDeal(row: {
     zone: row.zone,
     priceUnit: (row.price_unit ?? undefined) as Deal['priceUnit'],
     packageWeightG: row.package_weight_g ?? undefined,
+    homePick: row.home_pick ?? null,
   };
 }
 
