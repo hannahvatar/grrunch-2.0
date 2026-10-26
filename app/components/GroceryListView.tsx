@@ -79,6 +79,10 @@ interface GroceryItem {
   // Set on a row that merges the same deal from several recipes: the
   // packages their combined amount needs (see mergeSameDealItems).
   packageCount?: number;
+  // Recipe rows only: what each recipe needs, shown under the item
+  // ("Chowder Down: about 1 medium carrot"). One entry per recipe; a
+  // merged deal row carries all of them.
+  usages?: { source: string; usage?: string }[];
   // The store this item is grouped under: the ingredient's own deal.
   // An ingredient the recipe doesn't use a deal for stays in "Other
   // items", even if some flyer has it (Anabelle, 2026-10-09: cilantro
@@ -130,6 +134,23 @@ function mapDealToGroceryItem(deal: Deal): GroceryItem {
       originalPriceSource: deal.originalPriceSource,
     },
   };
+}
+
+// What one recipe needs of a list item, as a short amount (Anabelle,
+// 2026-10-26: show per-recipe needs under every list item). For a deal
+// line it's the recipe page's own "Recipe uses ..." note without the
+// prefix or the "· about $X" cost; otherwise the list text with the
+// ingredient name taken off the end ("2 tbsp Olive oil" -> "2 tbsp"). A
+// bare size ("about 1 medium") gets the ingredient name back.
+function describeRecipeUsage(name: string, listText: string, useQuantityText?: string): string | undefined {
+  if (useQuantityText) {
+    let usage = useQuantityText.replace(/^Recipe uses\s+/i, '').replace(/\s+·\s+about \$[\d.]+$/, '');
+    if (/\b(small|medium|large)$/i.test(usage)) usage = `${usage} ${name.toLowerCase()}`;
+    return usage;
+  }
+  const lower = listText.toLowerCase();
+  const suffix = ` ${name.toLowerCase()}`;
+  return lower.endsWith(suffix) ? listText.slice(0, -suffix.length) : undefined;
 }
 
 // The same deal pulled in by several recipes becomes ONE row (Anabelle,
@@ -191,6 +212,7 @@ function mergeSameDealItems(items: GroceryItem[], quantityOverrides: Map<string,
       ...item,
       key: mergedKey,
       source: Array.from(new Set(group.map((g) => g.source))).join(', '),
+      usages: group.flatMap((g) => g.usages ?? []),
       multiplier: undefined,
       packageCount: quantityOverrides.has(mergedKey) ? undefined : packageCount,
     });
@@ -476,6 +498,12 @@ export function GroceryListView() {
         multiplier: ingredient.dealTag && !quantityOverrides.has(key) ? multiplier : undefined,
         quantity: ingredient.quantity,
         unit: ingredient.unit,
+        usages: [
+          {
+            source: meal.name,
+            usage: describeRecipeUsage(ingredient.name, scaled.groceryText ?? scaled.text, scaled.useQuantityText),
+          },
+        ],
       };
     });
   });
@@ -705,7 +733,11 @@ export function GroceryListView() {
                 // edit, a price computed from the original amount
                 // would read as if it still applied. Recipe page is
                 // unaffected, still passes its own estimatedPrice.
-                meta={item.source}
+                meta={
+                  item.usages
+                    ? item.usages.map((u) => (u.usage ? `${u.source}: ${u.usage}` : u.source)).join('\n')
+                    : item.source
+                }
                 checked={checked.has(item.key)}
                 onToggleCheck={() => toggleChecked(item.key)}
                 multiplier={item.multiplier}
