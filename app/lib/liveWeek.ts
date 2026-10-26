@@ -324,6 +324,18 @@ export function useWeekValidityLabel(): string | null {
   return `Valid ${formatFlyerDay(week.validFrom)} to ${formatFlyerDay(week.validTo)}`;
 }
 
+// Days of the live week left, today included (Wednesday, the last day,
+// is 1), and the week's length -- for Home's countdown bar under the
+// dates. Null when there's no open week.
+export function useWeekDaysLeft(): { daysLeft: number; totalDays: number } | null {
+  const week = useLiveWeek();
+  if (!week || week.closed) return null;
+  const day = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86400000;
+  const totalDays = day(week.validTo) - day(week.validFrom) + 1;
+  const daysLeft = Math.max(0, Math.min(totalDays, day(week.validTo) - day(todayInBC()) + 1));
+  return { daysLeft, totalDays };
+}
+
 export function useLiveWeekExpired(): boolean {
   return useLiveWeek()?.expired ?? false;
 }
