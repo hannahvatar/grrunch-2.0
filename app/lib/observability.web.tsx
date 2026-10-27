@@ -1,4 +1,5 @@
 import { ComponentType, ReactNode, useEffect, useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { PostHogProvider, usePostHog } from 'posthog-react-native';
 
 import { clearAnalyticsStorage, useAnalyticsConsent } from './analyticsConsent';
@@ -42,9 +43,14 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   return (
     <>
       {POSTHOG_API_KEY && startedThisVisit.current && (
-        <PostHogProvider apiKey={POSTHOG_API_KEY} options={{ host: POSTHOG_HOST }}>
-          <OptOutWhenDeclined />
-        </PostHogProvider>
+        // PostHogProvider renders a flex: 1 View; as a sibling of the app it
+        // took half the screen (white gap above the top bar). A zero-size,
+        // out-of-flow box keeps it invisible.
+        <View style={styles.hiddenHost} pointerEvents="none" aria-hidden>
+          <PostHogProvider apiKey={POSTHOG_API_KEY} options={{ host: POSTHOG_HOST }}>
+            <OptOutWhenDeclined />
+          </PostHogProvider>
+        </View>
       )}
       {children}
     </>
@@ -67,3 +73,7 @@ function OptOutWhenDeclined() {
   }, [consent, posthog]);
   return null;
 }
+
+const styles = StyleSheet.create({
+  hiddenHost: { position: 'absolute', width: 0, height: 0, overflow: 'hidden' },
+});
