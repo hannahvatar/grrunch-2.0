@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
 
 import { setAnalyticsConsent, useAnalyticsConsent } from '../lib/analyticsConsent';
@@ -7,11 +7,17 @@ import { gridSpan, useIsDesktop } from '../lib/layout';
 const ACCENT = '#FFA955';
 const INK = '#111';
 
+// The first-run flow (onboarding, terms, sign in, location, stores): no
+// banner there. It shows once they reach the app itself, as the last thing
+// to answer (Anabelle, 2026-10-27: "a lot" on top of the first onboarding
+// screen). The Privacy Policy page stays open to it as well.
+const FIRST_RUN_ROUTES = new Set(['/', '/terms', '/login', '/location', '/stores']);
+
 const BANNER_TEXT =
   'We use analytics cookies to see how Grrunch is used and make it better. They stay off unless you accept.';
 
 // Web cookie banner (Anabelle, 2026-10-26): shown until the visitor
-// chooses, on every page including onboarding. Accept is orange (Anabelle,
+// chooses, on every page after the first-run flow. Accept is orange (Anabelle,
 // 2026-10-27); Decline stays a full-size button beside it, so declining
 // is still one easy tap. Essential
 // storage (sign-in, stores, list) doesn't need it; only PostHog
@@ -20,7 +26,8 @@ export function CookieConsentBanner() {
   const consent = useAnalyticsConsent();
   const isDesktop = useIsDesktop();
   const { width: windowWidth } = useWindowDimensions();
-  if (Platform.OS !== 'web' || consent !== null) return null;
+  const pathname = usePathname();
+  if (Platform.OS !== 'web' || consent !== null || FIRST_RUN_ROUTES.has(pathname)) return null;
   // Desktop: centred, 6 of the 12 grid columns (Anabelle, 2026-10-27).
   const desktopWidth = gridSpan(windowWidth, 6);
   return (
