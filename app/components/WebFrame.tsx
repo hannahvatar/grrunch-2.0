@@ -2,6 +2,8 @@ import { usePathname } from 'expo-router';
 import { ReactNode } from 'react';
 import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { gridSpan, useIsDesktop } from '../lib/layout';
+
 // Web-only stopgap while desktop layouts are built page by page
 // (2026-10-22): screens without a desktop version yet live in one
 // centered, phone-width column instead of stretching edge to edge. Once a
@@ -27,10 +29,25 @@ const FULL_WIDTH_PREFIXES = ['/dev-deals', '/dev-recipes'];
 export function WebFrame({ children }: { children: ReactNode }) {
   const { width } = useWindowDimensions();
   const pathname = usePathname();
+  const isDesktop = useIsDesktop();
   if (Platform.OS !== 'web') return <>{children}</>;
   if (isDesktopReadyRoute(pathname) || TAB_ROUTES.has(pathname)) return <>{children}</>;
   if (FULL_WIDTH_PREFIXES.some((p) => pathname.startsWith(p))) return <>{children}</>;
+  // Desktop: every remaining screen (error and status screens, upgrade,
+  // support, privacy, legal...) on the 2-8-2 grid (Anabelle, 2026-10-27:
+  // "ALL screen in the web app should follow the 2-8-2 layout"). They all
+  // use the peach page background, so the column blends into the page.
+  if (isDesktop) return <GridColumn width={width}>{children}</GridColumn>;
   return <PhoneColumn width={width}>{children}</PhoneColumn>;
+}
+
+// The middle 8 of 12 grid columns, centered on the peach page.
+function GridColumn({ width, children }: { width: number; children: ReactNode }) {
+  return (
+    <View style={styles.gridBackdrop}>
+      <View style={[styles.gridColumn, { width: gridSpan(width, 8) }]}>{children}</View>
+    </View>
+  );
 }
 
 // The centered phone-width column itself, also used under the desktop
@@ -45,6 +62,8 @@ export function PhoneColumn({ width, children }: { width: number; children: Reac
 }
 
 const styles = StyleSheet.create({
+  gridBackdrop: { flex: 1, alignItems: 'center', backgroundColor: '#FFEAD4' },
+  gridColumn: { flex: 1 },
   backdrop: {
     flex: 1,
   },
