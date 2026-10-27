@@ -1,5 +1,7 @@
-import { ComponentType, ReactNode } from 'react';
-import { PostHogProvider } from 'posthog-react-native';
+import { ComponentType, ReactNode, useEffect, useRef } from 'react';
+import { PostHogProvider, usePostHog } from 'posthog-react-native';
+
+import { clearAnalyticsStorage, useAnalyticsConsent } from './analyticsConsent';
 
 // Web variant of observability.tsx -- @sentry/react-native has no web
 // build at all, so this file exists purely so Metro's platform-extension
@@ -26,11 +28,42 @@ const POSTHOG_API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
 const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
 export const posthogConfigured = !!POSTHOG_API_KEY;
 
+// PostHog only after the visitor accepts analytics on the cookie banner
+// (lib/analyticsConsent.ts). Once mounted it stays mounted for the visit,
+// so a later Decline (Profile > Settings > Cookies) opts out and clears
+// PostHog's stored id instead; the next visit doesn't load it at all.
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
-  if (!POSTHOG_API_KEY) return <>{children}</>;
+  const consent = useAnalyticsConsent();
+  const startedThisVisit = useRef(false);
+  if (consent === 'granted') startedThisVisit.current = true;
+  // Beside the app, not around it: switching from no provider to a
+  // wrapping one would remount the whole app on Accept (and lose the
+  // in-memory list). Nothing in the app reads the PostHog context.
   return (
-    <PostHogProvider apiKey={POSTHOG_API_KEY} options={{ host: POSTHOG_HOST }}>
+    <>
+      {POSTHOG_API_KEY && startedThisVisit.current && (
+        <PostHogProvider apiKey={POSTHOG_API_KEY} options={{ host: POSTHOG_HOST }}>
+          <OptOutWhenDeclined />
+        </PostHogProvider>
+      )}
       {children}
-    </PostHogProvider>
+    </>
   );
+}
+
+function OptOutWhenDeclined() {
+  const posthog = usePostHog();
+  const consent = useAnalyticsConsent();
+  useEffect(() => {
+    if (consent === 'granted') {
+      posthog?.optIn();
+    } else {
+      // Stop sending, then delete its ids and queued events once it has
+      // finished writing the opt-out.
+      Promise.resolve(posthog?.optOut())
+        .then(() => posthog?.reset())
+        .finally(() => setTimeout(clearAnalyticsStorage, 500));
+    }
+  }, [consent, posthog]);
+  return null;
 }

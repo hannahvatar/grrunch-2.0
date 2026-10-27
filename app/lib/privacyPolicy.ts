@@ -6,8 +6,9 @@ import { bullets, LegalSection, text } from './legalContent';
 // (Anabelle, 2026-09-24), then from September 24 for the Membership
 // and Purchases subsection (2026-10-09, before external TestFlight
 // testing) -- genuine content changes, same as the earlier bump for the
-// legal entity disclosure.
-export const PRIVACY_POLICY_EFFECTIVE_DATE = 'October 9, 2026';
+// legal entity disclosure. Bumped again 2026-10-27 for the web app's
+// cookies and analytics consent (§3).
+export const PRIVACY_POLICY_EFFECTIVE_DATE = 'October 27, 2026';
 
 // Legal entity disclosure -- see termsOfUse.ts's own comment on this
 // same addition (Anabelle, 2026-09-15). Named here in the intro (this
@@ -15,7 +16,7 @@ export const PRIVACY_POLICY_EFFECTIVE_DATE = 'October 9, 2026';
 // your data) and again in Contact Us (§14 below).
 export const PRIVACY_POLICY_INTRO =
   'Grrunch, owned and operated by 17216891 Canada Inc. ("Grrunch," "we," "our," or "us"), respects your privacy. This Privacy Policy explains what information we collect, how we use it, when we share it, and the choices you have regarding your information.\n\n' +
-  'This Privacy Policy applies to the Grrunch mobile application and related services (collectively, the "Service").\n\n' +
+  'This Privacy Policy applies to the Grrunch mobile application, the Grrunch web app, and related services (collectively, the "Service").\n\n' +
   'By using Grrunch, you agree to the practices described in this Privacy Policy.';
 
 export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
@@ -138,6 +139,17 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
         'recipe engagement statistics.',
       ]),
       text('We do not use aggregated analytics to identify individual users.'),
+      // Web cookie banner (Anabelle, 2026-10-26; components/CookieConsentBanner.tsx).
+      text('Cookies and Similar Technologies'),
+      text(
+        'The Grrunch web app stores small amounts of information in your browser (cookies and local storage). Some of it is essential and always on: it keeps you signed in and remembers your stores, your grocery list, and your settings.'
+      ),
+      text(
+        'We also use analytics cookies, provided by PostHog, to understand how the Service is used and to improve it. On the web, analytics cookies stay off unless you accept them in the cookie banner. You can change your choice at any time in Profile > Settings > Cookies.'
+      ),
+      text(
+        'When you subscribe on the web, our payment providers (RevenueCat and Stripe) may use cookies needed to process your payment securely and prevent fraud.'
+      ),
     ],
   },
   {
@@ -238,6 +250,7 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
       bullets([
         'update your account information;',
         'change notification settings;',
+        'accept or decline analytics cookies on the web;',
         'revoke location permission;',
         'request deletion of your account;',
         'request access to your personal information, where applicable under Canadian law.',

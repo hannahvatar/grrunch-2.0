@@ -20,6 +20,7 @@ import { WeekLifecycle } from '../components/WeekLifecycle';
 import { SupportBubble } from '../components/SupportBubble';
 import { WebFrame } from '../components/WebFrame';
 import { AuthProvider } from '../lib/auth';
+import { CookieConsentBanner } from '../components/CookieConsentBanner';
 import { AnalyticsProvider, initSentry, wrapWithSentry } from '../lib/observability';
 import { SelectedDealsProvider } from '../lib/selectedDeals';
 import { SelectedMealsProvider } from '../lib/selectedMeals';
@@ -248,6 +249,7 @@ function RootLayout() {
                   <DeepLinkErrorRedirect />
                   <WeekLifecycle />
                   <SupportBubble />
+                  <CookieConsentBanner />
                   </WebFrame>
                 </StoreFilterProvider>
                 </SelectedDealsProvider>

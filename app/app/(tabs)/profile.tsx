@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { ComponentType, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import {
   BuildingStorefrontIcon,
   ChevronDownIcon,
@@ -18,6 +18,7 @@ import { gridSpan, useIsDesktop } from '../../lib/layout';
 import { GetSupportBody } from '../get-support';
 import { HowItWorksBody } from '../how-it-works';
 import { TermsOfUseBody } from '../legal';
+import { CookiePreferencesBody } from '../../components/CookieConsentBanner';
 import { PrivacyPolicyBody } from '../privacy-policy';
 import { SETTINGS_SECTIONS } from '../settings';
 import { AboutBody } from '../settings-detail';
@@ -44,7 +45,11 @@ const SETTINGS_BODIES: Record<string, ComponentType> = {
   'Get support': GetSupportBody,
   Privacy: PrivacyPolicyBody,
   Legal: TermsOfUseBody,
+  Cookies: CookiePreferencesBody,
 };
+// Cookies (the analytics consent from the web banner) is web only.
+const PROFILE_SETTINGS_SECTIONS =
+  Platform.OS === 'web' ? [...SETTINGS_SECTIONS, 'Cookies'] : SETTINGS_SECTIONS;
 
 function SectionHeader({
   title,
@@ -319,7 +324,7 @@ export default function ProfileScreen() {
           standalone pages still exist for the support bubble and the
           Terms links). */}
       <Text style={[styles.title, styles.settingsTitle]}>Settings</Text>
-      {SETTINGS_SECTIONS.map((section, index) => {
+      {PROFILE_SETTINGS_SECTIONS.map((section, index) => {
         const Body = SETTINGS_BODIES[section];
         return (
           <View key={section}>
