@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
-import { Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
 
 import { setAnalyticsConsent, useAnalyticsConsent } from '../lib/analyticsConsent';
-import { useIsDesktop } from '../lib/layout';
+import { gridSpan, useIsDesktop } from '../lib/layout';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
@@ -19,10 +19,18 @@ const BANNER_TEXT =
 export function CookieConsentBanner() {
   const consent = useAnalyticsConsent();
   const isDesktop = useIsDesktop();
+  const { width: windowWidth } = useWindowDimensions();
   if (Platform.OS !== 'web' || consent !== null) return null;
+  // Desktop: centred, 6 of the 12 grid columns (Anabelle, 2026-10-27).
+  const desktopWidth = gridSpan(windowWidth, 6);
   return (
     <View
-      style={[styles.banner, isDesktop ? styles.bannerDesktop : styles.bannerPhone]}
+      style={[
+        styles.banner,
+        isDesktop
+          ? [styles.bannerDesktop, { width: desktopWidth, left: (windowWidth - desktopWidth) / 2 }]
+          : styles.bannerPhone,
+      ]}
       accessibilityRole="alert"
       accessibilityLabel="Cookie consent"
     >
@@ -82,7 +90,7 @@ const styles = StyleSheet.create({
     gap: 12,
     boxShadow: '0 8px 30px rgba(0, 0, 0, 0.2)',
   },
-  bannerDesktop: { left: 32, bottom: 32, maxWidth: 520 },
+  bannerDesktop: { bottom: 32 },
   // Above the phone tab bar.
   bannerPhone: { left: 12, right: 12, bottom: 84 },
   text: { fontSize: 16, lineHeight: 24, color: INK },
