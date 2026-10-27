@@ -51,7 +51,7 @@ function formatRenewalDate(iso: string): string {
 // what a guest should see differs by context (Manage account vs Payment).
 export function MembershipStatus() {
   const { status: subscriptionStatus, trialEndsAt, isSubscribed, cancelTrial } = useSubscription();
-  const { configured: storeBilled, activePackage, expirationDate, willRenew } = usePurchases();
+  const { configured: storeBilled, activePackage, expirationDate, willRenew, managementURL } = usePurchases();
   const [cancelling, setCancelling] = useState(false);
 
   // The real price/period the member is actually on, now that there are
@@ -100,10 +100,23 @@ export function MembershipStatus() {
   // No confirmation dialog first, unlike handleCancelTrial -- this
   // doesn't itself change anything, just opens the real place that does
   // (see MANAGE_SUBSCRIPTION_URL's header comment).
+  //
+  // RevenueCat's managementURL first (2026-10-27, web payments): it
+  // points wherever this member actually joined, so a web member lands on
+  // the Web Billing page and an iPhone member on Apple's, from either
+  // device. The platform URL is only the fallback.
   async function handleManageMembership() {
-    const canOpen = await Linking.canOpenURL(MANAGE_SUBSCRIPTION_URL);
+    // No managementURL on web (e.g. a membership granted from the
+    // RevenueCat dashboard): there's nothing to open, and Apple's page
+    // would be wrong, so send them to support instead.
+    if (!managementURL && Platform.OS === 'web') {
+      router.push('/get-support');
+      return;
+    }
+    const url = managementURL ?? MANAGE_SUBSCRIPTION_URL;
+    const canOpen = await Linking.canOpenURL(url);
     if (canOpen) {
-      Linking.openURL(MANAGE_SUBSCRIPTION_URL);
+      Linking.openURL(url);
     } else {
       Alert.alert('Could not open subscription settings', "Manage your subscription from your device's Settings app.");
     }

@@ -1,6 +1,11 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
+import Purchases, {
+  CustomerInfo,
+  PURCHASES_ERROR_CODE,
+  PurchasesOffering,
+  PurchasesPackage,
+} from 'react-native-purchases';
 
 import { useAuth } from './auth';
 
@@ -43,9 +48,13 @@ export const ANNUAL_SAVINGS_PCT = 27;
 // dashboard once the Apple/Google apps are registered there -- until
 // then these are unset and PurchasesProvider no-ops (see configured
 // below) rather than crashing the app for anyone not testing purchases.
+// Web (2026-10-27): the RevenueCat Web Billing key (rcb_..., Stripe
+// checkout), from the "Grrunch (RevenueCat Billing)" app in the same
+// project, so a membership bought on either side unlocks both.
 const REVENUECAT_API_KEY = Platform.select({
   ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
   android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+  web: process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY,
 });
 
 interface PurchasesContextValue {
@@ -82,6 +91,11 @@ interface PurchasesContextValue {
   // lets useSubscription() report 'trialing' vs 'active' from the store
   // itself instead of the DB row (see lib/subscription.tsx).
   isTrial: boolean;
+  // Where this member manages or cancels their plan, from RevenueCat:
+  // Apple's/Google's subscription settings for a store purchase, or the
+  // Web Billing page (card, cancel) for a web purchase. Null when not a
+  // member or not known yet.
+  managementURL: string | null;
   // Whether this customer has EVER held the entitlement (active or
   // since expired) -- distinguishes a lapsed member ('expired') from
   // someone who never subscribed ('none').
@@ -122,15 +136,19 @@ function activeWillRenew(info: CustomerInfo): boolean {
   return info.entitlements.active[ENTITLEMENT_ID]?.willRenew ?? false;
 }
 
-// react-native-purchases has no web implementation at all -- it's an
-// Apple/Google in-app-purchase SDK, and this product deliberately has no
-// web version to sell through (see this session's Stripe-vs-IAP
-// discussion). Claude's own preview/dev tooling still runs the app on
-// web sometimes though, so this guard keeps that from hard-crashing --
-// every SDK call below is skipped on web, `configured` just stays false,
-// and upgrade.tsx's existing "not configured yet" fallback copy covers
-// the gap. Native (iOS/Android) is unaffected.
-const IS_NATIVE = Platform.OS !== 'web';
+// On web, react-native-purchases runs RevenueCat Web Billing (Stripe
+// checkout in a RevenueCat modal). It's only configured once someone is
+// signed in, with their Supabase user id: guests can't buy anyway (the
+// upgrade button sends them to /login), and this keeps RevenueCat from
+// storing an anonymous id in a guest's browser.
+const IS_WEB = Platform.OS === 'web';
+
+// The web SDK reports a closed checkout with a numeric code, which
+// react-native-purchases' own userCancelled check (a string compare)
+// misses -- so check both.
+function isUserCancelled(e: any): boolean {
+  return !!e?.userCancelled || String(e?.code) === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR;
+}
 
 export function PurchasesProvider({ children }: { children: ReactNode }) {
   const { session, isGuest, loading: authLoading } = useAuth();
@@ -143,6 +161,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   const [willRenew, setWillRenew] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
   const [hadEntitlement, setHadEntitlement] = useState(false);
+  const [managementURL, setManagementURL] = useState<string | null>(null);
 
   // One place to fan a fresh CustomerInfo out to all four pieces of
   // state, instead of the same four setters repeated at every call site
@@ -154,6 +173,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     setWillRenew(activeWillRenew(info));
     setIsTrial(info.entitlements.active[ENTITLEMENT_ID]?.periodType === 'TRIAL');
     setHadEntitlement(typeof info.entitlements.all[ENTITLEMENT_ID] !== 'undefined');
+    setManagementURL(info.managementURL ?? null);
   }
 
   // Configure the SDK exactly once. Guests never call Purchases.logIn
@@ -161,15 +181,27 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   // real account exists) -- matches the rest of the app's guest model,
   // where nothing meaningful persists until sign-up.
   useEffect(() => {
-    if (!IS_NATIVE || !REVENUECAT_API_KEY) {
+    if (configured) return;
+    if (!REVENUECAT_API_KEY) {
       // Keys not set up yet -- see the comment above. Don't throw; just
       // stay unconfigured so upgrade.tsx can fall back gracefully.
       setLoading(false);
       return;
     }
-    Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+    if (IS_WEB) {
+      // Web waits for a signed-in session (see IS_WEB above).
+      if (authLoading) return;
+      if (!session || isGuest) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      Purchases.configure({ apiKey: REVENUECAT_API_KEY, appUserID: session.user.id });
+    } else {
+      Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+    }
     setConfigured(true);
-  }, []);
+  }, [configured, authLoading, session, isGuest]);
 
   // Identify the RevenueCat customer as this Supabase user -- this is
   // what lets the revenuecat-webhook Edge Function map an incoming
@@ -234,7 +266,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       applyCustomerInfo(customerInfo);
       return { error: null, cancelled: false };
     } catch (e: any) {
-      if (e?.userCancelled) return { error: null, cancelled: true };
+      if (isUserCancelled(e)) return { error: null, cancelled: true };
       return { error: e?.message ?? 'Purchase failed. Please try again.', cancelled: false };
     }
   }
@@ -267,6 +299,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
         expirationDate,
         willRenew,
         isTrial,
+        managementURL,
         hadEntitlement,
         purchase,
         restore,
