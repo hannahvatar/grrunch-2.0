@@ -296,9 +296,18 @@ export default {
       lng = coarse.lng;
     }
 
-    const results = await Promise.all(
-      MVP_CHAINS.map((chain) => findNearestForChain(chain, lat!, lng!))
-    );
+    // A Places API failure (billing, quota, key restriction) used to throw
+    // out of the handler as a bare 500 with no reason; return it as JSON
+    // so the cause shows up in the response (2026-10-27).
+    let results: (StoreResult | null)[];
+    try {
+      results = await Promise.all(MVP_CHAINS.map((chain) => findNearestForChain(chain, lat!, lng!)));
+    } catch (error) {
+      return Response.json(
+        { error: error instanceof Error ? error.message : String(error) },
+        { status: 502 }
+      );
+    }
     const foundWithDupes = results.filter((result): result is StoreResult => result !== null);
 
     // Two different MVP_CHAINS queries can resolve to the literal same
