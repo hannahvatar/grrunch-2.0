@@ -7,6 +7,7 @@ import { AlertBanner } from '../components/AlertBanner';
 import { OutsideAreaModal } from '../components/OutsideAreaModal';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { useAuth } from '../lib/auth';
+import { useDesktopButtonWidth } from '../lib/layout';
 import {
   ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
   ANNUAL_PRICE_DISPLAY,
@@ -68,6 +69,9 @@ const FEATURES = [
 //   expects while the store products/RevenueCat dashboard aren't live yet.
 export default function UpgradeScreen() {
   const { reason } = useLocalSearchParams<{ reason?: string }>();
+  // Desktop: buttons 4 columns wide and centered, the checklist centered,
+  // and no bottom-sheet handle.
+  const buttonWidth = useDesktopButtonWidth();
   const { isGuest } = useAuth();
   const { isSubscribed: dbSubscribed, startTrial } = useSubscription();
   const { configured, offering, isSubscribed: purchasesSubscribed, purchase, restore } = usePurchases();
@@ -187,7 +191,7 @@ export default function UpgradeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.handle} />
+      {!buttonWidth && <View style={styles.handle} />}
       <Pressable style={styles.closeButton} onPress={() => router.back()}>
         <XMarkIcon size={20} color={INK} />
       </Pressable>
@@ -216,7 +220,7 @@ export default function UpgradeScreen() {
                 : 'Try Grrunch free for 30 days.'}
         </Text>
         {!alreadyMember && !showOutsideArea && (
-          <View style={styles.featureList}>
+          <View style={[styles.featureList, buttonWidth && styles.featureListDesktop]}>
             {FEATURES.map((feature) => (
               <View key={feature} style={styles.featureRow}>
                 <CheckIcon size={16} color={INK} />
@@ -272,7 +276,7 @@ export default function UpgradeScreen() {
           />
         )}
         {!isSubscribed && (
-          <View style={styles.actions}>
+          <View style={[styles.actions, buttonWidth]}>
             {!inServiceArea && areaStatus === 'checking' && <ActivityIndicator color={INK} />}
             {/* The title/body above already carry the message (same
                 wording as OutsideAreaModal); this opens that modal at its
@@ -412,13 +416,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: INK,
   },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', color: INK },
+  body: { fontSize: 16, lineHeight: 24, textAlign: 'center', color: INK },
   // alignSelf:'stretch' (not centered like body/title above) -- a
   // left-aligned checklist reads faster than centered text once there's
   // more than one line of it.
   featureList: { alignSelf: 'stretch', marginTop: 20, gap: 12 },
+  // Desktop: the checklist as one centered block (still left-aligned
+  // inside), not pinned to the far left of the 8 columns.
+  featureListDesktop: { alignSelf: 'center' },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  featureText: { fontSize: 15, color: INK, flex: 1 },
+  featureText: { fontSize: 16, color: INK, flexShrink: 1 },
   // Annual/Monthly plan picker (Anabelle, 2026-09-15) -- sits between the
   // feature list and the price note it controls.
   planPicker: { marginTop: 20 },
@@ -467,7 +474,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryButtonText: { fontSize: 16, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
-  areaNote: { fontSize: 13, color: INK, marginTop: 4 },
+  areaNote: { fontSize: 14, color: INK, marginTop: 4 },
   areaBanner: { alignSelf: 'stretch' },
   restoreText: { fontSize: 13, color: '#767676', textDecorationLine: 'underline' },
 });

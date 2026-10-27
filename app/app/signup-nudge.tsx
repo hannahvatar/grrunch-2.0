@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { UserPlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
+import { useDesktopButtonWidth } from '../lib/layout';
+
 // GRRUNCH DS -- matches upgrade.tsx's own bottom-sheet convention.
 const ACCENT = '#FFA955';
 const INK = '#111';
@@ -27,9 +29,12 @@ const INK = '#111';
 // -- saving recipes, building a grocery list, companion recipes, store
 // choice -- needs membership, same as lib/support.ts's FAQ answer.
 export default function SignupNudgeScreen() {
+  // Desktop: buttons 4 columns wide, centered; no sheet handle (it's not
+  // a bottom sheet there).
+  const buttonWidth = useDesktopButtonWidth();
   return (
     <View style={styles.container}>
-      <View style={styles.handle} />
+      {!buttonWidth && <View style={styles.handle} />}
       <Pressable style={styles.closeButton} onPress={() => router.back()}>
         <XMarkIcon size={20} color={INK} />
       </Pressable>
@@ -40,7 +45,7 @@ export default function SignupNudgeScreen() {
         <Text style={styles.title}>Create a free account</Text>
         <Text style={styles.body}>It's free, no payment needed.</Text>
       </View>
-      <View style={styles.footer}>
+      <View style={[styles.footer, buttonWidth]}>
         <Pressable
           style={styles.primaryButton}
           onPress={() => router.replace({ pathname: '/login', params: { mode: 'signup' } })}
