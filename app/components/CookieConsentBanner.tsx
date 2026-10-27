@@ -2,16 +2,15 @@ import { router, usePathname } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
 
 import { setAnalyticsConsent, useAnalyticsConsent } from '../lib/analyticsConsent';
+import { TAB_ROUTES } from './WebFrame';
 import { gridSpan, useIsDesktop } from '../lib/layout';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
 
-// The first-run flow (onboarding, terms, sign in, location, stores): no
-// banner there. It shows once they reach the app itself, as the last thing
-// to answer (Anabelle, 2026-10-27: "a lot" on top of the first onboarding
-// screen). The Privacy Policy page stays open to it as well.
-const FIRST_RUN_ROUTES = new Set(['/', '/terms', '/login', '/location', '/stores']);
+// Only on the app's main pages, once the visitor has made it through the
+// first-run flow (Anabelle, 2026-10-27: "a lot" on top of the first
+// onboarding screen) -- never over onboarding, an error or a modal.
 
 const BANNER_TEXT =
   'We use analytics cookies to see how Grrunch is used and make it better. They stay off unless you accept.';
@@ -27,7 +26,7 @@ export function CookieConsentBanner() {
   const isDesktop = useIsDesktop();
   const { width: windowWidth } = useWindowDimensions();
   const pathname = usePathname();
-  if (Platform.OS !== 'web' || consent !== null || FIRST_RUN_ROUTES.has(pathname)) return null;
+  if (Platform.OS !== 'web' || consent !== null || !TAB_ROUTES.has(pathname)) return null;
   // Desktop: centred, 6 of the 12 grid columns (Anabelle, 2026-10-27).
   const desktopWidth = gridSpan(windowWidth, 6);
   return (

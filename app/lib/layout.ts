@@ -34,6 +34,15 @@ export function useDesktopModalWidth(columns: number): { width: number } | null 
   return isDesktop ? { width: gridSpan(width, columns) } : null;
 }
 
+// Desktop buttons are at most 4 grid columns wide, centered (Anabelle,
+// 2026-10-27), instead of stretching across the 8-column content. Spread
+// onto the button (or the box holding a screen's buttons); null off
+// desktop, where they keep their full phone width.
+export function useDesktopButtonWidth(): { width: number; alignSelf: 'center' } | null {
+  const width = useDesktopModalWidth(4);
+  return width ? { ...width, alignSelf: 'center' } : null;
+}
+
 // Where people land after onboarding / sign-in: the web-only Home tab on
 // web (Anabelle, 2026-10-23), Weekly Deals on the iPhone app.
 export const HOME_ROUTE = Platform.OS === 'web' ? '/home' : '/best-deals';

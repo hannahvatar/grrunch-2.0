@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronDownIcon, ChevronUpIcon, EnvelopeIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
+import { useDesktopButtonWidth } from '../lib/layout';
 import { usePurchases } from '../lib/purchases';
 import { FAQ_ITEMS, SUPPORT_EMAIL } from '../lib/support';
 
@@ -20,6 +21,8 @@ const INK = '#111';
 export function GetSupportBody() {
   const [openFaq, setOpenFaq] = useState<Set<number>>(new Set());
   const { configured: purchasesConfigured } = usePurchases();
+  // Desktop: Email support 4 columns wide, centered.
+  const buttonWidth = useDesktopButtonWidth();
 
   function toggleFaq(index: number) {
     setOpenFaq((prev) => {
@@ -85,7 +88,7 @@ export function GetSupportBody() {
       {/* At the bottom of the section, after the FAQ (Anabelle,
           2026-10-23): read the answers first, then email if still stuck. */}
       <Pressable
-        style={[styles.contactButton, !SUPPORT_EMAIL && styles.contactButtonDisabled]}
+        style={[styles.contactButton, buttonWidth, !SUPPORT_EMAIL && styles.contactButtonDisabled]}
         onPress={handleContactUs}
       >
         <EnvelopeIcon size={18} color={INK} />

@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { XMarkIcon } from 'react-native-heroicons/outline';
 
+import { useDesktopButtonWidth } from '../lib/layout';
+
 const ACCENT = '#FFA955';
 const INK = '#111';
 
@@ -51,6 +53,8 @@ export function StatusScreen({
   // right of the modal? It looks low"). Reverted to the simple fixed
   // offset that every other close button in the app already uses
   // successfully in the same presentation:'modal' contexts.
+  // Desktop: the buttons 4 columns wide, centered.
+  const buttonWidth = useDesktopButtonWidth();
   return (
     <View style={styles.container}>
       <Pressable
@@ -65,7 +69,7 @@ export function StatusScreen({
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.body}>{body}</Text>
       </View>
-      <View style={styles.footer}>
+      <View style={[styles.footer, buttonWidth]}>
         {resolvedActions.map((action, index) => {
           const variant = action.variant ?? (index === 0 ? 'primary' : 'secondary');
           const onPress = action.onPress ?? (() => router.back());
