@@ -26,8 +26,10 @@ export interface FaqItem {
 // Anabelle, 2026-09-16: "write the cancellation copy as it would be once
 // we are live and functional for all users" -- the real end-state
 // answer, once RevenueCat is actually configured and purchase() can run.
+// Web payments (2026-10-27): web members manage their plan on
+// RevenueCat's Web Billing page, which Manage membership opens for them.
 const CANCEL_ANSWER_LIVE =
-  'From your Apple or Google account’s own subscription settings, the same place any App Store/Play Store subscription is managed, since Grrunch doesn’t bill you directly.';
+  'From Profile > Membership > Manage membership. If you joined in the iPhone app, it opens your Apple account’s subscription settings. If you joined on the web, it opens your Grrunch billing page, where you can cancel or update your card.';
 
 // Today's reality: RevenueCat's keys aren't configured yet (Apple Dev
 // enrollment still pending verification), so purchase() never runs and

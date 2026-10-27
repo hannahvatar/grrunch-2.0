@@ -80,17 +80,17 @@ export const PRIVACY_POLICY_SECTIONS: LegalSection[] = [
       // sees card details.
       text('Membership and Purchases'),
       text(
-        'If you buy a Grrunch membership, the purchase is handled by the Apple App Store (or Google Play, where available). We do not receive or store your payment card details.'
+        'If you buy a Grrunch membership in the app, the purchase is handled by the Apple App Store (or Google Play, where available). If you buy it on the web, the purchase is handled by RevenueCat and our payment processor, Stripe. We do not receive or store your payment card details.'
       ),
       text('To provide your membership, we receive limited purchase information, including:'),
       bullets([
         'the membership plan you chose;',
         'purchase, renewal, and expiry dates;',
         'whether your membership is active, in a free trial, or cancelled;',
-        'a transaction identifier and the country of your app store account.',
+        'a transaction identifier and the country of your app store account (or, for web purchases, your billing country).',
       ]),
       text(
-        'We use this to unlock member features, restore your membership on your devices, and handle support requests. You can manage or cancel your membership at any time in your Apple ID or Google Play subscription settings.'
+        'We use this to unlock member features, restore your membership on your devices, and handle support requests. You can manage or cancel your membership at any time from Profile > Membership > Manage membership, which opens your Apple ID or Google Play subscription settings, or for web purchases, your billing page.'
       ),
     ],
   },
