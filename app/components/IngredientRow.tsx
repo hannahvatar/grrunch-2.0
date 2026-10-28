@@ -396,9 +396,23 @@ export function IngredientRow({
   // raw text.
   const dealInfoEl = (
     <View style={styles.itemInfo}>
-      <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
-        {dealNameContent}
-      </Text>
+      {/* The chef hat right after the name, as on pantry rows (Anabelle,
+          2026-10-28: "The did you know icon must also appear right next
+          to its refered ingredient" -- Long squash is a deal). */}
+      {onTipPress ? (
+        <View style={styles.nameWithTip}>
+          <Text style={[styles.itemName, styles.nameWithTipText, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
+            {dealNameContent}
+          </Text>
+          <Pressable style={styles.tipBadge} onPress={onTipPress} hitSlop={10} accessibilityLabel="Did you know? Jump to the tip">
+            <ChefHatIcon size={14} color={INK} />
+          </Pressable>
+        </View>
+      ) : (
+        <Text style={[styles.itemName, !!dealTag && styles.itemNameDeal, checked && styles.itemNameChecked]}>
+          {dealNameContent}
+        </Text>
+      )}
       {showStoreLink && dealTag?.store && <Text style={styles.itemStore}>{dealTag.store}</Text>}
       {showStoreLink && dealTag && (
         <Pressable
