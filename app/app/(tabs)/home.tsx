@@ -54,6 +54,7 @@ const CARD_GAP = 16;
 // Top deals grid (Anabelle, 2026-10-26): 3 tiles a row on desktop (4 was
 // too tall and narrow), 2 on a phone. 12 for members (Anabelle, 2026-10-26:
 // "i want to be able to showcase 12 deals"), which fills both evenly.
+// More when she hand-picks more (no cap on picks, Anabelle 2026-10-28).
 const DEALS_SHOWN = 12;
 // Price-per-serving starburst on the recipe cards.
 const BURST_SIZE = 104;
@@ -153,7 +154,7 @@ export default function HomeScreen() {
   const topDeals = [
     ...handPicked,
     ...shownDeals.filter((deal) => deal.homePick === null).sort(bySavingsDesc),
-  ].slice(0, isSubscribed ? DEALS_SHOWN : FREE_DEALS_SHOWN);
+  ].slice(0, isSubscribed ? Math.max(DEALS_SHOWN, handPicked.length) : FREE_DEALS_SHOWN);
   // Every other deal at the visitor's stores sits behind the locked tile.
   const lockedDealCount = isSubscribed ? 0 : Math.max(0, shownDeals.length - topDeals.length);
   const dealColumns = isDesktop ? DEAL_COLUMNS_DESKTOP : DEAL_COLUMNS_PHONE;

@@ -23,7 +23,6 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
-const MAX_PICKS = 12;
 const MAX_FREE = 3;
 
 interface Database {
@@ -97,9 +96,6 @@ export default {
     const freeIds = new Set(rows.filter((row) => row.home_free).map((row) => row.id));
     if (typeof picked === "boolean") {
       if (picked) {
-        if (deal.home_pick === null && order.length >= MAX_PICKS) {
-          return validationError(`Home shows ${MAX_PICKS} deals. Remove one first.`);
-        }
         // Already picked: keeps its place.
         if (deal.home_pick !== null) order.splice(deal.home_pick - 1, 0, deal_id);
         else order.push(deal_id);
