@@ -1779,7 +1779,15 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
       // estimate couldn't be compared), the deal is compared per item --
       // so the estimate must be for ONE item too, never a pack (see the
       // function).
-      body: { item_name: query, per_item: priceUnit === 'each' || basis.unit === 'ea' },
+      // A deal priced by weight or volume gets a per-kg / per-L estimate
+      // (Safeway Sweet Clementines, 2026-10-28: $2.44/lb against a "2 lb
+      // box" priced as 1 each).
+      body: {
+        item_name: query,
+        per_item: priceUnit === 'each' || basis.unit === 'ea',
+        by_weight: ['g', 'kg', 'lb'].includes(basis.unit),
+        by_volume: ['ml', 'L'].includes(basis.unit),
+      },
     });
     setAiLoading(false);
     if (invokeError || !data?.price || !data.quantity || !data.unit) {
