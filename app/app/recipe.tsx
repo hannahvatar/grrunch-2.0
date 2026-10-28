@@ -338,6 +338,7 @@ export default function RecipeScreen() {
                         ignoreExpiry={week === 'next'}
                         text={ingredient.dealDisplayText ?? ingredient.text}
                         dealTag={ingredient.dealTag}
+                        onTipPress={ingredient.didYouKnow && meal.didYouKnow ? scrollToDidYouKnow : undefined}
                         estimatedPrice={ingredient.estimatedPrice}
                         useQuantityText={ingredient.useQuantityText}
                         // Deal-tagged lines' own text never scales with the
@@ -401,6 +402,7 @@ export default function RecipeScreen() {
                       text={ingredient.text}
                       estimatedPrice={ingredient.estimatedPrice}
                       bulleted
+                      onTipPress={ingredient.didYouKnow && meal.didYouKnow ? scrollToDidYouKnow : undefined}
                       useQuantityText={ingredient.useQuantityText}
                     />
                   ))}

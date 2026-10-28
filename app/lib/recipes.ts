@@ -137,6 +137,7 @@ function mapIngredient(
     const cost = dealTag ? portionCost(ingredient.quantity, ingredient.unit, ingredient.name, dealTag) : undefined;
     return {
       text, name: ingredient.name, dealTag, groceryText: text, dealDisplayText,
+      didYouKnow: ingredient.did_you_know || undefined,
       quantity: ingredient.quantity, unit: ingredient.unit,
       useQuantityText: withPortionCost(useQuantityText, cost),
     };
