@@ -14,7 +14,12 @@ import { CheckIcon, ChevronDownIcon, MagnifyingGlassPlusIcon } from 'react-nativ
 import { CutoutViewer } from '../components/CutoutViewer';
 import { InputField } from '../components/InputField';
 import { SegmentedControl } from '../components/SegmentedControl';
-import { isGreatReferenceValue } from '../lib/curatedDeals';
+import {
+  formatGreatReferenceValueLabel,
+  formatRealDiscountLabel,
+  isGreatReferenceValue,
+  showsRealDiscount,
+} from '../lib/curatedDeals';
 import { sizeFromItemName, splitMultiItemName } from '../lib/dealNames';
 import {
   benchmarkCostForQuantity,
@@ -499,9 +504,12 @@ export default function DevDealsScreen() {
       const lastReviewed = Math.max(
         ...c.deals.map((d) => (d.pricing_reviewed_at ? new Date(d.pricing_reviewed_at).getTime() : 0))
       );
-      return { cutout: c, title: cutoutTitle(c), unreviewed, lastReviewed };
+      return { cutout: c, title: cutoutTitle(c), unreviewed, lastReviewed, savings: bestSavingsDeal(c.deals.filter(matchesFilters)) };
     })
     .sort((a, b) => {
+      // Approved tab: biggest saving first (Anabelle, 2026-10-28: "reorganize
+      // by the most saving").
+      if (statusFilter === 'approved') return (b.savings?.discount_pct ?? 0) - (a.savings?.discount_pct ?? 0);
       if (a.unreviewed !== b.unreviewed) return a.unreviewed ? -1 : 1;
       if (a.unreviewed) return a.title.localeCompare(b.title);
       return b.lastReviewed - a.lastReviewed;
@@ -647,7 +655,7 @@ export default function DevDealsScreen() {
           <Dropdown options={zoneOptions} value={zoneFilter} onChange={setZoneFilter} menuAlign="right" />
         </View>
 
-        {visibleCutouts.map(({ cutout, title, unreviewed }) => {
+        {visibleCutouts.map(({ cutout, title, unreviewed, savings }) => {
           const single = cutout.deals.length === 1 && cutout.missingParts.length === 0;
           const deal = cutout.deals[0];
           const openDeals = cutout.deals.filter((d) => d.status !== 'rejected');
@@ -676,6 +684,10 @@ export default function DevDealsScreen() {
                 {/* Why the weekly fetch picked it (scripts/
                     weekly_flyer_fetch.py) -- judged at a glance. */}
                 {deal.pick_reason && <Text style={styles.pickReason}>{deal.pick_reason}</Text>}
+                {/* Approved tab: each card's saving, the same badge Home shows
+                    (Anabelle, 2026-10-28). A several-product cutout shows its
+                    best one. */}
+                {statusFilter === 'approved' && savings && <SavingsBadge deal={savings} />}
                 {single ? (
                   <DealPriceLine deal={deal} showStatus={statusFilter === 'all'} />
                 ) : (
@@ -742,6 +754,32 @@ export default function DevDealsScreen() {
 
         {visibleCutouts.length === 0 && <Text style={styles.emptyText}>No deals match.</Text>}
       </ScrollView>
+    </View>
+  );
+}
+
+// The product with the biggest saving, or null when none has a price
+// comparison at all.
+function bestSavingsDeal(deals: CuratedDeal[]): CuratedDeal | null {
+  return deals.reduce<CuratedDeal | null>(
+    (best, d) => (d.discount_pct != null && (!best || d.discount_pct > (best.discount_pct ?? 0)) ? d : best),
+    null
+  );
+}
+
+// Same three badges as Home's deal tiles: a real store discount (blue), a
+// good price against a reference (purple), or Fair price.
+function SavingsBadge({ deal }: { deal: CuratedDeal }) {
+  const pct = deal.discount_pct ?? 0;
+  const source = deal.original_price_source as OriginalPriceSource | null;
+  const [label, badgeStyle, textStyle] = showsRealDiscount(pct, source)
+    ? [formatRealDiscountLabel(pct), styles.savingsBadgeReal, styles.savingsBadgeRealText]
+    : isGreatReferenceValue(pct, source)
+      ? [formatGreatReferenceValueLabel(pct), styles.savingsBadgeReference, styles.savingsBadgeReferenceText]
+      : ['Fair price', styles.savingsBadgeFair, styles.savingsBadgeFairText];
+  return (
+    <View style={[styles.savingsBadge, badgeStyle]}>
+      <Text style={[styles.savingsBadgeText, textStyle]}>{label}</Text>
     </View>
   );
 }
@@ -2509,6 +2547,14 @@ const styles = StyleSheet.create({
   // background below. Only shown on the "All" status tab.
   statusBadge: { backgroundColor: '#FFA955', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   statusBadgeApproved: { backgroundColor: '#96E696' },
+  savingsBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginTop: 4 },
+  savingsBadgeText: { fontSize: 12, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  savingsBadgeReal: { backgroundColor: '#E3ECFD' },
+  savingsBadgeRealText: { color: '#2C5FD6' },
+  savingsBadgeReference: { backgroundColor: '#EDE7FE' },
+  savingsBadgeReferenceText: { color: '#6B46C1' },
+  savingsBadgeFair: { backgroundColor: '#FFEAD4' },
+  savingsBadgeFairText: { color: '#FF7A2A' },
   statusBadgeRejected: { backgroundColor: '#F4A6A0' },
   statusBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
   emptyText: { fontSize: 14, color: '#888', textAlign: 'center', marginTop: 24 },
