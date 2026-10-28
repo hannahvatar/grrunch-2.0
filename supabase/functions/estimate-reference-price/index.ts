@@ -23,11 +23,15 @@
 // dev-deals.tsx before asking.
 //
 // Client contract:
-//   POST { item_name: string, per_item?: boolean }
+//   POST { item_name: string, per_item?: boolean, by_weight?: boolean, by_volume?: boolean }
 //   per_item: price ONE single unit, never a pack (Anabelle, 2026-09-30, on
 //   Everything Bagels: "a pack can widely differ in number of units" -- a
 //   6-pack estimate was compared against one bagel). dev-deals sends it
-//   when the deal has "How many items for this price?" set.
+//   when the deal has "How many items for this price?" set, or is priced
+//   each / as a package with no size.
+//   by_weight / by_volume: price per kg / per L (Anabelle, 2026-10-28, on
+//   Sweet Clementines at $2.44/lb: a "2 lb box" came back as 1 each and
+//   couldn't be compared). dev-deals sends the one matching the deal.
 //   -> 200 { price: number, quantity: number, unit: "g"|"kg"|"ml"|"L"|"lb"|"each",
 //            reasoning: string }
 //   -> 4xx/5xx { error: string }
@@ -82,7 +86,7 @@ function validationError(message: string) {
 
 export default {
   fetch: withSupabase({ auth: ["publishable"] }, async (req) => {
-    let body: { item_name?: unknown; per_item?: unknown };
+    let body: { item_name?: unknown; per_item?: unknown; by_weight?: unknown; by_volume?: unknown };
     try {
       body = await req.json();
     } catch {
@@ -91,6 +95,8 @@ export default {
 
     const itemName = typeof body.item_name === "string" ? body.item_name.trim() : "";
     const perItem = body.per_item === true;
+    const byWeight = !perItem && body.by_weight === true;
+    const byVolume = !perItem && !byWeight && body.by_volume === true;
     if (itemName === "" || itemName.length > 200) {
       return validationError("item_name is required (200 characters max).");
     }
@@ -124,7 +130,11 @@ export default {
             role: "user",
             content: perItem
               ? `Item: ${itemName}\nPrice ONE single unit of this item (one bagel, one can, one bar), not a pack or multi-pack. Answer with unit "each" and quantity 1. If it's usually sold in packs, divide a typical BC pack price by the pack's usual count.`
-              : `Item: ${itemName}`,
+              : byWeight
+                ? `Item: ${itemName}\nPrice it by weight: answer with unit "kg" and quantity 1. If it's usually sold in boxes or bags, divide a typical BC box or bag price by its weight.`
+                : byVolume
+                  ? `Item: ${itemName}\nPrice it by volume: answer with unit "L" and quantity 1. If it's usually sold in bottles or cartons, divide a typical BC price by the volume.`
+                  : `Item: ${itemName}`,
           },
         ],
       });
