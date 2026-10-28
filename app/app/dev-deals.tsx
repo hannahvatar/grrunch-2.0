@@ -1774,9 +1774,12 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
       reasoning?: string;
       error?: string;
     }>('estimate-reference-price', {
-      // With a count set, the deal is compared per item -- so the estimate
-      // must be for ONE item too, never a pack (see the function).
-      body: { item_name: query, per_item: bundle !== null },
+      // With a count set, or a deal priced by the item (each, or a package
+      // with no size -- Walmart Green Cabbage, 2026-10-28: a per-kg
+      // estimate couldn't be compared), the deal is compared per item --
+      // so the estimate must be for ONE item too, never a pack (see the
+      // function).
+      body: { item_name: query, per_item: priceUnit === 'each' || basis.unit === 'ea' },
     });
     setAiLoading(false);
     if (invokeError || !data?.price || !data.quantity || !data.unit) {
