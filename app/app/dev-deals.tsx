@@ -387,10 +387,6 @@ export default function DevDealsScreen() {
 
   function toggleHomePick(deal: CuratedDeal) {
     const picked = deal.home_pick === null;
-    if (picked && homePicks.length >= HOME_PICKS_MAX) {
-      setHomePickError(`Home shows ${HOME_PICKS_MAX} deals. Remove one first.`);
-      return;
-    }
     saveHomePick(deal, { picked });
   }
 
@@ -580,7 +576,7 @@ export default function DevDealsScreen() {
             savings. */}
         <View style={styles.sectionCard}>
           <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>
-            Home deals ({homePicks.length}/{HOME_PICKS_MAX})
+            Home deals ({homePicks.length})
           </Text>
           <Text style={styles.note}>
             {homePicks.length === 0
@@ -951,9 +947,6 @@ async function rejectDeal(deal: CuratedDeal): Promise<{ deal: CuratedDeal } | { 
   return { deal: data.deal };
 }
 
-// Home's Top deals grid shows this many; the hand-picked ones go first
-// (set-deal-home-pick, Anabelle 2026-10-26).
-const HOME_PICKS_MAX = 12;
 // Free Home deals for non-members, picked among the Home deals (Anabelle,
 // 2026-10-26: "Like the recipes, i should be able to pick the 3 free deals").
 const HOME_FREE_MAX = 3;
