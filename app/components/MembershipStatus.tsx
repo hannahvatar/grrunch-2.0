@@ -42,6 +42,13 @@ function formatRenewalDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// A membership granted in the RevenueCat dashboard with "unlimited
+// duration" expires 200 years out -- it showed as "Ends Aug 15, 2226"
+// (Anabelle, 2026-10-29). Anything past 50 years reads as lifetime.
+function isLifetime(iso: string): boolean {
+  return new Date(iso).getFullYear() - new Date().getFullYear() > 50;
+}
+
 // Real subscription status card -- extracted from profile.tsx's
 // Membership section (Anabelle, 2026-08-28) so payment.tsx can show the
 // exact same real status instead of duplicating the isSubscribed/
@@ -199,7 +206,9 @@ export function MembershipStatus() {
                 real "Manage membership" button sitting right below it. */}
             <Text style={styles.membershipSubtitle}>
               {expirationDate
-                ? willRenew
+                ? isLifetime(expirationDate)
+                  ? 'Lifetime member'
+                  : willRenew
                   ? `Renews ${formatRenewalDate(expirationDate)}`
                   : `Ends ${formatRenewalDate(expirationDate)}`
                 : 'Active membership'}
