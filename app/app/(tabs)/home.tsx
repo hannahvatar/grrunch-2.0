@@ -363,9 +363,15 @@ function HomeRecipeCard({ meal, width, stacked }: { meal: Meal; width: number; s
           </View>
         </View>
 
-        <Text style={styles.recipeCardTitle} numberOfLines={2}>
-          {meal.name}
-        </Text>
+        {/* The plain one-line descriptor under the fun title (Anabelle,
+            2026-10-29: "add their recipe description. Right now it only
+            displays the title"), like the Recipes list's cards. */}
+        <View style={styles.recipeCardTitleBlock}>
+          <Text style={styles.recipeCardTitle} numberOfLines={2}>
+            {meal.name}
+          </Text>
+          {!!meal.descriptor && <Text style={styles.recipeCardDescriptor}>{meal.descriptor}</Text>}
+        </View>
 
         {topDeals.length > 0 && (
           <View style={styles.chipsRow}>
@@ -586,7 +592,9 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaText: { fontSize: 14, color: '#555' },
+  recipeCardTitleBlock: { gap: 4 },
   recipeCardTitle: { fontSize: 22, lineHeight: 28, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  recipeCardDescriptor: { fontSize: 16, lineHeight: 22, color: '#555' },
   // Light pill around each badge + ingredient (Anabelle, 2026-10-23: keep
   // the mockup's chip background, with the app's badge colors inside).
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
