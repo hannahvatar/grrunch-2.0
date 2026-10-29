@@ -435,3 +435,14 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/revenuecat-webhook/deno.json"
 entrypoint = "./functions/revenuecat-webhook/index.ts"
+
+# The function verifies the caller's own sign-in token itself
+# (supabaseAdmin.auth.getUser) and only ever deletes that user. The
+# gateway's legacy JWT check rejected the project's new signing-key tokens
+# ("UNAUTHORIZED_LEGACY_JWT"), so Delete account failed for everyone
+# (Anabelle approved turning it off, 2026-10-29).
+[functions.delete-account]
+enabled = true
+verify_jwt = false
+import_map = "./functions/delete-account/deno.json"
+entrypoint = "./functions/delete-account/index.ts"
