@@ -138,6 +138,10 @@ function ManageAccountForm({
   // active row has no real willRenew at all, defaults false in
   // lib/purchases.tsx, so this never blocks in that unconfigured state).
   const [membershipBlockVisible, setMembershipBlockVisible] = useState(false);
+  // Anabelle, 2026-10-29: deleting used to drop straight to the sign-in
+  // page; "it would need a confirmation modal so reassure user that their
+  // account is deleted as intended".
+  const [deletedVisible, setDeletedVisible] = useState(false);
   const { willRenew } = usePurchases();
 
   useEffect(() => {
@@ -216,6 +220,11 @@ function ManageAccountForm({
       return;
     }
     setConfirmDeleteVisible(false);
+    setDeletedVisible(true);
+  }
+
+  async function finishDeletedAccount() {
+    setDeletedVisible(false);
     await supabase.auth.signOut();
     // mode:'signup' -- the account just deleted is gone, so
     // returning here is starting fresh, not signing back in.
@@ -394,6 +403,22 @@ function ManageAccountForm({
                 )}
               </Pressable>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* After a successful delete: says it's done before signing out.
+          Same single-button card as the membership block above. */}
+      <Modal visible={deletedVisible} transparent animationType="fade" onRequestClose={finishDeletedAccount}>
+        <Pressable style={styles.modalBackdrop} onPress={finishDeletedAccount}>
+          <Pressable style={[styles.modalCard, modalWidth]} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>Your account is deleted</Text>
+            <Text style={styles.modalBody}>
+              Your account and everything saved to it have been permanently deleted. Thanks for trying Grrunch.
+            </Text>
+            <Pressable style={[styles.modalKeepButton, styles.modalSingleButton]} onPress={finishDeletedAccount}>
+              <Text style={styles.modalKeepButtonText}>Done</Text>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
