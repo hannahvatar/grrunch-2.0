@@ -241,7 +241,8 @@ function RecipeCarousel({
   return (
     <>
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>This week's recipes</Text>
+        {/* Anabelle, 2026-10-30. */}
+        <Text style={styles.sectionTitle}>Meals That Make Cents</Text>
         <View style={styles.sectionHeaderActions}>
           {isDesktop && cardCount > 1 && (
             <View style={styles.arrows}>
