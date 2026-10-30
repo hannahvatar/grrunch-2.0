@@ -14,7 +14,6 @@ import {
   type Deal,
   fetchAllDeals,
   formatComparePriceLabel,
-  formatDealBadgePrice,
   priceUnitSuffix,
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
@@ -444,19 +443,19 @@ export default function BestDealsScreen() {
                             </Pressable>
                             <View style={styles.priceRow}>
                               <Text style={styles.dealPrice}>
-                                ${formatDealBadgePrice(deal.price, deal.priceUnit, deal.packageWeightG).toFixed(2)}
-                                {priceUnitSuffix(deal.priceUnit, deal.packageWeightG)}
+                                ${deal.price.toFixed(2)}
+                                {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl)}
                               </Text>
                               {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
                                 <Text style={styles.dealOriginalPrice}>
-                                  ${formatDealBadgePrice(deal.originalPrice, deal.priceUnit, deal.packageWeightG).toFixed(2)}
-                                  {priceUnitSuffix(deal.priceUnit, deal.packageWeightG)}
+                                  ${deal.originalPrice.toFixed(2)}
+                                  {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl)}
                                 </Text>
                               )}
                             </View>
                             {isReferencePriced(deal.originalPriceSource) && (
                               <Text style={styles.dealCompareAnnotation}>
-                                {formatComparePriceLabel(formatDealBadgePrice(deal.originalPrice, deal.priceUnit, deal.packageWeightG), priceUnitSuffix(deal.priceUnit, deal.packageWeightG))}
+                                {formatComparePriceLabel(deal.originalPrice, priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl))}
                               </Text>
                             )}
                             {/* Moved off the image overlay (was cramped/

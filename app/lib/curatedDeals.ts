@@ -34,6 +34,7 @@ export interface Deal {
   zone: string | null;
   priceUnit?: 'package' | 'each' | 'lb' | 'kg' | '100g';
   packageWeightG?: number;
+  packageVolumeMl?: number;
   // Place on Home's Top deals grid, hand-picked in dev-deals (1 = first);
   // null when not picked.
   homePick: number | null;
@@ -125,49 +126,35 @@ export function formatComparePriceLabel(originalPrice: number, unitSuffix = ''):
   return `$${originalPrice.toFixed(2)}${unitSuffix} avg.`;
 }
 
-// The unit after a deal price, always shown (Anabelle, 2026-10-30: a bare
-// "$0.98" reads as one cabbage when it's per pound). Pairs with
-// formatDealBadgePrice below: a per-weight rate with no package weight
-// stays a rate ("/lb"), one with a known package weight has been turned
-// into the package's price ("/pkg"), and flat prices say "each" or
-// "/pkg" as the flyer sold them.
+// The unit after a deal price, always the one Anabelle set when reviewing
+// the deal in dev-deals (2026-10-30: a bare "$0.98" reads as one cabbage
+// when it's per pound, and a computed package price turned Safeway's
+// $0.99/lb apples into "/pkg"). Same reading as dev-deals' "Price is
+// per" row: a rate ("/lb", "/kg", "/100 g"), "each", or a package of a
+// known size ("/665 g", "/500 ml"), else "/pkg". The price beside it is
+// the stored price as reviewed, never converted.
 export function priceUnitSuffix(
   priceUnit: 'package' | 'each' | 'lb' | 'kg' | '100g' | undefined,
-  packageWeightG: number | undefined
+  packageWeightG: number | undefined,
+  packageVolumeMl?: number
 ): string {
   if (priceUnit === 'each') return '\u00A0each';
-  if (packageWeightG) return '/pkg';
   if (priceUnit === 'lb') return '/lb';
   if (priceUnit === 'kg') return '/kg';
   if (priceUnit === '100g') return '/100\u00A0g';
+  if (packageWeightG) {
+    return packageWeightG >= 1000 ? `/${trimAmount(packageWeightG / 1000)}\u00A0kg` : `/${Math.round(packageWeightG)}\u00A0g`;
+  }
+  if (packageVolumeMl) {
+    return packageVolumeMl >= 1000 ? `/${trimAmount(packageVolumeMl / 1000)}\u00A0L` : `/${Math.round(packageVolumeMl)}\u00A0ml`;
+  }
   return '/pkg';
 }
 
-const GRAMS_PER_PRICE_UNIT: Record<string, number> = { lb: 453.592, kg: 1000, '100g': 100 };
-
-// The "On Sale This Week" badge's number -- distinguishes a genuinely
-// loose/bulk lb/kg/100g-priced item (no known package_weight_g, e.g.
-// Plantains -- the bare rate, "$1.47/lb", IS the honest number, since
-// you pick the exact weight yourself) from a real labeled prepackage
-// that's ALSO priced per lb/kg/100g on the flyer (Prime chicken
-// breast, a known ~700 g package -- the bare "$6.79/lb" undersells
-// what the one package you'd actually pick up costs). Anabelle: "item
-// is per weight BUT ALSO prepackage, it is ok here to update its price
-// per lbs for the estimated price the package would cost." 'package'/
-// 'each' deals are untouched -- rawRate already IS the flat flyer
-// price there, no estimation needed.
-export function formatDealBadgePrice(
-  rawRate: number,
-  priceUnit: 'package' | 'each' | 'lb' | 'kg' | '100g' | undefined,
-  packageWeightG: number | undefined
-): number {
-  if (priceUnit && packageWeightG) {
-    const gramsPerUnit = GRAMS_PER_PRICE_UNIT[priceUnit];
-    if (gramsPerUnit) return Math.round(rawRate * (packageWeightG / gramsPerUnit) * 100) / 100;
-  }
-  return rawRate;
+// 1.5 -> "1.5", 1.36 -> "1.36", 2 -> "2".
+function trimAmount(value: number): string {
+  return String(Math.round(value * 100) / 100);
 }
-
 
 // price/original_price became nullable (see
 // supabase/migrations/20260811010000_curated_deals_unknown_price_and_reject.sql
@@ -197,6 +184,7 @@ function mapRowToDeal(row: {
   zone: string | null;
   price_unit?: string | null;
   package_weight_g?: number | null;
+  package_volume_ml?: number | null;
   home_pick?: number | null;
   home_free?: boolean | null;
 }): Deal | null {
@@ -216,6 +204,7 @@ function mapRowToDeal(row: {
     zone: row.zone,
     priceUnit: (row.price_unit ?? undefined) as Deal['priceUnit'],
     packageWeightG: row.package_weight_g ?? undefined,
+    packageVolumeMl: row.package_volume_ml ?? undefined,
     homePick: row.home_pick ?? null,
     homeFree: row.home_free ?? false,
   };

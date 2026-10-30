@@ -24,7 +24,6 @@ import {
   oneCardPerCutout,
   type Deal,
   fetchAllDeals,
-  formatDealBadgePrice,
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
   isGreatReferenceValue,
@@ -433,8 +432,8 @@ function HomeRecipeCard({ meal, width, stacked }: { meal: Meal; width: number; s
 // cropped) with the same savings badge Weekly Deals shows, then name,
 // store and price. Tapping it opens Weekly Deals.
 function DealTile({ deal, width }: { deal: Deal; width: number }) {
-  const price = formatDealBadgePrice(deal.price, deal.priceUnit, deal.packageWeightG);
-  const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG);
+  const price = deal.price;
+  const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl);
   const [zoomOpen, setZoomOpen] = useState(false);
   const wow =
     deal.discountPct >= WOW_DISCOUNT_PCT &&
