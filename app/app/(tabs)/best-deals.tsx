@@ -96,7 +96,7 @@ export default function BestDealsScreen() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   // Anabelle, 2026-10-09: reorganise by best value (category sections,
   // best value first -- the default) or per store (one section per store).
-  const [sortMode, setSortMode] = useState<'value' | 'store'>('value');
+  const [sortMode, setSortMode] = useState<'category' | 'store'>('category');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   // Cutout shown full screen (tap a deal's thumbnail) -- one viewer for
   // the whole page rather than one per deal.
@@ -168,7 +168,7 @@ export default function BestDealsScreen() {
     const target = allDeals.find((d) => d.id === focusDealParam);
     router.setParams({ deal: undefined });
     if (!target) return;
-    setSortMode('value');
+    setSortMode('category');
     setExpandedCategories((prev) => new Set(prev).add(target.category));
     setFocusDealId(target.id);
     setHighlightDealId(target.id);
@@ -265,14 +265,16 @@ export default function BestDealsScreen() {
           </View>
           <View style={styles.sortSection}>
             <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
-              <Text style={styles.sortPillText}>{sortMode === 'store' ? 'Per store' : 'Best savings'}</Text>
+              <Text style={styles.sortPillText}>{sortMode === 'store' ? 'Per store' : 'Per category'}</Text>
               <ChevronDownIcon size={16} color={INK} strokeWidth={2} />
             </Pressable>
             {sortMenuOpen && (
               <View style={styles.sortMenu}>
                 {(
                   [
-                    { mode: 'value', label: 'Best savings' },
+                    // Per category or per store (Anabelle, 2026-10-30); deals stay
+                    // best-savings first inside each group.
+                    { mode: 'category', label: 'Per category' },
                     { mode: 'store', label: 'Per store' },
                   ] as const
                 ).map((option) => (
