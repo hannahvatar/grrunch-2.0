@@ -161,7 +161,8 @@ export default function MealsScreen() {
       <ScrollView contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View style={styles.headerRow}>
           <View style={styles.titleFlex}>
-            <Text style={styles.title}>Recipes from This Week's Deals</Text>
+            {/* Same heading as Home's recipes section (Anabelle, 2026-10-30). */}
+            <Text style={styles.title}>Meals That Make Cents</Text>
           </View>
           <View style={styles.sortSection}>
             <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
@@ -188,9 +189,16 @@ export default function MealsScreen() {
           </View>
         </View>
 
-        {/* Same dates + days-left card as Home and Weekly Deals
-            (Anabelle, 2026-10-30). */}
-        {!weekExpired && <WeekCountdownCard />}
+        {/* Intro under the title, then the same dates + days-left card as
+            Home and Weekly Deals (Anabelle, 2026-10-30). */}
+        {!weekExpired && (
+          <View>
+            <Text style={styles.tagline}>
+              Delicious recipes built around this week's best deals. Big on flavour, easy on your wallet.
+            </Text>
+            <WeekCountdownCard />
+          </View>
+        )}
 
         <StoreChips page="meals" />
 
@@ -255,6 +263,8 @@ const styles = StyleSheet.create({
   // below it.
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
+  // Same as Weekly Deals' intro line.
+  tagline: { fontSize: 14, color: INK, marginTop: -12 },
   titleFlex: { flex: 1, marginRight: 12 },
   // zIndex here (well above mealCardOuter's siblings below, which sit at
   // the default stacking level) is load-bearing on web: React Native Web
