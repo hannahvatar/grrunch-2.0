@@ -217,7 +217,9 @@ const styles = StyleSheet.create({
   },
   // 16px body / 14px labels on every layout (Anabelle, 2026-10-22).
   body: { fontSize: 16, lineHeight: 24, textAlign: 'center', color: '#111' },
-  bottomBlock: { paddingBottom: 160 },
+  // The chat bubble is hidden on this screen (SupportBubble.tsx), so no
+  // 160 px clearance is needed under the button any more.
+  bottomBlock: { paddingBottom: 24 },
   dots: { flexDirection: 'row', gap: 8, marginBottom: 24, alignSelf: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0C9AE' },
   dotActive: { backgroundColor: INK, width: 20 },

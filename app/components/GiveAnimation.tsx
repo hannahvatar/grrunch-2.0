@@ -11,11 +11,13 @@ import { SvgXml } from 'react-native-svg';
 // heart already sitting above the bag.
 
 const STAGE_W = 300;
-const STAGE_H = 230;
-const BAG_W = 150;
-const BAG_H = 150;
-const HEART = 76;
-const SMALL = 26;
+// Smaller than the other slides' 230 px: the full-size heart pushed the
+// text and button out of view on a phone (Anabelle, 2026-10-30).
+const STAGE_H = 180;
+const BAG_W = 130;
+const BAG_H = 130;
+const HEART = 50;
+const SMALL = 22;
 
 const BAG_XML = `<svg viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
   <g transform="rotate(-38 58 22)">
@@ -37,9 +39,9 @@ const HEART_XML = `<svg viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">
 
 // Small hearts: start x offset from centre, rise distance, delay (ms).
 const FLOATERS: Array<[number, number, number]> = [
-  [-70, 120, 0],
-  [72, 110, 260],
-  [-10, 140, 520],
+  [-62, 90, 0],
+  [64, 84, 260],
+  [-8, 104, 520],
 ];
 
 export function GiveAnimation({ active }: { active: boolean }) {
@@ -81,7 +83,7 @@ export function GiveAnimation({ active }: { active: boolean }) {
     return () => run.stop();
   }, [active, reduceMotion, rise, pulse, floats]);
 
-  const heartTranslate = rise.interpolate({ inputRange: [0, 1], outputRange: [70, 0] });
+  const heartTranslate = rise.interpolate({ inputRange: [0, 1], outputRange: [60, 0] });
   const heartScale = Animated.multiply(
     rise.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
     pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] })
@@ -122,5 +124,5 @@ const styles = StyleSheet.create({
   stage: { width: STAGE_W, height: STAGE_H, alignSelf: 'center' },
   bag: { position: 'absolute', left: (STAGE_W - BAG_W) / 2, bottom: 0 },
   heart: { position: 'absolute', left: (STAGE_W - HEART) / 2, top: 0 },
-  small: { position: 'absolute', bottom: 70 },
+  small: { position: 'absolute', bottom: 60 },
 });
