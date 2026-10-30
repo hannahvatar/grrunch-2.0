@@ -187,7 +187,16 @@ function mergeSameDealItems(items: GroceryItem[], quantityOverrides: Map<string,
     seen.add(key);
     const tag = item.dealTag;
     const shares = group.map((g) =>
-      dealPackageShare(g.quantity, g.unit, tag.packageWeightG, tag.fragmentByWeight, g.multiplier ?? 1, tag.packageVolumeMl, tag.name)
+      dealPackageShare(
+        g.quantity,
+        g.unit,
+        tag.packageWeightG,
+        tag.fragmentByWeight,
+        g.multiplier ?? 1,
+        tag.packageVolumeMl,
+        tag.name,
+        tag.priceUnit
+      )
     );
     const packageCount = shares.every((share) => share !== undefined)
       ? Math.max(1, Math.ceil(shares.reduce((sum, share) => sum! + share!, 0)! - 1e-9))
