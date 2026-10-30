@@ -160,8 +160,10 @@ export default function ProfileScreen() {
         <Text style={styles.title}>Profile</Text>
       </View>
 
-      {!isGuest && (
-        <>
+      {/* Membership, Manage account and Notifications show for everyone
+          (Anabelle, 2026-10-30): signed out, each opens onto the free-trial
+          card (Membership) or Sign in / free trial (the other two). */}
+      <>
           <SectionHeader
             title="Membership"
             expanded={membershipOpen}
@@ -193,10 +195,9 @@ export default function ProfileScreen() {
               needs a separate standalone Sign out button now that this
               is here, so that one's removed rather than left duplicated. */}
           {manageAccountOpen && <ManageAccountSection />}
-        </>
-      )}
+      </>
 
-      {!isGuest && <View style={styles.sectionDivider} />}
+      <View style={styles.sectionDivider} />
       <SectionHeader
         title="My stores"
         subtitle={!isSubscribed ? 'Auto-selected from your location' : undefined}
@@ -301,8 +302,7 @@ export default function ProfileScreen() {
       </>
       )}
 
-      {!isGuest && (
-        <>
+      <>
           <View style={styles.sectionDivider} />
           <SectionHeader
             title="Notifications"
@@ -316,13 +316,10 @@ export default function ProfileScreen() {
               accordion this section already is). NotificationsSection
               now shows both channels inline, one combined Save -- same
               "no drill-down" treatment as this screen's own Manage
-              account section. No guest branch needed here (unlike that
-              component's own internal isGuest check, kept for when it's
-              used standalone) -- this whole section is already hidden
-              for a guest by the wrapping !isGuest above. */}
+              account section. Signed out, its own isGuest branch shows
+              Sign in / free trial. */}
           {notificationsOpen && <NotificationsSection />}
-        </>
-      )}
+      </>
 
       {/* Settings as its own section below Profile (Anabelle, 2026-10-23),
           same heading treatment; was a separate screen behind a gear
