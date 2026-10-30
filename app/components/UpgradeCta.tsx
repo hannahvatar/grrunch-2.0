@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
-import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import { LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { ANNUAL_MONTHLY_EQUIVALENT_DISPLAY } from '../lib/purchases';
 import { FoodBankMission } from './FoodBankMission';
@@ -24,12 +24,11 @@ const INK = '#111';
 // elsewhere (e.g. profile.tsx's viewSavedButton alongside a tappable
 // row) rather than an implicit whole-card tap.
 //
-// variant 'outline' is the next-to-feature treatment used by Grocery
-// list's empty state -- a single tappable row with a trailing chevron,
-// since that's a lighter-weight secondary-section prompt, not the page's
-// primary conversion moment.
+// The compact 'outline' row (My list, the sign-in prompt) was retired on
+// 2026-10-30: every trial card is now the centred tile (Anabelle: "so it
+// matches the other cards").
 //
-// Both variants share the one `card` style below -- transparent fill,
+// All variants share the one `card` style below -- transparent fill,
 // dashed INK border (Anabelle, 2026-09-17: "There should be consistence
 // and the subscribe container everywhere should be transparent with a
 // dashed border"). Was a solid-bordered white fill for 'solid' and a
@@ -50,7 +49,7 @@ export function UpgradeCta({
   style,
 }: {
   reason: string;
-  variant?: 'solid' | 'outline' | 'tile';
+  variant?: 'solid' | 'tile';
   title?: string;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -75,22 +74,6 @@ export function UpgradeCta({
             button (Anabelle, 2026-10-30: "Wherever there is a trial card,
             I want this treatment"). */}
         <FoodBankMission variant="join" centered />
-      </View>
-    );
-  }
-
-  if (variant === 'outline') {
-    return (
-      <View style={[styles.card, styles.outlineCard]}>
-        <Pressable style={styles.outlineRow} onPress={goToUpgrade}>
-          <LockClosedIcon size={18} color={INK} />
-          <View style={styles.textBlock}>
-            <Text style={styles.title}>Start 30-day free trial</Text>
-            <Text style={styles.subtitle}>Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime</Text>
-          </View>
-          <ChevronRightIcon size={18} color="#999" />
-        </Pressable>
-        <FoodBankMission variant="join" />
       </View>
     );
   }
@@ -135,10 +118,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
   },
-  // outline variant only -- a single tappable row (icon, text, chevron),
-  // thinner border than the solid variant's card.
-  outlineCard: { borderWidth: 1.5 },
-  outlineRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // solid variant only -- the icon+text header row sits above its own
   // separate ctaButton, not inline with it.
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
