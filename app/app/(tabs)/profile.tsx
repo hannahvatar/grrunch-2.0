@@ -174,7 +174,9 @@ export default function ProfileScreen() {
             // bank mission sits right under it (Anabelle, 2026-10-30).
             <View>
               <MembershipStatus />
-              <FoodBankMission />
+              {/* Members only: non-members see the mission inside the
+                  free-trial card instead. */}
+              {isSubscribed && <FoodBankMission />}
             </View>
           )}
 

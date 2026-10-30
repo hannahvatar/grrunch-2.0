@@ -257,7 +257,7 @@ export function MembershipStatus() {
     );
   }
 
-  return <UpgradeCta reason="unlock the full app" />;
+  return <UpgradeCta reason="unlock the full app" mission />;
 }
 
 const styles = StyleSheet.create({
