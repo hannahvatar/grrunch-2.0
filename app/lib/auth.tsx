@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);
+      if (data.session) dropSessionIfUserGone();
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
@@ -37,6 +38,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+// The saved session is restored without asking the server, so an account
+// deleted while its dialog was left open (or from another device) still
+// showed "Hi, Anabelle!" after a reload (Anabelle, 2026-10-30). Checked in
+// the background: only "this user doesn't exist" signs out, never a
+// network error.
+async function dropSessionIfUserGone() {
+  const { error } = await supabase.auth.getUser();
+  if (!error) return;
+  const gone = error.code === 'user_not_found' || /does not exist/i.test(error.message);
+  if (gone) await supabase.auth.signOut({ scope: 'local' });
 }
 
 export function useAuth(): AuthContextValue {

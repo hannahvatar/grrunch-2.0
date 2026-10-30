@@ -366,12 +366,11 @@ function ManageAccountForm({
               You have an active Grrunch membership. Cancel your membership before deleting your account to avoid
               future charges.
             </Text>
-            <Pressable
-              style={[styles.modalKeepButton, styles.modalSingleButton]}
-              onPress={() => setMembershipBlockVisible(false)}
-            >
-              <Text style={styles.modalKeepButtonText}>Got it</Text>
-            </Pressable>
+            <View style={styles.modalActions}>
+              <Pressable style={styles.modalKeepButton} onPress={() => setMembershipBlockVisible(false)}>
+                <Text style={styles.modalKeepButtonText}>Got it</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -416,9 +415,11 @@ function ManageAccountForm({
             <Text style={styles.modalBody}>
               Your account and everything saved to it have been permanently deleted. Thanks for trying Grrunch.
             </Text>
-            <Pressable style={[styles.modalKeepButton, styles.modalSingleButton]} onPress={finishDeletedAccount}>
-              <Text style={styles.modalKeepButtonText}>Done</Text>
-            </Pressable>
+            <View style={styles.modalActions}>
+              <Pressable style={styles.modalKeepButton} onPress={finishDeletedAccount}>
+                <Text style={styles.modalKeepButtonText}>Done</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
@@ -529,12 +530,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   modalKeepButtonText: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  // Overrides modalKeepButton's flex:1 for the membership-block modal's
-  // single "Got it" button -- flex:1 only makes sense paired with a
-  // second flex:1 button inside modalActions' row (real bug caught live:
-  // reused bare, outside that row, the button collapsed to almost no
-  // height since modalCard has no bounded height for flex:1 to fill).
-  modalSingleButton: { flex: 0 },
   // Solid ERROR fill -- this is the actual irreversible confirm action,
   // so it gets the strongest treatment on this card, distinct from the
   // outline-style trigger button that opened this modal.
