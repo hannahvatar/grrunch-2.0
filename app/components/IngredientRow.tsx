@@ -25,7 +25,6 @@ import { useIsDesktop } from '../lib/layout';
 import { CutoutViewer } from './CutoutViewer';
 import {
   formatComparePriceLabel,
-  formatDealBadgePrice,
   priceUnitSuffix,
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
@@ -459,20 +458,16 @@ export function IngredientRow({
         <View style={styles.itemPriceRow}>
           <Text style={styles.itemPriceValue}>
             {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}$
-            {formatDealBadgePrice(dealTag.rawPrice ?? dealTag.price, dealTag.priceUnit, dealTag.packageWeightG).toFixed(2)}
-              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)}
+            {(dealTag.rawPrice ?? dealTag.price).toFixed(2)}
+              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)}
           </Text>
           {dealTag.originalPrice != null &&
             dealTag.originalPrice > dealTag.price &&
             showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) && (
               <Text style={styles.itemPriceOriginal}>
                 $
-                {formatDealBadgePrice(
-                  dealTag.rawOriginalPrice ?? dealTag.originalPrice,
-                  dealTag.priceUnit,
-                  dealTag.packageWeightG
-                ).toFixed(2)}
-                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)}
+                {(dealTag.rawOriginalPrice ?? dealTag.originalPrice).toFixed(2)}
+                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)}
               </Text>
             )}
         </View>
@@ -483,8 +478,8 @@ export function IngredientRow({
       {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
         <Text style={styles.itemPriceEstimated}>
           {formatComparePriceLabel(
-            formatDealBadgePrice(dealTag.rawOriginalPrice ?? dealTag.originalPrice, dealTag.priceUnit, dealTag.packageWeightG),
-            priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)
+            dealTag.rawOriginalPrice ?? dealTag.originalPrice,
+            priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)
           )}
         </Text>
       )}
@@ -525,8 +520,8 @@ export function IngredientRow({
           {dealTag?.price != null && (
             <Text style={styles.itemPriceValue}>
               {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}$
-              {formatDealBadgePrice(dealTag.rawPrice ?? dealTag.price, dealTag.priceUnit, dealTag.packageWeightG).toFixed(2)}
-              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)}
+              {(dealTag.rawPrice ?? dealTag.price).toFixed(2)}
+              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)}
             </Text>
           )}
           {dealTag?.originalPrice != null &&
@@ -534,19 +529,15 @@ export function IngredientRow({
             showsRealDiscount(dealTag.discountPct, dealTag.originalPriceSource) && (
               <Text style={styles.itemPriceOriginal}>
                 $
-                {formatDealBadgePrice(
-                  dealTag.rawOriginalPrice ?? dealTag.originalPrice,
-                  dealTag.priceUnit,
-                  dealTag.packageWeightG
-                ).toFixed(2)}
-                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)}
+                {(dealTag.rawOriginalPrice ?? dealTag.originalPrice).toFixed(2)}
+                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)}
               </Text>
             )}
           {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
             <Text style={styles.itemPriceEstimated}>
               {formatComparePriceLabel(
-                formatDealBadgePrice(dealTag.rawOriginalPrice ?? dealTag.originalPrice, dealTag.priceUnit, dealTag.packageWeightG),
-                priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG)
+                dealTag.rawOriginalPrice ?? dealTag.originalPrice,
+                priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)
               )}
             </Text>
           )}

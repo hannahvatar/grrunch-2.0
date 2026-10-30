@@ -82,16 +82,8 @@ export interface DealTag {
   // 20260817050000_deal_tag_raw_rate_display.sql.
   rawPrice?: number;
   rawOriginalPrice?: number;
-  // curated_deals.price_unit -- lets the badge distinguish a genuinely
-  // loose/bulk lb-priced item (Plantains, package_weight_g null --
-  // rawPrice alone, "$1.47/lb", is the honest number) from a real
-  // labeled prepackage that's ALSO priced per lb on the flyer (Prime
-  // chicken breast, package_weight_g 700 -- the honest number here is
-  // the estimated cost of the one package you'd actually pick up,
-  // "$6.79/lb" alone undersells what it costs). See
-  // formatDealBadgePrice() in lib/curatedDeals.ts and Anabelle: "item
-  // is per weight BUT ALSO prepackage, it is ok here to update its
-  // price per lbs for the estimated price the package would cost."
+  // curated_deals.price_unit -- the unit Anabelle set when reviewing the
+  // deal, shown after its price (priceUnitSuffix in lib/curatedDeals.ts).
   priceUnit?: 'package' | 'each' | 'lb' | 'kg' | '100g';
 }
 
