@@ -54,8 +54,8 @@ export function UpgradeCta({
   variant?: 'solid' | 'outline' | 'tile';
   title?: string;
   style?: StyleProp<ViewStyle>;
-  // Solid variant only: the food bank mission inside the card, above the
-  // button (Profile > Membership for non-members, Anabelle 2026-10-30).
+  // The food bank mission inside the card, above the button (Anabelle,
+  // 2026-10-30): Profile > Membership's solid card and Home's recipe tile.
   mission?: boolean;
 }) {
   function goToUpgrade() {
@@ -72,6 +72,7 @@ export function UpgradeCta({
         <Text style={styles.tileSubtitle}>
           30-day free trial · Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime
         </Text>
+        {mission && <FoodBankMission variant="join" centered />}
         <Pressable style={[styles.ctaButton, styles.tileButton]} onPress={goToUpgrade}>
           <Text style={[styles.ctaButtonText, styles.tileButtonText]}>Start 30-day free trial</Text>
         </Pressable>
