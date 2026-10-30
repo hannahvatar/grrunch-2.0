@@ -126,10 +126,16 @@ function DesktopTopBar() {
     <View style={styles.desktopBar}>
       <View style={styles.desktopInner}>
         <View style={styles.desktopLeft}>
-          <View style={styles.brand}>
+          {/* The logo goes home (Anabelle, 2026-10-30). */}
+          <Pressable
+            style={styles.brand}
+            onPress={() => router.navigate(HOME_ROUTE as never)}
+            accessibilityRole="link"
+            accessibilityLabel="Grrunch home"
+          >
             <GrrunchMascot size={44} showCrumbs={false} />
             <Text style={styles.wordmark}>GRRUNCH</Text>
-          </View>
+          </Pressable>
           <View style={styles.navLinks}>
             {NAV_LINKS.map(({ path, label, Icon }) => {
               const active = pathname === path;
@@ -179,7 +185,14 @@ export function AppTopBar() {
           flourish. terms.tsx's big logo lockup keeps them (default on).
           52px (Anabelle, 2026-10-05; was 34) -- a touch bigger than the
           44pt bell and profile buttons on the right. */}
-      <GrrunchMascot size={52} showCrumbs={false} />
+      <Pressable
+        onPress={() => router.navigate(HOME_ROUTE as never)}
+        hitSlop={8}
+        accessibilityRole="link"
+        accessibilityLabel="Grrunch home"
+      >
+        <GrrunchMascot size={52} showCrumbs={false} />
+      </Pressable>
       {isGuest ? (
         <View style={styles.authButtons}>
           {/* Same screen either way (login.tsx) -- Apple/Google/email all
