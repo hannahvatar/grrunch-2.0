@@ -1022,8 +1022,18 @@ export function dealPackageShare(
   fragmentByWeight: boolean | undefined,
   multiplier: number,
   packageVolumeMl?: number,
-  ingredientName?: string
+  ingredientName?: string,
+  priceUnit?: string
 ): number | undefined {
+  // Loose produce priced by weight has no package: its share is the
+  // described count, unrounded, so two recipes using "(about 1/2 head)"
+  // of cabbage add up to 1 head, not 2 (Anabelle, 2026-10-30, Okonomi-yay!
+  // + Udon Know Me). Garlic cloves count ~10 to a head, as in
+  // computeDealPackageCount.
+  if (priceUnit && BY_WEIGHT_PRICE_UNITS.includes(priceUnit)) {
+    const items = describedItemCount(unit);
+    if (items !== undefined) return (/\bcloves?\b/i.test(unit ?? '') ? items / 10 : items) * multiplier;
+  }
   if (!fragmentByWeight) return undefined;
   const ua = parseUnitAmount(quantity, unit);
   if (Number.isNaN(ua.amount)) return undefined;
