@@ -11,3 +11,12 @@ if [ -d dist/assets/node_modules ]; then
   mv dist/assets/node_modules dist/assets/nm
   echo "/assets/node_modules/* /assets/nm/:splat 200" > dist/_redirects
 fi
+# Icons, versioned (Anabelle, 2026-10-30): phones kept showing Expo's old
+# logo from their own icon cache, which only refreshes when the icon's URL
+# changes. Point the favicon at a versioned URL and declare the iPhone icon
+# (app/public/apple-touch-icon.png) explicitly. Bump ICON_VERSION whenever
+# the icon art changes.
+ICON_VERSION=2
+sed -i.bak "s#<link rel=\"icon\" href=\"/favicon.ico\" />#<link rel=\"icon\" href=\"/favicon.ico?v=$ICON_VERSION\" /><link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png?v=$ICON_VERSION\" />#" dist/index.html
+rm -f dist/index.html.bak
+grep -q "favicon.ico?v=$ICON_VERSION" dist/index.html || { echo "build-web: favicon link not found in dist/index.html" >&2; exit 1; }
