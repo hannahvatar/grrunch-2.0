@@ -16,7 +16,7 @@ import { openInNewTab } from '../../components/IngredientRow';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { CutoutViewer } from '../../components/CutoutViewer';
 import { PriceBurst } from '../../components/PriceBurst';
-import { ProgressBar } from '../../components/ProgressBar';
+import { WeekCountdownCard } from '../../components/WeekCountdownCard';
 import { UpgradeCta } from '../../components/UpgradeCta';
 import { WeekGapState } from '../../components/WeekGapState';
 import {
@@ -34,7 +34,7 @@ import {
 } from '../../lib/curatedDeals';
 import { filterDealsByZone } from '../../lib/dealZones';
 import { gridSpan, useIsDesktop } from '../../lib/layout';
-import { useLiveWeek, useWeekDaysLeft, useWeekValidityLabel } from '../../lib/liveWeek';
+import { useLiveWeek } from '../../lib/liveWeek';
 import type { Meal } from '../../lib/mealData';
 import { sortMealsByBestDeal } from '../../lib/mealScaling';
 import { getRecipeImage } from '../../lib/recipeImages';
@@ -85,8 +85,6 @@ export default function HomeScreen() {
   const { hiddenChains } = useStoreFilter();
   const { stores: myStores } = useSelectedStores();
   const liveWeek = useLiveWeek();
-  const weekValidity = useWeekValidityLabel();
-  const weekDaysLeft = useWeekDaysLeft();
   const weekClosed = liveWeek?.closed ?? false;
 
   const [allMeals, setAllMeals] = useState<Meal[]>([]);
@@ -175,25 +173,7 @@ export default function HomeScreen() {
           <Text style={styles.tagline}>
             We hunted down this week's grocery bargains and cooked up delicious ways to make the most of them.
           </Text>
-          {/* Dates and countdown in a white card (Anabelle, 2026-10-30). */}
-          {(weekValidity || weekDaysLeft) && (
-            <View style={styles.weekCard}>
-              {weekValidity && <Text style={styles.weekValidity}>{weekValidity}</Text>}
-              {/* The free trial's time-left bar under the dates, so it reads
-                  as a short window (Anabelle, 2026-10-26). */}
-              {weekDaysLeft && (
-                <View style={styles.weekCountdown}>
-                  <ProgressBar
-                    progress={weekDaysLeft.daysLeft / weekDaysLeft.totalDays}
-                    label={
-                      weekDaysLeft.daysLeft <= 1 ? 'Last day!' : `${weekDaysLeft.daysLeft} days left`
-                    }
-                    tier={weekDaysLeft.daysLeft <= 1 ? 'error' : weekDaysLeft.daysLeft <= 3 ? 'warning' : 'success'}
-                  />
-                </View>
-              )}
-            </View>
-          )}
+          <WeekCountdownCard />
         </View>
 
         <RecipeCarousel
@@ -551,16 +531,6 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  // Spans the page's middle 8 columns (2-8-2, Anabelle 2026-10-30).
-  weekCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 12,
-  },
-  weekValidity: { fontSize: 14, color: '#343837' },
-  // Bar kept short, like it is in the trial card.
-  weekCountdown: { marginTop: 8 },
   tagline: { fontSize: 16, lineHeight: 24, color: INK, marginTop: 8 },
   sectionHeaderRow: {
     flexDirection: 'row',
