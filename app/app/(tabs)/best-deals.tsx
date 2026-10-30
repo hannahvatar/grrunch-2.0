@@ -261,7 +261,8 @@ export default function BestDealsScreen() {
       <ScrollView ref={scrollRef} contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View style={styles.headerRow}>
           <View style={styles.titleFlex}>
-            <Text style={styles.title}>Grrunch Picks</Text>
+            {/* Same heading as Home's deals section (Anabelle, 2026-10-30). */}
+            <Text style={styles.title}>The deals we dig</Text>
           </View>
           <View style={styles.sortSection}>
             <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
