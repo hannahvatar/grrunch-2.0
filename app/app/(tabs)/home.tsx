@@ -168,19 +168,23 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View>
           <Text style={styles.title}>This week at Grrunch</Text>
-          {weekValidity && <Text style={styles.weekValidity}>{weekValidity}</Text>}
-          {/* The free trial's time-left bar under the dates, so it reads
-              as a short window (Anabelle, 2026-10-26). */}
-          {weekDaysLeft && (
-            <View style={styles.weekCountdown}>
-              <ProgressBar
-                progress={weekDaysLeft.daysLeft / weekDaysLeft.totalDays}
-                label={
-                  weekDaysLeft.daysLeft <= 1 ? 'Last day!' : `${weekDaysLeft.daysLeft} days left`
-                }
-                tier={weekDaysLeft.daysLeft <= 1 ? 'error' : weekDaysLeft.daysLeft <= 3 ? 'warning' : 'success'}
-                trackColor="#fff"
-              />
+          {/* Dates and countdown in a white card (Anabelle, 2026-10-30). */}
+          {(weekValidity || weekDaysLeft) && (
+            <View style={styles.weekCard}>
+              {weekValidity && <Text style={styles.weekValidity}>{weekValidity}</Text>}
+              {/* The free trial's time-left bar under the dates, so it reads
+                  as a short window (Anabelle, 2026-10-26). */}
+              {weekDaysLeft && (
+                <View style={styles.weekCountdown}>
+                  <ProgressBar
+                    progress={weekDaysLeft.daysLeft / weekDaysLeft.totalDays}
+                    label={
+                      weekDaysLeft.daysLeft <= 1 ? 'Last day!' : `${weekDaysLeft.daysLeft} days left`
+                    }
+                    tier={weekDaysLeft.daysLeft <= 1 ? 'error' : weekDaysLeft.daysLeft <= 3 ? 'warning' : 'success'}
+                  />
+                </View>
+              )}
             </View>
           )}
           <Text style={styles.tagline}>
@@ -543,7 +547,16 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  weekValidity: { fontSize: 14, color: '#343837', marginTop: 2 },
+  weekCard: {
+    alignSelf: 'flex-start',
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+  },
+  weekValidity: { fontSize: 14, color: '#343837' },
   // Bar kept short, like it is in the trial card.
   weekCountdown: { maxWidth: 320, marginTop: 8 },
   tagline: { fontSize: 16, lineHeight: 24, color: INK, marginTop: 8 },
