@@ -653,7 +653,9 @@ export function GroceryListView() {
             (Anabelle, 2026-10-30). Only with items: an empty list has no
             prices for the dates to apply to. */}
         {items.length > 0 && <WeekCountdownCard />}
-        <StoreChips page="list" />
+        {/* Members only: a non-member's list is empty and locked, so the
+            chips have nothing to filter (Anabelle, 2026-10-30). */}
+        {isSubscribed && <StoreChips page="list" />}
         {/* Two different empty states. Was isGuest-only until Anabelle's
             correction (2026-09-09: "With a free account BUT NOT
             MEMBERSHIP you CANT add to your grocery list") -- adding is
