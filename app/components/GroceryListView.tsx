@@ -673,7 +673,9 @@ export function GroceryListView() {
                 <Text style={styles.lockedText}>
                   Add recipes and deals to keep everything you need in one place.
                 </Text>
-                <UpgradeCta reason="build your grocery list" variant="outline" />
+                {/* Same centred trial card as the other pages (Anabelle,
+                    2026-10-30; was the compact outline row). */}
+                <UpgradeCta reason="build your grocery list" variant="tile" title="Unlock your grocery list" />
               </>
             ) : (
               <View style={styles.emptyState}>
