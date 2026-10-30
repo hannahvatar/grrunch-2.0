@@ -160,36 +160,32 @@ export default function OnboardingScreen() {
           <ArrowLink label="Skip" onPress={proceedPastOnboarding} />
         </View>
 
-        {/* ScrollView, not a fixed-height flex-centered View -- guards the
-            same overflow-behind-the-button risk found live on terms.tsx
-            (see its own comment). flexGrow:1 on contentContainerStyle
-            keeps it centered when it fits, scrolls when it doesn't. */}
+        {/* The whole slide (art, text, dots, button) is one centred group
+            in a ScrollView: balanced on a tall phone, scrolls on a short
+            one instead of hiding anything (Anabelle, 2026-10-30: with the
+            button pinned to the bottom, the slides "look low"). */}
         <ScrollView contentContainerStyle={styles.middle} showsVerticalScrollIndicator={false}>
           <View style={styles.logo}>
             <SlideArt step={step} />
           </View>
           <Text style={styles.headline}>{slide.headline}</Text>
           <Text style={styles.body}>{slide.body}</Text>
-        </ScrollView>
 
-        {/* bottom block is pinned via its own paddingBottom (not flex
-            centering) so the button always clears SupportBubble's fixed
-            right:20/bottom:96, 52px footprint -- same reasoning as the
-            paddingBottom fix on GroceryListView's Total card. */}
-        <View style={styles.bottomBlock}>
-          <View style={styles.dots}>
-            {SLIDES.map((s, i) => (
-              <View key={s.headline} style={[styles.dot, i === step && styles.dotActive]} />
-            ))}
+          <View style={styles.bottomBlock}>
+            <View style={styles.dots}>
+              {SLIDES.map((s, i) => (
+                <View key={s.headline} style={[styles.dot, i === step && styles.dotActive]} />
+              ))}
+            </View>
+
+            <Pressable
+              onPress={next}
+              style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+            >
+              <Text style={styles.primaryButtonText}>{isLast ? 'Get started' : 'Next'}</Text>
+            </Pressable>
           </View>
-
-          <Pressable
-            onPress={next}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
-          >
-            <Text style={styles.primaryButtonText}>{isLast ? 'Get started' : 'Next'}</Text>
-          </Pressable>
-        </View>
+        </ScrollView>
       </View>
     </LinearGradient>
   );
@@ -202,7 +198,9 @@ const styles = StyleSheet.create({
   // the top); was absolutely positioned and sat over the illustration on a
   // phone (Anabelle, 2026-10-30).
   skip: { alignSelf: 'flex-end', marginTop: 36, padding: 8 },
-  middle: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
+  // Centred, nudged up a little (paddingBottom) so the group doesn't read
+  // low under the Skip row.
+  middle: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 40 },
   logo: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -217,9 +215,9 @@ const styles = StyleSheet.create({
   },
   // 16px body / 14px labels on every layout (Anabelle, 2026-10-22).
   body: { fontSize: 16, lineHeight: 24, textAlign: 'center', color: '#111' },
-  // The chat bubble is hidden on this screen (SupportBubble.tsx), so no
-  // 160 px clearance is needed under the button any more.
-  bottomBlock: { paddingBottom: 24 },
+  // Under the text inside the centred group; the chat bubble is hidden on
+  // this screen (SupportBubble.tsx), so no clearance is needed.
+  bottomBlock: { alignSelf: 'stretch', marginTop: 32, paddingBottom: 24 },
   dots: { flexDirection: 'row', gap: 8, marginBottom: 24, alignSelf: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E0C9AE' },
   dotActive: { backgroundColor: INK, width: 20 },
