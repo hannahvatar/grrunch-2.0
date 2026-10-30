@@ -168,24 +168,29 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View>
           <Text style={styles.title}>This week at Grrunch</Text>
-          {weekValidity && <Text style={styles.weekValidity}>{weekValidity}</Text>}
-          {/* The free trial's time-left bar under the dates, so it reads
-              as a short window (Anabelle, 2026-10-26). */}
-          {weekDaysLeft && (
-            <View style={styles.weekCountdown}>
-              <ProgressBar
-                progress={weekDaysLeft.daysLeft / weekDaysLeft.totalDays}
-                label={
-                  weekDaysLeft.daysLeft <= 1 ? 'Last day!' : `${weekDaysLeft.daysLeft} days left`
-                }
-                tier={weekDaysLeft.daysLeft <= 1 ? 'error' : weekDaysLeft.daysLeft <= 3 ? 'warning' : 'success'}
-                trackColor="#fff"
-              />
-            </View>
-          )}
+          {/* Right under the title (Anabelle, 2026-10-30). */}
           <Text style={styles.tagline}>
             We hunted down this week's grocery bargains and cooked up delicious ways to make the most of them.
           </Text>
+          {/* Dates and countdown in a white card (Anabelle, 2026-10-30). */}
+          {(weekValidity || weekDaysLeft) && (
+            <View style={styles.weekCard}>
+              {weekValidity && <Text style={styles.weekValidity}>{weekValidity}</Text>}
+              {/* The free trial's time-left bar under the dates, so it reads
+                  as a short window (Anabelle, 2026-10-26). */}
+              {weekDaysLeft && (
+                <View style={styles.weekCountdown}>
+                  <ProgressBar
+                    progress={weekDaysLeft.daysLeft / weekDaysLeft.totalDays}
+                    label={
+                      weekDaysLeft.daysLeft <= 1 ? 'Last day!' : `${weekDaysLeft.daysLeft} days left`
+                    }
+                    tier={weekDaysLeft.daysLeft <= 1 ? 'error' : weekDaysLeft.daysLeft <= 3 ? 'warning' : 'success'}
+                  />
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         <RecipeCarousel
@@ -543,9 +548,16 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  weekValidity: { fontSize: 14, color: '#343837', marginTop: 2 },
+  // Spans the page's middle 8 columns (2-8-2, Anabelle 2026-10-30).
+  weekCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 12,
+  },
+  weekValidity: { fontSize: 14, color: '#343837' },
   // Bar kept short, like it is in the trial card.
-  weekCountdown: { maxWidth: 320, marginTop: 8 },
+  weekCountdown: { marginTop: 8 },
   tagline: { fontSize: 16, lineHeight: 24, color: INK, marginTop: 8 },
   sectionHeaderRow: {
     flexDirection: 'row',
