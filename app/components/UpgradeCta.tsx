@@ -144,12 +144,14 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   textBlock: { flex: 1 },
   title: { color: INK, fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  subtitle: { color: '#666', fontSize: 12, marginTop: 2 },
+  // Black on every trial card (Anabelle, 2026-10-30).
+  subtitle: { color: INK, fontSize: 12, marginTop: 2 },
   // Same real btn-primary-orange as MembershipStatus.tsx's own
   // subscribeButton (ACCENT fill, 2px INK border, 24px radius) -- full
   // width here since it stands alone, not paired with a second button.
+  // Right under the "30-day free trial" line (Anabelle, 2026-10-30; was 14).
   ctaButton: {
-    marginTop: 14,
+    marginTop: 10,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
@@ -173,10 +175,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tileTitle: { color: INK, fontSize: 18, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', textAlign: 'center' },
-  tileSubtitle: { color: '#555', fontSize: 14, lineHeight: 20, textAlign: 'center', maxWidth: 320 },
+  tileSubtitle: { color: INK, fontSize: 14, lineHeight: 20, textAlign: 'center', maxWidth: 320 },
   // Full tile width on narrow tiles, capped on the wide desktop card.
   // Grows to two lines on a narrow phone tile instead of overflowing.
   tileButton: {
+    // The tile's own 8 px gap already separates it from the line above.
+    marginTop: 0,
     alignSelf: 'stretch',
     maxWidth: 320,
     width: '100%',

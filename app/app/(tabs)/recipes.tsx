@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
+import { CheckIcon, ChevronDownIcon } from 'react-native-heroicons/outline';
 
 import { WeekCountdownCard } from '../../components/WeekCountdownCard';
+import { UpgradeCta } from '../../components/UpgradeCta';
 import { AlertBanner } from '../../components/AlertBanner';
 import { MealCard } from '../../components/MealCard';
 import { gridSpan, useIsDesktop } from '../../lib/layout';
@@ -228,24 +229,14 @@ export default function MealsScreen() {
           />
         ))}
 
+        {/* The shared trial card, same as everywhere else (Anabelle,
+            2026-10-30). */}
         {lockedMealCount > 0 && (
-          <Pressable
-            style={styles.unlockCard}
-            onPress={() =>
-              router.push({
-                pathname: '/upgrade',
-                params: { reason: `see ${lockedMealCount} more matching recipe${lockedMealCount === 1 ? '' : 's'}` },
-              })
-            }
-          >
-            <LockClosedIcon size={18} color={INK} />
-            <View style={styles.unlockTextBlock}>
-              <Text style={styles.unlockTitle}>Unlock this week's recipes</Text>
-              <Text style={styles.unlockSubtitle}>Hand-picked from the best deals in this week's flyers</Text>
-              <Text style={styles.unlockPricing}>30-day free trial · Then $5.99/mo · Cancel anytime</Text>
-            </View>
-            <ChevronRightIcon size={18} color={INK} />
-          </Pressable>
+          <UpgradeCta
+            variant="tile"
+            title="Unlock this week's recipes"
+            reason={`see ${lockedMealCount} more matching recipe${lockedMealCount === 1 ? '' : 's'}`}
+          />
         )}
       </ScrollView>
     </View>
@@ -324,18 +315,4 @@ const styles = StyleSheet.create({
   // shared component's fixed "Start 30-day free trial" copy. Transparent
   // container (Anabelle's call) -- lets the screen's own background show
   // through instead of a white card floating on it.
-  unlockCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: INK,
-    borderRadius: 14,
-    padding: 14,
-  },
-  unlockTextBlock: { flex: 1, gap: 2 },
-  unlockTitle: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
-  unlockSubtitle: { fontSize: 13, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold', color: INK },
-  unlockPricing: { fontSize: 12, color: INK },
 });

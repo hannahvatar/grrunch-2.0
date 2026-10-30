@@ -5,7 +5,6 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  LockClosedIcon,
   MagnifyingGlassPlusIcon,
   PlusIcon,
   TagIcon,
@@ -29,6 +28,7 @@ import { STORE_CHAINS } from '../../lib/storeFilter';
 import { AlertBanner } from '../../components/AlertBanner';
 import { CutoutViewer } from '../../components/CutoutViewer';
 import { WeekCountdownCard } from '../../components/WeekCountdownCard';
+import { UpgradeCta } from '../../components/UpgradeCta';
 import { ExpiredBadge } from '../../components/ExpiredBadge';
 import { ArrowOutwardIcon } from '../../components/MaterialSymbols';
 import { filterDealsByZone } from '../../lib/dealZones';
@@ -37,7 +37,6 @@ import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { StoreChips } from '../../components/StoreChips';
 import { WeekGapState } from '../../components/WeekGapState';
-import { MONTHLY_PRICE_DISPLAY } from '../../lib/purchases';
 import { useSelectedDeals } from '../../lib/selectedDeals';
 import { useSelectedStores } from '../../lib/selectedStores';
 import { useStoreFilter } from '../../lib/storeFilter';
@@ -504,27 +503,19 @@ export default function BestDealsScreen() {
                       </View>
                     );
                   })}
+                  {/* The shared trial card, same as everywhere else
+                      (Anabelle, 2026-10-30). */}
                   {lockedDealCount > 0 && (
-                    <Pressable
-                      style={styles.unlockCard}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/upgrade',
-                          params: {
-                            reason:
-                              sortMode === 'store'
-                                ? `see ${lockedDealCount} more deal${lockedDealCount === 1 ? '' : 's'} from ${category}`
-                                : `see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`,
-                          },
-                        })
+                    <UpgradeCta
+                      variant="tile"
+                      title={`Unlock ${lockedDealCount} more deal${lockedDealCount === 1 ? '' : 's'}`}
+                      reason={
+                        sortMode === 'store'
+                          ? `see ${lockedDealCount} more deal${lockedDealCount === 1 ? '' : 's'} from ${category}`
+                          : `see ${lockedDealCount} more ${category.toLowerCase()} deal${lockedDealCount === 1 ? '' : 's'}`
                       }
-                    >
-                      <LockClosedIcon size={20} color={INK} />
-                      <Text style={styles.unlockTitle}>
-                        Unlock {lockedDealCount} more deal{lockedDealCount === 1 ? '' : 's'}
-                      </Text>
-                      <Text style={styles.unlockSubtitle}>30-day free trial · Then {MONTHLY_PRICE_DISPLAY}/mo · Cancel anytime</Text>
-                    </Pressable>
+                      style={styles.unlockCard}
+                    />
                   )}
                 </View>
               )}
@@ -715,27 +706,7 @@ const styles = StyleSheet.create({
   // dashed-outline locked/CTA cards (meals.tsx's unlockCard, MealCard's
   // groceryToggleButtonLocked, profile.tsx's changeStoreButton, etc.),
   // was a solid 1px border.
-  unlockCard: {
-    width: '100%',
-    marginTop: 8,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: INK,
-    borderRadius: 14,
-    padding: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  unlockTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    fontFamily: 'OpenSans_800ExtraBold',
-    color: INK,
-    textAlign: 'center',
-  },
-  // Black (was #767676 grey) -- all type in this card reads INK now.
-  unlockSubtitle: { fontSize: 11, color: INK, textAlign: 'center' },
+  unlockCard: { width: '100%', marginTop: 8 },
   dealImageWrap: { position: 'relative' },
   // Fixed square now (was width: '100%' of a stacked card) -- sits to
   // the left of the info column in the new horizontal row.
