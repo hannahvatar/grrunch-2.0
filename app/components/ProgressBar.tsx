@@ -22,7 +22,6 @@ export function ProgressBar({
   label,
   tier,
   trackColor = '#F0F0F0',
-  labelColor,
 }: {
   progress: number;
   label: string;
@@ -30,9 +29,6 @@ export function ProgressBar({
   // Grey on white cards (the trial card); Home passes white for its peach
   // page (Anabelle, 2026-10-26: "back in white").
   trackColor?: string;
-  // Overrides the tier-coloured label (the week card keeps its text black,
-  // Anabelle 2026-10-30); the bar itself keeps the tier colour.
-  labelColor?: string;
 }) {
   const clamped = Math.max(0, Math.min(1, progress));
   // Fill and label in the tier's color.
@@ -42,7 +38,7 @@ export function ProgressBar({
       <View style={[styles.track, { backgroundColor: trackColor }]}>
         <View style={[styles.fill, { width: `${clamped * 100}%`, backgroundColor: colors.fill }]} />
       </View>
-      <Text style={[styles.label, { color: labelColor ?? colors.label }]}>{label}</Text>
+      <Text style={[styles.label, { color: colors.label }]}>{label}</Text>
     </View>
   );
 }

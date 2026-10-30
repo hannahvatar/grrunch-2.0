@@ -24,7 +24,6 @@ export function WeekCountdownCard() {
             progress={weekDaysLeft.daysLeft / weekDaysLeft.totalDays}
             label={weekDaysLeft.daysLeft <= 1 ? 'Last day!' : `${weekDaysLeft.daysLeft} days left`}
             tier={weekDaysLeft.daysLeft <= 1 ? 'error' : weekDaysLeft.daysLeft <= 3 ? 'warning' : 'success'}
-            labelColor={INK}
           />
         </View>
       )}
@@ -34,7 +33,8 @@ export function WeekCountdownCard() {
 
 const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginTop: 12 },
-  // All text in the card is black (Anabelle, 2026-10-30).
+  // Dates in black; the days-left label keeps its tier colour (Anabelle,
+  // 2026-10-30).
   validity: { fontSize: 14, color: INK },
   countdown: { marginTop: 8 },
 });
