@@ -229,6 +229,57 @@ function mergeSameDealItems(items: GroceryItem[], quantityOverrides: Map<string,
   return merged;
 }
 
+// "Yellow onions" and "Yellow onion" are the same ingredient: lowercase
+// words, plurals folded, order ignored.
+function ingredientKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('oes') ? w.slice(0, -2) : w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w))
+    .sort()
+    .join(' ');
+}
+
+// The same ingredient on sale at two stores became two rows (Anabelle,
+// 2026-10-30: Udon Know Me took No Frills' onions, Pear-fectly Melted
+// Superstore's, so the list said to buy two 3 lb bags). Each recipe still
+// prices its own store's deal; on the list, the ingredient moves to ONE
+// store: the one the list already buys the most deals from (fewer trips,
+// her choice), ties going to the cheaper deal. mergeSameDealItems then
+// adds the amounts up on that one row.
+function oneStorePerIngredient(items: GroceryItem[]): GroceryItem[] {
+  const onSale = (item: GroceryItem) => !!item.dealTag?.store && item.store === item.dealTag.store;
+  const dealsByStore = new Map<string, Set<string>>();
+  const groups = new Map<string, GroceryItem[]>();
+  for (const item of items) {
+    if (!onSale(item)) continue;
+    const tag = item.dealTag!;
+    const deals = dealsByStore.get(tag.store!) ?? new Set<string>();
+    deals.add((tag.dealItemName ?? tag.name).toLowerCase());
+    dealsByStore.set(tag.store!, deals);
+    const key = ingredientKey(tag.name);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
+  const moveTo = new Map<string, DealTag>();
+  for (const group of groups.values()) {
+    const tags = new Map<string, DealTag>();
+    for (const item of group) if (!tags.has(item.dealTag!.store!)) tags.set(item.dealTag!.store!, item.dealTag!);
+    if (tags.size < 2) continue;
+    const [winner] = Array.from(tags.values()).sort(
+      (a, b) =>
+        (dealsByStore.get(b.store!)?.size ?? 0) - (dealsByStore.get(a.store!)?.size ?? 0) ||
+        (a.price ?? Infinity) - (b.price ?? Infinity)
+    );
+    for (const item of group) if (item.dealTag!.store !== winner.store) moveTo.set(item.key, winner);
+  }
+  return items.map((item) => {
+    const tag = moveTo.get(item.key);
+    return tag ? { ...item, dealTag: tag, store: tag.store } : item;
+  });
+}
+
 function groupByStore(items: GroceryItem[]): Map<string, GroceryItem[]> {
   const groups = new Map<string, GroceryItem[]>();
   for (const item of items) {
@@ -521,7 +572,11 @@ export function GroceryListView() {
   // items"/"N stores" in the header, and which store cards even show
   // up, all reflect what's actually left on the list.
   const customGroceryItems: GroceryItem[] = customItems.map(mapCustomItemToGroceryItem);
-  const allItems: GroceryItem[] = [...mergeSameDealItems(recipeItems, quantityOverrides), ...dealItems, ...customGroceryItems];
+  const allItems: GroceryItem[] = [
+    ...mergeSameDealItems(oneStorePerIngredient(recipeItems), quantityOverrides),
+    ...dealItems,
+    ...customGroceryItems,
+  ];
   const items: GroceryItem[] = allItems.filter((item) => !removedKeys.has(item.key));
 
   // Anything Reset would actually undo: an edited quantity on an item
