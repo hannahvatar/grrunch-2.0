@@ -261,7 +261,8 @@ export default function BestDealsScreen() {
       <ScrollView ref={scrollRef} contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View style={styles.headerRow}>
           <View style={styles.titleFlex}>
-            <Text style={styles.title}>Grrunch Picks</Text>
+            {/* Same heading as Home's deals section (Anabelle, 2026-10-30). */}
+            <Text style={styles.title}>The deals we dig</Text>
           </View>
           <View style={styles.sortSection}>
             <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
@@ -325,8 +326,7 @@ export default function BestDealsScreen() {
               read-only, input-style box (Anabelle, 2026-10-05). The count
               follows the store chips. */}
           <View style={styles.cardTop}>
-            {/* Same heading as Home's deals section (Anabelle, 2026-10-30). */}
-            <Text style={styles.cardTitle}>{weekExpired ? "Deals from last week's flyers" : 'The deals we dig'}</Text>
+            <Text style={styles.cardTitle}>{weekExpired ? "Deals from last week's flyers" : 'Deals this week'}</Text>
             <View style={styles.countField} accessibilityRole="text">
               <Text style={styles.countFieldText}>{shownDeals.length}</Text>
             </View>
