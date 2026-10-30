@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { ArrowPathIcon, BuildingStorefrontIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
@@ -624,6 +624,24 @@ export function GroceryListView() {
   if (storeGroups.has(OTHER_ITEMS)) {
     storeNames.push(OTHER_ITEMS);
   }
+  // Each time the shopper lands on the list, its top row plays the
+  // swipe-to-remove hint once (Anabelle, 2026-10-30). Picked at landing
+  // (or once the list loads), so removing that row doesn't replay the
+  // hint on the next one.
+  const firstItemKey = storeNames.length ? storeGroups.get(storeNames[0])![0]?.key : undefined;
+  const [hintPending, setHintPending] = useState(false);
+  const [swipeHint, setSwipeHint] = useState<{ key: string; run: number } | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      setHintPending(true);
+      return () => setHintPending(false);
+    }, []),
+  );
+  useEffect(() => {
+    if (!hintPending || !firstItemKey) return;
+    setHintPending(false);
+    setSwipeHint((prev) => ({ key: firstItemKey, run: (prev?.run ?? 0) + 1 }));
+  }, [hintPending, firstItemKey]);
 
   // Wednesday close to Thursday noon: the list was cleared at the close
   // (WeekLifecycle.tsx), so show the countdown instead of the usual
@@ -814,6 +832,7 @@ export function GroceryListView() {
                 blurredBackdrop={!!item.dealTag}
                 stackedLayout={!!item.dealTag}
                 onRemove={() => removeItem(item.key)}
+                swipeHint={swipeHint?.key === item.key ? swipeHint.run : 0}
                 onEditQuantity={() => openQuantityEditor(item)}
               />
             ))}

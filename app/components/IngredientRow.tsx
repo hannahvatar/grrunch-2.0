@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MagnifyingGlassPlusIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
 // @deprecated (upstream) in favor of the Reanimated-based rewrite --
@@ -21,6 +21,7 @@ import { MagnifyingGlassPlusIcon, PencilIcon, TrashIcon } from 'react-native-her
 // Swipeable needs this.
 import { Swipeable, Pressable as GesturePressable } from 'react-native-gesture-handler';
 
+import { useIsDesktop } from '../lib/layout';
 import { CutoutViewer } from './CutoutViewer';
 import {
   formatComparePriceLabel,
@@ -134,6 +135,11 @@ interface IngredientRowProps {
   // item from whatever list state holds it (see GroceryListView.tsx's
   // removedKeys), this component only ever asks, never assumes.
   onRemove?: () => void;
+  // Grocery-only: each new nonzero value makes the row slide open to show
+  // Remove, then close again, teaching the swipe (Anabelle, 2026-10-30).
+  // GroceryListView bumps it on its top row when the shopper lands on the
+  // list. Phone layouts only, where the swipe replaces the trash.
+  swipeHint?: number;
   // Pencil icon next to the item's quantity, opening a shared bottom
   // sheet (GroceryListView.tsx owns the sheet itself, one instance for
   // the whole screen rather than one per row) with a stepper + numeric
@@ -185,6 +191,7 @@ export function IngredientRow({
   stackedLayout,
   bulleted,
   onRemove,
+  swipeHint,
   onEditQuantity,
   linkedText,
   onLinkedTextPress,
@@ -194,6 +201,21 @@ export function IngredientRow({
   unit,
 }: IngredientRowProps) {
   const [zoomOpen, setZoomOpen] = useState(false);
+  // Swipe-left-to-remove everywhere but the desktop web layout, which has
+  // no swipe and keeps the trash button (Anabelle, 2026-10-30: the trash
+  // was too easy to hit on a phone).
+  const isDesktop = useIsDesktop();
+  const swipeToRemove = !!onRemove && !isDesktop;
+  const swipeableRef = useRef<Swipeable>(null);
+  useEffect(() => {
+    if (!swipeHint || !swipeToRemove) return;
+    const open = setTimeout(() => swipeableRef.current?.openRight(), 700);
+    const close = setTimeout(() => swipeableRef.current?.close(), 1900);
+    return () => {
+      clearTimeout(open);
+      clearTimeout(close);
+    };
+  }, [swipeHint, swipeToRemove]);
   // Last week's flyers have ended and the next week isn't published yet
   // (lib/liveWeek.ts) -- the deal's price stays, its badge becomes Expired.
   const liveWeekExpired = useLiveWeekExpired();
@@ -586,10 +608,10 @@ export function IngredientRow({
   // -- Anabelle's call, was a bare icon with just padding before -- and
   // INK (was muted #999) to actually read as a real, tappable control
   // rather than decoration.
-  // Web has no swipe-to-remove, so removal gets its own trash button
-  // beside the pencil, same treatment (Anabelle, 2026-10-22). Native
-  // keeps the swipe below and shows no trash button.
-  const showTrash = Platform.OS === 'web' && !!onRemove;
+  // Desktop web has no swipe-to-remove, so removal gets its own trash
+  // button beside the pencil, same treatment (Anabelle, 2026-10-22).
+  // Phone layouts (web and native) swipe instead and show no trash.
+  const showTrash = !!onRemove && !swipeToRemove;
   const editButtonEl = (onEditQuantity || showTrash) && (
     <View style={styles.rowActions}>
       {onEditQuantity && (
@@ -657,11 +679,12 @@ export function IngredientRow({
   // calls onRemove -- a full swipe just reveals the action rather than
   // instant-deleting on overswipe, so an accidental far swipe can't
   // silently drop an item.
-  if (!onRemove || Platform.OS === 'web') {
+  if (!swipeToRemove) {
     return content;
   }
   return (
     <Swipeable
+      ref={swipeableRef}
       renderRightActions={() => (
         <GesturePressable style={styles.removeAction} onPress={onRemove}>
           <TrashIcon size={18} color="#fff" />
@@ -740,11 +763,11 @@ const styles = StyleSheet.create({
   },
   // Grocery-only -- the panel revealed by Swipeable's renderRightActions
   // on a left swipe. Solid red (a genuinely destructive action, unlike
-  // every other muted/INK control on this screen), fills the full
-  // height of whatever row it's attached to (flex: 1 -- Swipeable
-  // renders this alongside the row's own height, not a fixed one).
+  // every other muted/INK control on this screen), the full height of
+  // its row and a fixed 110 wide, so a swipe (and the landing hint)
+  // reveals a button-sized panel instead of sliding the item out of view.
   removeAction: {
-    flex: 1,
+    width: 110,
     backgroundColor: '#DC2626',
     borderRadius: 12,
     marginLeft: 10,
