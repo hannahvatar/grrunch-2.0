@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BellIcon } from 'react-native-heroicons/outline';
 
 import {
@@ -79,6 +79,26 @@ export function NotificationBell() {
   // single always-the-same trial reminder, not something a real
   // notification history needs to survive a relaunch for yet.
   const [readKeys, setReadKeys] = useState<Set<string>>(new Set());
+  const wrapperRef = useRef<View>(null);
+
+  // Click or tap outside the bell and its panel, or Esc, closes it
+  // (Anabelle, 2026-10-30). Web only: a View is a DOM element there.
+  useEffect(() => {
+    if (!open || Platform.OS !== 'web') return;
+    const wrapper = wrapperRef.current as unknown as HTMLElement | null;
+    function onPointerDown(e: PointerEvent) {
+      if (wrapper && !wrapper.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
 
   function markRead(key: string) {
     setReadKeys((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
@@ -93,7 +113,7 @@ export function NotificationBell() {
   const bellUrgency = unreadItems.length > 0 ? TRIAL_URGENCY_STYLES[unreadItems[0].tier] : null;
 
   return (
-    <View>
+    <View ref={wrapperRef}>
       <Pressable style={styles.bellButton} onPress={() => setOpen((v) => !v)} hitSlop={8}>
         <BellIcon size={20} color={INK} />
         {bellUrgency && <View style={[styles.badge, { backgroundColor: bellUrgency.strong }]} />}
