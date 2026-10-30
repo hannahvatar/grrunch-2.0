@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
+import { WeekCountdownCard } from '../../components/WeekCountdownCard';
 import { AlertBanner } from '../../components/AlertBanner';
 import { MealCard } from '../../components/MealCard';
 import { gridSpan, useIsDesktop } from '../../lib/layout';
-import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek, useWeekValidityLabel } from '../../lib/liveWeek';
+import { FRESH_DEALS_BANNER_BODY, FRESH_DEALS_BANNER_TITLE, useLiveWeek } from '../../lib/liveWeek';
 import { ClosingSoonBanner } from '../../components/ClosingSoonBanner';
 import { WeekGapState } from '../../components/WeekGapState';
 import type { Meal } from '../../lib/mealData';
@@ -87,7 +88,6 @@ export default function MealsScreen() {
   // Weekly gap: between the Wednesday 11:59 pm close and the Thursday noon
   // publish, the whole screen is the "new deals are coming" state.
   const liveWeek = useLiveWeek();
-  const weekValidity = useWeekValidityLabel();
   const weekExpired = liveWeek?.expired ?? false;
   const weekClosed = liveWeek?.closed ?? false;
 
@@ -162,7 +162,6 @@ export default function MealsScreen() {
         <View style={styles.headerRow}>
           <View style={styles.titleFlex}>
             <Text style={styles.title}>Recipes from This Week's Deals</Text>
-            {weekValidity && <Text style={styles.weekValidity}>{weekValidity}</Text>}
           </View>
           <View style={styles.sortSection}>
             <Pressable style={styles.sortPill} onPress={() => setSortMenuOpen((open) => !open)}>
@@ -188,6 +187,10 @@ export default function MealsScreen() {
             )}
           </View>
         </View>
+
+        {/* Same dates + days-left card as Home and Weekly Deals
+            (Anabelle, 2026-10-30). */}
+        {!weekExpired && <WeekCountdownCard />}
 
         <StoreChips page="meals" />
 
@@ -253,7 +256,6 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold' },
   titleFlex: { flex: 1, marginRight: 12 },
-  weekValidity: { marginTop: 4, fontSize: 14, color: '#555' },
   // zIndex here (well above mealCardOuter's siblings below, which sit at
   // the default stacking level) is load-bearing on web: React Native Web
   // gives every View an explicit zIndex (0, not auto), so each level of
