@@ -14,42 +14,23 @@ const INK = '#111';
 // every locked-feature entry point shows the same explainer + price
 // before committing, rather than each one having its own logic.
 //
-// variant 'solid' (default) is Profile's Membership section (the page's
-// one real top-level "you're not a member" banner) -- matches
-// MembershipStatus.tsx's own trialCard shape (info block on top, a real
-// button below): Anabelle, 2026-09-15, "remove the chevron and add a
-// primary button at the bottom of the container with the label 'Start
-// free trial'". The whole card is no longer one big Pressable -- only
-// the button is, same explicit-affordance pattern the app already uses
-// elsewhere (e.g. profile.tsx's viewSavedButton alongside a tappable
-// row) rather than an implicit whole-card tap.
-//
-// The compact 'outline' row (My list, the sign-in prompt) was retired on
-// 2026-10-30: every trial card is now the centred tile (Anabelle: "so it
-// matches the other cards").
-//
-// All variants share the one `card` style below -- transparent fill,
-// dashed INK border (Anabelle, 2026-09-17: "There should be consistence
-// and the subscribe container everywhere should be transparent with a
-// dashed border"). Was a solid-bordered white fill for 'solid' and a
-// per-caller `outlineFill` prop (defaulting to white, only Grocery
-// list's own call site opted into transparent) for 'outline' -- same
-// look now everywhere, no prop needed to ask for it.
-//
-// variant 'tile' is a locked card that takes the place of the next card
-// in a row or grid (Home's recipe carousel and deals grid for
-// non-members, Anabelle 2026-10-26: "there should be a 4th recipes card
-// ... showing the subscription message. Same for the deals"). Same dashed
-// card, content centred, with its own `title` ("Unlock 9 more recipes");
-// the caller sizes it (`style`) to match its neighbours.
+// One layout everywhere (Anabelle, 2026-10-30: "so it matches the other
+// cards"): a dashed, transparent card, content centred -- lock icon, title
+// (default "Unlock everything"; callers pass "Unlock 9 more recipes" etc.),
+// the black trial line, the button right under it, and the food bank
+// mission at the very bottom at full width. It started as Home's locked
+// 4th tile (2026-10-26); Profile's left-aligned card and the compact row
+// used on My list were retired the same day. Callers size it with `style`
+// where it sits in a row or grid.
 export function UpgradeCta({
   reason,
-  variant = 'solid',
   title,
   style,
 }: {
   reason: string;
-  variant?: 'solid' | 'tile';
+  // Only one layout now; kept so existing callers' variant="tile" still
+  // type-checks.
+  variant?: 'tile';
   title?: string;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -57,59 +38,28 @@ export function UpgradeCta({
     router.push({ pathname: '/upgrade', params: { reason } });
   }
 
-  if (variant === 'tile') {
-    return (
-      <View style={[styles.card, styles.tile, style]}>
-        <View style={styles.tileIcon}>
-          <LockClosedIcon size={22} color={INK} />
-        </View>
-        <Text style={styles.tileTitle}>{title ?? 'Unlock everything'}</Text>
-        <Text style={styles.tileSubtitle}>
-          30-day free trial · Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime
-        </Text>
-        <Pressable style={[styles.ctaButton, styles.tileButton]} onPress={goToUpgrade}>
-          <Text style={[styles.ctaButtonText, styles.tileButtonText]}>Start 30-day free trial</Text>
-        </Pressable>
-        {/* Every trial card ends with the food bank mission, under the
-            button (Anabelle, 2026-10-30: "Wherever there is a trial card,
-            I want this treatment"). */}
-        <FoodBankMission variant="join" centered />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.card}>
-      <View style={styles.infoRow}>
-        <LockClosedIcon size={18} color={INK} />
-        <View style={styles.textBlock}>
-          <Text style={styles.title}>Start 30-day free trial</Text>
-          {/* "From" the annual-equivalent monthly rate, the cheaper of
-              the two real plans (Anabelle, 2026-09-15: monthly $7.99 or
-              annual $69.99) -- this is a lightweight inline teaser, not
-              the actual plan picker (that's /upgrade, which the button
-              below always routes to and where both real prices are
-              shown), so one honest "as low as" number reads better here
-              than spelling out both. */}
-          <Text style={styles.subtitle}>Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime</Text>
-        </View>
+    <View style={[styles.card, styles.tile, style]}>
+      <View style={styles.tileIcon}>
+        <LockClosedIcon size={22} color={INK} />
       </View>
-      <Pressable style={styles.ctaButton} onPress={goToUpgrade}>
-        {/* "Start 30-day free trial", matching the title right above it
-            and /upgrade's own primary button -- Anabelle, 2026-09-15:
-            "it should be consistent everywhere" (this button first read
-            "Start free trial", the shorter wording she'd given a moment
-            earlier, before every other instance of this CTA in the app
-            spells out the full "30-day"). */}
-        <Text style={styles.ctaButtonText}>Start 30-day free trial</Text>
+      <Text style={styles.tileTitle}>{title ?? 'Unlock everything'}</Text>
+      <Text style={styles.tileSubtitle}>
+        30-day free trial · Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime
+      </Text>
+      <Pressable style={[styles.ctaButton, styles.tileButton]} onPress={goToUpgrade}>
+        <Text style={[styles.ctaButtonText, styles.tileButtonText]}>Start 30-day free trial</Text>
       </Pressable>
-      <FoodBankMission variant="join" />
+      {/* Every trial card ends with the food bank mission, under the
+          button (Anabelle, 2026-10-30: "Wherever there is a trial card,
+          I want this treatment"). */}
+      <FoodBankMission variant="join" centered />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Transparent + dashed, both variants -- see the header comment.
+  // Transparent + dashed -- see the header comment.
   card: {
     backgroundColor: 'transparent',
     borderWidth: 2,
@@ -118,13 +68,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
   },
-  // solid variant only -- the icon+text header row sits above its own
-  // separate ctaButton, not inline with it.
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  textBlock: { flex: 1 },
-  title: { color: INK, fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
-  // Black on every trial card (Anabelle, 2026-10-30).
-  subtitle: { color: INK, fontSize: 12, marginTop: 2 },
   // Same real btn-primary-orange as MembershipStatus.tsx's own
   // subscribeButton (ACCENT fill, 2px INK border, 24px radius) -- full
   // width here since it stands alone, not paired with a second button.
