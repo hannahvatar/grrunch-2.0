@@ -10,14 +10,15 @@ const INK = '#111';
 // an account at all (Manage account, Notifications) -- two real, distinct
 // paths forward: "Sign in" (an existing account, no payment involved) and
 // the trial card (UpgradeCta, like every other trial card). The sign-in
-// path is a plain row, black "Already have an account?" with an orange
-// Sign in button on its right, in a white container (Anabelle,
-// 2026-10-30; was a white card with title, subtitle and chevron).
+// path is one row, the black sentence "Already have an account? Pick up
+// where you left off" with an orange Sign in button on its right, in a
+// white container (Anabelle, 2026-10-30; was a white card with title,
+// subtitle and chevron).
 export function SignInOrTrialPrompt({ reason }: { reason: string }) {
   return (
     <View style={styles.wrap}>
       <View style={styles.signInRow}>
-        <Text style={styles.signInText}>Already have an account?</Text>
+        <Text style={styles.signInText}>Already have an account? Pick up where you left off</Text>
         <Pressable
           style={styles.signInButton}
           onPress={() => router.push({ pathname: '/login', params: { mode: 'signin' } })}
