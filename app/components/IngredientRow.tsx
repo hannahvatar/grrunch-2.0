@@ -675,6 +675,9 @@ export function IngredientRow({
         </GesturePressable>
       )}
       overshootRight={false}
+      // White like the store card behind it, so the sliding row covers the
+      // red panel instead of showing it through (Anabelle, 2026-10-30).
+      childrenContainerStyle={styles.swipeRow}
     >
       {content}
     </Swipeable>
@@ -759,6 +762,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
+  swipeRow: { backgroundColor: '#fff' },
   removeActionText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // Price (+ original, + multiplier) directly beside its own discount/
   // fair-price pill -- one tight group, not spread apart.
