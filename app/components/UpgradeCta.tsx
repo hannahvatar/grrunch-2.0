@@ -48,15 +48,11 @@ export function UpgradeCta({
   variant = 'solid',
   title,
   style,
-  mission = false,
 }: {
   reason: string;
   variant?: 'solid' | 'outline' | 'tile';
   title?: string;
   style?: StyleProp<ViewStyle>;
-  // The food bank mission inside the card, above the button (Anabelle,
-  // 2026-10-30): Profile > Membership's solid card and Home's recipe tile.
-  mission?: boolean;
 }) {
   function goToUpgrade() {
     router.push({ pathname: '/upgrade', params: { reason } });
@@ -75,23 +71,27 @@ export function UpgradeCta({
         <Pressable style={[styles.ctaButton, styles.tileButton]} onPress={goToUpgrade}>
           <Text style={[styles.ctaButtonText, styles.tileButtonText]}>Start 30-day free trial</Text>
         </Pressable>
-        {/* At the bottom of the tile, under the button (Anabelle,
-            2026-10-30). */}
-        {mission && <FoodBankMission variant="join" centered />}
+        {/* Every trial card ends with the food bank mission, under the
+            button (Anabelle, 2026-10-30: "Wherever there is a trial card,
+            I want this treatment"). */}
+        <FoodBankMission variant="join" centered />
       </View>
     );
   }
 
   if (variant === 'outline') {
     return (
-      <Pressable style={[styles.card, styles.outlineRow]} onPress={goToUpgrade}>
-        <LockClosedIcon size={18} color={INK} />
-        <View style={styles.textBlock}>
-          <Text style={styles.title}>Start 30-day free trial</Text>
-          <Text style={styles.subtitle}>Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime</Text>
-        </View>
-        <ChevronRightIcon size={18} color="#999" />
-      </Pressable>
+      <View style={[styles.card, styles.outlineCard]}>
+        <Pressable style={styles.outlineRow} onPress={goToUpgrade}>
+          <LockClosedIcon size={18} color={INK} />
+          <View style={styles.textBlock}>
+            <Text style={styles.title}>Start 30-day free trial</Text>
+            <Text style={styles.subtitle}>Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime</Text>
+          </View>
+          <ChevronRightIcon size={18} color="#999" />
+        </Pressable>
+        <FoodBankMission variant="join" />
+      </View>
     );
   }
 
@@ -111,7 +111,6 @@ export function UpgradeCta({
           <Text style={styles.subtitle}>Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime</Text>
         </View>
       </View>
-      {mission && <FoodBankMission variant="join" />}
       <Pressable style={styles.ctaButton} onPress={goToUpgrade}>
         {/* "Start 30-day free trial", matching the title right above it
             and /upgrade's own primary button -- Anabelle, 2026-09-15:
@@ -121,6 +120,7 @@ export function UpgradeCta({
             spells out the full "30-day"). */}
         <Text style={styles.ctaButtonText}>Start 30-day free trial</Text>
       </Pressable>
+      <FoodBankMission variant="join" />
     </View>
   );
 }
@@ -137,12 +137,8 @@ const styles = StyleSheet.create({
   },
   // outline variant only -- a single tappable row (icon, text, chevron),
   // thinner border than the solid variant's card.
-  outlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1.5,
-  },
+  outlineCard: { borderWidth: 1.5 },
+  outlineRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // solid variant only -- the icon+text header row sits above its own
   // separate ctaButton, not inline with it.
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
