@@ -11,8 +11,8 @@ const INK = '#111';
 // paths forward: "Sign in" (an existing account, no payment involved) and
 // the trial card (UpgradeCta, like every other trial card). The sign-in
 // path is a plain row, black "Already have an account?" with an orange
-// Sign in button on its right, no container (Anabelle, 2026-10-30; was a
-// white outlined card).
+// Sign in button on its right, in a white container (Anabelle,
+// 2026-10-30; was a white card with title, subtitle and chevron).
 export function SignInOrTrialPrompt({ reason }: { reason: string }) {
   return (
     <View style={styles.wrap}>
@@ -39,7 +39,17 @@ export function SignInOrTrialPrompt({ reason }: { reason: string }) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
-  signInRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  signInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: INK,
+  },
   signInText: { flexShrink: 1, fontSize: 16, color: INK },
   // Same btn-primary-orange as UpgradeCta's ctaButton (ACCENT fill, 2px INK
   // border, 24px radius), sized to its label.
