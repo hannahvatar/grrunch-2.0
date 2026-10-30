@@ -5,7 +5,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { FlyerAnimation } from '../components/FlyerAnimation';
 import { GiveAnimation } from '../components/GiveAnimation';
-import { BiteAnimation } from '../components/BiteAnimation';
 import { ArrowLink } from '../components/ArrowLink';
 import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { LoyaltyCardStack } from '../components/LoyaltyCardStack';
@@ -34,16 +33,12 @@ const SLIDES = [
     headline: 'Member prices count, too',
     body: 'Some of our deals include loyalty pricing, so keep your grocery rewards cards handy.',
   },
-  // Anabelle, 2026-10-09: a closing mission slide with the mascot.
-  {
-    headline: "Let's bite back at grocery prices.",
-    body: "Grocery prices keep climbing. We're here to fight back, one delicious meal at a time.",
-  },
-  // Anabelle, 2026-10-30: the 1% to food banks, as the last slide (her
-  // wording).
+  // Anabelle, 2026-10-30: food banks as the last slide (her wording). It
+  // replaced the mascot "bite back at grocery prices" slide, and doesn't
+  // mention membership, which could put people off this early.
   {
     headline: "Let's Bite Back at Hunger, Together",
-    body: "Your membership will help feed more than just you. We'll donate 1% of our profits to food banks. 🧡",
+    body: "Everyone deserves a full plate. We're committed to helping food banks put more meals on more tables. 🧡",
   },
 ] as const;
 
@@ -54,13 +49,11 @@ const SLIDES = [
 const FLYER_SLIDE = SLIDES.findIndex((s) => s.headline === 'Leave the deal hunting to us');
 const SAUTE_SLIDE = SLIDES.findIndex((s) => s.headline === 'Let the deals decide dinner');
 const CARD_SLIDE = SLIDES.findIndex((s) => s.headline === 'Member prices count, too');
-const MASCOT_SLIDE = SLIDES.findIndex((s) => s.headline === "Let's bite back at grocery prices.");
 const GIVE_SLIDE = SLIDES.findIndex((s) => s.headline === "Let's Bite Back at Hunger, Together");
 
 function SlideArt({ step }: { step: number }) {
   if (step === FLYER_SLIDE) return <FlyerAnimation active />;
   if (step === SAUTE_SLIDE) return <SauteAnimation active />;
-  if (step === MASCOT_SLIDE) return <BiteAnimation active />;
   if (step === GIVE_SLIDE) return <GiveAnimation active />;
   return <LoyaltyCardStack active={step === CARD_SLIDE} />;
 }
