@@ -14,6 +14,7 @@ import {
   type Deal,
   fetchAllDeals,
   formatComparePriceLabel,
+  formatDealBadgePrice,
   priceUnitSuffix,
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
@@ -443,19 +444,19 @@ export default function BestDealsScreen() {
                             </Pressable>
                             <View style={styles.priceRow}>
                               <Text style={styles.dealPrice}>
-                                ${deal.price.toFixed(2)}
+                                ${formatDealBadgePrice(deal.price, deal.priceUnit, deal.packageWeightG).toFixed(2)}
                                 {priceUnitSuffix(deal.priceUnit, deal.packageWeightG)}
                               </Text>
                               {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
                                 <Text style={styles.dealOriginalPrice}>
-                                  ${deal.originalPrice.toFixed(2)}
+                                  ${formatDealBadgePrice(deal.originalPrice, deal.priceUnit, deal.packageWeightG).toFixed(2)}
                                   {priceUnitSuffix(deal.priceUnit, deal.packageWeightG)}
                                 </Text>
                               )}
                             </View>
                             {isReferencePriced(deal.originalPriceSource) && (
                               <Text style={styles.dealCompareAnnotation}>
-                                {formatComparePriceLabel(deal.originalPrice, priceUnitSuffix(deal.priceUnit, deal.packageWeightG))}
+                                {formatComparePriceLabel(formatDealBadgePrice(deal.originalPrice, deal.priceUnit, deal.packageWeightG), priceUnitSuffix(deal.priceUnit, deal.packageWeightG))}
                               </Text>
                             )}
                             {/* Moved off the image overlay (was cramped/

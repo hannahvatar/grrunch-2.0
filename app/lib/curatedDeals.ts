@@ -125,19 +125,22 @@ export function formatComparePriceLabel(originalPrice: number, unitSuffix = ''):
   return `$${originalPrice.toFixed(2)}${unitSuffix} avg.`;
 }
 
-// "/lb" after a price that's still a per-weight rate (loose/bulk, no
-// package weight to turn it into a package price -- see
-// formatDealBadgePrice below), so "$1.97" on a bone-in ham doesn't read
-// as the whole ham's price (Anabelle, 2026-10-07). Empty otherwise.
+// The unit after a deal price, always shown (Anabelle, 2026-10-30: a bare
+// "$0.98" reads as one cabbage when it's per pound). Pairs with
+// formatDealBadgePrice below: a per-weight rate with no package weight
+// stays a rate ("/lb"), one with a known package weight has been turned
+// into the package's price ("/pkg"), and flat prices say "each" or
+// "/pkg" as the flyer sold them.
 export function priceUnitSuffix(
   priceUnit: 'package' | 'each' | 'lb' | 'kg' | '100g' | undefined,
   packageWeightG: number | undefined
 ): string {
-  if (packageWeightG) return '';
+  if (priceUnit === 'each') return '\u00A0each';
+  if (packageWeightG) return '/pkg';
   if (priceUnit === 'lb') return '/lb';
   if (priceUnit === 'kg') return '/kg';
   if (priceUnit === '100g') return '/100\u00A0g';
-  return '';
+  return '/pkg';
 }
 
 const GRAMS_PER_PRICE_UNIT: Record<string, number> = { lb: 453.592, kg: 1000, '100g': 100 };
