@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useWeekDaysLeft, useWeekValidityLabel } from '../lib/liveWeek';
 import { ProgressBar } from './ProgressBar';
 
+const INK = '#111';
+
 // This week's dates and days-left bar in a white card. First on Home
 // (Anabelle, 2026-10-30: "I want this in a white container"), then the
 // same on Weekly Deals ("Make the same progress that there is on the hp").
@@ -22,6 +24,7 @@ export function WeekCountdownCard() {
             progress={weekDaysLeft.daysLeft / weekDaysLeft.totalDays}
             label={weekDaysLeft.daysLeft <= 1 ? 'Last day!' : `${weekDaysLeft.daysLeft} days left`}
             tier={weekDaysLeft.daysLeft <= 1 ? 'error' : weekDaysLeft.daysLeft <= 3 ? 'warning' : 'success'}
+            labelColor={INK}
           />
         </View>
       )}
@@ -31,6 +34,7 @@ export function WeekCountdownCard() {
 
 const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginTop: 12 },
-  validity: { fontSize: 14, color: '#343837' },
+  // All text in the card is black (Anabelle, 2026-10-30).
+  validity: { fontSize: 14, color: INK },
   countdown: { marginTop: 8 },
 });
