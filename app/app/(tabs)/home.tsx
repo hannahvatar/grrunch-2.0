@@ -547,10 +547,8 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', justifyContent: 'center' },
   scrollContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 140, gap: 16 },
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
+  // Spans the page's middle 8 columns (2-8-2, Anabelle 2026-10-30).
   weekCard: {
-    alignSelf: 'flex-start',
-    width: '100%',
-    maxWidth: 360,
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
@@ -558,7 +556,7 @@ const styles = StyleSheet.create({
   },
   weekValidity: { fontSize: 14, color: '#343837' },
   // Bar kept short, like it is in the trial card.
-  weekCountdown: { maxWidth: 320, marginTop: 8 },
+  weekCountdown: { marginTop: 8 },
   tagline: { fontSize: 16, lineHeight: 24, color: INK, marginTop: 8 },
   sectionHeaderRow: {
     flexDirection: 'row',
