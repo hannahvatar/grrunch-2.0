@@ -281,6 +281,35 @@ export function groupDealsByCategory(deals: Deal[]): Map<string, Deal[]> {
 // item should be up then down from there"); a real store discount only
 // wins a tie at the same percentage. Previously every real discount sorted
 // above every reference comparison, so a 10% sale could top a 60% one.
+// No repeated cards on Home and Weekly Deals (Anabelle, 2026-10-30): the
+// same product at the same chain and price showed twice -- a cutout split
+// into sizes (No Name Pasta 1.8/2 kg) or fetched from two regions' flyers
+// (Walmart Green Cabbage). Only identical name + price at one chain is
+// merged; sharing a flyer picture isn't enough, since one picture often
+// shows different products (carrots and onions). The group shows its
+// earliest Home pick, else its biggest saving -- the same rule on both
+// pages, so Home's "View deal" always finds its card. Recipes still price
+// each row separately; this is display only.
+export function oneCardPerCutout(deals: Deal[]): Deal[] {
+  const best = new Map<string, Deal>();
+  for (const deal of deals) {
+    const key = `${deal.chainName}|${deal.itemName.trim().toLowerCase()}|${deal.price}`;
+    const current = best.get(key);
+    if (!current || isBetterCard(deal, current)) best.set(key, deal);
+  }
+  const keep = new Set(best.values());
+  return deals.filter((deal) => keep.has(deal));
+}
+
+function isBetterCard(a: Deal, b: Deal): boolean {
+  if (a.homePick !== null || b.homePick !== null) {
+    if (a.homePick === null) return false;
+    if (b.homePick === null) return true;
+    return a.homePick < b.homePick;
+  }
+  return bySavingsDesc(a, b) < 0;
+}
+
 export function bySavingsDesc(a: Deal, b: Deal): number {
   if (b.discountPct !== a.discountPct) return b.discountPct - a.discountPct;
   const aReal = showsRealDiscount(a.discountPct, a.originalPriceSource);

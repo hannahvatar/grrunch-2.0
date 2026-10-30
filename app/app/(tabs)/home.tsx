@@ -21,6 +21,7 @@ import { UpgradeCta } from '../../components/UpgradeCta';
 import { WeekGapState } from '../../components/WeekGapState';
 import {
   bySavingsDesc,
+  oneCardPerCutout,
   type Deal,
   fetchAllDeals,
   formatDealBadgePrice,
@@ -140,7 +141,9 @@ export default function HomeScreen() {
   // (or first 3) for everyone else.
   const meals = isSubscribed ? featured : (picked.length > 0 ? picked : featured).slice(0, 3);
 
-  const shownDeals = filterDealsByZone(allDeals, myStores).filter((deal) => !hiddenChains.has(deal.chainName));
+  const shownDeals = oneCardPerCutout(filterDealsByZone(allDeals, myStores)).filter(
+    (deal) => !hiddenChains.has(deal.chainName)
+  );
   // Anabelle's hand-picked deals first, in her order (dev-deals, Anabelle
   // 2026-10-26), then the biggest savings fill any empty slots. Not
   // limited per category (several picks can share one; each tile names

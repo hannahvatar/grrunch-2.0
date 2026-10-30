@@ -19,6 +19,7 @@ import {
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
   groupDealsByCategory,
+  oneCardPerCutout,
   isGreatReferenceValue,
   isReferencePriced,
   selectVisibleDeals,
@@ -133,7 +134,8 @@ export default function BestDealsScreen() {
   // Burnaby/urban zone shouldn't silently show that zone's pricing).
   // Recomputed from `myStores` reactively (not re-fetched) so editing a
   // store in Profile updates this list without a network round trip.
-  const deals = filterDealsByZone(allDeals, myStores);
+  // One card per flyer cutout, same rule as Home (lib/curatedDeals.ts).
+  const deals = oneCardPerCutout(filterDealsByZone(allDeals, myStores));
 
   // Membership-gated, same shape as meals.tsx's handleToggleSelected /
   // recipe.tsx's handleAddToList (Anabelle, 2026-09-09: "With a free
