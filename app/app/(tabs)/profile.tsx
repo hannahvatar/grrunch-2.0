@@ -11,6 +11,7 @@ import {
 
 import { ManageAccountSection } from '../../components/ManageAccountSection';
 import { MembershipStatus } from '../../components/MembershipStatus';
+import { FoodBankMission } from '../../components/FoodBankMission';
 import { NotificationsSection } from '../../components/NotificationsSection';
 import { StoreSelectorModal } from '../../components/StoreSelectorModal';
 import { useAuth } from '../../lib/auth';
@@ -169,8 +170,12 @@ export default function ProfileScreen() {
           {membershipOpen && (
             // Real status card -- extracted to components/MembershipStatus.tsx
             // so payment.tsx (Settings > Payment) can show the exact same
-            // logic instead of a second, drift-prone copy of it.
-            <MembershipStatus />
+            // logic instead of a second, drift-prone copy of it. The food
+            // bank mission sits right under it (Anabelle, 2026-10-30).
+            <View>
+              <MembershipStatus />
+              <FoodBankMission />
+            </View>
           )}
 
           {/* Right after Membership (Anabelle, 2026-10-05; was after My
