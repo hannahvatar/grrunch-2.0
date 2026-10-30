@@ -17,12 +17,20 @@ const BODY = {
   join: "Your membership will help feed more than just you. We'll donate 1% of our profits to food banks. 🧡",
 };
 
-export function FoodBankMission({ variant = 'member' }: { variant?: keyof typeof BODY }) {
+export function FoodBankMission({
+  variant = 'member',
+  centered = false,
+}: {
+  variant?: keyof typeof BODY;
+  // Centred text in a panel capped to the button's width, for the centred
+  // upgrade tile on Home.
+  centered?: boolean;
+}) {
   return (
-    <View style={styles.banner}>
+    <View style={[styles.banner, centered && styles.bannerCentered]}>
       <View style={styles.text}>
-        <Text style={styles.title}>Let's Bite Back at Hunger, Together</Text>
-        <Text style={styles.body}>{BODY[variant]}</Text>
+        <Text style={[styles.title, centered && styles.textCentered]}>Let's Bite Back at Hunger, Together</Text>
+        <Text style={[styles.body, centered && styles.textCentered]}>{BODY[variant]}</Text>
       </View>
     </View>
   );
@@ -35,6 +43,8 @@ const styles = StyleSheet.create({
     padding: 14,
     marginTop: 12,
   },
+  bannerCentered: { alignSelf: 'stretch', width: '100%', maxWidth: 320, marginHorizontal: 'auto' },
+  textCentered: { textAlign: 'center' },
   text: { gap: 4 },
   title: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   body: { fontSize: 16, lineHeight: 22, color: INK },
