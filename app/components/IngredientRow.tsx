@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MagnifyingGlassPlusIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
 // @deprecated (upstream) in favor of the Reanimated-based rewrite --
@@ -135,11 +135,6 @@ interface IngredientRowProps {
   // item from whatever list state holds it (see GroceryListView.tsx's
   // removedKeys), this component only ever asks, never assumes.
   onRemove?: () => void;
-  // Grocery-only: each new nonzero value makes the row slide open to show
-  // Remove, then close again, teaching the swipe (Anabelle, 2026-10-30).
-  // GroceryListView bumps it on its top row when the shopper lands on the
-  // list. Phone layouts only, where the swipe replaces the trash.
-  swipeHint?: number;
   // Pencil icon next to the item's quantity, opening a shared bottom
   // sheet (GroceryListView.tsx owns the sheet itself, one instance for
   // the whole screen rather than one per row) with a stepper + numeric
@@ -191,7 +186,6 @@ export function IngredientRow({
   stackedLayout,
   bulleted,
   onRemove,
-  swipeHint,
   onEditQuantity,
   linkedText,
   onLinkedTextPress,
@@ -206,16 +200,6 @@ export function IngredientRow({
   // was too easy to hit on a phone).
   const isDesktop = useIsDesktop();
   const swipeToRemove = !!onRemove && !isDesktop;
-  const swipeableRef = useRef<Swipeable>(null);
-  useEffect(() => {
-    if (!swipeHint || !swipeToRemove) return;
-    const open = setTimeout(() => swipeableRef.current?.openRight(), 700);
-    const close = setTimeout(() => swipeableRef.current?.close(), 1900);
-    return () => {
-      clearTimeout(open);
-      clearTimeout(close);
-    };
-  }, [swipeHint, swipeToRemove]);
   // Last week's flyers have ended and the next week isn't published yet
   // (lib/liveWeek.ts) -- the deal's price stays, its badge becomes Expired.
   const liveWeekExpired = useLiveWeekExpired();
@@ -684,7 +668,6 @@ export function IngredientRow({
   }
   return (
     <Swipeable
-      ref={swipeableRef}
       renderRightActions={() => (
         <GesturePressable style={styles.removeAction} onPress={onRemove}>
           <TrashIcon size={18} color="#fff" />
@@ -692,6 +675,9 @@ export function IngredientRow({
         </GesturePressable>
       )}
       overshootRight={false}
+      // White like the store card behind it, so the sliding row covers the
+      // red panel instead of showing it through (Anabelle, 2026-10-30).
+      childrenContainerStyle={styles.swipeRow}
     >
       {content}
     </Swipeable>
@@ -764,8 +750,7 @@ const styles = StyleSheet.create({
   // Grocery-only -- the panel revealed by Swipeable's renderRightActions
   // on a left swipe. Solid red (a genuinely destructive action, unlike
   // every other muted/INK control on this screen), the full height of
-  // its row and a fixed 110 wide, so a swipe (and the landing hint)
-  // reveals a button-sized panel instead of sliding the item out of view.
+  // its row and a fixed 110 wide, so a swipe reveals a button-sized panel instead of sliding the item out of view.
   removeAction: {
     width: 110,
     backgroundColor: '#DC2626',
@@ -777,6 +762,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
   },
+  swipeRow: { backgroundColor: '#fff' },
   removeActionText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // Price (+ original, + multiplier) directly beside its own discount/
   // fair-price pill -- one tight group, not spread apart.
