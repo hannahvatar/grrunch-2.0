@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { ArrowPathIcon, BuildingStorefrontIcon, MapPinIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
-import { type Deal, fetchDealsByIds, isReferencePriced } from '../lib/curatedDeals';
+import { type Deal, fetchDealsByIds } from '../lib/curatedDeals';
 import { gridSpan, useIsDesktop } from '../lib/layout';
 import { IngredientRow } from './IngredientRow';
 import type { DealTag, Meal } from '../lib/mealData';
@@ -624,11 +624,6 @@ export function GroceryListView() {
   if (storeGroups.has(OTHER_ITEMS)) {
     storeNames.push(OTHER_ITEMS);
   }
-  // A reference-sourced deal tag never counts as "on sale" here -- its
-  // discountPct isn't a claim the store made (see
-  // lib/curatedDeals.ts's isReferencePriced()).
-  const itemsWithDeal = items.filter((item) => item.dealTag && !isReferencePriced(item.dealTag.originalPriceSource));
-  const dealItemCount = itemsWithDeal.length;
 
   // Wednesday close to Thursday noon: the list was cleared at the close
   // (WeekLifecycle.tsx), so show the countdown instead of the usual
@@ -651,18 +646,8 @@ export function GroceryListView() {
             fixed header sitting outside the ScrollView entirely. */}
         <View style={styles.header}>
           <Text style={styles.title}>Grocery list</Text>
-          {/* Hidden on an empty list (Anabelle's call) -- "0 items · 0 on
-              sale · 0 stores" reads as broken/uninformative before the
-              guest-locked or empty-state copy right below it even
-              explains why there's nothing yet. Still shows once there's
-              real content to summarize. */}
-          {items.length > 0 && (
-            <Text style={styles.subtitle}>
-              {items.length} item{items.length === 1 ? '' : 's'} · {dealItemCount} on sale ·{' '}
-              {storeNames.filter((s) => s !== OTHER_ITEMS && s !== NOT_ON_SALE).length} store
-              {storeNames.filter((s) => s !== OTHER_ITEMS && s !== NOT_ON_SALE).length === 1 ? '' : 's'}
-            </Text>
-          )}
+          {/* The "N items · N on sale · N stores" summary was removed
+              (Anabelle, 2026-10-30). */}
         </View>
         {/* Same dates + days-left card as Home, Weekly Deals and Recipes
             (Anabelle, 2026-10-30). Only with items: an empty list has no
@@ -976,7 +961,6 @@ const styles = StyleSheet.create({
   // component is the sole content of).
   header: {},
   title: { fontSize: 24, fontWeight: '800', fontFamily: 'OpenSans_800ExtraBold', color: INK },
-  subtitle: { fontSize: 13, color: INK, marginTop: 2 },
   // Explains where quantities come from and that they're editable, with
   // the bulk Reset button living on the same row -- text takes whatever
   // space the button doesn't need (flexShrink so it wraps instead of
