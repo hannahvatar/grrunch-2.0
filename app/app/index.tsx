@@ -198,7 +198,10 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   container: { flex: 1, padding: 24 },
-  skip: { position: 'absolute', top: 60, right: 24, padding: 8, zIndex: 1 },
+  // Its own row above the slide, same spot as before (24 + 36 = 60 from
+  // the top); was absolutely positioned and sat over the illustration on a
+  // phone (Anabelle, 2026-10-30).
+  skip: { alignSelf: 'flex-end', marginTop: 36, padding: 8 },
   middle: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   logo: {
     alignItems: 'center',
