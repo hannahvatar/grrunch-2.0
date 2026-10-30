@@ -22,8 +22,7 @@ export function FoodBankMission({
   centered = false,
 }: {
   variant?: keyof typeof BODY;
-  // Centred text in a panel capped to the button's width, for the centred
-  // upgrade tile on Home.
+  // Centred text, for the centred trial cards and /upgrade.
   centered?: boolean;
 }) {
   return (
@@ -43,7 +42,9 @@ const styles = StyleSheet.create({
     padding: 14,
     marginTop: 12,
   },
-  bannerCentered: { alignSelf: 'stretch', width: '100%', maxWidth: 320, marginHorizontal: 'auto' },
+  // Full width of the card it sits in (Anabelle, 2026-10-30; was capped
+  // at the button's 320 px).
+  bannerCentered: { alignSelf: 'stretch', width: '100%' },
   textCentered: { textAlign: 'center' },
   text: { gap: 4 },
   title: { fontSize: 15, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },

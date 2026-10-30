@@ -214,13 +214,6 @@ export default function UpgradeScreen() {
                 : 'Try Grrunch free for 30 days.'}
         </Text>
         {!alreadyMember && !showOutsideArea && (
-          // The food bank mission in place of the old benefit bullets
-          // (Anabelle, 2026-10-30), same as on every trial card.
-          <View style={styles.mission}>
-            <FoodBankMission variant="join" centered />
-          </View>
-        )}
-        {!alreadyMember && !showOutsideArea && (
           <View style={styles.planPicker}>
             <SegmentedControl
               options={[
@@ -337,6 +330,13 @@ export default function UpgradeScreen() {
             )}
           </View>
         )}
+        {!alreadyMember && !showOutsideArea && (
+          // The food bank mission, always at the very bottom (Anabelle,
+          // 2026-10-30), same as on every trial card.
+          <View style={styles.mission}>
+            <FoodBankMission variant="join" centered />
+          </View>
+        )}
       </View>
       <OutsideAreaModal
         visible={waitlistVisible}
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   // more than one line of it.
   // Desktop: the checklist as one centered block (still left-aligned
   // inside), not pinned to the far left of the 8 columns.
-  mission: { alignSelf: 'stretch', marginTop: 8 },
+  mission: { alignSelf: 'stretch', marginTop: 16 },
   // Annual/Monthly plan picker (Anabelle, 2026-09-15) -- sits between the
   // feature list and the price note it controls.
   planPicker: { marginTop: 20 },
