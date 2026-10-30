@@ -10,8 +10,8 @@ const INK = '#111';
 // an account at all (Manage account, Payment) -- two real, distinct paths
 // forward, not one CTA standing in for both: "Sign in" (an existing
 // account, real supabase.auth session, no payment involved) and "Start
-// your 30-day free trial" (the existing UpgradeCta outline variant,
-// unchanged). signInCard deliberately mirrors UpgradeCta's outline
+// your 30-day free trial" (UpgradeCta's tile, like every other trial card
+// since 2026-10-30). signInCard deliberately mirrors UpgradeCta's outline
 // container/icon/text styling exactly (Anabelle's call, 2026-08-28) --
 // same padding/radius/gap/font sizes, solid border instead of dashed --
 // so the two cards read as one consistent pair, not two different styles.
@@ -36,7 +36,9 @@ export function SignInOrTrialPrompt({ reason }: { reason: string }) {
         <View style={styles.orLine} />
       </View>
 
-      <UpgradeCta reason={reason} variant="outline" />
+      {/* Same centred trial card as every other page (Anabelle, 2026-10-30;
+          was the compact outline row). */}
+      <UpgradeCta reason={reason} variant="tile" />
     </View>
   );
 }
