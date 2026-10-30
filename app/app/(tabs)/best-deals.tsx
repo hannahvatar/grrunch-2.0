@@ -325,7 +325,8 @@ export default function BestDealsScreen() {
               read-only, input-style box (Anabelle, 2026-10-05). The count
               follows the store chips. */}
           <View style={styles.cardTop}>
-            <Text style={styles.cardTitle}>{weekExpired ? "Deals from last week's flyers" : 'Deals this week'}</Text>
+            {/* Same heading as Home's deals section (Anabelle, 2026-10-30). */}
+            <Text style={styles.cardTitle}>{weekExpired ? "Deals from last week's flyers" : 'The deals we dig'}</Text>
             <View style={styles.countField} accessibilityRole="text">
               <Text style={styles.countFieldText}>{shownDeals.length}</Text>
             </View>
