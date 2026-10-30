@@ -66,15 +66,11 @@ function countBadgeColors(shown: number, total: number): { bg: string; text: str
 }
 const INK = '#111';
 
-// Free tier sees only the single biggest-savings non-recipe-linked item
-// in each category (was 3, Anabelle 2026-09-08) -- see selectVisibleDeals,
-// which already sorts by savings desc before slicing, so this is "the one
-// with the best deal percentage" by construction. Grrunch Plus (30-day
-// free trial, then MONTHLY_PRICE_DISPLAY/mo) unlocks the rest. A deal used by any recipe
-// is exempt from this cap entirely, always shown regardless of how many
-// others are already visible. The "Unlock N more deals" dashed card
-// stands in for however many non-recipe-linked deals are left, naming the
-// real count rather than a generic upsell.
+// Free tier sees only the single best-value deal in each category, or
+// each store in the Per store view (Anabelle, 2026-09-08; again
+// 2026-10-30) -- see selectVisibleDeals, which sorts by savings first.
+// Grrunch Plus (30-day free trial) unlocks the rest; the "Unlock N more
+// deals" dashed card names the real count left.
 const FREE_DEALS_PER_CATEGORY = 1;
 
 // This week's curated flyer deals (Airtable Admin Review Tool, status
@@ -335,7 +331,8 @@ export default function BestDealsScreen() {
           const { visibleDeals: rankedDeals, lockedDealCount } = selectVisibleDeals(
             categoryDeals,
             isSubscribed,
-            FREE_DEALS_PER_CATEGORY
+            FREE_DEALS_PER_CATEGORY,
+            focusDealParam
           );
           // Per store: grouped by category inside the store (stable sort,
           // so each category keeps its best-value-first order).
@@ -444,18 +441,18 @@ export default function BestDealsScreen() {
                             <View style={styles.priceRow}>
                               <Text style={styles.dealPrice}>
                                 ${deal.price.toFixed(2)}
-                                {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl)}
+                                {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount)}
                               </Text>
                               {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
                                 <Text style={styles.dealOriginalPrice}>
                                   ${deal.originalPrice.toFixed(2)}
-                                  {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl)}
+                                  {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount)}
                                 </Text>
                               )}
                             </View>
                             {isReferencePriced(deal.originalPriceSource) && (
                               <Text style={styles.dealCompareAnnotation}>
-                                {formatComparePriceLabel(deal.originalPrice, priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl))}
+                                {formatComparePriceLabel(deal.originalPrice, priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount))}
                               </Text>
                             )}
                             {/* Moved off the image overlay (was cramped/

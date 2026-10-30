@@ -459,7 +459,7 @@ export function IngredientRow({
           <Text style={styles.itemPriceValue}>
             {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}$
             {(dealTag.rawPrice ?? dealTag.price).toFixed(2)}
-              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)}
+              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl, dealTag.bundleCount)}
           </Text>
           {dealTag.originalPrice != null &&
             dealTag.originalPrice > dealTag.price &&
@@ -467,7 +467,7 @@ export function IngredientRow({
               <Text style={styles.itemPriceOriginal}>
                 $
                 {(dealTag.rawOriginalPrice ?? dealTag.originalPrice).toFixed(2)}
-                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)}
+                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl, dealTag.bundleCount)}
               </Text>
             )}
         </View>
@@ -479,7 +479,7 @@ export function IngredientRow({
         <Text style={styles.itemPriceEstimated}>
           {formatComparePriceLabel(
             dealTag.rawOriginalPrice ?? dealTag.originalPrice,
-            priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)
+            priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl, dealTag.bundleCount)
           )}
         </Text>
       )}
@@ -521,7 +521,7 @@ export function IngredientRow({
             <Text style={styles.itemPriceValue}>
               {dealTag.priceEstimated && <Text style={styles.itemPriceEstimated}>est. </Text>}$
               {(dealTag.rawPrice ?? dealTag.price).toFixed(2)}
-              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)}
+              {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl, dealTag.bundleCount)}
             </Text>
           )}
           {dealTag?.originalPrice != null &&
@@ -530,14 +530,14 @@ export function IngredientRow({
               <Text style={styles.itemPriceOriginal}>
                 $
                 {(dealTag.rawOriginalPrice ?? dealTag.originalPrice).toFixed(2)}
-                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)}
+                {priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl, dealTag.bundleCount)}
               </Text>
             )}
           {dealTag && isReferencePriced(dealTag.originalPriceSource) && dealTag.originalPrice != null && (
             <Text style={styles.itemPriceEstimated}>
               {formatComparePriceLabel(
                 dealTag.rawOriginalPrice ?? dealTag.originalPrice,
-                priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl)
+                priceUnitSuffix(dealTag.priceUnit, dealTag.packageWeightG, dealTag.packageVolumeMl, dealTag.bundleCount)
               )}
             </Text>
           )}

@@ -35,6 +35,9 @@ export interface Deal {
   priceUnit?: 'package' | 'each' | 'lb' | 'kg' | '100g';
   packageWeightG?: number;
   packageVolumeMl?: number;
+  // A multi-buy ("2 for $7"): the price and original price are for this
+  // many items.
+  bundleCount?: number;
   // Place on Home's Top deals grid, hand-picked in dev-deals (1 = first);
   // null when not picked.
   homePick: number | null;
@@ -130,14 +133,17 @@ export function formatComparePriceLabel(originalPrice: number, unitSuffix = ''):
 // the deal in dev-deals (2026-10-30: a bare "$0.98" reads as one cabbage
 // when it's per pound, and a computed package price turned Safeway's
 // $0.99/lb apples into "/pkg"). Same reading as dev-deals' "Price is
-// per" row: a rate ("/lb", "/kg", "/100 g"), "each", or a package of a
-// known size ("/665 g", "/500 ml"), else "/pkg". The price beside it is
-// the stored price as reviewed, never converted.
+// per" row: a rate ("/lb", "/kg", "/100 g"), "each", a multi-buy ("for
+// 2", like dev-deals' own price line), or a package of a known size
+// ("/665 g", "/500 ml"), else "/pkg". The price beside it is the stored
+// price as reviewed, never converted.
 export function priceUnitSuffix(
   priceUnit: 'package' | 'each' | 'lb' | 'kg' | '100g' | undefined,
   packageWeightG: number | undefined,
-  packageVolumeMl?: number
+  packageVolumeMl?: number,
+  bundleCount?: number
 ): string {
+  if (bundleCount && bundleCount > 1) return `\u00A0for\u00A0${bundleCount}`;
   if (priceUnit === 'each') return '\u00A0each';
   if (priceUnit === 'lb') return '/lb';
   if (priceUnit === 'kg') return '/kg';
@@ -185,6 +191,7 @@ function mapRowToDeal(row: {
   price_unit?: string | null;
   package_weight_g?: number | null;
   package_volume_ml?: number | null;
+  bundle_count?: number | null;
   home_pick?: number | null;
   home_free?: boolean | null;
 }): Deal | null {
@@ -205,6 +212,7 @@ function mapRowToDeal(row: {
     priceUnit: (row.price_unit ?? undefined) as Deal['priceUnit'],
     packageWeightG: row.package_weight_g ?? undefined,
     packageVolumeMl: row.package_volume_ml ?? undefined,
+    bundleCount: row.bundle_count ?? undefined,
     homePick: row.home_pick ?? null,
     homeFree: row.home_free ?? false,
   };
@@ -325,7 +333,8 @@ export function bySavingsDesc(a: Deal, b: Deal): number {
 export function selectVisibleDeals(
   categoryDeals: Deal[],
   isSubscribed: boolean,
-  freeLimit: number
+  freeLimit: number,
+  focusDealId?: string
 ): { visibleDeals: Deal[]; lockedDealCount: number } {
   // Best value first for everyone (Anabelle, 2026-10-06), so the deal at
   // the top of each category is the one a non-member gets to see.
@@ -333,9 +342,11 @@ export function selectVisibleDeals(
   if (isSubscribed) {
     return { visibleDeals: sorted, lockedDealCount: 0 };
   }
-  // The top `freeLimit`, plus any deal Anabelle marked free for Home
-  // (dev-deals, 2026-10-26) so "View deal" never lands on a locked one.
-  const visibleDeals = sorted.filter((deal, index) => index < freeLimit || deal.homeFree);
+  // Only the top `freeLimit` per category or store (Anabelle, 2026-10-30:
+  // one deal, the best value; her Home "Free" picks no longer add more).
+  // The one exception is the deal a Home "View deal" just opened, so that
+  // tap never lands on a locked card.
+  const visibleDeals = sorted.filter((deal, index) => index < freeLimit || deal.id === focusDealId);
   return {
     visibleDeals,
     lockedDealCount: sorted.length - visibleDeals.length,

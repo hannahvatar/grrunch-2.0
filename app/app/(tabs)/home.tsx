@@ -433,7 +433,7 @@ function HomeRecipeCard({ meal, width, stacked }: { meal: Meal; width: number; s
 // store and price. Tapping it opens Weekly Deals.
 function DealTile({ deal, width }: { deal: Deal; width: number }) {
   const price = deal.price;
-  const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl);
+  const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount);
   const [zoomOpen, setZoomOpen] = useState(false);
   const wow =
     deal.discountPct >= WOW_DISCOUNT_PCT &&

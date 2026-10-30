@@ -133,6 +133,11 @@ function mapDealToGroceryItem(deal: Deal): GroceryItem {
       store: deal.chainName,
       imageUrl: deal.imageUrl ?? undefined,
       originalPriceSource: deal.originalPriceSource,
+      // So the price shows its reviewed unit, like everywhere else.
+      priceUnit: deal.priceUnit,
+      packageWeightG: deal.packageWeightG,
+      packageVolumeMl: deal.packageVolumeMl,
+      bundleCount: deal.bundleCount,
     },
   };
 }
