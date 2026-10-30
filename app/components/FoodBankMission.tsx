@@ -9,15 +9,20 @@ const INK = '#111';
 // orange, no icon (Anabelle removed the heart, 2026-10-30), not one of
 // AlertBanner's status colours, so it reads as a mission rather than a
 // system notice.
-export function FoodBankMission() {
+// "member" thanks people who've joined (under their membership card);
+// "join" sits inside the free-trial card for non-members, without the
+// thank-you (Anabelle, 2026-10-30).
+const BODY = {
+  member: "Thank you so much! Your membership will help feed more than just you. We'll donate 1% of our profits to food banks. 🧡",
+  join: "Your membership will help feed more than just you. We'll donate 1% of our profits to food banks. 🧡",
+};
+
+export function FoodBankMission({ variant = 'member' }: { variant?: keyof typeof BODY }) {
   return (
     <View style={styles.banner}>
       <View style={styles.text}>
         <Text style={styles.title}>Let's Bite Back at Hunger, Together</Text>
-        <Text style={styles.body}>
-          Thank you so much! Your membership will help feed more than just you. We'll donate 1% of our profits to food
-          banks. 🧡
-        </Text>
+        <Text style={styles.body}>{BODY[variant]}</Text>
       </View>
     </View>
   );

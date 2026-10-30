@@ -3,6 +3,7 @@ import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } fro
 import { ChevronRightIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { ANNUAL_MONTHLY_EQUIVALENT_DISPLAY } from '../lib/purchases';
+import { FoodBankMission } from './FoodBankMission';
 
 const ACCENT = '#FFA955';
 const INK = '#111';
@@ -47,11 +48,15 @@ export function UpgradeCta({
   variant = 'solid',
   title,
   style,
+  mission = false,
 }: {
   reason: string;
   variant?: 'solid' | 'outline' | 'tile';
   title?: string;
   style?: StyleProp<ViewStyle>;
+  // Solid variant only: the food bank mission inside the card, above the
+  // button (Profile > Membership for non-members, Anabelle 2026-10-30).
+  mission?: boolean;
 }) {
   function goToUpgrade() {
     router.push({ pathname: '/upgrade', params: { reason } });
@@ -103,6 +108,7 @@ export function UpgradeCta({
           <Text style={styles.subtitle}>Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime</Text>
         </View>
       </View>
+      {mission && <FoodBankMission variant="join" />}
       <Pressable style={styles.ctaButton} onPress={goToUpgrade}>
         {/* "Start 30-day free trial", matching the title right above it
             and /upgrade's own primary button -- Anabelle, 2026-09-15:
