@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckIcon } from 'react-native-heroicons/outline';
+import { CheckIcon, LockClosedIcon } from 'react-native-heroicons/outline';
 
 import { STORE_CHAINS, type StoreChipsPage, useStoreFilter } from '../lib/storeFilter';
 import { useSubscription } from '../lib/subscription';
@@ -73,15 +73,21 @@ export function StoreChips({ page }: { page: StoreChipsPage }) {
         {STORE_CHAINS.map((chain) => {
           const selected = !isHidden(chain);
           return (
+            // Non-members: dashed and transparent with a lock, like the
+            // other locked features (Anabelle, 2026-10-30).
             <Pressable
               key={chain}
-              style={[styles.chip, selected && styles.chipSelected]}
+              style={[styles.chip, locked ? styles.chipLocked : selected && styles.chipSelected]}
               onPress={() => handlePress(chain)}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: selected }}
+              accessibilityState={{ checked: selected, disabled: locked }}
             >
-              {selected && <CheckIcon size={14} color="#fff" strokeWidth={2.5} />}
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{chain}</Text>
+              {locked ? (
+                <LockClosedIcon size={14} color={INK} strokeWidth={2} />
+              ) : (
+                selected && <CheckIcon size={14} color="#fff" strokeWidth={2.5} />
+              )}
+              <Text style={[styles.chipText, !locked && selected && styles.chipTextSelected]}>{chain}</Text>
             </Pressable>
           );
         })}
@@ -107,6 +113,7 @@ const styles = StyleSheet.create({
   },
   // Same INK-fill "on" state as Weekly Deals' addIconButtonActive.
   chipSelected: { backgroundColor: INK },
+  chipLocked: { backgroundColor: 'transparent', borderStyle: 'dashed' },
   chipText: { fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
   chipTextSelected: { color: '#fff' },
 });

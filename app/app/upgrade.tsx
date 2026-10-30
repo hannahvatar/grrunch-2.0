@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckIcon, LockOpenIcon, MapPinIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { LockOpenIcon, MapPinIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { AlertBanner } from '../components/AlertBanner';
+import { FoodBankMission } from '../components/FoodBankMission';
 import { OutsideAreaModal } from '../components/OutsideAreaModal';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { useAuth } from '../lib/auth';
@@ -35,13 +36,6 @@ const INK = '#111';
 // "Unlimited saved recipes" dropped (Anabelle, 2026-09-15: Save/
 // Favourite was shelved for v1 scope, PR #222 -- "make sure its not
 // stated anywhere in the copy").
-const FEATURES = [
-  'Add recipes to your grocery list',
-  'Full deals in every category',
-  'Curated, deal-focused recipes every week',
-  'Choose your own stores',
-];
-
 // Shared upgrade prompt — presented as a modal wherever a locked, paid-tier
 // feature is tapped (see components/UpgradeCta.tsx, and the direct call
 // from stores.tsx for store customization). Takes an optional `reason`
@@ -220,13 +214,10 @@ export default function UpgradeScreen() {
                 : 'Try Grrunch free for 30 days.'}
         </Text>
         {!alreadyMember && !showOutsideArea && (
-          <View style={[styles.featureList, buttonWidth && styles.featureListDesktop]}>
-            {FEATURES.map((feature) => (
-              <View key={feature} style={styles.featureRow}>
-                <CheckIcon size={16} color={INK} />
-                <Text style={styles.featureText}>{feature}</Text>
-              </View>
-            ))}
+          // The food bank mission in place of the old benefit bullets
+          // (Anabelle, 2026-10-30), same as on every trial card.
+          <View style={styles.mission}>
+            <FoodBankMission variant="join" centered />
           </View>
         )}
         {!alreadyMember && !showOutsideArea && (
@@ -420,12 +411,9 @@ const styles = StyleSheet.create({
   // alignSelf:'stretch' (not centered like body/title above) -- a
   // left-aligned checklist reads faster than centered text once there's
   // more than one line of it.
-  featureList: { alignSelf: 'stretch', marginTop: 20, gap: 12 },
   // Desktop: the checklist as one centered block (still left-aligned
   // inside), not pinned to the far left of the 8 columns.
-  featureListDesktop: { alignSelf: 'center' },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  featureText: { fontSize: 16, color: INK, flexShrink: 1 },
+  mission: { alignSelf: 'stretch', marginTop: 8 },
   // Annual/Monthly plan picker (Anabelle, 2026-09-15) -- sits between the
   // feature list and the price note it controls.
   planPicker: { marginTop: 20 },
