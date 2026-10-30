@@ -168,6 +168,10 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={[styles.scrollContent, desktopContent]}>
         <View>
           <Text style={styles.title}>This week at Grrunch</Text>
+          {/* Right under the title (Anabelle, 2026-10-30). */}
+          <Text style={styles.tagline}>
+            We hunted down this week's grocery bargains and cooked up delicious ways to make the most of them.
+          </Text>
           {/* Dates and countdown in a white card (Anabelle, 2026-10-30). */}
           {(weekValidity || weekDaysLeft) && (
             <View style={styles.weekCard}>
@@ -187,9 +191,6 @@ export default function HomeScreen() {
               )}
             </View>
           )}
-          <Text style={styles.tagline}>
-            We hunted down this week's grocery bargains and cooked up delicious ways to make the most of them.
-          </Text>
         </View>
 
         <RecipeCarousel
