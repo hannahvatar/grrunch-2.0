@@ -289,7 +289,6 @@ function RecipeCarousel({
             reason="unlock every recipe"
             title={`Unlock ${lockedCount} more recipe${lockedCount === 1 ? '' : 's'}`}
             style={{ width: cardWidth }}
-            mission
           />
         )}
       </ScrollView>
