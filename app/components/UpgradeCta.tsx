@@ -72,10 +72,12 @@ export function UpgradeCta({
         <Text style={styles.tileSubtitle}>
           30-day free trial · Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime
         </Text>
-        {mission && <FoodBankMission variant="join" centered />}
         <Pressable style={[styles.ctaButton, styles.tileButton]} onPress={goToUpgrade}>
           <Text style={[styles.ctaButtonText, styles.tileButtonText]}>Start 30-day free trial</Text>
         </Pressable>
+        {/* At the bottom of the tile, under the button (Anabelle,
+            2026-10-30). */}
+        {mission && <FoodBankMission variant="join" centered />}
       </View>
     );
   }
