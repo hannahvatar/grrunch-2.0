@@ -249,7 +249,7 @@ export default function ProfileScreen() {
                     member-only, so /upgrade is the correct destination
                     for them. */}
                 <Pressable
-                  style={styles.changeStoreButton}
+                  style={[styles.changeStoreButton, !isSubscribed && styles.changeStoreButtonLocked]}
                   onPress={() =>
                     isSubscribed
                       ? setEditingStore(store)
@@ -478,6 +478,9 @@ const styles = StyleSheet.create({
     borderColor: INK,
     borderRadius: 22,
   },
+  // Non-members: dashed and transparent with the lock, like the other
+  // locked features (Anabelle, 2026-10-30).
+  changeStoreButtonLocked: { backgroundColor: 'transparent', borderStyle: 'dashed' },
   // Real btn-primary-orange -- see the DS's canonical spec on login.tsx's
   // primaryButton (ACCENT fill, 2px INK border). Distinct from the Change
   // buttons' stroked/outline style since this row is the section's one
