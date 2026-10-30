@@ -148,10 +148,15 @@ export function MembershipStatus() {
           label={`${trialDaysLeft} ${trialDaysLeft === 1 ? 'day' : 'days'} left`}
           tier={getTrialUrgencyTier(trialDaysLeft)}
         />
+        {/* A cancelled store trial still runs to its end date, it just
+            won't renew. It kept reading "Then CA$7.99/mo · Cancel
+            anytime" after cancelling (Anabelle, 2026-10-30). */}
         <Text style={styles.membershipSubtitle}>
-          {activePriceLabel
-            ? `Then ${activePriceLabel} · Cancel anytime`
-            : `Then ${MONTHLY_PRICE_DISPLAY}/mo or ${ANNUAL_PRICE_DISPLAY}/yr (${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo) · Cancel anytime`}
+          {storeBilled && !willRenew && expirationDate
+            ? `Cancelled. You keep access until ${formatRenewalDate(expirationDate)}, and you won't be charged.`
+            : activePriceLabel
+              ? `Then ${activePriceLabel} · Cancel anytime`
+              : `Then ${MONTHLY_PRICE_DISPLAY}/mo or ${ANNUAL_PRICE_DISPLAY}/yr (${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo) · Cancel anytime`}
         </Text>
         {/* A store (Apple/Google) free trial is a real subscription:
             only the platform can cancel it, and they're already
