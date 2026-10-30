@@ -18,6 +18,10 @@ export function SupportBubble() {
   const pathname = usePathname();
   const isDesktop = useIsDesktop();
   if (pathname.startsWith('/dev-deals')) return null;
+  // Hidden on the onboarding slides too: it forced a 160 px gap under the
+  // Next button there, which pushed the slide text out of view on a phone
+  // (Anabelle, 2026-10-30). Help is a tap away on every other screen.
+  if (pathname === '/') return null;
   // Desktop pages have no bottom tab bar to clear, so the bubble sits in
   // the window's corner instead of over the content column.
   const desktopCorner = isDesktop && (isDesktopReadyRoute(pathname) || TAB_ROUTES.has(pathname));
