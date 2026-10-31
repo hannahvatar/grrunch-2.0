@@ -757,8 +757,19 @@ const styles = StyleSheet.create({
   removeActionText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: 'OpenSans_700Bold' },
   // Price (+ original, + multiplier) directly beside its own discount/
   // fair-price pill -- one tight group, not spread apart.
-  dealPriceTagGroup: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dealPriceLeft: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  // Both wrap, so a long price + unit ("$5.00/454 g", "$7.50/454 g avg.")
+  // drops the badge or avg. onto a second line instead of running off the
+  // card's left edge on a phone (Anabelle, 2026-10-31, Pixel 7).
+  dealPriceTagGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    flexShrink: 1,
+    gap: 8,
+    rowGap: 6,
+  },
+  dealPriceLeft: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', flexShrink: 1, gap: 6 },
   bulletMarker: { fontSize: 15, color: INK },
   // width/height/borderRadius are overridden inline per imageSize.
   // overflow: 'hidden' clips the absolutely-positioned backdrop/
