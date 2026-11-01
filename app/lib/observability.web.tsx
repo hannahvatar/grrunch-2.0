@@ -1,7 +1,5 @@
-import { ComponentType, ReactNode, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { usePathname } from 'expo-router';
-import { PostHogProvider, usePostHog } from 'posthog-react-native';
+import { ComponentType, ReactNode, useEffect } from 'react';
+import posthog from 'posthog-js';
 
 import { clearAnalyticsStorage, useAnalyticsConsent } from './analyticsConsent';
 
@@ -30,77 +28,48 @@ const POSTHOG_API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
 const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com';
 export const posthogConfigured = !!POSTHOG_API_KEY;
 
-// PostHog only after the visitor accepts analytics on the cookie banner
-// (lib/analyticsConsent.ts). Once mounted it stays mounted for the visit,
-// so a later Decline (Profile > Settings > Cookies) opts out and clears
-// PostHog's stored id instead; the next visit doesn't load it at all.
+// Local dev (localhost:8081, dev-deals reviews) shares the live project
+// key, so it stays out of the numbers.
+const IS_LOCAL_DEV =
+  typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+// posthog-js, PostHog's website library, not posthog-react-native: Web
+// analytics (visitors, sessions, bounce rate, referrers) only counts the
+// web library's events, so it read 0 with the React Native one
+// (Anabelle, 2026-11-01). It records a $pageview on every route change
+// and a $pageleave for session length; no autocapture, no replays.
+//
+// Only after the visitor accepts analytics on the cookie banner
+// (lib/analyticsConsent.ts). A later Decline (Profile > Settings >
+// Cookies) opts out and clears its stored ids; the next visit doesn't
+// start it at all.
+let started = false;
+
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const consent = useAnalyticsConsent();
-  const startedThisVisit = useRef(false);
-  if (consent === 'granted') startedThisVisit.current = true;
-  // Beside the app, not around it: switching from no provider to a
-  // wrapping one would remount the whole app on Accept (and lose the
-  // in-memory list). Nothing in the app reads the PostHog context.
-  return (
-    <>
-      {POSTHOG_API_KEY && startedThisVisit.current && (
-        // PostHogProvider renders a flex: 1 View; as a sibling of the app it
-        // took half the screen (white gap above the top bar). A zero-size,
-        // out-of-flow box keeps it invisible.
-        <View style={styles.hiddenHost} pointerEvents="none" aria-hidden>
-          <PostHogProvider
-            apiKey={POSTHOG_API_KEY}
-            options={{ host: POSTHOG_HOST }}
-            autocapture={{ captureScreens: false, captureTouches: false }}
-          >
-            <OptOutWhenDeclined />
-            <TrackPageViews />
-          </PostHogProvider>
-        </View>
-      )}
-      {children}
-    </>
-  );
-}
-
-function OptOutWhenDeclined() {
-  const posthog = usePostHog();
-  const consent = useAnalyticsConsent();
   useEffect(() => {
+    if (!POSTHOG_API_KEY || IS_LOCAL_DEV) return;
     if (consent === 'granted') {
-      posthog?.optIn();
-    } else {
-      // Stop sending, then delete its ids and queued events once it has
-      // finished writing the opt-out.
-      Promise.resolve(posthog?.optOut())
-        .then(() => posthog?.reset())
-        .finally(() => setTimeout(clearAnalyticsStorage, 500));
+      if (!started) {
+        started = true;
+        posthog.init(POSTHOG_API_KEY, {
+          api_host: POSTHOG_HOST,
+          persistence: 'localStorage',
+          capture_pageview: 'history_change',
+          capture_pageleave: true,
+          autocapture: false,
+          capture_dead_clicks: false,
+          disable_session_recording: true,
+          disable_surveys: true,
+        });
+      } else {
+        posthog.opt_in_capturing();
+      }
+    } else if (started) {
+      posthog.opt_out_capturing();
+      posthog.reset();
+      setTimeout(clearAnalyticsStorage, 500);
     }
-  }, [consent, posthog]);
-  return null;
+  }, [consent]);
+  return <>{children}</>;
 }
-
-// One $pageview per route change, so PostHog's Web analytics shows visits,
-// pages and referrers. Nothing was sent per page before, only app opens.
-// The provider sits beside the app, so the screen autocapture can't see
-// the navigator; Expo Router's pathname is the source instead.
-function TrackPageViews() {
-  const posthog = usePostHog();
-  const pathname = usePathname();
-  useEffect(() => {
-    if (!posthog || typeof window === 'undefined') return;
-    // From the new pathname: the address bar can still show the previous
-    // page when this runs.
-    posthog.capture('$pageview', {
-      $current_url: window.location.origin + pathname,
-      $pathname: pathname,
-      $host: window.location.host,
-      $referrer: document.referrer || '$direct',
-    });
-  }, [pathname, posthog]);
-  return null;
-}
-
-const styles = StyleSheet.create({
-  hiddenHost: { position: 'absolute', width: 0, height: 0, overflow: 'hidden' },
-});
