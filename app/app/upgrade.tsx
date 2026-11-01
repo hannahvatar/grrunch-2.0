@@ -9,6 +9,7 @@ import { OutsideAreaModal } from '../components/OutsideAreaModal';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { useAuth } from '../lib/auth';
 import { useDesktopButtonWidth } from '../lib/layout';
+import { rememberTrialIntent } from '../lib/pendingTrial';
 import {
   ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
   ANNUAL_PRICE_DISPLAY,
@@ -128,6 +129,8 @@ export default function UpgradeScreen() {
 
   async function handlePrimaryAction() {
     if (isGuest) {
+      // Back here after sign-up instead of Home (lib/pendingTrial.ts).
+      rememberTrialIntent(reason);
       router.replace('/login');
       return;
     }
