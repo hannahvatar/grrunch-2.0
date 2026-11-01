@@ -13,8 +13,12 @@ import { Platform } from 'react-native';
 export type AnalyticsConsent = 'granted' | 'denied' | null;
 
 const STORAGE_KEY = 'grrunch.analyticsConsent';
-// Where posthog-react-native keeps its ids and queue in the browser.
-const POSTHOG_STORAGE_KEY = '.posthog-rn.json';
+// Where PostHog keeps its ids and queue in the browser: posthog-js's
+// ph_<key>_posthog (plus its opt-out flag), and the .posthog-rn.json the
+// React Native library left behind before 2026-11-01.
+function isPostHogKey(key: string): boolean {
+  return key === '.posthog-rn.json' || key.startsWith('ph_') || key.startsWith('__ph_opt_in_out_');
+}
 const listeners = new Set<() => void>();
 
 function read(): AnalyticsConsent {
@@ -31,7 +35,9 @@ function read(): AnalyticsConsent {
 // Deletes PostHog's stored ids and queued events (after a Decline).
 export function clearAnalyticsStorage(): void {
   try {
-    window.localStorage.removeItem(POSTHOG_STORAGE_KEY);
+    Object.keys(window.localStorage)
+      .filter(isPostHogKey)
+      .forEach((key) => window.localStorage.removeItem(key));
   } catch {
     // Nothing stored, or storage blocked.
   }
