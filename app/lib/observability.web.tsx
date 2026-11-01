@@ -1,5 +1,6 @@
 import { ComponentType, ReactNode, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { usePathname } from 'expo-router';
 import { PostHogProvider, usePostHog } from 'posthog-react-native';
 
 import { clearAnalyticsStorage, useAnalyticsConsent } from './analyticsConsent';
@@ -47,8 +48,13 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         // took half the screen (white gap above the top bar). A zero-size,
         // out-of-flow box keeps it invisible.
         <View style={styles.hiddenHost} pointerEvents="none" aria-hidden>
-          <PostHogProvider apiKey={POSTHOG_API_KEY} options={{ host: POSTHOG_HOST }}>
+          <PostHogProvider
+            apiKey={POSTHOG_API_KEY}
+            options={{ host: POSTHOG_HOST }}
+            autocapture={{ captureScreens: false, captureTouches: false }}
+          >
             <OptOutWhenDeclined />
+            <TrackPageViews />
           </PostHogProvider>
         </View>
       )}
@@ -71,6 +77,27 @@ function OptOutWhenDeclined() {
         .finally(() => setTimeout(clearAnalyticsStorage, 500));
     }
   }, [consent, posthog]);
+  return null;
+}
+
+// One $pageview per route change, so PostHog's Web analytics shows visits,
+// pages and referrers. Nothing was sent per page before, only app opens.
+// The provider sits beside the app, so the screen autocapture can't see
+// the navigator; Expo Router's pathname is the source instead.
+function TrackPageViews() {
+  const posthog = usePostHog();
+  const pathname = usePathname();
+  useEffect(() => {
+    if (!posthog || typeof window === 'undefined') return;
+    // From the new pathname: the address bar can still show the previous
+    // page when this runs.
+    posthog.capture('$pageview', {
+      $current_url: window.location.origin + pathname,
+      $pathname: pathname,
+      $host: window.location.host,
+      $referrer: document.referrer || '$direct',
+    });
+  }, [pathname, posthog]);
   return null;
 }
 
