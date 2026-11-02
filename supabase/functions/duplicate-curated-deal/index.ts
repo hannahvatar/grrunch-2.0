@@ -72,6 +72,7 @@
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { requireAdmin } from "../_shared/admin.ts";
 
 type DealPriceUnit = "package" | "each" | "lb" | "kg" | "100g";
 type PackageWeightSource = "label" | "measured" | "estimated";
@@ -225,6 +226,10 @@ function validationError(message: string) {
 
 export default {
   fetch: withSupabase<Database>({ auth: ["publishable"] }, async (req, ctx) => {
+    // Admins only (_shared/admin.ts).
+    const denied = await requireAdmin(req, ctx.supabaseAdmin);
+    if (denied) return denied;
+
     let body: RequestBody;
     try {
       body = await req.json();

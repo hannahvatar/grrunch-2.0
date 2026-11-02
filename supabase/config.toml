@@ -454,3 +454,56 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/start-free-month/deno.json"
 entrypoint = "./functions/start-free-month/index.ts"
+
+# Review functions behind dev-deals and dev-recipes. They check the
+# caller's own sign-in against public.admins themselves
+# (functions/_shared/admin.ts), same as delete-account, so the gateway's
+# legacy JWT check is off for the same reason (it rejects the project's
+# new signing-key tokens).
+[functions.list-curated-deals-for-review]
+enabled = true
+verify_jwt = false
+import_map = "./functions/list-curated-deals-for-review/deno.json"
+entrypoint = "./functions/list-curated-deals-for-review/index.ts"
+
+[functions.update-curated-deal-pricing]
+enabled = true
+verify_jwt = false
+import_map = "./functions/update-curated-deal-pricing/deno.json"
+entrypoint = "./functions/update-curated-deal-pricing/index.ts"
+
+[functions.duplicate-curated-deal]
+enabled = true
+verify_jwt = false
+import_map = "./functions/duplicate-curated-deal/deno.json"
+entrypoint = "./functions/duplicate-curated-deal/index.ts"
+
+[functions.estimate-reference-price]
+enabled = true
+verify_jwt = false
+import_map = "./functions/estimate-reference-price/deno.json"
+entrypoint = "./functions/estimate-reference-price/index.ts"
+
+[functions.publish-week]
+enabled = true
+verify_jwt = false
+import_map = "./functions/publish-week/deno.json"
+entrypoint = "./functions/publish-week/index.ts"
+
+[functions.set-deal-home-pick]
+enabled = true
+verify_jwt = false
+import_map = "./functions/set-deal-home-pick/deno.json"
+entrypoint = "./functions/set-deal-home-pick/index.ts"
+
+[functions.set-recipe-star-deals]
+enabled = true
+verify_jwt = false
+import_map = "./functions/set-recipe-star-deals/deno.json"
+entrypoint = "./functions/set-recipe-star-deals/index.ts"
+
+[functions.toggle-recipe-featured]
+enabled = true
+verify_jwt = false
+import_map = "./functions/toggle-recipe-featured/deno.json"
+entrypoint = "./functions/toggle-recipe-featured/index.ts"

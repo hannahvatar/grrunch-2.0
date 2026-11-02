@@ -1,5 +1,5 @@
 // Writes a human-reviewed pricing correction to one curated_deals row.
-// Built for app/app/dev-deals.tsx (the __DEV__-only pricing review
+// Built for app/app/dev-deals.tsx (the pricing review
 // screen, invisible in any real build) -- lets Anabelle look at a
 // deal's own flyer cutout photo and correct price/original_price/
 // price_unit/package_weight_g/quantity_estimated by hand, since
@@ -108,17 +108,12 @@
 // never touches any table besides curated_deals (plus the
 // refresh_recipe_deal_tags() RPC call below, which only recomputes
 // recipes' own deal_tags/price from curated_deals, doesn't write back
-// to curated_deals itself). Auth is the same anon/"publishable" key
-// every other client call already uses (see nearest-stores/index.ts,
-// the one other client-invoked Edge Function in this project) -- no
-// extra secret. The screen calling this is __DEV__-gated client-side
-// (inert in any shipped build), and the worst case of someone else
-// finding this endpoint is limited to editing pricing display fields
-// on an existing row, which the next weekly sync overwrites anyway --
-// confirmed acceptable, see the plan this function was built from.
+// to curated_deals itself). Admins only
+// (_shared/admin.ts): the caller must be signed in as an admin.
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { requireAdmin } from "../_shared/admin.ts";
 
 type DealPriceUnit = "package" | "each" | "lb" | "kg" | "100g";
 const PRICE_UNITS: DealPriceUnit[] = ["package", "each", "lb", "kg", "100g"];
@@ -246,6 +241,10 @@ function validationError(message: string) {
 
 export default {
   fetch: withSupabase<Database>({ auth: ["publishable"] }, async (req, ctx) => {
+    // Admins only (_shared/admin.ts).
+    const denied = await requireAdmin(req, ctx.supabaseAdmin);
+    if (denied) return denied;
+
     let body: RequestBody;
     try {
       body = await req.json();

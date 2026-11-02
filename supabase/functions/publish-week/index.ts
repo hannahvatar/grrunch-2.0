@@ -21,10 +21,10 @@
 //   POST { action: "cancel" }     -> 200 { cancelled: true }
 //   400 { error } when the draft has no approved deals yet
 //
-// Same auth pattern as duplicate-curated-deal: reachable with the
-// publishable key, and the calling screen is __DEV__-only.
+// Admins only (_shared/admin.ts), like every review function.
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { requireAdmin } from "../_shared/admin.ts";
 
 interface ScheduleResult {
   published_now: boolean;
@@ -47,6 +47,10 @@ interface Database {
 
 export default {
   fetch: withSupabase<Database>({ auth: ["publishable"] }, async (req, ctx) => {
+    // Admins only (_shared/admin.ts).
+    const denied = await requireAdmin(req, ctx.supabaseAdmin);
+    if (denied) return denied;
+
     let action = "schedule";
     try {
       const body = await req.json();
