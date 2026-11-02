@@ -9,7 +9,6 @@ import { OutsideAreaModal } from '../components/OutsideAreaModal';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { useAuth } from '../lib/auth';
 import { useDesktopButtonWidth } from '../lib/layout';
-import { rememberTrialIntent } from '../lib/pendingTrial';
 import {
   ANNUAL_MONTHLY_EQUIVALENT_DISPLAY,
   ANNUAL_PRICE_DISPLAY,
@@ -68,8 +67,16 @@ export default function UpgradeScreen() {
   // and no bottom-sheet handle.
   const buttonWidth = useDesktopButtonWidth();
   const { isGuest } = useAuth();
-  const { isSubscribed: dbSubscribed, startTrial } = useSubscription();
-  const { configured, offering, isSubscribed: purchasesSubscribed, purchase, restore } = usePurchases();
+  const { isSubscribed: dbSubscribed, startTrial, status: subscriptionStatus } = useSubscription();
+  const {
+    configured,
+    offering,
+    isSubscribed: purchasesSubscribed,
+    isFreeMonth,
+    startFreeMonth,
+    purchase,
+    restore,
+  } = usePurchases();
   // BC only for now (Anabelle, 2026-09-23) -- the App Store can't limit a
   // subscription below the country level, so the trial/purchase button
   // is only offered once the postal code or device location says BC (see
@@ -125,12 +132,20 @@ export default function UpgradeScreen() {
   // and Anabelle couldn't make sense of ("I really dont get the point of
   // this subscribe now modal") -- removed rather than kept as dead,
   // confusing code.
-  const alreadyMember = !isGuest && isSubscribed;
+  //
+  // 30 days free from sign-up, no card (Anabelle, 2026-11-02), so this
+  // screen has three pitches now:
+  // - offerFreeMonth: a guest (signs up, the month starts on its own), or
+  //   an account that never got it (the automatic try in lib/purchases.tsx
+  //   missed, e.g. its BC check was still unknown) -- no plans or prices.
+  // - everyone else who isn't a paying member (free month ended, or still
+  //   on it and wanting to pay now): Become a member, plan picker.
+  // - alreadyMember: a real paid plan.
+  const alreadyMember = !isGuest && isSubscribed && !isFreeMonth;
+  const offerFreeMonth = isGuest || (configured && !isSubscribed && subscriptionStatus === 'none');
 
   async function handlePrimaryAction() {
     if (isGuest) {
-      // Back here after sign-up instead of Home (lib/pendingTrial.ts).
-      rememberTrialIntent(reason);
       router.replace('/login');
       return;
     }
@@ -138,6 +153,17 @@ export default function UpgradeScreen() {
       return;
     }
     setError(null);
+    if (offerFreeMonth) {
+      setLoading(true);
+      const { error: freeMonthError } = await startFreeMonth();
+      setLoading(false);
+      if (freeMonthError) {
+        setError(freeMonthError);
+        return;
+      }
+      router.replace('/subscribed');
+      return;
+    }
     // Native builds are always RevenueCat-configured: the only way in is
     // a real store purchase (Apple/Google run the free month). If the
     // offering didn't load, say so -- never fall back to the DB-only
@@ -205,18 +231,26 @@ export default function UpgradeScreen() {
             ? "You're a member"
             : showOutsideArea
               ? 'Grrunch isn’t in your area yet'
-              : 'Start 30-day free trial'}
+              : offerFreeMonth
+                ? 'Get 30 days free'
+                : 'Become a member'}
         </Text>
         <Text style={styles.body}>
           {alreadyMember
             ? "You're already a Grrunch member. Manage your membership in Settings."
             : showOutsideArea
               ? 'We’re currently available in British Columbia, but we’re working on bringing Grrunch to the rest of Canada.'
-              : reason
-                ? `Try Grrunch free for 30 days to ${reason}.`
-                : 'Try Grrunch free for 30 days.'}
+              : offerFreeMonth
+                ? isGuest
+                  ? 'Sign up and everything in Grrunch is yours free for 30 days. No card needed.'
+                  : 'Everything in Grrunch is yours free for 30 days. No card needed.'
+                : isFreeMonth
+                  ? 'Subscribe now and nothing changes when your free month ends.'
+                  : reason
+                    ? `Subscribe to ${reason}.`
+                    : 'Subscribe to keep enjoying Grrunch.'}
         </Text>
-        {!alreadyMember && !showOutsideArea && (
+        {!alreadyMember && !showOutsideArea && !offerFreeMonth && (
           <View style={styles.planPicker}>
             <SegmentedControl
               options={[
@@ -230,7 +264,9 @@ export default function UpgradeScreen() {
         )}
         {!alreadyMember && !showOutsideArea && (
           <Text style={styles.priceNote}>
-            {configured && pkg
+            {offerFreeMonth
+              ? `After that, from ${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo if you stay`
+              : configured && pkg
               ? plan === 'annual'
                 ? `${pkg.product.priceString}/yr${
                     pkg.product.pricePerMonthString ? ` (${pkg.product.pricePerMonthString}/mo)` : ''
@@ -247,7 +283,7 @@ export default function UpgradeScreen() {
         {error && (
           <AlertBanner
             variant="error"
-            title="Purchase failed"
+            title={offerFreeMonth ? 'Something went wrong' : 'Purchase failed'}
             description={error}
             onDismiss={() => setError(null)}
             style={styles.errorBanner}
@@ -262,7 +298,7 @@ export default function UpgradeScreen() {
             style={styles.errorBanner}
           />
         )}
-        {!isSubscribed && (
+        {!alreadyMember && (
           <View style={[styles.actions, buttonWidth]}>
             {!inServiceArea && areaStatus === 'checking' && <ActivityIndicator color={INK} />}
             {/* The title/body above already carry the message (same
@@ -282,8 +318,8 @@ export default function UpgradeScreen() {
                   title="Grrunch is BC only for now"
                   description={
                     locationBlocked
-                      ? 'Turn on location in Settings, or add a BC postal code in Manage account, to start your trial.'
-                      : 'Use your location, or add a BC postal code in Manage account, to start your trial.'
+                      ? 'Turn on location in Settings, or add a BC postal code in Manage account, to continue.'
+                      : 'Use your location, or add a BC postal code in Manage account, to continue.'
                   }
                   style={styles.areaBanner}
                 />
@@ -309,16 +345,9 @@ export default function UpgradeScreen() {
                 {loading ? (
                   <ActivityIndicator color={INK} />
                 ) : (
-                // Always "Start 30-day free trial" -- was shortened for a
-                // guest (who hits /login first, not the trial itself,
-                // before handlePrimaryAction's own isGuest branch), but
-                // the title right above this button already said "Start
-                // 30-day free trial" unconditionally, so the two were
-                // already inconsistent on this same screen. Anabelle,
-                // 2026-09-15, after asking for a differently-worded
-                // button elsewhere: "it should be consistent everywhere
-                // 'Start 30-day free trial'".
-                  <Text style={styles.primaryButtonText}>Start 30-day free trial</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {isGuest ? 'Sign up free' : offerFreeMonth ? 'Start my free month' : 'Subscribe'}
+                  </Text>
                 )}
               </Pressable>
             )}

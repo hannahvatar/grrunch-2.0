@@ -88,6 +88,7 @@ interface RevenueCatEvent {
   product_id?: string;
   expiration_at_ms?: number;
   period_type?: string;
+  store?: string;
 }
 
 export default {
@@ -113,7 +114,9 @@ export default {
     }
 
     if (GRANTS_ACCESS.has(type)) {
-      const status = event?.period_type === "TRIAL" ? "trialing" : "active";
+      // The free month from sign-up is a promotional grant
+      // (start-free-month/index.ts): a trial, not a paid plan.
+      const status = event?.period_type === "TRIAL" || event?.store === "PROMOTIONAL" ? "trialing" : "active";
       const expiresAt = event?.expiration_at_ms ? new Date(event.expiration_at_ms).toISOString() : null;
       const { error } = await ctx.supabaseAdmin
         .from("subscriptions")

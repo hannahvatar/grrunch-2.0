@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import Purchases, {
   CustomerInfo,
@@ -8,6 +8,8 @@ import Purchases, {
 } from 'react-native-purchases';
 
 import { useAuth } from './auth';
+import { useServiceArea } from './serviceArea';
+import { supabase } from './supabase';
 
 // The Grrunch Membership entitlement identifier -- created in the
 // RevenueCat dashboard, attached to the Apple/Google subscription
@@ -91,6 +93,14 @@ interface PurchasesContextValue {
   // lets useSubscription() report 'trialing' vs 'active' from the store
   // itself instead of the DB row (see lib/subscription.tsx).
   isTrial: boolean;
+  // True during the 30 free days every new account gets at sign-up (a
+  // RevenueCat promotional grant, see supabase/functions/start-free-month),
+  // so it reads as a free trial everywhere, with the same countdown.
+  isFreeMonth: boolean;
+  // Asks the server for the free month now. Done automatically once a
+  // signed-in account in BC has never been a member; upgrade.tsx's button
+  // calls it too, for anyone the automatic try missed.
+  startFreeMonth: () => Promise<{ error: string | null }>;
   // Where this member manages or cancels their plan, from RevenueCat:
   // Apple's/Google's subscription settings for a store purchase, or the
   // Web Billing page (card, cancel) for a web purchase. Null when not a
@@ -136,6 +146,15 @@ function activeWillRenew(info: CustomerInfo): boolean {
   return info.entitlements.active[ENTITLEMENT_ID]?.willRenew ?? false;
 }
 
+// The free month is a promotional grant ending ~30 days out. The 45-day
+// cap keeps the long-running grants Anabelle gives test accounts from the
+// dashboard (lifetime) reading as a trial.
+function activeIsFreeMonth(info: CustomerInfo): boolean {
+  const entitlement = info.entitlements.active[ENTITLEMENT_ID];
+  if (entitlement?.store !== 'PROMOTIONAL' || !entitlement.expirationDate) return false;
+  return new Date(entitlement.expirationDate).getTime() - Date.now() < 45 * 24 * 60 * 60 * 1000;
+}
+
 // On web, react-native-purchases runs RevenueCat Web Billing (Stripe
 // checkout in a RevenueCat modal). It's only configured once someone is
 // signed in, with their Supabase user id: guests can't buy anyway (the
@@ -160,6 +179,12 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
   const [expirationDate, setExpirationDate] = useState<string | null>(null);
   const [willRenew, setWillRenew] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
+  const [isFreeMonth, setIsFreeMonth] = useState(false);
+  // Set once this account's own CustomerInfo shows it has never been a
+  // member -- the cue to start its free month (see the effect below).
+  const [neverMember, setNeverMember] = useState(false);
+  const freeMonthTried = useRef<string | null>(null);
+  const { status: areaStatus } = useServiceArea();
   const [hadEntitlement, setHadEntitlement] = useState(false);
   const [managementURL, setManagementURL] = useState<string | null>(null);
 
@@ -172,6 +197,7 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     setExpirationDate(activeExpirationDate(info));
     setWillRenew(activeWillRenew(info));
     setIsTrial(info.entitlements.active[ENTITLEMENT_ID]?.periodType === 'TRIAL');
+    setIsFreeMonth(activeIsFreeMonth(info));
     setHadEntitlement(typeof info.entitlements.all[ENTITLEMENT_ID] !== 'undefined');
     setManagementURL(info.managementURL ?? null);
   }
@@ -225,12 +251,16 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
     if (!configured || authLoading) return;
     if (session && !isGuest) {
       Purchases.logIn(session.user.id)
-        .then(({ customerInfo }) => applyCustomerInfo(customerInfo))
+        .then(({ customerInfo }) => {
+          applyCustomerInfo(customerInfo);
+          setNeverMember(typeof customerInfo.entitlements.all[ENTITLEMENT_ID] === 'undefined');
+        })
         .catch(() => {
           // Non-fatal -- customerInfo listener below still reflects
           // whatever identity is currently active.
         });
     } else {
+      setNeverMember(false);
       Purchases.isAnonymous()
         .then((anonymous) => (anonymous ? null : Purchases.logOut().then(applyCustomerInfo)))
         .catch(() => {});
@@ -259,6 +289,32 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
       .then((offerings) => setOffering(offerings.current))
       .catch(() => setOffering(null));
   }, [configured]);
+
+  async function startFreeMonth(): Promise<{ error: string | null }> {
+    const { error } = await supabase.functions.invoke('start-free-month', { method: 'POST' });
+    if (error) {
+      return { error: "Couldn't start your free month. Please try again." };
+    }
+    setNeverMember(false);
+    // Native caches CustomerInfo; web always fetches.
+    if (!IS_WEB) await Purchases.invalidateCustomerInfoCache().catch(() => {});
+    await Purchases.getCustomerInfo()
+      .then(applyCustomerInfo)
+      .catch(() => {});
+    return { error: null };
+  }
+
+  // The free month starts on its own: a signed-in account that has never
+  // been a member, once it's known to be in BC (the same gate the paid
+  // plans have). Tried once per account per app session; if it fails,
+  // the next app open tries again.
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!configured || !neverMember || !userId || areaStatus !== 'in') return;
+    if (freeMonthTried.current === userId) return;
+    freeMonthTried.current = userId;
+    startFreeMonth();
+  }, [configured, neverMember, session, areaStatus]);
 
   async function purchase(pkg: PurchasesPackage): Promise<{ error: string | null; cancelled: boolean }> {
     try {
@@ -299,6 +355,8 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
         expirationDate,
         willRenew,
         isTrial,
+        isFreeMonth,
+        startFreeMonth,
         managementURL,
         hadEntitlement,
         purchase,

@@ -58,7 +58,8 @@ function isLifetime(iso: string): boolean {
 // what a guest should see differs by context (Manage account vs Payment).
 export function MembershipStatus() {
   const { status: subscriptionStatus, trialEndsAt, isSubscribed, cancelTrial } = useSubscription();
-  const { configured: storeBilled, activePackage, expirationDate, willRenew, managementURL } = usePurchases();
+  const { configured: storeBilled, activePackage, expirationDate, willRenew, managementURL, isFreeMonth } =
+    usePurchases();
   const [cancelling, setCancelling] = useState(false);
 
   // The real price/period the member is actually on, now that there are
@@ -152,7 +153,9 @@ export function MembershipStatus() {
             won't renew. It kept reading "Then CA$7.99/mo · Cancel
             anytime" after cancelling (Anabelle, 2026-10-30). */}
         <Text style={styles.membershipSubtitle}>
-          {storeBilled && !willRenew && expirationDate
+          {isFreeMonth
+            ? `No card on file. Subscribe anytime to keep your access after it ends. From ${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo.`
+            : storeBilled && !willRenew && expirationDate
             ? `Cancelled. You keep access until ${formatRenewalDate(expirationDate)}, and you won't be charged.`
             : activePriceLabel
               ? `Then ${activePriceLabel} · Cancel anytime`
@@ -165,7 +168,16 @@ export function MembershipStatus() {
             deep link as paying members get instead (2026-09-23). The
             Cancel/Subscribe pair below is the DB-only trial on the web
             dev preview. */}
-        {storeBilled ? (
+        {/* The free month from sign-up has nothing to manage or cancel
+            (no card, it just ends): one Subscribe button. */}
+        {isFreeMonth ? (
+          <Pressable
+            style={styles.subscribeButtonFull}
+            onPress={() => router.push({ pathname: '/upgrade', params: { reason: 'keep your access' } })}
+          >
+            <Text style={styles.subscribeButtonText}>Subscribe</Text>
+          </Pressable>
+        ) : storeBilled ? (
           <Pressable style={styles.manageMembershipButton} onPress={handleManageMembership}>
             <Text style={styles.manageMembershipButtonText}>Manage membership</Text>
           </Pressable>

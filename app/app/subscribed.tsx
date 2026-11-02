@@ -22,17 +22,20 @@ import { TRIAL_DAYS } from '../lib/subscription';
 // not configured yet) -- everything today is the fallback, but this
 // works unchanged once the store keys are live.
 export default function SubscribedScreen() {
-  const { configured } = usePurchases();
+  const { configured, isFreeMonth } = usePurchases();
+  // The free month (30 days from sign-up, no card) or the DB-only trial on
+  // the web dev preview: a trial welcome. A real purchase: membership.
+  const trial = !configured || isFreeMonth;
 
   return (
     <StatusScreen
       icon={<CheckCircleIcon size={32} color="#111" strokeWidth={1.5} />}
-      title={configured ? 'Welcome to Grrunch Membership' : 'Your free trial has started'}
+      title={trial ? 'Your free month has started' : 'Welcome to Grrunch Membership'}
       body={
         // "unlimited saved recipes" dropped (Anabelle, 2026-09-15: Save/
         // Favourite was shelved for v1 scope (PR #222) -- "make sure its
         // not stated anywhere in the copy").
-        configured
+        !trial
           ? "You're all set. Every week you'll get new deal-focused recipes curated for you, plus full deals and grocery lists."
           : `You have ${TRIAL_DAYS} days of full access. Every week you'll get new deal-focused recipes curated for you, plus full deals and grocery lists.`
       }

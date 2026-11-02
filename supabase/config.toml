@@ -446,3 +446,11 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/delete-account/deno.json"
 entrypoint = "./functions/delete-account/index.ts"
+
+# Grants the 30-day free month (start-free-month/index.ts). Same token
+# check as delete-account: it verifies the caller itself.
+[functions.start-free-month]
+enabled = true
+verify_jwt = false
+import_map = "./functions/start-free-month/deno.json"
+entrypoint = "./functions/start-free-month/index.ts"

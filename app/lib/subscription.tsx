@@ -168,8 +168,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // preview, where there's no in-app purchase SDK at all.
   const purchases = usePurchases();
   const fromStore = purchases.configured;
+  // The free month from sign-up counts as a trial too (lib/purchases.tsx).
+  const storeTrial = purchases.isTrial || purchases.isFreeMonth;
   const storeStatus: SubscriptionStatus = purchases.isSubscribed
-    ? purchases.isTrial
+    ? storeTrial
       ? 'trialing'
       : 'active'
     : purchases.hadEntitlement
@@ -180,7 +182,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     <SubscriptionContext.Provider
       value={{
         status: fromStore ? storeStatus : status,
-        trialEndsAt: fromStore ? (purchases.isTrial ? purchases.expirationDate : null) : trialEndsAt,
+        trialEndsAt: fromStore ? (storeTrial ? purchases.expirationDate : null) : trialEndsAt,
         loading: fromStore ? purchases.loading : loading,
         isSubscribed: fromStore ? purchases.isSubscribed : dbIsSubscribed,
         startTrial,
