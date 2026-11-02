@@ -1,6 +1,6 @@
 // Toggles one recipe's `featured` flag -- see supabase/migrations/
 // 20260911020000_recipes_featured_flag.sql for what it means and why.
-// Built for app/app/dev-recipes.tsx (the __DEV__-only recipe review
+// Built for app/app/dev-recipes.tsx (the recipe review
 // screen, same one Anabelle already uses to check how a recipe looks
 // in the app), so she can mark this week's ~12 featured recipes by
 // hand instead of Meals showing every deal-tagged recipe uncapped.
@@ -9,11 +9,8 @@
 // (only "recipes are publicly readable", select-only) -- same reason
 // every other dev-screen write in this project (update-curated-deal-
 // pricing, duplicate-curated-deal) goes through a service-role Edge
-// Function instead of a direct client .update(). Same accepted-risk
-// precedent as those: reachable via the public anon key, but the
-// calling screen is __DEV__-gated and inert in any shipped build, and
-// the worst case here is toggling a display flag on an existing row,
-// not touching pricing, financial, or user data.
+// Function instead of a direct client .update(). Admins only
+// (_shared/admin.ts), like every review function.
 //
 // Client contract:
 //   POST { recipe_id: string (uuid), featured: boolean, week?, field? }
@@ -23,6 +20,7 @@
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { requireAdmin } from "../_shared/admin.ts";
 
 interface Database {
   __InternalSupabase: { PostgrestVersion: string };
@@ -59,6 +57,10 @@ function validationError(message: string) {
 
 export default {
   fetch: withSupabase<Database>({ auth: ["publishable"] }, async (req, ctx) => {
+    // Admins only (_shared/admin.ts).
+    const denied = await requireAdmin(req, ctx.supabaseAdmin);
+    if (denied) return denied;
+
     let body: RequestBody;
     try {
       body = await req.json();

@@ -7,6 +7,7 @@ import { MealCard } from '../components/MealCard';
 import { SegmentedControl } from '../components/SegmentedControl';
 import type { Meal } from '../lib/mealData';
 import { fetchAllRecipes, type RecipeWeek } from '../lib/recipes';
+import { useIsAdmin } from '../lib/admin';
 import { supabase } from '../lib/supabase';
 import { useSelectedMeals } from '../lib/selectedMeals';
 
@@ -23,19 +24,18 @@ const WEEK_OPTIONS: { value: RecipeWeek; label: string }[] = [
 ];
 
 // Internal-only recipe review screen -- every recipe, exactly as the
-// Meals tab renders it (same MealCard component), with no login and no
-// subscription check. Built because Anabelle's actual recipe-review
-// workflow is checking how a recipe she's editing looks in the app, and
-// having to sign in each time (even with a valid trial account) was
-// friction that got in the way of that. Deliberately does NOT reuse
+// Meals tab renders it (same MealCard component), with no subscription
+// check. Built because Anabelle's actual recipe-review workflow is
+// checking how a recipe she's editing looks in the app. Deliberately
+// does NOT reuse
 // Meals' free-tier slicing/upgrade-prompt logic -- there is none here,
 // on purpose.
 //
-// __DEV__ is React Native's standard global, true only in a local dev
-// build (expo start) and false in any production build (EAS build,
-// `expo export --no-dev`, etc.) -- this screen literally can't do
-// anything in a real build, even if someone finds the URL.
+// Admins only (lib/admin.ts), on localhost and on the live site, so
+// Anabelle can review from her phone (2026-11-02). Everyone else sees
+// "Page not found", and the Edge Functions it calls refuse them too.
 export default function DevRecipesScreen() {
+  const isAdmin = useIsAdmin();
   const { selectedIds, toggleSelected } = useSelectedMeals();
   const [week, setWeek] = useState<RecipeWeek>('next');
   // 'new' (default, Anabelle 2026-10-08): only recipes created since the
@@ -156,10 +156,14 @@ export default function DevRecipesScreen() {
       .finally(() => setLoading(false));
   }, [week]);
 
-  if (!__DEV__) {
+  if (isAdmin !== true) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <Text style={styles.notDevText}>This screen only exists in local development builds.</Text>
+        {isAdmin === 'loading' ? (
+          <ActivityIndicator size="large" color={INK} />
+        ) : (
+          <Text style={styles.notDevText}>Page not found.</Text>
+        )}
       </View>
     );
   }
@@ -193,7 +197,7 @@ export default function DevRecipesScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.devBanner}>
-          <Text style={styles.devBannerText}>DEV ONLY -- no login, no free-tier limit</Text>
+          <Text style={styles.devBannerText}>ADMIN ONLY · No free-tier limit</Text>
         </View>
         <Text style={styles.title}>All Recipes</Text>
         <SegmentedControl wrap options={WEEK_OPTIONS} value={week} onChange={setWeek} />

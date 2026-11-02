@@ -1,10 +1,9 @@
 // Sets one recipe's star_deals -- the up-to-3 deal ingredients its Home
 // card features (see supabase/migrations/20261023010000_recipe_star_deals
-// .sql). Built for app/app/dev-recipes.tsx, same pattern and same
-// accepted-risk reasoning as toggle-recipe-featured: recipes has no
-// client-writable RLS policy, so the write goes through the service role;
-// the calling screen is __DEV__-gated, and the worst case is changing
-// which deals a Home card highlights.
+// .sql). Built for app/app/dev-recipes.tsx, same pattern as
+// toggle-recipe-featured: recipes has no client-writable RLS policy, so
+// the write goes through the service role, for admins only
+// (_shared/admin.ts).
 //
 // Client contract:
 //   POST { recipe_id: string (uuid), star_deals: string[] (max 3) }
@@ -12,6 +11,7 @@
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { requireAdmin } from "../_shared/admin.ts";
 
 interface Database {
   __InternalSupabase: { PostgrestVersion: string };
@@ -37,6 +37,10 @@ function validationError(message: string) {
 
 export default {
   fetch: withSupabase<Database>({ auth: ["publishable"] }, async (req, ctx) => {
+    // Admins only (_shared/admin.ts).
+    const denied = await requireAdmin(req, ctx.supabaseAdmin);
+    if (denied) return denied;
+
     let body: { recipe_id?: unknown; star_deals?: unknown };
     try {
       body = await req.json();

@@ -29,17 +29,12 @@
 // set (curated_deals is wiped+rebuilt weekly, so row count stays
 // small, ~100 rows -- no pagination needed).
 //
-// Auth is the anon/"publishable" key, same as every other client-
-// invoked function here -- this DOES mean anyone with the (public,
-// shipped-in-app) anon key can read every pending/rejected deal's
-// pricing/review state via this endpoint directly, same accepted-risk
-// precedent as update-curated-deal-pricing/duplicate-curated-deal
-// already establish for writes. The screen calling this is __DEV__-
-// gated client-side (inert in any shipped build); worst case here is
-// read of not-yet-reviewed pricing data, not a write/corruption risk.
+// Admins only (_shared/admin.ts): the caller must be signed in as an
+// admin, since dev-deals now runs on the live site too (2026-11-02).
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { requireAdmin } from "../_shared/admin.ts";
 
 type DealPriceUnit = "package" | "each" | "lb" | "kg" | "100g";
 type PackageWeightSource = "label" | "measured" | "estimated";
@@ -98,7 +93,11 @@ interface Database {
 }
 
 export default {
-  fetch: withSupabase<Database>({ auth: ["publishable"] }, async (_req, ctx) => {
+  fetch: withSupabase<Database>({ auth: ["publishable"] }, async (req, ctx) => {
+    // Admins only (_shared/admin.ts).
+    const denied = await requireAdmin(req, ctx.supabaseAdmin);
+    if (denied) return denied;
+
     const { data, error } = await ctx.supabaseAdmin
       .from("curated_deals")
       .select("*")

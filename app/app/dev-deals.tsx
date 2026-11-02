@@ -35,6 +35,7 @@ import {
   searchReferenceCandidates,
   type StaplePrice,
 } from '../lib/staplePrices';
+import { useIsAdmin } from '../lib/admin';
 import { supabase } from '../lib/supabase';
 import type { Database, Tables } from '../types/database';
 
@@ -261,11 +262,12 @@ const STATUS_LABELS: Record<CuratedDeal['status'], string> = {
 // supabase/migrations/20260811000000_curated_deals_pricing_review.sql
 // for the schema/pricing-function side of this.
 //
-// __DEV__ is React Native's standard global, true only in a local dev
-// build -- this screen (and the Edge Function it calls) can't do
-// anything in a real build, even if someone finds the URL. Same
-// pattern as dev-recipes.tsx.
+// Admins only (lib/admin.ts), on localhost and on the live site, so
+// Anabelle can review from her phone (2026-11-02). Everyone else sees
+// "Page not found", and the Edge Functions it calls refuse them too.
+// Same pattern as dev-recipes.tsx.
 export default function DevDealsScreen() {
+  const isAdmin = useIsAdmin();
   const [deals, setDeals] = useState<CuratedDeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -311,7 +313,7 @@ export default function DevDealsScreen() {
     // a pending/rejected row no matter what it asks for -- Postgres
     // filters it out before the query even runs. list-curated-deals-
     // for-review is a service-role-backed Edge Function built
-    // specifically to give this __DEV__-only screen a real, all-status
+    // specifically to give this admin-only screen a real, all-status
     // view (see that function's own header comment for the full
     // reasoning).
     Promise.resolve(
@@ -329,12 +331,18 @@ export default function DevDealsScreen() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(loadDeals, []);
+  useEffect(() => {
+    if (isAdmin === true) loadDeals();
+  }, [isAdmin]);
 
-  if (!__DEV__) {
+  if (isAdmin !== true) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <Text style={styles.notDevText}>This screen only exists in local development builds.</Text>
+        {isAdmin === 'loading' ? (
+          <ActivityIndicator size="large" color={INK} />
+        ) : (
+          <Text style={styles.notDevText}>Page not found.</Text>
+        )}
       </View>
     );
   }
@@ -548,7 +556,7 @@ export default function DevDealsScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.devBanner}>
-          <Text style={styles.devBannerText}>DEV ONLY -- pricing review, no login</Text>
+          <Text style={styles.devBannerText}>ADMIN ONLY · Pricing review</Text>
         </View>
         <Text style={styles.title}>Deal Pricing Review</Text>
         <SegmentedControl wrap options={WEEK_OPTIONS} value={week} onChange={setWeekChoice} />

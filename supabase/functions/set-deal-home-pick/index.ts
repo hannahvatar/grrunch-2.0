@@ -1,10 +1,8 @@
 // Adds a deal to, or removes it from, Home's hand-picked Top deals (see
 // supabase/migrations/20261026010000_curated_deals_home_pick.sql). Built
-// for app/app/dev-deals.tsx, same pattern and same accepted-risk
-// reasoning as set-recipe-star-deals: curated_deals has no
-// client-writable RLS policy, so the write goes through the service role;
-// the calling screen is __DEV__-gated, and the worst case is changing
-// which deals Home showcases.
+// for app/app/dev-deals.tsx, same pattern as set-recipe-star-deals:
+// curated_deals has no client-writable RLS policy, so the write goes
+// through the service role, for admins only (_shared/admin.ts).
 //
 // Picks are per week (the deal's own `published` value: live or draft).
 // A new pick goes last; removing one closes the gap, so the week's picks
@@ -22,6 +20,7 @@
 
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { requireAdmin } from "../_shared/admin.ts";
 
 const MAX_FREE = 3;
 
@@ -49,6 +48,10 @@ function validationError(message: string) {
 
 export default {
   fetch: withSupabase<Database>({ auth: ["publishable"] }, async (req, ctx) => {
+    // Admins only (_shared/admin.ts).
+    const denied = await requireAdmin(req, ctx.supabaseAdmin);
+    if (denied) return denied;
+
     let body: { deal_id?: unknown; picked?: unknown; free?: unknown };
     try {
       body = await req.json();

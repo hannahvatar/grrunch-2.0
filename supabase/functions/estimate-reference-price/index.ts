@@ -48,6 +48,7 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "@anthropic-ai/sdk";
 import { withSupabase } from "@supabase/server";
+import { requireAdmin } from "../_shared/admin.ts";
 
 const UNITS = ["g", "kg", "ml", "L", "lb", "each"] as const;
 type EstimateUnit = (typeof UNITS)[number];
@@ -85,7 +86,11 @@ function validationError(message: string) {
 }
 
 export default {
-  fetch: withSupabase({ auth: ["publishable"] }, async (req) => {
+  fetch: withSupabase({ auth: ["publishable"] }, async (req, ctx) => {
+    // Admins only (_shared/admin.ts).
+    const denied = await requireAdmin(req, ctx.supabaseAdmin);
+    if (denied) return denied;
+
     let body: { item_name?: unknown; per_item?: unknown; by_weight?: unknown; by_volume?: unknown };
     try {
       body = await req.json();
