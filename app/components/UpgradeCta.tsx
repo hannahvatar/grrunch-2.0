@@ -2,7 +2,9 @@ import { router } from 'expo-router';
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { LockClosedIcon } from 'react-native-heroicons/outline';
 
+import { useAuth } from '../lib/auth';
 import { ANNUAL_MONTHLY_EQUIVALENT_DISPLAY } from '../lib/purchases';
+import { useSubscription } from '../lib/subscription';
 import { FoodBankMission } from './FoodBankMission';
 
 const ACCENT = '#FFA955';
@@ -34,6 +36,13 @@ export function UpgradeCta({
   title?: string;
   style?: StyleProp<ViewStyle>;
 }) {
+  // Guests sign up for 30 days free, no card (Anabelle, 2026-11-02), and
+  // an account that hasn't had its free month yet can start it. Anyone
+  // else still locked has used it: subscribe.
+  const { isGuest } = useAuth();
+  const { status } = useSubscription();
+  const offerFreeMonth = isGuest || status === 'none';
+
   function goToUpgrade() {
     router.push({ pathname: '/upgrade', params: { reason } });
   }
@@ -45,10 +54,14 @@ export function UpgradeCta({
       </View>
       <Text style={styles.tileTitle}>{title ?? 'Unlock everything'}</Text>
       <Text style={styles.tileSubtitle}>
-        30-day free trial · Then from {ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime
+        {offerFreeMonth
+          ? `30 days free · No card needed · Then from ${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo`
+          : `From ${ANNUAL_MONTHLY_EQUIVALENT_DISPLAY}/mo · Cancel anytime`}
       </Text>
       <Pressable style={[styles.ctaButton, styles.tileButton]} onPress={goToUpgrade}>
-        <Text style={[styles.ctaButtonText, styles.tileButtonText]}>Start 30-day free trial</Text>
+        <Text style={[styles.ctaButtonText, styles.tileButtonText]}>
+          {isGuest ? 'Sign up for 30 days free' : offerFreeMonth ? 'Start my free month' : 'Subscribe'}
+        </Text>
       </Pressable>
       {/* Every trial card ends with the food bank mission, under the
           button (Anabelle, 2026-10-30: "Wherever there is a trial card,

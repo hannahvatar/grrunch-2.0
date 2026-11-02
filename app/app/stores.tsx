@@ -6,7 +6,6 @@ import { ArrowRightIcon, BuildingStorefrontIcon } from 'react-native-heroicons/o
 
 import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { HOME_ROUTE, useIsDesktop } from '../lib/layout';
-import { takeTrialIntent } from '../lib/pendingTrial';
 import { useSelectedStores } from '../lib/selectedStores';
 import { useSubscription } from '../lib/subscription';
 import { supabase } from '../lib/supabase';
@@ -170,14 +169,7 @@ export default function StoresScreen() {
     };
   }, [hasPreciseLocation, lat, lng]);
 
-  // Home, or straight to checkout when they signed up from "Start free
-  // trial" (lib/pendingTrial.ts).
   function goToFirstTab() {
-    const trialReason = takeTrialIntent();
-    if (trialReason !== null) {
-      router.replace({ pathname: '/upgrade', params: trialReason ? { reason: trialReason } : {} });
-      return;
-    }
     router.push(HOME_ROUTE);
   }
 
@@ -195,7 +187,7 @@ export default function StoresScreen() {
         lng: store.lng ?? undefined,
       }))
     );
-    goToFirstTab();
+    router.push(HOME_ROUTE);
   }
 
   // Desktop web layout -- see DesktopAuthShell. Same three states as the

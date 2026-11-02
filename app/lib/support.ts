@@ -80,7 +80,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     // "unlimited saved recipes, companion recipes," dropped, same reason
     // as above. Price also updated from the old flat $5.99/mo (PR #224:
     // monthly $7.99 or annual $69.99).
-    answer: `A 30-day free trial, then ${MONTHLY_PRICE_DISPLAY}/mo or ${ANNUAL_PRICE_DISPLAY}/yr. It unlocks all of this week's recipes (not just 3), every deal in each category (not just one), building a grocery list, and choosing your own stores instead of the ones auto-selected from your location. Cancel anytime.`,
+    answer: `30 days free when you sign up, no card needed. After that, ${MONTHLY_PRICE_DISPLAY}/mo or ${ANNUAL_PRICE_DISPLAY}/yr. It unlocks all of this week's recipes (not just 3), every deal in each category (not just one), building a grocery list, and choosing your own stores instead of the ones auto-selected from your location. Cancel anytime.`,
   },
   {
     question: 'How do I cancel my trial or membership?',
