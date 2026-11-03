@@ -20,6 +20,8 @@
 //
 // Secrets: RESEND_API_KEY, EMAIL_LINK_SECRET (_shared/emailLinks.ts),
 // GRRUNCH_MAILING_ADDRESS (the CASL footer), WEEKLY_EMAIL_FROM optional.
+// WEEKLY_EMAIL_LIVE=true turns on the real Thursday send (Anabelle,
+// 2026-11-03: not to members yet). Until then only test previews go out.
 //
 // Client contract:
 //   POST {}                      (cron) -> 200 { sent } or { skipped }
@@ -419,6 +421,9 @@ export default {
       return Response.json({ sent: 1, to: user.email });
     }
 
+    if (Deno.env.get("WEEKLY_EMAIL_LIVE") !== "true") {
+      return Response.json({ skipped: "The weekly email is off (WEEKLY_EMAIL_LIVE)." });
+    }
     if (Date.now() - Date.parse(week.published_at) > SEND_WINDOW_HOURS * 60 * 60 * 1000) {
       return Response.json({ skipped: "This week went live too long ago." });
     }
