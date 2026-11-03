@@ -578,6 +578,12 @@ export default function DevDealsScreen() {
               </Text>
             </View>
           ))}
+        {/* Always shown, on both tabs: there's often no draft week yet when
+            Anabelle wants to check the email. */}
+        <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>Weekly email</Text>
+          <WeeklyEmailPreview />
+        </View>
         {/* Home's Top deals (Anabelle, 2026-10-26: "I also want to hand
             pick myself which deals should showcase"). Picked with "+ Home"
             on any deal below; empty slots fall back to the biggest
@@ -1478,7 +1484,6 @@ function PublishWeekCard({
         </>
       )}
       {publishError && <Text style={styles.saveError}>{publishError}</Text>}
-      <WeeklyEmailPreview />
     </View>
   );
 }
@@ -1507,8 +1512,8 @@ function WeeklyEmailPreview() {
 
   return (
     <>
-      <Text style={[styles.note, styles.weeklyEmailNote]}>
-        Weekly email: sent automatically to opted-in members once the week is live. Previews use the live week.
+      <Text style={styles.note}>
+        Sent automatically to opted-in members once the week is live. Previews use the live week.
       </Text>
       <View style={[styles.publishConfirmRow, styles.weeklyEmailRow]}>
         <Pressable style={styles.tertiaryButton} onPress={() => sendPreview('normal')} disabled={sending !== null}>
@@ -2500,7 +2505,6 @@ function ComparisonResult({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFEAD4' },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  weeklyEmailNote: { marginTop: 16 },
   // Wraps on a phone: the two labels don't fit side by side.
   weeklyEmailRow: { flexWrap: 'wrap' },
   notDevText: { padding: 24, fontSize: 15, color: '#888', textAlign: 'center' },
