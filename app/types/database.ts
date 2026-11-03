@@ -54,6 +54,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_consents: {
+        Row: {
+          asked_at: string | null
+          consented_at: string | null
+          source: string | null
+          unsubscribed_at: string | null
+          updated_at: string
+          user_id: string
+          weekly_deals: boolean
+        }
+        Insert: {
+          asked_at?: string | null
+          consented_at?: string | null
+          source?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string
+          user_id: string
+          weekly_deals?: boolean
+        }
+        Update: {
+          asked_at?: string | null
+          consented_at?: string | null
+          source?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string
+          user_id?: string
+          weekly_deals?: boolean
+        }
+        Relationships: []
+      }
       curated_deals: {
         Row: {
           airtable_record_id: string | null
