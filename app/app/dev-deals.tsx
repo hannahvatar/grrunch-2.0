@@ -578,6 +578,12 @@ export default function DevDealsScreen() {
               </Text>
             </View>
           ))}
+        {/* Always shown, on both tabs: there's often no draft week yet when
+            Anabelle wants to check the email. */}
+        <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>Weekly email</Text>
+          <WeeklyEmailPreview />
+        </View>
         {/* Home's Top deals (Anabelle, 2026-10-26: "I also want to hand
             pick myself which deals should showcase"). Picked with "+ Home"
             on any deal below; empty slots fall back to the biggest
@@ -1479,6 +1485,46 @@ function PublishWeekCard({
       )}
       {publishError && <Text style={styles.saveError}>{publishError}</Text>}
     </View>
+  );
+}
+
+// The Thursday email (supabase/functions/send-weekly-email) goes out on
+// its own right after the week goes live. These send Anabelle a copy
+// built from the LIVE week, so she can check how it looks.
+function WeeklyEmailPreview() {
+  const [sending, setSending] = useState<'normal' | 'ask' | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function sendPreview(kind: 'normal' | 'ask') {
+    setMessage(null);
+    setSending(kind);
+    const { data, error: invokeError } = await supabase.functions.invoke<{ to?: string; error?: string }>(
+      'send-weekly-email',
+      { body: { test: true, ask: kind === 'ask' } }
+    );
+    setSending(null);
+    if (invokeError || !data?.to) {
+      setMessage(await functionErrorMessage(invokeError, data?.error, 'Could not send the preview.'));
+      return;
+    }
+    setMessage(`Sent to ${data.to}.`);
+  }
+
+  return (
+    <>
+      <Text style={styles.note}>
+        Sent automatically to opted-in members once the week is live. Previews use the live week.
+      </Text>
+      <View style={[styles.publishConfirmRow, styles.weeklyEmailRow]}>
+        <Pressable style={styles.tertiaryButton} onPress={() => sendPreview('normal')} disabled={sending !== null}>
+          {sending === 'normal' ? <ActivityIndicator color="#111" /> : <Text style={styles.tertiaryButtonText}>Email me a preview</Text>}
+        </Pressable>
+        <Pressable style={styles.tertiaryButton} onPress={() => sendPreview('ask')} disabled={sending !== null}>
+          {sending === 'ask' ? <ActivityIndicator color="#111" /> : <Text style={styles.tertiaryButtonText}>Preview the "Keep them coming" one</Text>}
+        </Pressable>
+      </View>
+      {message && <Text style={styles.note}>{message}</Text>}
+    </>
   );
 }
 
@@ -2459,6 +2505,8 @@ function ComparisonResult({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFEAD4' },
   centered: { alignItems: 'center', justifyContent: 'center' },
+  // Wraps on a phone: the two labels don't fit side by side.
+  weeklyEmailRow: { flexWrap: 'wrap' },
   notDevText: { padding: 24, fontSize: 15, color: '#888', textAlign: 'center' },
   scrollContent: { padding: 20, paddingTop: 60, gap: 12 },
   devBanner: {

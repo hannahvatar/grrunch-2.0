@@ -507,3 +507,20 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/toggle-recipe-featured/deno.json"
 entrypoint = "./functions/toggle-recipe-featured/index.ts"
+
+# Weekly "new deals are live" email. Called by pg_cron with no token
+# (20261104000000_weekly_email.sql); it only sends once per week, right
+# after the week goes live, and its test send checks for an admin itself.
+[functions.send-weekly-email]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send-weekly-email/deno.json"
+entrypoint = "./functions/send-weekly-email/index.ts"
+
+# The weekly email's Unsubscribe / Keep them coming buttons, opened
+# without signing in; the link's own signature is checked instead.
+[functions.weekly-email-preferences]
+enabled = true
+verify_jwt = false
+import_map = "./functions/weekly-email-preferences/deno.json"
+entrypoint = "./functions/weekly-email-preferences/index.ts"

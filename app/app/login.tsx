@@ -8,12 +8,14 @@ import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { Alert, ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ArrowRightIcon, EnvelopeIcon } from 'react-native-heroicons/outline';
+import { CheckIcon } from 'react-native-heroicons/solid';
 
 import { AlertBanner } from '../components/AlertBanner';
 import { DesktopAuthShell, desktopText } from '../components/DesktopAuthShell';
 import { AppleIcon } from '../components/icons/AppleIcon';
 import { GoogleIcon } from '../components/icons/GoogleIcon';
 import { InputField } from '../components/InputField';
+import { rememberWeeklyEmailOptIn } from '../lib/emailConsent';
 import { useSelectedStores } from '../lib/selectedStores';
 import { HOME_ROUTE, useIsDesktop } from '../lib/layout';
 import { supabase } from '../lib/supabase';
@@ -160,6 +162,16 @@ export default function LoginScreen() {
   const [emailSent, setEmailSent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  // The weekly email box (lib/emailConsent.ts). Starts unticked on
+  // purpose: under Canada's anti-spam law only a box the person ticks
+  // counts as consent (Anabelle, 2026-11-03).
+  const [weeklyEmail, setWeeklyEmail] = useState(false);
+
+  function toggleWeeklyEmail() {
+    const next = !weeklyEmail;
+    setWeeklyEmail(next);
+    rememberWeeklyEmailOptIn(next);
+  }
 
   useEffect(() => {
     AppleAuthentication.isAvailableAsync()
@@ -404,6 +416,22 @@ export default function LoginScreen() {
         <AlertBanner variant="neutral" title={cancelledMessage} onDismiss={() => setCancelledMessage(null)} />
       )}
 
+      {/* Above every sign-in button, so it's seen whichever one they pick. */}
+      <Pressable
+        style={styles.optInRow}
+        onPress={toggleWeeklyEmail}
+        hitSlop={6}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: weeklyEmail }}
+      >
+        <View style={[styles.optInBox, weeklyEmail && styles.optInBoxChecked]}>
+          {weeklyEmail && <CheckIcon size={16} color="#fff" />}
+        </View>
+        <Text style={[styles.optInText, isDesktop && desktopText.body]}>
+          Email me when new deals and recipes are live each week. Unsubscribe anytime.
+        </Text>
+      </Pressable>
+
       {!showApple ? null : appleAuthAvailable ? (
         <AppleAuthentication.AppleAuthenticationButton
           buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
@@ -595,6 +623,20 @@ const styles = StyleSheet.create({
   primaryButtonTextDisabled: { color: ACCENT_DISABLED_TEXT },
   emailSentTextBlock: { flex: 1, gap: 8 },
   guestButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  optInRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 20 },
+  optInBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: INK,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  optInBoxChecked: { backgroundColor: INK },
+  optInText: { flex: 1, fontSize: 16, lineHeight: 22, color: INK },
   guestText: { fontSize: 16, color: INK, fontWeight: '600', fontFamily: 'OpenSans_600SemiBold' },
 });
 

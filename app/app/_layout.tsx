@@ -28,6 +28,7 @@ import { SelectedStoresProvider } from '../lib/selectedStores';
 import { StoreFilterProvider } from '../lib/storeFilter';
 import { PurchasesProvider } from '../lib/purchases';
 import { SubscriptionProvider } from '../lib/subscription';
+import { useApplyPendingWeeklyEmailOptIn } from '../lib/emailConsent';
 import { supabase } from '../lib/supabase';
 
 SplashScreen.preventAutoHideAsync();
@@ -59,6 +60,13 @@ initSentry();
 // this by default), so the original login screen has no way to know the
 // sign-in it started ever finished -- this listener runs globally and
 // catches it wherever the session ends up appearing.
+// Saves the sign-up screen's weekly email box once the account exists
+// (lib/emailConsent.ts).
+function WeeklyEmailOptIn() {
+  useApplyPendingWeeklyEmailOptIn();
+  return null;
+}
+
 function AuthRedirect() {
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
@@ -213,6 +221,7 @@ function RootLayout() {
                     <Stack.Screen name="(tabs)" />
                     <Stack.Screen name="dev-recipes" />
                     <Stack.Screen name="dev-deals" />
+                    <Stack.Screen name="email-preferences" />
                     <Stack.Screen name="settings" />
                     <Stack.Screen name="settings-detail" />
                     <Stack.Screen name="get-support" />
@@ -246,6 +255,7 @@ function RootLayout() {
                     />
                   </Stack>
                   <AuthRedirect />
+                  <WeeklyEmailOptIn />
                   <DeepLinkErrorRedirect />
                   <WeekLifecycle />
                   <SupportBubble />

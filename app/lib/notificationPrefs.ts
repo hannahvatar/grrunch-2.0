@@ -1,4 +1,5 @@
 import type { Json } from '../types/database';
+import { fetchWeeklyEmailConsent, setWeeklyEmailConsent } from './emailConsent';
 import { supabase } from './supabase';
 
 // public.users.notification_prefs (jsonb) has existed since the initial
@@ -49,7 +50,9 @@ export const CATEGORY_LABELS: { key: keyof CategoryPrefs; title: string; descrip
   {
     key: 'recommendations',
     title: 'Recommendations',
-    description: "Recipe recommendations based on this week's deals",
+    // The weekly email (2026-11-03). Its email switch is the consent in
+    // public.email_consents, not this prefs blob: see fetch/save below.
+    description: "This week's deals and recipes, every Thursday",
   },
   { key: 'reminders', title: 'Reminders', description: 'Reminders for your grocery list' },
   { key: 'feedback', title: 'Feedback', description: 'User research and marketing surveys' },
@@ -69,11 +72,16 @@ function mergePrefs(stored: Partial<NotificationPrefs> | null | undefined): Noti
 export async function fetchNotificationPrefs(
   userId: string
 ): Promise<{ prefs: NotificationPrefs; error: string | null }> {
-  const { data, error } = await supabase.from('users').select('notification_prefs').eq('id', userId).maybeSingle();
+  const [{ data, error }, weeklyEmail] = await Promise.all([
+    supabase.from('users').select('notification_prefs').eq('id', userId).maybeSingle(),
+    fetchWeeklyEmailConsent(userId),
+  ]);
   if (error) {
     return { prefs: DEFAULT_NOTIFICATION_PREFS, error: error.message };
   }
-  return { prefs: mergePrefs(data?.notification_prefs as Partial<NotificationPrefs> | null), error: null };
+  const prefs = mergePrefs(data?.notification_prefs as Partial<NotificationPrefs> | null);
+  // Off until they've said yes (CASL): a default-on box isn't consent.
+  return { prefs: { ...prefs, email: { ...prefs.email, recommendations: weeklyEmail } }, error: null };
 }
 
 export async function saveNotificationPrefs(
@@ -89,5 +97,11 @@ export async function saveNotificationPrefs(
   const { error } = await supabase
     .from('users')
     .upsert({ id: userId, email, notification_prefs: prefs as unknown as Json });
-  return { error: error?.message ?? null };
+  if (error) return { error: error.message };
+  // Turning the weekly email's switch on here is consent too.
+  const weeklyEmail = prefs.email.recommendations;
+  if (weeklyEmail !== (await fetchWeeklyEmailConsent(userId))) {
+    return setWeeklyEmailConsent(userId, weeklyEmail, 'profile');
+  }
+  return { error: null };
 }
