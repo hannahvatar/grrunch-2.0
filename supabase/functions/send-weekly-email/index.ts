@@ -49,11 +49,13 @@ const TEST_EMAIL = /@grrunch\.(com|local)$|@extradesigners\.com$|^anabelle\.dubo
 
 // Recipe photos are ~350 KB at 1200 px; mail apps (iCloud's image proxy
 // especially) sometimes give up on those, so the email asks Supabase for a
-// 600 px copy (~90 KB). Other hosts' images are left as they are.
+// 600 px copy (~50 KB). resize=contain keeps the whole photo: without it
+// Supabase keeps the full height and crops the width. Other hosts' images
+// are left as they are.
 function emailPhoto(url: string): string {
   const original = "/storage/v1/object/public/";
   if (!url.includes(original)) return url;
-  return `${url.replace(original, "/storage/v1/render/image/public/")}?width=600&quality=75`;
+  return `${url.replace(original, "/storage/v1/render/image/public/")}?width=600&resize=contain&quality=75`;
 }
 
 const ACCENT = "#FFA955";
