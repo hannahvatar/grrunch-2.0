@@ -47,6 +47,15 @@ const RECIPES_SHOWN = 6;
 // Anabelle's own test inboxes. They only get it if they're admins.
 const TEST_EMAIL = /@grrunch\.(com|local)$|@extradesigners\.com$|^anabelle\.dubois\+/i;
 
+// Recipe photos are ~350 KB at 1200 px; mail apps (iCloud's image proxy
+// especially) sometimes give up on those, so the email asks Supabase for a
+// 600 px copy (~90 KB). Other hosts' images are left as they are.
+function emailPhoto(url: string): string {
+  const original = "/storage/v1/object/public/";
+  if (!url.includes(original)) return url;
+  return `${url.replace(original, "/storage/v1/render/image/public/")}?width=600&quality=75`;
+}
+
 const ACCENT = "#FFA955";
 const INK = "#111111";
 const MUTED = "#767676";
@@ -168,7 +177,7 @@ function recipeBlock(recipe: Recipe): string {
   return `<tr><td style="padding:8px 0;">
     <a href="${href}" style="text-decoration:none;color:${INK};">
       <div style="background:#ffffff;border:2px solid ${INK};border-radius:14px;overflow:hidden;">
-        ${recipe.image_url ? `<img src="${recipe.image_url}" alt="" width="100%" style="display:block;width:100%;max-height:260px;object-fit:cover;">` : ""}
+        ${recipe.image_url ? `<img src="${emailPhoto(recipe.image_url)}" alt="" width="100%" style="display:block;width:100%;max-height:260px;object-fit:cover;">` : ""}
         <div style="padding:14px 16px;">
           <div style="font-size:18px;font-weight:800;">${escapeHtml(recipe.name)}</div>
           ${recipe.descriptor ? `<div style="font-size:15px;color:${INK};margin:4px 0 8px;">${escapeHtml(recipe.descriptor)}</div>` : ""}
