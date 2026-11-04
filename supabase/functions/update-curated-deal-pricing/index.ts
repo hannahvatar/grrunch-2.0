@@ -409,6 +409,12 @@ export default {
               ...(bundle_count !== null ? { fragment_by_weight: true } : {}),
             }
           : {}),
+        // A per-weight price ($/lb, $/kg, $/100 g) always counts only the
+        // weight a recipe uses. Without fragment_by_weight, a $/lb deal
+        // saved with a 1 lb (454 g) weight charged every recipe exactly one
+        // pound: 700 g of stewing beef cost $7.00 instead of $10.79
+        // (Anabelle, 2026-11-04).
+        ...(price_unit === "lb" || price_unit === "kg" || price_unit === "100g" ? { fragment_by_weight: true } : {}),
         quantity_estimated,
         original_price_source: original_price_source as OriginalPriceSource,
         usage: usage as DealUsage,

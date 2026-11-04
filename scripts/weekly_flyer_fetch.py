@@ -616,6 +616,12 @@ def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones
                 "usage": carried["usage"],
                 "keyword_matches": carried["keyword_matches"] or [],
             })
+        # A per-weight price ($/lb, $/kg, $/100 g) always counts only the
+        # weight a recipe uses, carried forward or not (Anabelle,
+        # 2026-11-04: a $/lb deal with a 1 lb weight charged recipes
+        # exactly one pound whatever they used).
+        if base["price_unit"] in ("lb", "kg", "100g"):
+            base["fragment_by_weight"] = True
         # Same price in every zone the chain has -> applies everywhere
         # (zone left null). Otherwise one row per zone it's priced for, so
         # lib/dealZones.ts can show it only to shoppers in that zone.
