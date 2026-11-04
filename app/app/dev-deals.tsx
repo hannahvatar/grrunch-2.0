@@ -1760,6 +1760,13 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
   // Anabelle: "The name should be fetched from the cutout and displayed
   // as is" -- a title, never an input.
   const itemName = deal.item_name;
+  // Fixing a typo in the name (Anabelle, 2026-11-04: "How can i edit back a
+  // name when i made a mistake", e.g. a split that left "Compliments Montreal
+  // Smoked Meat, Roast Beef, Corned Beef" on one deal). Still shown as a
+  // title; the field only opens behind "Fix it", and only for next week's
+  // draft deals, never live ones.
+  const [fixingName, setFixingName] = useState(false);
+  const [nameText, setNameText] = useState(deal.item_name);
 
   // 1 -- Cutout price. Shown as text; the fields only open behind "Fix
   // it" (or straight away when no price was captured at all).
@@ -1982,11 +1989,14 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
     if (perUnit !== 'unit' && bundleText.trim() !== '' && bundle === null && Number(bundleText) !== 1) {
       return { error: 'How many for this price must be a whole number (2 for "2 for $3"), or blank.' };
     }
+    if (nameText.trim() === '') {
+      return { error: 'The deal needs a name.' };
+    }
     const original = resolvedOriginal();
     return {
       body: {
         deal_id: deal.id,
-        item_name: itemName,
+        item_name: deal.published ? itemName : nameText.trim(),
         price: priceNum,
         original_price: original.value,
         original_price_source: original.source,
@@ -2074,7 +2084,22 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
           )}
         </View>
 
-        <Text style={styles.nameTitle}>{itemName}</Text>
+        {fixingName ? (
+          <>
+            <Text style={styles.fieldLabel}>Name</Text>
+            <InputField value={nameText} onChangeText={setNameText} placeholder="Product name" />
+            <Text style={styles.fieldHint}>Saved when you approve or save this deal.</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.nameTitle}>{itemName}</Text>
+            {!deal.published && (
+              <Pressable style={styles.tertiaryButton} onPress={() => setFixingName(true)}>
+                <Text style={styles.tertiaryButtonText}>Name is wrong? Fix it</Text>
+              </Pressable>
+            )}
+          </>
+        )}
         {deal.pick_reason && <Text style={styles.pickReason}>{deal.pick_reason}</Text>}
         {/* Anabelle, 2026-09-30: "I need to split Angie's Boom Chicka Pop
             Popcorn" -- one name, two flavours on the cutout. */}
@@ -2587,6 +2612,7 @@ const styles = StyleSheet.create({
   splitRemove: { fontSize: 16, fontWeight: '700', color: INK, paddingHorizontal: 4 },
   splitAdd: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK, textDecorationLine: 'underline' },
   cutoutHint: { fontSize: 12, color: '#D0342C', marginTop: 4 },
+  fieldHint: { fontSize: 14, color: INK, fontFamily: 'OpenSans_400Regular', marginTop: 4 },
   dealThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F2F2F2' },
   dealRowInfo: { flex: 1, gap: 2 },
   dealRowName: { fontSize: 14, fontWeight: '700', fontFamily: 'OpenSans_700Bold', color: INK },
