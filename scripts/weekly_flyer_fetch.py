@@ -370,8 +370,12 @@ READ_SCHEMA = {
                     "price_unit": {"type": "string", "enum": PRICE_UNITS},
                     "multi_buy_qty": NULLABLE_INT,
                     "saving_text": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "size_g": NULLABLE_NUMBER,
+                    "size_ml": NULLABLE_NUMBER,
+                    "pack_count": NULLABLE_INT,
                 },
-                "required": ["id", "sale_price", "regular_price", "price_unit", "multi_buy_qty", "saving_text"],
+                "required": ["id", "sale_price", "regular_price", "price_unit", "multi_buy_qty", "saving_text",
+                             "size_g", "size_ml", "pack_count"],
                 "additionalProperties": False,
             },
         }
@@ -386,6 +390,10 @@ READ_PROMPT = """Each image below is one product tile cut out of a {chain} groce
 - price_unit: what sale_price is per -- "lb", "kg" or "100g" when printed per weight; "each" when printed per item (e.g. "$1.99 ea"); otherwise "package".
 - multi_buy_qty: the count in a multi-buy ("2 for $5" -> 2); null otherwise.
 - saving_text: any saving the tile prints, copied short ("Reg. $12.99", "Save $3", "30% off", "2 for $5"); null if the tile shows no saving at all.
+- size_g: the package's net weight in grams when the tile or the flyer text gives one ("398 g" -> 398, "1.36 kg" -> 1360, "2 lb bag" -> 907). For a range or several sizes ("213-391 g", "567 / 580 g") give the LARGEST. null when no weight is printed (never guess), and null for a price per lb/kg/100g.
+- size_ml: the same for a volume in millilitres ("750 mL" -> 750, "1.89 L" -> 1890), largest of a range. null when none is printed.
+- pack_count: how many separate pieces one price buys when the tile says so ("6 bagels", "bag of 6", "dozen eggs" -> 12, "3 pack"). Not the count of a multi-buy ("2 for $5" goes in multi_buy_qty). null when not printed.
+Each id is followed by the flyer's own text for that item, which often carries the size.
 Return one entry per id."""
 
 
@@ -498,13 +506,13 @@ Deals to tag (index | name | category):
 Return keywords for every index."""
 
 
-def keyword_context():
+def keyword_context(before_week=None):
     """Her past keywords (most recent first, one per distinct name) and the
     recipe ingredient tags in use, for suggest_keywords()."""
-    deals = supabase(
-        "/rest/v1/curated_deals?status=eq.approved&usage=eq.recipes&order=flyer_valid_from.desc"
-        "&select=item_name,keyword_matches&limit=1000"
-    ) or []
+    deals = supabase_all(
+        "/rest/v1/curated_deals?status=eq.approved&usage=eq.recipes&order=flyer_valid_from.desc,id.asc"
+        "&select=item_name,keyword_matches" + (f"&flyer_valid_from=lt.{before_week}" if before_week else "")
+    )
     examples, known = [], {}
     for d in deals:
         key = norm_name(d["item_name"])
@@ -594,6 +602,155 @@ def try_keywords(client):
     say(f"Week {latest}: {hits} of {len(unique)} share at least one keyword with hers.")
 
 
+ESTIMATE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": {"type": "integer"},
+                    "avg_price": {"type": "number"},
+                    "reasoning": {"type": "string"},
+                },
+                "required": ["index", "avg_price", "reasoning"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
+# Same methodology as supabase/functions/estimate-reference-price (the
+# "Get AI estimate" button in dev-deals), batched: a BC-wide average
+# regular price like StatCan's, never one store's, and never shown the
+# sale price (it would anchor the estimate).
+ESTIMATE_PROMPT = """You estimate reference grocery prices for a Canadian price-comparison app, using the same methodology as Statistics Canada's "Monthly average retail prices for selected products" (table 18-10-0245-01) for British Columbia.
+
+For each grocery item below (worded as in a store flyer), give its AVERAGE REGULAR RETAIL PRICE IN BRITISH COLUMBIA in 2026: the typical non-sale price across all major grocery chains in BC and across the year, not any one store's shelf price and not a sale price.
+Price exactly the item named -- its cut, grade, leanness, brand tier, organic status and form all matter. Never substitute a more common or more generic product.
+
+Each line says what to price it per:
+- "per kg": the price of 1 kg. If it's usually sold in boxes or bags, divide a typical BC box or bag price by its weight.
+- "per L": the price of 1 litre. If it's usually sold in bottles or cartons, divide a typical BC price by the volume.
+- "per item": ONE single unit (one bagel, one can, one bar, one bunch), never a pack. If it's usually sold in packs, divide a typical BC pack price by the pack's usual count.
+
+Keep reasoning to one short sentence about this item's own BC-wide average price.
+
+Items (index | item | price it):
+{lines}
+
+Answer for every index."""
+
+GRAMS_PER_LB = 453.592
+
+
+def deal_basis(row):
+    """(mode, the deal's own price per that basis) -- mode is "kg", "L"
+    or "item". Mirrors how dev-deals compares a deal to a reference."""
+    price, unit, bundle = row["price"], row["price_unit"], row["bundle_count"]
+    count = bundle or 1
+    if unit == "lb":
+        return "kg", price / GRAMS_PER_LB * 1000
+    if unit == "kg":
+        return "kg", price
+    if unit == "100g":
+        return "kg", price * 10
+    # A package or an each/multi-buy with a known size compares by weight
+    # or volume (a multi-buy stores ONE item's size, for the whole price).
+    if row["package_weight_g"]:
+        return "kg", price / (row["package_weight_g"] * count) * 1000
+    if row["package_volume_ml"]:
+        return "L", price / (row["package_volume_ml"] * count) * 1000
+    return "item", price / count
+
+
+def estimate_references(client, rows):
+    """Fills suggested_reference -- the AI's BC average for the item, per
+    kg / L / item -- on candidates the tile and her past reviews give no
+    comparison for. dev-deals offers it as the reference to approve when
+    StatCan has no match (Anabelle, 2026-11-05: finding an AI average was
+    one of the slowest review steps). Best-effort."""
+    todo = [r for r in rows if r["original_price"] is None]
+    keys = list(dict.fromkeys((r["item_name"], deal_basis(r)[0]) for r in todo))
+    if not keys:
+        return 0
+    per = {"kg": "per kg", "L": "per L", "item": "per item"}
+    lines = "\n".join(f"{i} | {name} | {per[mode]}" for i, (name, mode) in enumerate(keys))
+    try:
+        data = claude_json(client, ESTIMATE_PROMPT.format(lines=lines), ESTIMATE_SCHEMA)
+    except Exception as exc:
+        say(f"    warning: AI price estimates failed: {exc}")
+        return 0
+    found = {}
+    for item in data["items"]:
+        if 0 <= item["index"] < len(keys) and item["avg_price"] > 0:
+            found[keys[item["index"]]] = item
+    unit_label = {"kg": "1 kg", "L": "1 L", "item": "1 ea"}
+    filled = 0
+    for r in todo:
+        mode, own = deal_basis(r)
+        est = found.get((r["item_name"], mode))
+        if not est:
+            continue
+        r["suggested_reference"] = {
+            "name": r["item_name"],
+            "avg_price": round(est["avg_price"], 2),
+            "unit": unit_label[mode],
+            "reasoning": est["reasoning"],
+            "pct_below": round((1 - own / est["avg_price"]) * 100),
+        }
+        filled += 1
+    return filled
+
+
+def past_decisions(week_from):
+    """{normalized name: set of statuses} for every earlier week's
+    reviewed candidates, any chain."""
+    rows = supabase_all(
+        f"/rest/v1/curated_deals?flyer_valid_from=lt.{week_from}&status=in.(approved,rejected)"
+        "&order=id.asc&select=item_name,status"
+    )
+    out = {}
+    for r in rows:
+        out.setdefault(norm_name(r["item_name"]), {}).setdefault(r["status"], 0)
+        out[norm_name(r["item_name"])][r["status"]] += 1
+    return out
+
+
+def set_aside(rows, history):
+    """Moves candidates she almost never approves out of "Needs review"
+    into dev-deals' "Set aside" list (status stays 'pending', so she can
+    still approve any of them). Anabelle, 2026-11-05, from her last two
+    reviews: 60% of candidates were rejected; points-only offers were
+    approved 22% of the time, member prices 0%, and items rejected every
+    earlier week were rejected again 39 times out of 44.
+
+    Deals the AI average says have no saving are NOT set aside: in a test
+    on the 2026-11-05 flyers that would have hidden 4 deals she approved
+    (the AI average disagreed with the reference she checked). dev-deals
+    lists them last in "Needs review" instead (Anabelle, 2026-11-05)."""
+    count = 0
+    for r in rows:
+        text = r["_saving_text"].lower()
+        past = history.get(norm_name(r["item_name"]), {})
+        ref = r["suggested_reference"]
+        reason = None
+        if past.get("rejected") and not past.get("approved"):
+            n = past["rejected"]
+            reason = f"Rejected every past week ({n} time{'s' if n != 1 else ''})"
+        elif "member" in text:
+            reason = "Member price offer"
+        elif ("pts" in text or "points" in text) and r["original_price"] is None:
+            reason = "Points offer only, no price saving"
+        if reason:
+            r["set_aside_reason"] = reason
+            count += 1
+    return count
+
+
 def download(url):
     url = (url or "").replace("http://", "https://", 1)
     req = urllib.request.Request(url, headers=FLIPP_HEADERS)
@@ -606,6 +763,7 @@ def read_cutouts(client, chain, entries):
     picked entries that have a cutout image. Also returns the downloaded
     bytes so the image can be re-hosted without fetching it twice."""
     images = {}
+    names = {e["id"]: e["name"] for e in entries}
     for e in entries:
         if not e["image"]:
             continue
@@ -619,7 +777,7 @@ def read_cutouts(client, chain, entries):
     def read_batch(batch):
         content = [{"type": "text", "text": READ_PROMPT.format(chain=chain)}]
         for item_id, (data, ctype) in batch:
-            content.append({"type": "text", "text": f"id {item_id}:"})
+            content.append({"type": "text", "text": f"id {item_id} (flyer text: {names.get(item_id, '')}):"})
             content.append({
                 "type": "image",
                 "source": {"type": "base64", "media_type": ctype if ctype.startswith("image/") else "image/jpeg",
@@ -665,17 +823,33 @@ def missing_chains(chains, week_from):
     return [c for c in chains if c not in have]
 
 
-def reviewed_pricing():
+def supabase_all(path, page=1000):
+    """Every row of a GET, a page at a time (the API returns at most 1000
+    rows per request)."""
+    out, offset = [], 0
+    while True:
+        rows = supabase(f"{path}&limit={page}&offset={offset}") or []
+        out.extend(rows)
+        if len(rows) < page:
+            return out
+        offset += page
+
+
+def reviewed_pricing(before_week):
     """Pricing refinements Anabelle made by hand in dev-deals (price unit,
     package weight, recipes/deals usage) for items seen in earlier weeks,
     keyed by (chain, normalized name) -- carried onto the same item when it
     comes back, same idea as sync_weekly_deals.py's fetch_reviewed_pricing
     (which keyed by Airtable record id, gone now)."""
-    rows = supabase(
-        "/rest/v1/curated_deals?pricing_reviewed_at=not.is.null&order=pricing_reviewed_at.asc"
-        "&select=chain_name,item_name,price_unit,package_weight_g,package_weight_g_source,"
-        "fragment_by_weight,usage,keyword_matches,pricing_reviewed_at"
-    ) or []
+    # Approved rows only: a rejected row's fields were never checked
+    # (2026-11-05). Oldest first, so the latest approval wins.
+    rows = supabase_all(
+        f"/rest/v1/curated_deals?status=eq.approved&pricing_reviewed_at=not.is.null&flyer_valid_from=lt.{before_week}"
+        "&order=pricing_reviewed_at.asc,id.asc"
+        "&select=chain_name,item_name,price_unit,package_weight_g,package_weight_g_source,package_volume_ml,"
+        "bundle_count,fragment_by_weight,usage,keyword_matches,original_price,original_price_source,"
+        "pricing_reviewed_at"
+    )
     return {(r["chain_name"], norm_name(r["item_name"])): r for r in rows}
 
 
@@ -724,6 +898,24 @@ def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones
             continue  # no readable price anywhere -- not reviewable as a deal
         regular = to_number(reading.get("regular_price"))
         qty = reading.get("multi_buy_qty")
+        pack = reading.get("pack_count")
+        size_g = to_number(reading.get("size_g"))
+        size_ml = to_number(reading.get("size_ml"))
+        unit = reading.get("price_unit") or "package"
+        # Unit and size pre-filled from the cutout (Anabelle, 2026-11-05:
+        # fixing them was one of the slowest review steps), stored the way
+        # dev-deals saves them: a multi-buy is 'each' + bundle_count with
+        # one item's size; a pack priced as one ("6 bagels") is 'each' +
+        # bundle_count = the count; otherwise a package keeps its weight or
+        # volume. Sizes under the dev-deals floor (10 g / 5 ml) are dropped.
+        size_g = size_g if size_g and size_g >= 10 else None
+        size_ml = size_ml if size_ml and size_ml >= 5 and not size_g else None
+        bundle = qty if qty and qty > 1 else None
+        if bundle and unit in ("package", "each"):
+            unit = "each"
+        elif not bundle and pack and pack > 1 and unit in ("package", "each") and not size_g and not size_ml:
+            unit, bundle = "each", pack
+        per_weight = unit in ("lb", "kg", "100g")
         data, ctype = images.get(e["id"], (None, None))
         base = {
             "chain_name": chain,
@@ -739,16 +931,23 @@ def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones
             "status": "pending",
             "published": False,
             "usage": pick["usage"],
-            "price_unit": reading.get("price_unit") or "package",
-            "bundle_count": qty if qty and qty > 1 else None,
+            "price_unit": unit,
+            "bundle_count": bundle,
             # PostgREST bulk inserts need every row to have the same keys,
             # so carried-forward fields are always present (first test
             # run, 2026-09-24: a 400 on the mixed batch).
-            "package_weight_g": None,
-            "package_weight_g_source": None,
-            "fragment_by_weight": False,
+            "package_weight_g": None if per_weight else size_g,
+            "package_weight_g_source": None if per_weight or not size_g else "label",
+            "package_volume_ml": None if per_weight else size_ml,
+            "fragment_by_weight": bool(bundle),
             "keyword_matches": [],
             "pick_reason": pick_reason(chosen[e["id"]], reading),
+            "suggested_reference": None,
+            "set_aside_reason": None,
+            # Working fields for the set-aside step, never saved (see
+            # replace_group_draft).
+            "_saving_text": reading.get("saving_text") or "",
+            "_flyer_name": e["name"],
         }
         carried = prior.get((chain, norm_name(pick["name"])))
         if carried:
@@ -756,10 +955,20 @@ def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones
                 "price_unit": carried["price_unit"],
                 "package_weight_g": carried["package_weight_g"],
                 "package_weight_g_source": carried["package_weight_g_source"],
+                "package_volume_ml": carried["package_volume_ml"],
                 "fragment_by_weight": carried["fragment_by_weight"],
                 "usage": carried["usage"],
                 "keyword_matches": carried["keyword_matches"] or [],
             })
+            # Her verified average-price reference, when nothing on this
+            # week's tile replaces it and the deal is shaped the same way
+            # (same multi-buy count -- the reference is for the whole buy).
+            if (base["original_price"] is None and carried["original_price_source"] == "reference"
+                    and carried["original_price"] and carried["bundle_count"] == base["bundle_count"]):
+                base["original_price"] = carried["original_price"]
+                base["original_price_source"] = "reference"
+        if base["bundle_count"] and base["price_unit"] == "package":
+            base["price_unit"] = "each"
         # A per-weight price ($/lb, $/kg, $/100 g) always counts only the
         # weight a recipe uses, carried forward or not (Anabelle,
         # 2026-11-04: a $/lb deal with a 1 lb weight charged recipes
@@ -797,7 +1006,8 @@ def replace_group_draft(chains, week_from, rows):
         f"/rest/v1/curated_deals?published=eq.false&chain_name=in.{chain_list}&select=chain_name,item_name,price,zone"
     ) or []
     kept_keys = {(k["chain_name"], norm_name(k["item_name"]), k["price"], k["zone"]) for k in kept}
-    fresh = [r for r in rows if (r["chain_name"], norm_name(r["item_name"]), r["price"], r["zone"]) not in kept_keys]
+    fresh = [{k: v for k, v in r.items() if not k.startswith("_")} for r in rows
+             if (r["chain_name"], norm_name(r["item_name"]), r["price"], r["zone"]) not in kept_keys]
     for i in range(0, len(fresh), 200):
         supabase("/rest/v1/curated_deals", method="POST", body=fresh[i:i + 200], prefer="return=minimal")
     return len(fresh), len(kept)
@@ -873,9 +1083,17 @@ def main():
         say(f"Still missing: {', '.join(chains)}")
 
     client = anthropic.Anthropic()
-    prior = {} if args.dry_run else reviewed_pricing()
+    # Read-only, so a dry run uses them too when it can reach Supabase.
     try:
-        kw_context = keyword_context()
+        prior = reviewed_pricing(thursday.isoformat())
+        history = past_decisions(thursday.isoformat())
+    except Exception as exc:
+        if not args.dry_run:
+            raise
+        say(f"(dry run without past reviews: {exc})")
+        prior, history = {}, {}
+    try:
+        kw_context = keyword_context(thursday.isoformat())
     except Exception as exc:
         say(f"warning: couldn't load past keywords: {exc}")
         kw_context = {"examples": [], "tags": [], "known": {}}
@@ -895,20 +1113,33 @@ def main():
             rows = build_rows(chain, entries, picks, chosen, readings, images, dates,
                               [z["zone"] for z in zones], prior)
             filled = fill_keywords(client, rows, kw_context)
+            estimated = estimate_references(client, rows)
+            aside = set_aside(rows, history)
             all_rows.extend(rows)
             by_reason = {}
             for reason in chosen.values():
                 by_reason[REASON_LABELS[reason]] = by_reason.get(REASON_LABELS[reason], 0) + 1
             reasons = ", ".join(f"{n} {label.lower()}" for label, n in by_reason.items())
             summary.append(f"{chain}: {len(chosen)} candidates ({reasons}) from {len(food)} food items "
-                           f"of {len(entries)} in the flyer; keywords suggested for {filled}")
+                           f"of {len(entries)} in the flyer; keywords filled for {filled}, AI average price for "
+                           f"{estimated}; {aside} set aside")
             say(f"  {summary[-1]}")
         except Exception as exc:
             problems.append(f"{chain}: FAILED -- {exc}")
             say(f"  !! {problems[-1]}")
 
     if args.dry_run:
-        say(json.dumps(all_rows[:10], indent=2, ensure_ascii=False))
+        for r in all_rows:
+            size = (f"{r['package_weight_g']:g} g" if r["package_weight_g"] else
+                    f"{r['package_volume_ml']:g} ml" if r["package_volume_ml"] else "")
+            ref = r["suggested_reference"]
+            say(f"  {r['chain_name'][:12]:12} | {r['item_name'][:40]:40} | ${r['price']} {r['price_unit']}"
+                f"{' x' + str(r['bundle_count']) if r['bundle_count'] else ''} {size} | was "
+                f"{r['original_price'] or '-'} ({r['original_price_source']}) | kw {r['keyword_matches']} | "
+                f"AI {ref['avg_price'] if ref else '-'}/{ref['unit'] if ref else ''} "
+                f"{str(ref['pct_below']) + '% below' if ref else ''} | "
+                f"{'SET ASIDE: ' + r['set_aside_reason'] if r['set_aside_reason'] else 'review'}")
+        say("\n".join(summary))
         say(f"Dry run -- {len(all_rows)} rows would be saved. Nothing written.")
         return
 
