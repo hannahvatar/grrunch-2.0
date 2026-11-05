@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { supabase } from './supabase';
+import { BC_UTC_OFFSET_HOURS, bcWallClock } from './bcTime';
 
 // The live week (public.published_week, one row, set by publish_week() --
 // supabase/migrations/20260918010000_weekly_publish.sql and
@@ -29,23 +30,11 @@ export interface LiveWeek {
 }
 
 // Today's date in BC (YYYY-MM-DD). Flyer dates are BC calendar dates, so
-// the comparison has to happen in Vancouver time, not the device's or UTC.
+// the comparison has to happen in BC time, not the device's or UTC.
 function todayInBC(): string {
-  try {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Vancouver',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date());
-  } catch {
-    // No time-zone data in this JS runtime: Pacific Standard Time is close
-    // enough for a day-level check.
-    return new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  }
+  return bcWallClock(new Date()).toISOString().slice(0, 10);
 }
 
-// Expired from the day AFTER the flyers' last valid day.
 export function isFlyerWeekExpired(validTo: string, today: string = todayInBC()): boolean {
   return today > validTo;
 }
@@ -267,43 +256,21 @@ export function useClosingCountdown(): number | null {
 }
 
 // When the empty-state countdown counts down to: the scheduled publish if
-// there is one, otherwise the usual drop, the first Thursday 12:00 pm
-// Vancouver time after the close. Vancouver is UTC-7 in PDT and UTC-8 in
-// PST; noon PT is 19:00 or 20:00 UTC, so try both and keep the one that
-// really is noon in Vancouver.
+// there is one, otherwise the usual drop, the first Thursday 12:00 pm BC
+// time after the close (19:00 UTC, BC is UTC-7 all year, see bcTime.ts).
 export function nextDropAt(week: LiveWeek | null): Date | null {
   if (!week) return null;
   if (week.scheduledPublishAt) return new Date(week.scheduledPublishAt);
   if (!week.closesAt) return null;
   const from = new Date(week.closesAt).getTime();
+  const noonUtcHour = 12 - BC_UTC_OFFSET_HOURS;
   for (let day = 0; day < 8; day++) {
-    for (const utcHour of [19, 20]) {
-      const base = new Date(from + day * 24 * 60 * 60 * 1000);
-      const candidate = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), utcHour));
-      if (candidate.getTime() <= from) continue;
-      const parts = vancouverParts(candidate);
-      if (parts && parts.weekday === 'Thu' && parts.hour === 12) return candidate;
-    }
+    const base = new Date(from + day * 24 * 60 * 60 * 1000);
+    const candidate = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), noonUtcHour));
+    if (candidate.getTime() <= from) continue;
+    if (bcWallClock(candidate).getUTCDay() === 4) return candidate;
   }
   return null;
-}
-
-function vancouverParts(date: Date): { weekday: string; hour: number } | null {
-  try {
-    // format(), not formatToParts() -- the app's JS engine (Hermes) doesn't
-    // have formatToParts. Gives e.g. "Thu, 12".
-    const [weekday, hour] = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Vancouver',
-      weekday: 'short',
-      hour: 'numeric',
-      hourCycle: 'h23',
-    })
-      .format(date)
-      .split(', ');
-    return { weekday, hour: Number(hour) };
-  } catch {
-    return null;
-  }
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

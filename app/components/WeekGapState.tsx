@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { bcWallClock } from '../lib/bcTime';
 import { nextDropAt, useLiveWeek } from '../lib/liveWeek';
 import { CauldronAnimation } from './CauldronAnimation';
 
@@ -45,17 +46,18 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-// "Thursday at 12:00 pm" in Vancouver time, for the line under the tiles.
+// "Thursday at 12:00 pm" in BC time, for the line under the tiles.
 function dropLabel(drop: Date): string {
   try {
-    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver', weekday: 'long' }).format(drop);
+    const bc = bcWallClock(drop);
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', weekday: 'long' }).format(bc);
     const time = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Vancouver',
+      timeZone: 'UTC',
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     })
-      .format(drop)
+      .format(bc)
       .replace(/\./g, '')
       .toLowerCase();
     return `${day} at ${time}`;

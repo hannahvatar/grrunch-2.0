@@ -35,6 +35,7 @@ import {
   searchReferenceCandidates,
   type StaplePrice,
 } from '../lib/staplePrices';
+import { formatBCDateTime } from '../lib/bcTime';
 import { useIsAdmin } from '../lib/admin';
 import { supabase } from '../lib/supabase';
 import type { Database, Tables } from '../types/database';
@@ -1371,17 +1372,6 @@ function CutoutPhoto({ uri }: { uri: string }) {
 // last week closes Wednesday 11:59 pm and shoppers see the "new deals
 // are coming" state Thursday morning. Publishing after Thursday noon has
 // already passed goes live right away. See the publish-week Edge Function.
-function formatVancouver(iso: string): string {
-  return new Date(iso).toLocaleString('en-CA', {
-    timeZone: 'America/Vancouver',
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
 function PublishWeekCard({
   draftDeals,
   featuredNextCount,
@@ -1445,10 +1435,10 @@ function PublishWeekCard({
         {approved} approved · {pending} still need review · {featuredNextCount} recipe
         {featuredNextCount === 1 ? '' : 's'} featured for next week
       </Text>
-      {closesAt && <Text style={styles.note}>Live week closes {formatVancouver(closesAt)}</Text>}
+      {closesAt && <Text style={styles.note}>Live week closes {formatBCDateTime(closesAt)}</Text>}
       {scheduledFor ? (
         <>
-          <Text style={styles.publishConfirmText}>Scheduled to go live {formatVancouver(scheduledFor)}.</Text>
+          <Text style={styles.publishConfirmText}>Scheduled to go live {formatBCDateTime(scheduledFor)}.</Text>
           <Pressable style={styles.tertiaryButton} onPress={() => publish('cancel')} disabled={publishing}>
             {publishing ? <ActivityIndicator color="#111" /> : <Text style={styles.tertiaryButtonText}>Cancel schedule</Text>}
           </Pressable>

@@ -7,17 +7,17 @@ name: Weekly flyer fetch
 # Schedule (Anabelle, 2026-09-24), Vancouver time:
 #   Tuesday 9:00 pm    No Frills + Real Canadian Superstore
 #   Wednesday 12:00 am Save-On-Foods + Safeway + Walmart
-# GitHub cron is UTC-only, so this fires at every UTC hour those moments
-# can fall on across daylight saving (Wed 04:00/05:00 UTC for Tuesday
-# 9 pm, Wed 07:00/08:00 UTC for Wednesday midnight). The script checks
-# the real Vancouver time, runs whichever group is due, and skips a group
-# already fetched for that week -- so the extra firings do nothing.
+# GitHub cron is UTC-only. BC stays on UTC-7 all year since 2026, so the
+# starts are Wed 04:00 UTC (Tuesday 9 pm) and Wed 07:00 UTC (Wednesday
+# midnight). 05 and 08 UTC are kept as extra catch-up runs. The script
+# checks BC time, runs whichever group is due, and skips a group already
+# fetched for that week -- so the extra firings do nothing.
 on:
   # Schedule ON (Anabelle, 2026-10-09: "ready to move on to automatic
   # weekly fetch"). Off from 2026-09-24 while the process was settled.
   schedule:
-    # 04/05 and 07/08 UTC are the Tuesday 9 pm and Wednesday midnight
-    # starts (PDT/PST). 12, 16 and 20 UTC are catch-up runs Wednesday
+    # 04 and 07 UTC are the Tuesday 9 pm and Wednesday midnight starts
+    # (BC is UTC-7 all year); 05 and 08 are catch-ups. 12, 16 and 20 UTC are catch-up runs Wednesday
     # morning and afternoon: GitHub sometimes drops a scheduled start, and
     # a flyer (Walmart, 2026-10-21) can be posted late. Each run only
     # fetches the chains still missing.
