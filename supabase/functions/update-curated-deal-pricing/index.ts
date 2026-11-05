@@ -193,6 +193,7 @@ interface Database {
           reviewed_by?: string | null;
           reviewed_at?: string | null;
           zone?: string | null;
+          set_aside_reason?: string | null;
         };
         Relationships: [];
       };
@@ -421,6 +422,9 @@ export default {
         keyword_matches: normalizedKeywordMatches,
         pricing_reviewed_at: new Date().toISOString(),
         zone: (zone as string | null | undefined) ?? null,
+        // Reviewed now, so no longer "set aside" by the weekly fetch
+        // (20261105010000_deal_review_prefill.sql).
+        set_aside_reason: null,
         ...statusUpdate,
       })
       .eq("id", deal_id)

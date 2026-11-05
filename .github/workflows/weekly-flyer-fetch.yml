@@ -38,6 +38,10 @@ on:
         description: 'Only send a test email (checks the SMTP secrets, fetches nothing)'
         type: boolean
         default: false
+      dry_run:
+        description: 'Dry run: fetch and prepare, print the result, write and email nothing'
+        type: boolean
+        default: false
       try_keywords:
         description: 'Only compare AI keyword suggestions with the last approved week (writes nothing)'
         type: boolean
@@ -78,3 +82,4 @@ jobs:
           ${{ inputs.force && '--force' || '' }}
           ${{ inputs.test_email && '--test-email' || '' }}
           ${{ inputs.try_keywords && '--try-keywords' || '' }}
+          ${{ inputs.dry_run && '--dry-run' || '' }}
