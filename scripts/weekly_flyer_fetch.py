@@ -481,7 +481,8 @@ How Anabelle writes them (follow her style):
 - Drop brands, store names and sizes: "Ocean's Light Tuna" -> "Canned tuna"; "Farmer's Market Yellow Onions" -> "Onions", "Yellow onions".
 - Keep the word that matters for cooking: "Chicken drumsticks" not just "Chicken"; "Greek yogurt" and "Plain yogurt" for a plain Greek yogurt.
 - Plural for countable produce and proteins ("Onions", "Potatoes", "Chicken thighs"), singular for mass items ("Rice", "Cheese", "Broth").
-- An unusual ingredient keeps its own name ("Indian Karela", "Kabocha squash").
+- An unusual ingredient keeps its own name ("Indian Karela", "Kabocha squash"), and a whole fish keeps "Whole" ("Whole tilapia").
+- Don't add a broad word like "Fish", "Beef", "Pork" or "Chicken" next to a specific cut or species: a recipe asking for "pork" would then pick up a picnic roast.
 - A multi-product deal ("Basa or Sole Fillets") gets a keyword for each product.
 - Prefer a keyword that is already used as a recipe ingredient tag (list below) when it truly describes the item, because that is what makes the deal match today's recipes. Never pick a tag that doesn't describe the item.
 
