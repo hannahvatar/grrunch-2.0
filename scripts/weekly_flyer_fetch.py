@@ -452,6 +452,148 @@ def final_pick(client, chain, food, picks, readings):
     return dict(list(chosen.items())[:MAX_PER_CHAIN])
 
 
+KEYWORD_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": {"type": "integer"},
+                    "keywords": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["index", "keywords"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
+KEYWORD_PROMPT = """Suggest recipe-matching keywords for grocery deals in Grrunch, a BC app that builds recipes from weekly grocery deals.
+
+A deal's keywords are how a recipe ingredient finds it: a recipe ingredient tagged "canned tomatoes" picks up any deal whose keywords include "Canned tomatoes" (case doesn't matter, the whole keyword must match). So a keyword is the plain, generic ingredient name a recipe would use, never a brand or a marketing word.
+
+How Anabelle writes them (follow her style):
+- 1 keyword for most deals, 2 or 3 when the item is commonly called different things (e.g. "Bell peppers", "Sweet peppers"), rarely more.
+- Drop brands, store names and sizes: "Ocean's Light Tuna" -> "Canned tuna"; "Farmer's Market Yellow Onions" -> "Onions", "Yellow onions".
+- Keep the word that matters for cooking: "Chicken drumsticks" not just "Chicken"; "Greek yogurt" and "Plain yogurt" for a plain Greek yogurt.
+- Plural for countable produce and proteins ("Onions", "Potatoes", "Chicken thighs"), singular for mass items ("Rice", "Cheese", "Broth").
+- An unusual ingredient keeps its own name ("Indian Karela", "Kabocha squash"), and a whole fish keeps "Whole" ("Whole tilapia").
+- Don't add a broad word like "Fish", "Beef", "Pork" or "Chicken" next to a specific cut or species: a recipe asking for "pork" would then pick up a picnic roast.
+- A multi-product deal ("Basa or Sole Fillets") gets a keyword for each product.
+- Prefer a keyword that is already used as a recipe ingredient tag (list below) when it truly describes the item, because that is what makes the deal match today's recipes. Never pick a tag that doesn't describe the item.
+
+Her past deals (name -> keywords):
+{examples}
+
+Recipe ingredient tags in use:
+{tags}
+
+Deals to tag (index | name | category):
+{lines}
+
+Return keywords for every index."""
+
+
+def keyword_context():
+    """Her past keywords (most recent first, one per distinct name) and the
+    recipe ingredient tags in use, for suggest_keywords()."""
+    deals = supabase(
+        "/rest/v1/curated_deals?status=eq.approved&usage=eq.recipes&order=flyer_valid_from.desc"
+        "&select=item_name,keyword_matches&limit=1000"
+    ) or []
+    examples, known = [], {}
+    for d in deals:
+        key = norm_name(d["item_name"])
+        if d["keyword_matches"] and key not in known:
+            known[key] = d["keyword_matches"]
+            examples.append(f"{d['item_name']} -> {', '.join(d['keyword_matches'])}")
+    counts = {}
+    for r in supabase("/rest/v1/recipes?select=ingredients") or []:
+        for ing in r.get("ingredients") or []:
+            for t in ing.get("match_tags") or []:
+                counts[t.strip().lower()] = counts.get(t.strip().lower(), 0) + 1
+    skip = {"salt", "black pepper", "water"}
+    tags = sorted((t for t in counts if t and t not in skip), key=lambda t: (-counts[t], t))
+    return {"examples": examples[:250], "tags": tags, "known": known}
+
+
+def suggest_keywords(client, deals, context):
+    """{index: [keywords]} for deals given as [(name, category)]. Anabelle
+    (2026-11-05): writing keywords was one of the slowest parts of the
+    weekly review, so the fetch pre-fills them and she only checks them."""
+    if not deals:
+        return {}
+    examples, tags = context["examples"], context["tags"]
+    lines = "\n".join(f"{i} | {name} | {cat}" for i, (name, cat) in enumerate(deals))
+    data = claude_json(client, KEYWORD_PROMPT.format(
+        examples="\n".join(examples), tags=", ".join(tags), lines=lines), KEYWORD_SCHEMA)
+    out = {}
+    for item in data["items"]:
+        words, seen = [], set()
+        for w in item["keywords"]:
+            w = re.sub(r"\s+", " ", w).strip()
+            if w and w.lower() not in seen and len(words) < 4:
+                seen.add(w.lower())
+                words.append(w[:1].upper() + w[1:])
+        if 0 <= item["index"] < len(deals) and words:
+            out[item["index"]] = words
+    return out
+
+
+def fill_keywords(client, rows, context):
+    """Pre-fills keyword_matches on new recipe-usage candidates that didn't
+    carry keywords from an earlier week: her own keywords when the same
+    name was approved before (any chain), else Claude's suggestion.
+    Best-effort: a failure leaves them empty, as before."""
+    todo = [r for r in rows if not r["keyword_matches"] and r["usage"] != "deals"]
+    filled = 0
+    for r in todo:
+        if context["known"].get(norm_name(r["item_name"])):
+            r["keyword_matches"] = list(context["known"][norm_name(r["item_name"])])
+            filled += 1
+    todo = [r for r in todo if not r["keyword_matches"]]
+    unique = list(dict.fromkeys((r["item_name"], r["category"]) for r in todo))
+    try:
+        found = suggest_keywords(client, unique, context)
+    except Exception as exc:
+        say(f"    warning: keyword suggestions failed: {exc}")
+        return filled
+    by_deal = {unique[i]: words for i, words in found.items()}
+    for r in todo:
+        words = by_deal.get((r["item_name"], r["category"]))
+        if words:
+            r["keyword_matches"] = words
+            filled += 1
+    return filled
+
+
+def try_keywords(client):
+    """--try-keywords: suggests keywords for the latest approved week's
+    recipe deals as if they were new (their own week left out of the
+    examples) and prints them next to Anabelle's. Writes nothing."""
+    latest = supabase("/rest/v1/curated_deals?status=eq.approved&order=flyer_valid_from.desc&limit=1"
+                      "&select=flyer_valid_from")[0]["flyer_valid_from"]
+    deals = supabase(f"/rest/v1/curated_deals?status=eq.approved&usage=eq.recipes&flyer_valid_from=eq.{latest}"
+                     "&select=item_name,category,keyword_matches") or []
+    context = keyword_context()
+    week_names = {norm_name(d["item_name"]) for d in deals}
+    context["examples"] = [e for e in context["examples"] if norm_name(e.split(" -> ")[0]) not in week_names]
+    unique = list({norm_name(d["item_name"]): d for d in deals}.values())
+    found = suggest_keywords(client, [(d["item_name"], d["category"]) for d in unique], context)
+    hits = 0
+    for i, d in enumerate(unique):
+        mine = {k.lower() for k in d["keyword_matches"] or []}
+        got = found.get(i, [])
+        same = bool(mine & {k.lower() for k in got})
+        hits += same
+        say(f"{'ok ' if same else '-- '} {d['item_name']}\n      hers: {d['keyword_matches']}\n      AI:   {got}")
+    say(f"Week {latest}: {hits} of {len(unique)} share at least one keyword with hers.")
+
+
 def download(url):
     url = (url or "").replace("http://", "https://", 1)
     req = urllib.request.Request(url, headers=FLIPP_HEADERS)
@@ -698,7 +840,13 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="fetch and pick, but don't write or email")
     ap.add_argument("--force", action="store_true", help="run even if this week's draft already has these chains")
     ap.add_argument("--test-email", action="store_true", help="only send a test email to check SMTP_USER / SMTP_PASSWORD, then exit")
+    ap.add_argument("--try-keywords", action="store_true",
+                    help="only compare AI keyword suggestions with the latest approved week's, then exit (writes nothing)")
     args = ap.parse_args()
+
+    if args.try_keywords:
+        try_keywords(anthropic.Anthropic())
+        return
 
     # A normal run skips an already-fetched week and a dry run never
     # emails, so neither can confirm the email setup after an app
@@ -726,6 +874,11 @@ def main():
 
     client = anthropic.Anthropic()
     prior = {} if args.dry_run else reviewed_pricing()
+    try:
+        kw_context = keyword_context()
+    except Exception as exc:
+        say(f"warning: couldn't load past keywords: {exc}")
+        kw_context = {"examples": [], "tags": [], "known": {}}
     summary, problems, all_rows = [], [], []
     for chain in chains:
         try:
@@ -741,13 +894,14 @@ def main():
             chosen = final_pick(client, chain, food, picks, readings)
             rows = build_rows(chain, entries, picks, chosen, readings, images, dates,
                               [z["zone"] for z in zones], prior)
+            filled = fill_keywords(client, rows, kw_context)
             all_rows.extend(rows)
             by_reason = {}
             for reason in chosen.values():
                 by_reason[REASON_LABELS[reason]] = by_reason.get(REASON_LABELS[reason], 0) + 1
             reasons = ", ".join(f"{n} {label.lower()}" for label, n in by_reason.items())
             summary.append(f"{chain}: {len(chosen)} candidates ({reasons}) from {len(food)} food items "
-                           f"of {len(entries)} in the flyer")
+                           f"of {len(entries)} in the flyer; keywords suggested for {filled}")
             say(f"  {summary[-1]}")
         except Exception as exc:
             problems.append(f"{chain}: FAILED -- {exc}")

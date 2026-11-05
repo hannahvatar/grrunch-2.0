@@ -38,6 +38,10 @@ on:
         description: 'Only send a test email (checks the SMTP secrets, fetches nothing)'
         type: boolean
         default: false
+      try_keywords:
+        description: 'Only compare AI keyword suggestions with the last approved week (writes nothing)'
+        type: boolean
+        default: false
 
 # One run at a time: two runs re-pricing the draft recipes at once hit a
 # lock timeout (2026-10-21). Later runs wait for the current one.
@@ -73,3 +77,4 @@ jobs:
           --group ${{ github.event_name == 'schedule' && 'auto' || inputs.group }}
           ${{ inputs.force && '--force' || '' }}
           ${{ inputs.test_email && '--test-email' || '' }}
+          ${{ inputs.try_keywords && '--try-keywords' || '' }}
