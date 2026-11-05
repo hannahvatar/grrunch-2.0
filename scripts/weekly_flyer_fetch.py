@@ -506,12 +506,12 @@ Deals to tag (index | name | category):
 Return keywords for every index."""
 
 
-def keyword_context():
+def keyword_context(before_week=None):
     """Her past keywords (most recent first, one per distinct name) and the
     recipe ingredient tags in use, for suggest_keywords()."""
     deals = supabase_all(
         "/rest/v1/curated_deals?status=eq.approved&usage=eq.recipes&order=flyer_valid_from.desc,id.asc"
-        "&select=item_name,keyword_matches"
+        "&select=item_name,keyword_matches" + (f"&flyer_valid_from=lt.{before_week}" if before_week else "")
     )
     examples, known = [], {}
     for d in deals:
@@ -832,7 +832,7 @@ def supabase_all(path, page=1000):
         offset += page
 
 
-def reviewed_pricing():
+def reviewed_pricing(before_week):
     """Pricing refinements Anabelle made by hand in dev-deals (price unit,
     package weight, recipes/deals usage) for items seen in earlier weeks,
     keyed by (chain, normalized name) -- carried onto the same item when it
@@ -841,7 +841,8 @@ def reviewed_pricing():
     # Approved rows only: a rejected row's fields were never checked
     # (2026-11-05). Oldest first, so the latest approval wins.
     rows = supabase_all(
-        "/rest/v1/curated_deals?status=eq.approved&pricing_reviewed_at=not.is.null&order=pricing_reviewed_at.asc,id.asc"
+        f"/rest/v1/curated_deals?status=eq.approved&pricing_reviewed_at=not.is.null&flyer_valid_from=lt.{before_week}"
+        "&order=pricing_reviewed_at.asc,id.asc"
         "&select=chain_name,item_name,price_unit,package_weight_g,package_weight_g_source,package_volume_ml,"
         "bundle_count,fragment_by_weight,usage,keyword_matches,original_price,original_price_source,"
         "pricing_reviewed_at"
@@ -1081,7 +1082,7 @@ def main():
     client = anthropic.Anthropic()
     # Read-only, so a dry run uses them too when it can reach Supabase.
     try:
-        prior = reviewed_pricing()
+        prior = reviewed_pricing(thursday.isoformat())
         history = past_decisions(thursday.isoformat())
     except Exception as exc:
         if not args.dry_run:
@@ -1089,7 +1090,7 @@ def main():
         say(f"(dry run without past reviews: {exc})")
         prior, history = {}, {}
     try:
-        kw_context = keyword_context()
+        kw_context = keyword_context(thursday.isoformat())
     except Exception as exc:
         say(f"warning: couldn't load past keywords: {exc}")
         kw_context = {"examples": [], "tags": [], "known": {}}

@@ -51,7 +51,29 @@ type PriceUnit = Database['public']['Enums']['deal_price_unit'];
 // 'reference' one as a strikethrough "was $X" -- see lib/curatedDeals.ts.
 type OriginalPriceSource = 'flyer' | 'reference';
 type DealUsage = 'recipes' | 'deals';
-type StatusFilter = 'pending' | 'approved' | 'rejected' | 'all';
+type StatusFilter = 'pending' | 'set_aside' | 'approved' | 'rejected' | 'all';
+
+// The status tab a deal lists under. A pending deal the weekly fetch set
+// aside (set_aside_reason, 20261105010000_deal_review_prefill.sql) goes
+// under "Set aside" instead of "Needs review"; it can still be approved
+// or rejected from there, which clears the reason.
+function statusTab(deal: CuratedDeal): Exclude<StatusFilter, 'all'> {
+  return deal.status === 'pending' && deal.set_aside_reason ? 'set_aside' : deal.status;
+}
+
+// The weekly fetch's AI estimate of the item's BC average regular price,
+// offered as the reference when StatCan has no match.
+interface SuggestedReference {
+  name: string;
+  avg_price: number;
+  unit: string;
+  reasoning: string;
+  pct_below: number;
+}
+function suggestedReference(deal: CuratedDeal): SuggestedReference | null {
+  const s = deal.suggested_reference as SuggestedReference | null;
+  return s && typeof s.avg_price === 'number' && typeof s.unit === 'string' ? s : null;
+}
 
 // See supabase/migrations/20260819010000_curated_deals_usage_classification.sql
 // and 20260819030000_curated_deals_usage_drop_both.sql -- Anabelle's
@@ -83,6 +105,7 @@ const WEEK_OPTIONS: { value: DealWeek; label: string }[] = [
 
 const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: 'pending', label: 'Needs review' },
+  { value: 'set_aside', label: 'Set aside' },
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'all', label: 'All' },
@@ -466,7 +489,7 @@ export default function DevDealsScreen() {
     );
   }
 
-  const statusScoped = weekDeals.filter((d) => statusFilter === 'all' || d.status === statusFilter);
+  const statusScoped = weekDeals.filter((d) => statusFilter === 'all' || statusTab(d) === statusFilter);
 
   // Options are built from whatever zones actually appear across every
   // loaded deal, not a hardcoded list -- stays correct as more deals get
@@ -489,7 +512,7 @@ export default function DevDealsScreen() {
   // tab is the one place that narrows to the work queue.
   const q = search.trim().toLowerCase();
   const matchesFilters = (d: CuratedDeal) =>
-    (statusFilter === 'all' || d.status === statusFilter) &&
+    (statusFilter === 'all' || statusTab(d) === statusFilter) &&
     (zoneFilter === 'all' || (zoneFilter === NO_ZONE ? d.zone === null : d.zone === zoneFilter)) &&
     (!q || d.item_name.toLowerCase().includes(q) || d.chain_name.toLowerCase().includes(q));
 
@@ -836,8 +859,21 @@ function DealPriceLine({ deal, showStatus }: { deal: CuratedDeal; showStatus: bo
           <Text style={styles.unreviewedBadgeText}>Not reviewed</Text>
         </View>
       )}
+      {/* The fetch's AI average, before she approves a reference. */}
+      {deal.original_price == null && suggestedReference(deal) && (
+        <Text style={styles.note}>
+          AI estimate: {formatPctVsAverage(suggestedReference(deal)!.pct_below)}
+        </Text>
+      )}
+      {statusTab(deal) === 'set_aside' && <Text style={styles.note}>Set aside: {deal.set_aside_reason}</Text>}
     </View>
   );
+}
+
+function formatPctVsAverage(pctBelow: number): string {
+  if (pctBelow > 0) return `${pctBelow}% below the BC average`;
+  if (pctBelow < 0) return `${-pctBelow}% above the BC average`;
+  return 'same as the BC average';
 }
 
 interface CutoutViewProps {
@@ -1388,7 +1424,8 @@ function PublishWeekCard({
   const [closesAt, setClosesAt] = useState<string | null>(null);
 
   const approved = draftDeals.filter((d) => d.status === 'approved').length;
-  const pending = draftDeals.filter((d) => d.status === 'pending').length;
+  const pending = draftDeals.filter((d) => statusTab(d) === 'pending').length;
+  const setAside = draftDeals.filter((d) => statusTab(d) === 'set_aside').length;
   const flyerDates = draftDeals.filter((d) => d.product_url !== '');
   const from = flyerDates.map((d) => d.flyer_valid_from).sort()[0];
   const to = flyerDates.map((d) => d.flyer_valid_to).sort().reverse()[0];
@@ -1432,7 +1469,8 @@ function PublishWeekCard({
         Draft week{from && to ? ` · ${from} to ${to}` : ''}
       </Text>
       <Text style={styles.note}>
-        {approved} approved · {pending} still need review · {featuredNextCount} recipe
+        {approved} approved · {pending} still need review{setAside > 0 ? ` · ${setAside} set aside` : ''} ·{' '}
+        {featuredNextCount} recipe
         {featuredNextCount === 1 ? '' : 's'} featured for next week
       </Text>
       {closesAt && <Text style={styles.note}>Live week closes {formatBCDateTime(closesAt)}</Text>}
@@ -1815,6 +1853,15 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
       return;
     }
     setAiError(null);
+    // The weekly fetch already estimated this exact wording on this basis:
+    // use it instead of asking again.
+    if (query === itemName && suggestedShown) {
+      setPickedReference(suggestedShown);
+      setDecision('undecided');
+      setSearchOpen(false);
+      setSearchQuery('');
+      return;
+    }
     setAiLoading(true);
     // No store name -- the estimate is a BC-wide average like StatCan's,
     // not this store's shelf price (see the function's header comment).
@@ -1920,7 +1967,16 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
   // make, else the best-ranked one).
   const autoMatches = statcan ? rankReferenceCandidates(itemName, statcan, [], []) : [];
   const autoMatch = autoMatches.find((c) => c.isEnginePick) ?? autoMatches[0] ?? null;
-  const reference: ShownReference | null = pickedReference ?? autoMatch;
+  // The weekly fetch's AI estimate (suggestedReference), ready to approve
+  // when StatCan has nothing -- and only when it was priced on the same
+  // basis this form now compares on (per kg / per L / per item).
+  const suggestion = suggestedReference(deal);
+  const basisMode = ['g', 'kg', 'lb'].includes(basis.unit) ? '1 kg' : ['ml', 'L'].includes(basis.unit) ? '1 L' : '1 ea';
+  const suggestedShown: ShownReference | null =
+    suggestion && suggestion.unit === basisMode
+      ? { name: suggestion.name, avgPrice: suggestion.avg_price, unit: suggestion.unit, aiReasoning: suggestion.reasoning }
+      : null;
+  const reference: ShownReference | null = pickedReference ?? autoMatch ?? suggestedShown;
   const referenceLabel = reference?.aiReasoning !== undefined ? 'the AI estimate' : 'StatCan';
   const converted =
     reference && priceNum !== null
@@ -2091,6 +2147,11 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
           </>
         )}
         {deal.pick_reason && <Text style={styles.pickReason}>{deal.pick_reason}</Text>}
+        {statusTab(deal) === 'set_aside' && (
+          <Text style={styles.fieldHint}>
+            Set aside by the weekly fetch: {deal.set_aside_reason}. Approve or reject it as usual.
+          </Text>
+        )}
         {/* Anabelle, 2026-09-30: "I need to split Angie's Boom Chicka Pop
             Popcorn" -- one name, two flavours on the cutout. */}
         <Pressable style={[styles.tertiaryButton, styles.splitFromDeal]} onPress={onStartSplit}>
