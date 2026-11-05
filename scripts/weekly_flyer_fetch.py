@@ -651,17 +651,20 @@ def deal_basis(row):
     """(mode, the deal's own price per that basis) -- mode is "kg", "L"
     or "item". Mirrors how dev-deals compares a deal to a reference."""
     price, unit, bundle = row["price"], row["price_unit"], row["bundle_count"]
+    count = bundle or 1
     if unit == "lb":
         return "kg", price / GRAMS_PER_LB * 1000
     if unit == "kg":
         return "kg", price
     if unit == "100g":
         return "kg", price * 10
-    if unit == "package" and row["package_weight_g"]:
-        return "kg", price / row["package_weight_g"] * 1000
-    if unit == "package" and row["package_volume_ml"]:
-        return "L", price / row["package_volume_ml"] * 1000
-    return "item", price / (bundle or 1)
+    # A package or an each/multi-buy with a known size compares by weight
+    # or volume (a multi-buy stores ONE item's size, for the whole price).
+    if row["package_weight_g"]:
+        return "kg", price / (row["package_weight_g"] * count) * 1000
+    if row["package_volume_ml"]:
+        return "L", price / (row["package_volume_ml"] * count) * 1000
+    return "item", price / count
 
 
 def estimate_references(client, rows):
@@ -723,8 +726,12 @@ def set_aside(rows, history):
     still approve any of them). Anabelle, 2026-11-05, from her last two
     reviews: 60% of candidates were rejected; points-only offers were
     approved 22% of the time, member prices 0%, and items rejected every
-    earlier week were rejected again 39 times out of 44. A deal the tile
-    prints a real saving for is never set aside for having no saving."""
+    earlier week were rejected again 39 times out of 44.
+
+    Deals the AI average says have no saving are NOT set aside: in a test
+    on the 2026-11-05 flyers that would have hidden 4 deals she approved
+    (the AI average disagreed with the reference she checked). dev-deals
+    lists them last in "Needs review" instead (Anabelle, 2026-11-05)."""
     count = 0
     for r in rows:
         text = r["_saving_text"].lower()
@@ -738,10 +745,6 @@ def set_aside(rows, history):
             reason = "Member price offer"
         elif ("pts" in text or "points" in text) and r["original_price"] is None:
             reason = "Points offer only, no price saving"
-        elif r["original_price"] is None and ref and ref["pct_below"] <= 0:
-            per = {"1 kg": "kg", "1 L": "L", "1 ea": "item"}[ref["unit"]]
-            vs = "same as" if ref["pct_below"] == 0 else f"about {abs(ref['pct_below'])}% above"
-            reason = f"No saving: {vs} the BC average (AI estimate ${ref['avg_price']:.2f} per {per})"
         if reason:
             r["set_aside_reason"] = reason
             count += 1

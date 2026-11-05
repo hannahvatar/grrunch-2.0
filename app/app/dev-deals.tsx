@@ -532,14 +532,32 @@ export default function DevDealsScreen() {
       const lastReviewed = Math.max(
         ...c.deals.map((d) => (d.pricing_reviewed_at ? new Date(d.pricing_reviewed_at).getTime() : 0))
       );
-      return { cutout: c, title: cutoutTitle(c), unreviewed, lastReviewed, savings: bestSavingsDeal(c.deals.filter(matchesFilters)) };
+      return {
+        cutout: c,
+        title: cutoutTitle(c),
+        unreviewed,
+        lastReviewed,
+        savings: bestSavingsDeal(c.deals.filter(matchesFilters)),
+        expectedSaving: expectedSavingPct(c.deals.filter(matchesFilters)),
+      };
     })
     .sort((a, b) => {
       // Approved tab: biggest saving first (Anabelle, 2026-10-28: "reorganize
       // by the most saving").
       if (statusFilter === 'approved') return (b.savings?.discount_pct ?? 0) - (a.savings?.discount_pct ?? 0);
       if (a.unreviewed !== b.unreviewed) return a.unreviewed ? -1 : 1;
-      if (a.unreviewed) return a.title.localeCompare(b.title);
+      // Not reviewed yet: biggest expected saving first, and deals the AI
+      // average says have no saving last (Anabelle, 2026-11-05: kept in
+      // "Needs review" rather than set aside, so no good deal is hidden).
+      if (a.unreviewed) {
+        const rank = (pct: number | null) => (pct === null ? 1 : pct > 0 ? 0 : 2);
+        const byRank = rank(a.expectedSaving) - rank(b.expectedSaving);
+        if (byRank !== 0) return byRank;
+        if (a.expectedSaving !== null && b.expectedSaving !== null && a.expectedSaving !== b.expectedSaving) {
+          return b.expectedSaving - a.expectedSaving;
+        }
+        return a.title.localeCompare(b.title);
+      }
       return b.lastReviewed - a.lastReviewed;
     });
 
@@ -799,6 +817,19 @@ function bestSavingsDeal(deals: CuratedDeal[]): CuratedDeal | null {
     (best, d) => (d.discount_pct != null && (!best || d.discount_pct > (best.discount_pct ?? 0)) ? d : best),
     null
   );
+}
+
+// The best saving a cutout's deals are expected to have before review:
+// the real one when a regular price or reference is saved, else the
+// weekly fetch's AI estimate. Null when there's nothing to go on.
+function expectedSavingPct(deals: CuratedDeal[]): number | null {
+  let best: number | null = null;
+  for (const d of deals) {
+    const pct =
+      d.original_price != null && d.discount_pct != null ? d.discount_pct : (suggestedReference(d)?.pct_below ?? null);
+    if (pct !== null && (best === null || pct > best)) best = pct;
+  }
+  return best;
 }
 
 // Same three badges as Home's deal tiles: a real store discount (blue), a
