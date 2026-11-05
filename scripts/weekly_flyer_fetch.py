@@ -66,15 +66,17 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import anthropic
 
 HERE = Path(__file__).resolve().parent
-VANCOUVER = ZoneInfo("America/Vancouver")
+# BC time. BC stopped changing its clocks in 2026 and stays on UTC-7 all
+# year; a fixed offset avoids depending on the runner's time-zone data,
+# which may still have Vancouver falling back to UTC-8 (2026-11-05).
+VANCOUVER = timezone(timedelta(hours=-7), "BC")
 
 GROUPS = {
     "tuesday": ["No Frills", "Real Canadian Superstore"],
