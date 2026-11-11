@@ -1756,6 +1756,19 @@ export function portionCost(
     if (Number.isNaN(byWeight.amount) || byWeight.baseUnit !== 'g') return undefined;
     return Math.round(deal.price * multiplier * 100) / 100;
   }
+  // Priced by weight with the rate's own weight on file ($0.99/lb, stored
+  // as 454 g): the cost is simply the weight used at that rate, even past
+  // 1 lb. The fraction path below gave up at >= 1 "package", so 700 g of
+  // kabocha showed no cost and read as 1 lb for $0.99 (Anabelle,
+  // 2026-11-11, Kabocha Soboro).
+  // Same rule as compute_deal_tag_pricing, which only scales by weight
+  // when fragment_by_weight is on.
+  if (deal.fragmentByWeight && deal.price != null && deal.packageWeightG && (deal.priceUnit === 'lb' || deal.priceUnit === 'kg' || deal.priceUnit === '100g')) {
+    const byWeight = parseUnitAmount(quantity, unit);
+    if (!Number.isNaN(byWeight.amount) && byWeight.baseUnit === 'g') {
+      return Math.round(deal.price * ((byWeight.amount * multiplier) / deal.packageWeightG) * 100) / 100;
+    }
+  }
   if (!deal.fragmentByWeight || deal.price == null) return undefined;
   const ua = parseUnitAmount(quantity, unit);
   if (Number.isNaN(ua.amount)) return undefined;
