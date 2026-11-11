@@ -35,6 +35,8 @@ export interface Deal {
   priceUnit?: 'package' | 'each' | 'lb' | 'kg' | '100g';
   packageWeightG?: number;
   packageVolumeMl?: number;
+  // The unit the flyer prints the size in ("5 lb"); see SizeUnit.
+  packageSizeUnit?: SizeUnit;
   // A multi-buy ("2 for $7"): the price and original price are for this
   // many items.
   bundleCount?: number;
@@ -137,11 +139,20 @@ export function formatComparePriceLabel(originalPrice: number, unitSuffix = ''):
 // 2", like dev-deals' own price line), or a package of a known size
 // ("/665 g", "/500 ml"), else "/pkg". The price beside it is the stored
 // price as reviewed, never converted.
+// The unit a package size is printed in on the flyer (curated_deals.
+// package_size_unit). The size itself is always stored in g / ml.
+export type SizeUnit = 'g' | 'kg' | 'lb' | 'ml' | 'L';
+const GRAMS_PER_LB = 453.592;
+
 export function priceUnitSuffix(
   priceUnit: 'package' | 'each' | 'lb' | 'kg' | '100g' | undefined,
   packageWeightG: number | undefined,
   packageVolumeMl?: number,
-  bundleCount?: number
+  bundleCount?: number,
+  // The size unit the flyer prints (package_size_unit): "/5 lb", not
+  // "/2.27 kg" (Anabelle, 2026-11-11: "Keep original unit"). Unknown on
+  // older rows -- those keep the g / kg / ml / L reading below.
+  sizeUnit?: SizeUnit
 ): string {
   if (bundleCount && bundleCount > 1) return `\u00A0for\u00A0${bundleCount}`;
   if (priceUnit === 'each') return '\u00A0each';
@@ -149,9 +160,14 @@ export function priceUnitSuffix(
   if (priceUnit === 'kg') return '/kg';
   if (priceUnit === '100g') return '/100\u00A0g';
   if (packageWeightG) {
+    if (sizeUnit === 'lb') return `/${trimAmount(packageWeightG / GRAMS_PER_LB)}\u00A0lb`;
+    if (sizeUnit === 'g') return `/${Math.round(packageWeightG)}\u00A0g`;
+    if (sizeUnit === 'kg') return `/${trimAmount(packageWeightG / 1000)}\u00A0kg`;
     return packageWeightG >= 1000 ? `/${trimAmount(packageWeightG / 1000)}\u00A0kg` : `/${Math.round(packageWeightG)}\u00A0g`;
   }
   if (packageVolumeMl) {
+    if (sizeUnit === 'ml') return `/${Math.round(packageVolumeMl)}\u00A0ml`;
+    if (sizeUnit === 'L') return `/${trimAmount(packageVolumeMl / 1000)}\u00A0L`;
     return packageVolumeMl >= 1000 ? `/${trimAmount(packageVolumeMl / 1000)}\u00A0L` : `/${Math.round(packageVolumeMl)}\u00A0ml`;
   }
   return '/pkg';
@@ -191,6 +207,7 @@ function mapRowToDeal(row: {
   price_unit?: string | null;
   package_weight_g?: number | null;
   package_volume_ml?: number | null;
+  package_size_unit?: string | null;
   bundle_count?: number | null;
   home_pick?: number | null;
   home_free?: boolean | null;
@@ -212,6 +229,7 @@ function mapRowToDeal(row: {
     priceUnit: (row.price_unit ?? undefined) as Deal['priceUnit'],
     packageWeightG: row.package_weight_g ?? undefined,
     packageVolumeMl: row.package_volume_ml ?? undefined,
+    packageSizeUnit: (row.package_size_unit ?? undefined) as SizeUnit | undefined,
     bundleCount: row.bundle_count ?? undefined,
     homePick: row.home_pick ?? null,
     homeFree: row.home_free ?? false,

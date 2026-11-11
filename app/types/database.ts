@@ -105,6 +105,7 @@ export type Database = {
           original_price: number | null
           original_price_source: string
           package_volume_ml: number | null
+          package_size_unit: string | null
           package_weight_g: number | null
           package_weight_g_source: string | null
           pick_reason: string | null
@@ -143,6 +144,7 @@ export type Database = {
           original_price?: number | null
           original_price_source?: string
           package_volume_ml?: number | null
+          package_size_unit?: string | null
           package_weight_g?: number | null
           package_weight_g_source?: string | null
           pick_reason?: string | null
@@ -181,6 +183,7 @@ export type Database = {
           original_price?: number | null
           original_price_source?: string
           package_volume_ml?: number | null
+          package_size_unit?: string | null
           package_weight_g?: number | null
           package_weight_g_source?: string | null
           pick_reason?: string | null

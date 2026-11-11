@@ -198,6 +198,7 @@ function sizeColumns(size: ProductSize, source: CuratedDealRow) {
       package_weight_g: null,
       package_weight_g_source: null,
       package_volume_ml: null,
+      package_size_unit: null,
     };
   }
   if ("price_unit" in size) {
@@ -206,6 +207,7 @@ function sizeColumns(size: ProductSize, source: CuratedDealRow) {
       package_weight_g: null,
       package_weight_g_source: null,
       package_volume_ml: null,
+      package_size_unit: null,
     };
   }
   const unit =
@@ -216,8 +218,15 @@ function sizeColumns(size: ProductSize, source: CuratedDealRow) {
         package_weight_g: Math.round(size.weight_g),
         package_weight_g_source: "label" as PackageWeightSource,
         package_volume_ml: null,
+        package_size_unit: null,
       }
-    : { ...unit, package_volume_ml: Math.round(size.volume_ml), package_weight_g: null, package_weight_g_source: null };
+    : {
+        ...unit,
+        package_volume_ml: Math.round(size.volume_ml),
+        package_weight_g: null,
+        package_weight_g_source: null,
+        package_size_unit: null,
+      };
 }
 
 function validationError(message: string) {

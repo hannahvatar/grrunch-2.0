@@ -133,6 +133,9 @@ const PER_UNIT_OPTIONS: { value: PerUnit; label: string }[] = [
   { value: 'unit', label: 'unit' },
 ];
 const GRAMS_PER_LB = 453.592;
+// "Price is per" units that describe a package size, saved as
+// package_size_unit so the size reads back the way the flyer prints it.
+const SIZE_UNITS_SAVED: PerUnit[] = ['g', 'kg', 'lb', 'ml', 'L'];
 
 // "per 1 lb" / "per 1 kg" are rates (price_unit lb/kg); any other amount
 // ("per 665 g", "per 5 lb") is a whole package of that weight (price_unit
@@ -167,6 +170,11 @@ function toStoredPrice(
 // saved row still said "package".
 function fromStoredPrice(deal: CuratedDeal, itemName: string): { qty: string; unit: PerUnit } {
   if (deal.price_unit === 'lb') return { qty: '1', unit: 'lb' };
+  // A known printed unit wins (Anabelle, 2026-11-11: "Farmer's Market
+  // Ambrosia Apples shows 5 lb but you fill in 2268 gr. Keep original
+  // unit"): 2268 g + 'lb' reads back as "5 lb".
+  const printed = inPrintedUnit(deal);
+  if (printed) return printed;
   if (deal.price_unit === 'kg') return { qty: '1', unit: 'kg' };
   if (deal.price_unit === '100g') return { qty: '100', unit: 'g' };
   // A multi-buy is stored as 'each' but keeps one item's size -- show that.
@@ -191,6 +199,26 @@ function fromStoredPrice(deal: CuratedDeal, itemName: string): { qty: string; un
   if (fromName.unit === 'ml') return { qty: fromName.quantity, unit: 'ml' };
   if (fromName.unit === 'L') return { qty: String(Math.round(parseFloat(fromName.quantity) * 1000)), unit: 'ml' };
   return { qty: '', unit: 'g' };
+}
+
+// A stored size restated in the unit the flyer prints it in
+// (package_size_unit), or null when that unit isn't known or doesn't fit
+// the stored size. Not for a per-lb/kg rate (handled above). A 1 lb or
+// 1 kg package reads as grams: "per 1 lb" saves as a per-lb rate.
+function inPrintedUnit(deal: CuratedDeal): { qty: string; unit: PerUnit } | null {
+  const unit = deal.package_size_unit;
+  const trim = (v: number) => String(Math.round(v * 100) / 100);
+  const g = deal.package_weight_g;
+  const ml = deal.package_volume_ml;
+  if (g != null && (unit === 'lb' || unit === 'kg')) {
+    const qty = unit === 'lb' ? g / GRAMS_PER_LB : g / 1000;
+    if (Math.round(qty * 100) / 100 === 1) return { qty: String(Math.round(g)), unit: 'g' };
+    return { qty: trim(qty), unit };
+  }
+  if (g != null && unit === 'g') return { qty: String(g), unit: 'g' };
+  if (ml != null && unit === 'L') return { qty: trim(ml / 1000), unit: 'L' };
+  if (ml != null && unit === 'ml') return { qty: String(ml), unit: 'ml' };
+  return null;
 }
 
 // One card per flyer CUTOUT, not per curated_deals row -- Anabelle:
@@ -1992,6 +2020,12 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
   const parsedMinQty = minQtyText.trim() === '' ? null : Number(minQtyText);
   const minQty = parsedMinQty !== null && Number.isInteger(parsedMinQty) && parsedMinQty >= 2 ? parsedMinQty : null;
   const basis = priceBasis(formUnit, deal, itemName, weightG, volumeMl);
+  // The size as entered, in the flyer's own unit ("5 lb", not "2268 g")
+  // for the price lines; basis itself stays in g / ml for comparing.
+  const sizeLabel =
+    formUnit === 'package' && perQty !== null && (perUnit === 'lb' || perUnit === 'kg' || perUnit === 'L')
+      ? `${perQty} ${perUnit}`
+      : basis.label;
 
   // The StatCan item shown for approval: one picked from search, else
   // the automatic match (the pick the app's own pricing engine would
@@ -2099,6 +2133,11 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
         // A package is priced by weight OR volume -- whichever unit was
         // picked; the other is cleared.
         package_volume_ml: formUnit === 'package' ? volumeMl : deal.package_volume_ml,
+        // The unit the size was entered in ("5 lb" stays lb), only when a
+        // size is saved with it; otherwise the stored one stays.
+        ...(weightG !== null || volumeMl !== null
+          ? { package_size_unit: SIZE_UNITS_SAVED.includes(perUnit) ? perUnit : null }
+          : {}),
         // No longer asked on this screen -- sent back exactly as stored.
         quantity_estimated: deal.quantity_estimated,
         zone: deal.zone,
@@ -2204,9 +2243,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
                   ? 'No price saved'
                   : bundle !== null
                     ? `${formatMoney(priceNum)} for ${bundle}${
-                        basis.label === 'each' || basis.label === 'package' ? '' : ` · ${basis.label} each`
+                        basis.label === 'each' || basis.label === 'package' ? '' : ` · ${sizeLabel} each`
                       }`
-                    : `${formatMoney(priceNum)} / ${basis.label}`}
+                    : `${formatMoney(priceNum)} / ${sizeLabel}`}
                 {priceNum !== null && minQty !== null ? ` · buy ${minQty}+` : ''}
               </Text>
               {/* Tertiary treatment -- same white-fill/1.5px-INK pill as
@@ -2273,7 +2312,7 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
           <View style={styles.sectionCard}>
             <Text style={[styles.sectionTitle, styles.sectionTitleInCard]}>Previous price</Text>
             <Text style={styles.bigPrice}>
-              {formatMoney(previousNum)} / {basis.label}
+              {formatMoney(previousNum)} / {sizeLabel}
             </Text>
             {priceNum !== null && (
               <Text style={previousNum > priceNum ? styles.verdictGood : styles.verdictBad}>
