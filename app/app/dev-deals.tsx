@@ -1968,7 +1968,9 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const parsedPrice = priceText.trim() === '' ? null : parseFloat(priceText);
-  const priceNum = parsedPrice !== null && Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : null;
+  // $0 is allowed: a free giveaway (Anabelle, 2026-11-11, RCSS russet
+  // potatoes "free for the first 300 customers").
+  const priceNum = parsedPrice !== null && Number.isFinite(parsedPrice) && parsedPrice >= 0 ? parsedPrice : null;
   const parsedPrevious = previousText.trim() === '' ? null : parseFloat(previousText);
   const previousNum =
     parsedPrevious !== null && Number.isFinite(parsedPrevious) && parsedPrevious > 0 ? parsedPrevious : null;
@@ -2040,7 +2042,7 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
 
   function buildBody(): { body: Record<string, unknown> } | { error: string } {
     if (priceText.trim() !== '' && priceNum === null) {
-      return { error: 'The cutout price must be a positive number (or blank if unknown).' };
+      return { error: 'The cutout price must be 0 (free) or more, or blank if unknown.' };
     }
     if (previousText.trim() !== '' && previousNum === null) {
       return { error: 'The previous price must be a positive number (or blank if the cutout shows none).' };

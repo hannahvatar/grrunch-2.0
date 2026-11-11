@@ -435,10 +435,14 @@ function DealTile({ deal, width }: { deal: Deal; width: number }) {
   const price = deal.price;
   const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount);
   const [zoomOpen, setZoomOpen] = useState(false);
+  // A $0 deal (a free giveaway) says "Free!" in the Wow spot instead
+  // (Anabelle, 2026-11-11), whatever its saving badge says.
+  const free = price === 0;
   const wow =
-    deal.discountPct >= WOW_DISCOUNT_PCT &&
-    (showsRealDiscount(deal.discountPct, deal.originalPriceSource) ||
-      isGreatReferenceValue(deal.discountPct, deal.originalPriceSource));
+    free ||
+    (deal.discountPct >= WOW_DISCOUNT_PCT &&
+      (showsRealDiscount(deal.discountPct, deal.originalPriceSource) ||
+        isGreatReferenceValue(deal.discountPct, deal.originalPriceSource)));
   return (
     <View style={[styles.dealTile, { width }]}>
       <View style={styles.dealTileImageWrap}>
@@ -486,8 +490,8 @@ function DealTile({ deal, width }: { deal: Deal; width: number }) {
             </View>
           )}
           {wow && (
-            <Text style={styles.wow} accessibilityLabel="Wow">
-              Wow!
+            <Text style={styles.wow} accessibilityLabel={free ? 'Free' : 'Wow'}>
+              {free ? 'Free!' : 'Wow!'}
             </Text>
           )}
         </View>
