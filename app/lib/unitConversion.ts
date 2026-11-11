@@ -197,6 +197,9 @@ export const STAPLE_DENSITIES_G_PER_CUP: Record<string, number> = {
   // Seoul Food Bowl (2026-11-11) -- thick chili paste, ~19 g/tbsp. See
   // the staple_densities table (Supabase) for the server-side twin.
   gochujang: 300,
+  // Seoul Food Bowl -- the server already had this (staple_densities,
+  // 144 g/cup); the app was missing it, so 1 tbsp showed no avg. cost.
+  'sesame seeds': 144,
   // CORRECTION to the second-batch comment above: "a liquid condiment
   // priced in mL already bridges with no density entry needed" was
   // wrong. That's true for PRICE (recipe mL vs. reference mL match
