@@ -183,11 +183,22 @@ export default function RecipeScreen() {
     .map((card) => card.trim())
     .filter(Boolean);
   // The card a chef hat jumps to: the one that names the ingredient
-  // ("Kabocha squash" -> the kabocha card), else the first.
+  // ("Kabocha squash" -> the kabocha card), else the first. Words are
+  // tried in order and a card that opens with the word wins, so
+  // "Gochujang (Korean chili paste)" finds the gochujang card, not the
+  // seaweed card that mentions Koreans.
   function tipCardFor(ingredientName: string) {
     const words = ingredientName.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4);
-    const index = tipCards.findIndex((card) => words.some((w) => card.toLowerCase().includes(w)));
-    return index === -1 ? 0 : index;
+    const lower = tipCards.map((card) => card.toLowerCase());
+    for (const word of words) {
+      const opens = lower.findIndex((card) => card.slice(0, 80).includes(word));
+      if (opens !== -1) return opens;
+    }
+    for (const word of words) {
+      const mentions = lower.findIndex((card) => card.includes(word));
+      if (mentions !== -1) return mentions;
+    }
+    return 0;
   }
 
   // groupDealItemsTogether (lib/recipes.ts) already sorted these to the
