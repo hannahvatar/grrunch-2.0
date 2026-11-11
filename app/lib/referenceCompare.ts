@@ -66,7 +66,9 @@ export function compare(
   unit: string,
   benchmark: Benchmark
 ): ComparisonOutcome {
-  if (!Number.isFinite(itemPrice) || itemPrice <= 0) {
+  // $0 is a real flyer price: a free giveaway like RCSS's "free russet
+  // potatoes for the first 300 customers" (Anabelle, 2026-11-11).
+  if (!Number.isFinite(itemPrice) || itemPrice < 0) {
     return { ok: false, reason: 'Enter the price shown on the flyer.' };
   }
 
@@ -212,5 +214,8 @@ export function benchmarkCostForQuantity(
 export const IMPLAUSIBLE_BENCHMARK_RATIO = 5;
 
 export function isImplausibleBenchmark(comparison: Comparison): boolean {
+  // A free item ($0, typed on purpose) is any multiple below its
+  // reference -- that's the point, not a unit mix-up.
+  if (comparison.itemPerBasis === 0) return false;
   return comparison.benchmarkPerBasis > comparison.itemPerBasis * IMPLAUSIBLE_BENCHMARK_RATIO;
 }

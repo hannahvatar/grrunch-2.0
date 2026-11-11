@@ -441,7 +441,7 @@ def final_pick(client, chain, food, picks, readings):
     lines = []
     for e in food:
         r = readings.get(e["id"], {})
-        price = to_number(e["price"]) or to_number(r.get("sale_price"))
+        price = first_number(e["price"], r.get("sale_price"))
         if price is None:
             continue
         unit = r.get("price_unit") or "package"
@@ -886,6 +886,17 @@ def to_number(value):
         return None
 
 
+def first_number(*values):
+    # The first readable number, keeping 0: a free giveaway ($0, e.g. RCSS
+    # russet potatoes "free for the first 300 customers", 2026-11-11) is a
+    # real price, which a plain `or` would skip as falsy.
+    for value in values:
+        number = to_number(value)
+        if number is not None:
+            return number
+    return None
+
+
 def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones, prior):
     rows = []
     for e in entries:
@@ -893,7 +904,7 @@ def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones
         if not pick or e["id"] not in chosen:
             continue
         reading = readings.get(e["id"], {})
-        price = to_number(e["price"]) or to_number(reading.get("sale_price"))
+        price = first_number(e["price"], reading.get("sale_price"))
         if price is None:
             continue  # no readable price anywhere -- not reviewable as a deal
         regular = to_number(reading.get("regular_price"))
