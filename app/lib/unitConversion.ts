@@ -1409,8 +1409,19 @@ const CONTAINER_SIZE_LABELS: Record<string, string> = {
 // per-ingredient label table -- the WORD still needs pluralizing
 // generically since there's no longer a hand-written label to reuse.
 function pluralizeContainerWord(word: string): string {
+  // Already plural ("8 eggs" written with unit "eggs"): leave it, or it
+  // reads "8 eggses" (Anabelle, 2026-11-11, Tortilla Espanola).
+  if (/[^s]s$/i.test(word)) return word;
   if (/[sxz]$|[cs]h$/i.test(word)) return `${word}es`;
   return `${word}s`;
+}
+
+// "eggs" -> "egg", "boxes" -> "box", "bunches" -> "bunch": the singular
+// for a count of 1, when the recipe wrote its unit in the plural.
+function singularizeContainerWord(word: string): string {
+  if (/(?:[sxz]|[cs]h)es$/i.test(word)) return word.slice(0, -2);
+  if (/[^s]s$/i.test(word)) return word.slice(0, -1);
+  return word;
 }
 
 // The counterpart to DEAL_ITEM_UNIT_LABELS above, for a deal item
@@ -1544,7 +1555,7 @@ export function describeUseQuantityText(
       // branch below.
       const count = Math.round(parseQuantity(quantity) * multiplier);
       const containerWord = (unit ?? '').trim();
-      return `Recipe uses ${count} ${count === 1 ? containerWord : pluralizeContainerWord(containerWord)}`;
+      return `Recipe uses ${count} ${count === 1 ? singularizeContainerWord(containerWord) : pluralizeContainerWord(containerWord)}`;
     }
   }
   // Counterpart to ALWAYS_SHOW_CONTAINER_COUNT in shouldShowUseQuantityText
@@ -1561,7 +1572,7 @@ export function describeUseQuantityText(
       if (alwaysShow) {
         const count = Math.round(parseQuantity(quantity) * multiplier);
         const containerWord = (unit ?? '').trim();
-        const word = count === 1 ? containerWord : pluralizeContainerWord(containerWord);
+        const word = count === 1 ? singularizeContainerWord(containerWord) : pluralizeContainerWord(containerWord);
         const size = Object.entries(CONTAINER_SIZE_LABELS).find(([name]) => {
           const words = normalizeWords(name);
           return words.length > 0 && words.every((w) => ingWords.includes(w));
