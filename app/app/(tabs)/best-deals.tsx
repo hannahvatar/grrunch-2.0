@@ -441,18 +441,18 @@ export default function BestDealsScreen() {
                             <View style={styles.priceRow}>
                               <Text style={styles.dealPrice}>
                                 ${deal.price.toFixed(2)}
-                                {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount)}
+                                {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount, deal.packageSizeUnit)}
                               </Text>
                               {showsRealDiscount(deal.discountPct, deal.originalPriceSource) && (
                                 <Text style={styles.dealOriginalPrice}>
                                   ${deal.originalPrice.toFixed(2)}
-                                  {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount)}
+                                  {priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount, deal.packageSizeUnit)}
                                 </Text>
                               )}
                             </View>
                             {isReferencePriced(deal.originalPriceSource) && (
                               <Text style={styles.dealCompareAnnotation}>
-                                {formatComparePriceLabel(deal.originalPrice, priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount))}
+                                {formatComparePriceLabel(deal.originalPrice, priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount, deal.packageSizeUnit))}
                               </Text>
                             )}
                             {/* Moved off the image overlay (was cramped/

@@ -17,6 +17,7 @@
 //     package_weight_g: number | null,
 //     package_weight_g_source: 'label' | 'measured' | 'estimated' | null,
 //     package_volume_ml?: number | null,
+//     package_size_unit?: 'g' | 'kg' | 'lb' | 'ml' | 'L' | null,
 //     quantity_estimated: boolean,
 //     original_price_source: 'flyer' | 'reference',
 //     usage: 'recipes' | 'deals' | 'both',
@@ -117,6 +118,8 @@ import { requireAdmin } from "../_shared/admin.ts";
 
 type DealPriceUnit = "package" | "each" | "lb" | "kg" | "100g";
 const PRICE_UNITS: DealPriceUnit[] = ["package", "each", "lb", "kg", "100g"];
+// The unit a package size is printed in (curated_deals.package_size_unit).
+const SIZE_UNITS = ["g", "kg", "lb", "ml", "L"];
 
 type PackageWeightSource = "label" | "measured" | "estimated";
 const PACKAGE_WEIGHT_SOURCES: PackageWeightSource[] = ["label", "measured", "estimated"];
@@ -162,6 +165,7 @@ interface Database {
           package_weight_g: number | null;
           package_weight_g_source: PackageWeightSource | null;
           package_volume_ml: number | null;
+          package_size_unit: string | null;
           bundle_count: number | null;
           min_quantity: number | null;
           fragment_by_weight: boolean;
@@ -181,6 +185,7 @@ interface Database {
           package_weight_g?: number | null;
           package_weight_g_source?: PackageWeightSource | null;
           package_volume_ml?: number | null;
+          package_size_unit?: string | null;
           bundle_count?: number | null;
           min_quantity?: number | null;
           fragment_by_weight?: boolean;
@@ -216,6 +221,9 @@ interface RequestBody {
   package_weight_g?: unknown;
   package_weight_g_source?: unknown;
   package_volume_ml?: unknown;
+  // The unit the size is printed in on the flyer (display only); omitted =
+  // leave the stored value alone.
+  package_size_unit?: unknown;
   // Multi-buy count ("2 for $3" -> 2), or null for a single-item price.
   // Optional: omitted = leave the stored value alone. See
   // 20260820020000_fragment_by_volume_and_bundle_count.sql.
@@ -262,6 +270,7 @@ export default {
       package_weight_g,
       package_weight_g_source,
       package_volume_ml,
+      package_size_unit,
       bundle_count,
       min_quantity,
       quantity_estimated,
@@ -320,6 +329,13 @@ export default {
       return validationError(
         "package_volume_ml must be null or a number of millilitres (5 or more) -- if you meant litres, convert first (1 L = 1000 ml).",
       );
+    }
+    if (
+      package_size_unit !== undefined &&
+      package_size_unit !== null &&
+      !SIZE_UNITS.includes(package_size_unit as string)
+    ) {
+      return validationError(`package_size_unit must be null or one of: ${SIZE_UNITS.join(", ")}.`);
     }
     if (
       bundle_count !== undefined &&
@@ -400,6 +416,7 @@ export default {
         package_weight_g: package_weight_g as number | null,
         package_weight_g_source: package_weight_g_source as PackageWeightSource | null,
         ...(package_volume_ml !== undefined ? { package_volume_ml: package_volume_ml as number | null } : {}),
+        ...(package_size_unit !== undefined ? { package_size_unit: package_size_unit as string | null } : {}),
         // A multi-buy is paired with fragment_by_weight so a recipe using
         // one of the two is credited half the bundle price (see the
         // bundle_count migration).

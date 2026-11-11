@@ -43,6 +43,7 @@ interface RecipeDealTagRow {
   fragment_by_weight?: boolean;
   package_weight_g?: number;
   package_volume_ml?: number;
+  package_size_unit?: string;
   bundle_count?: number;
   raw_price?: number;
   raw_original_price?: number;
@@ -69,6 +70,7 @@ function mapDealTag(tag: RecipeDealTagRow): DealTag {
     fragmentByWeight: tag.fragment_by_weight,
     packageWeightG: tag.package_weight_g,
     packageVolumeMl: tag.package_volume_ml,
+    packageSizeUnit: tag.package_size_unit as DealTag['packageSizeUnit'],
     bundleCount: tag.bundle_count,
     rawPrice: tag.raw_price,
     rawOriginalPrice: tag.raw_original_price,

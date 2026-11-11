@@ -433,7 +433,7 @@ function HomeRecipeCard({ meal, width, stacked }: { meal: Meal; width: number; s
 // store and price. Tapping it opens Weekly Deals.
 function DealTile({ deal, width }: { deal: Deal; width: number }) {
   const price = deal.price;
-  const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount);
+  const suffix = priceUnitSuffix(deal.priceUnit, deal.packageWeightG, deal.packageVolumeMl, deal.bundleCount, deal.packageSizeUnit);
   const [zoomOpen, setZoomOpen] = useState(false);
   // A $0 deal (a free giveaway) says "Free!" in the Wow spot instead
   // (Anabelle, 2026-11-11), whatever its saving badge says.

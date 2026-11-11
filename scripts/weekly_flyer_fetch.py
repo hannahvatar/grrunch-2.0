@@ -356,6 +356,8 @@ def pick_candidates(client, chain, entries):
 
 NULLABLE_NUMBER = {"anyOf": [{"type": "number"}, {"type": "null"}]}
 NULLABLE_INT = {"anyOf": [{"type": "integer"}, {"type": "null"}]}
+# The unit a package size is printed in (curated_deals.package_size_unit).
+SIZE_UNITS = ["g", "kg", "lb", "ml", "L"]
 READ_SCHEMA = {
     "type": "object",
     "properties": {
@@ -372,10 +374,11 @@ READ_SCHEMA = {
                     "saving_text": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                     "size_g": NULLABLE_NUMBER,
                     "size_ml": NULLABLE_NUMBER,
+                    "size_unit": {"anyOf": [{"type": "string", "enum": SIZE_UNITS}, {"type": "null"}]},
                     "pack_count": NULLABLE_INT,
                 },
                 "required": ["id", "sale_price", "regular_price", "price_unit", "multi_buy_qty", "saving_text",
-                             "size_g", "size_ml", "pack_count"],
+                             "size_g", "size_ml", "size_unit", "pack_count"],
                 "additionalProperties": False,
             },
         }
@@ -392,6 +395,7 @@ READ_PROMPT = """Each image below is one product tile cut out of a {chain} groce
 - saving_text: any saving the tile prints, copied short ("Reg. $12.99", "Save $3", "30% off", "2 for $5"); null if the tile shows no saving at all.
 - size_g: the package's net weight in grams when the tile or the flyer text gives one ("398 g" -> 398, "1.36 kg" -> 1360, "2 lb bag" -> 907). For a range or several sizes ("213-391 g", "567 / 580 g") give the LARGEST. null when no weight is printed (never guess), and null for a price per lb/kg/100g.
 - size_ml: the same for a volume in millilitres ("750 mL" -> 750, "1.89 L" -> 1890), largest of a range. null when none is printed.
+- size_unit: the unit that size is printed in on the tile: "g", "kg", "lb", "ml" or "L" ("5 lb bag" -> "lb", "1.36 kg" -> "kg", "398 g" -> "g", "1.89 L" -> "L"). When the tile prints both a pound and a metric size, the one printed biggest. null when size_g and size_ml are both null.
 - pack_count: how many separate pieces one price buys when the tile says so ("6 bagels", "bag of 6", "dozen eggs" -> 12, "3 pack"). Not the count of a multi-buy ("2 for $5" goes in multi_buy_qty). null when not printed.
 Each id is followed by the flyer's own text for that item, which often carries the size.
 Return one entry per id."""
@@ -847,7 +851,7 @@ def reviewed_pricing(before_week):
         f"/rest/v1/curated_deals?status=eq.approved&pricing_reviewed_at=not.is.null&flyer_valid_from=lt.{before_week}"
         "&order=pricing_reviewed_at.asc,id.asc"
         "&select=chain_name,item_name,price_unit,package_weight_g,package_weight_g_source,package_volume_ml,"
-        "bundle_count,fragment_by_weight,usage,keyword_matches,original_price,original_price_source,"
+        "package_size_unit,bundle_count,fragment_by_weight,usage,keyword_matches,original_price,original_price_source,"
         "pricing_reviewed_at"
     )
     return {(r["chain_name"], norm_name(r["item_name"])): r for r in rows}
@@ -927,6 +931,13 @@ def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones
         elif not bundle and pack and pack > 1 and unit in ("package", "each") and not size_g and not size_ml:
             unit, bundle = "each", pack
         per_weight = unit in ("lb", "kg", "100g")
+        # Only a unit that fits the size kept (a weight unit for a weight,
+        # a volume unit for a volume), and none for a per-weight rate.
+        size_unit = reading.get("size_unit")
+        if per_weight or not (
+            (size_g and size_unit in ("g", "kg", "lb")) or (size_ml and size_unit in ("ml", "L"))
+        ):
+            size_unit = None
         data, ctype = images.get(e["id"], (None, None))
         base = {
             "chain_name": chain,
@@ -950,6 +961,9 @@ def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones
             "package_weight_g": None if per_weight else size_g,
             "package_weight_g_source": None if per_weight or not size_g else "label",
             "package_volume_ml": None if per_weight else size_ml,
+            # Shown back in the flyer's own unit ("5 lb", not "2268 g";
+            # Anabelle, 2026-11-11: "Keep original unit").
+            "package_size_unit": size_unit,
             "fragment_by_weight": bool(bundle),
             "keyword_matches": [],
             "pick_reason": pick_reason(chosen[e["id"]], reading),
@@ -967,6 +981,7 @@ def build_rows(chain, entries, picks, chosen, readings, images, dates, all_zones
                 "package_weight_g": carried["package_weight_g"],
                 "package_weight_g_source": carried["package_weight_g_source"],
                 "package_volume_ml": carried["package_volume_ml"],
+                "package_size_unit": carried["package_size_unit"],
                 "fragment_by_weight": carried["fragment_by_weight"],
                 "usage": carried["usage"],
                 "keyword_matches": carried["keyword_matches"] or [],

@@ -72,6 +72,7 @@ interface Deal {
   price_unit: string | null;
   package_weight_g: number | null;
   package_volume_ml: number | null;
+  package_size_unit: string | null;
   bundle_count: number | null;
   image_url: string | null;
   home_pick: number | null;
@@ -119,12 +120,23 @@ function priceUnitSuffix(deal: Deal): string {
   if (deal.price_unit === "kg") return "/kg";
   if (deal.price_unit === "100g") return "/100&nbsp;g";
   const trim = (v: number) => String(Math.round(v * 100) / 100);
+  // The size unit the flyer prints, when known ("/5 lb").
   if (deal.package_weight_g) {
+    if (deal.package_size_unit === "lb") {
+      // Within 0.02 lb of a tenth reads as that tenth (4540 g = "10 lb").
+      const lb = deal.package_weight_g / 453.592;
+      const tenth = Math.round(lb * 10) / 10;
+      return `/${Math.abs(lb - tenth) < 0.02 ? tenth : trim(lb)}&nbsp;lb`;
+    }
+    if (deal.package_size_unit === "g") return `/${Math.round(deal.package_weight_g)}&nbsp;g`;
+    if (deal.package_size_unit === "kg") return `/${trim(deal.package_weight_g / 1000)}&nbsp;kg`;
     return deal.package_weight_g >= 1000
       ? `/${trim(deal.package_weight_g / 1000)}&nbsp;kg`
       : `/${Math.round(deal.package_weight_g)}&nbsp;g`;
   }
   if (deal.package_volume_ml) {
+    if (deal.package_size_unit === "ml") return `/${Math.round(deal.package_volume_ml)}&nbsp;ml`;
+    if (deal.package_size_unit === "L") return `/${trim(deal.package_volume_ml / 1000)}&nbsp;L`;
     return deal.package_volume_ml >= 1000
       ? `/${trim(deal.package_volume_ml / 1000)}&nbsp;L`
       : `/${Math.round(deal.package_volume_ml)}&nbsp;ml`;
@@ -265,7 +277,7 @@ function buildEmail(opts: {
 
 async function loadContent(db: Db): Promise<{ deals: Deal[]; recipes: Recipe[] }> {
   const dealColumns =
-    "item_name, chain_name, price, discount_pct, original_price_source, price_unit, package_weight_g, package_volume_ml, bundle_count, image_url, home_pick";
+    "item_name, chain_name, price, discount_pct, original_price_source, price_unit, package_weight_g, package_volume_ml, package_size_unit, bundle_count, image_url, home_pick";
   const { data: picked, error: dealError } = await db
     .from("curated_deals")
     .select(dealColumns)

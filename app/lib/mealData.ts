@@ -61,6 +61,8 @@ export interface DealTag {
   // a gram quantity already fragments against packageWeightG. See
   // 20260820020000_fragment_by_volume_and_bundle_count.sql.
   packageVolumeMl?: number;
+  // The unit the flyer prints the size in ("5 lb"); display only.
+  packageSizeUnit?: 'g' | 'kg' | 'lb' | 'ml' | 'L';
   // Set only when this deal's real flyer promo is a multi-buy bundle
   // (curated_deals.bundle_count, e.g. "2 bunches for $3" -> 2) rather
   // than a genuine single-unit rate -- lets a recipe using fewer than
