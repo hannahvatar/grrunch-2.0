@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { ArrowPathIcon, BuildingStorefrontIcon, ClockIcon, LockClosedIcon, MinusIcon, PlusIcon, XMarkIcon } from 'react-native-heroicons/outline';
 
 import { IngredientRow } from '../components/IngredientRow';
@@ -61,9 +61,23 @@ export default function RecipeScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   // Where the "Did you know?" card sits, for the chef hat next to its
   // ingredient (same onLayout approach as the companion recipes).
-  const [didYouKnowY, setDidYouKnowY] = useState<number | null>(null);
-  function scrollToDidYouKnow() {
-    if (didYouKnowY !== null) scrollViewRef.current?.scrollTo({ y: didYouKnowY, animated: true });
+  // One offset per card: recipes.did_you_know can hold several cards,
+  // separated by a "---" line (Anabelle, 2026-11-11: dashi gets its own
+  // card, apart from kabocha's).
+  // Refs, not state: the chef hat's handler can be a stale closure from
+  // an earlier render, which never saw the offsets. On web onLayout
+  // doesn't fire for these cards, so the card scrolls itself into view.
+  const didYouKnowY = useRef<Record<number, number>>({});
+  const didYouKnowCards = useRef<Record<number, View | null>>({});
+  function scrollToDidYouKnow(index: number) {
+    const target = didYouKnowCards.current[index] ? index : 0;
+    if (Platform.OS === 'web') {
+      const node = didYouKnowCards.current[target] as unknown as HTMLElement | null;
+      node?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const y = didYouKnowY.current[target];
+    if (y !== undefined) scrollViewRef.current?.scrollTo({ y, animated: true });
   }
   // Companion recipe cards default closed (Anabelle, 2026-10-22; were
   // open): only a key explicitly set to true reads as expanded; the
@@ -163,6 +177,17 @@ export default function RecipeScreen() {
         <Text style={styles.notFound}>Recipe not found.</Text>
       </View>
     );
+  }
+  const tipCards = (meal.didYouKnow ?? '')
+    .split(/\n\s*---\s*\n/)
+    .map((card) => card.trim())
+    .filter(Boolean);
+  // The card a chef hat jumps to: the one that names the ingredient
+  // ("Kabocha squash" -> the kabocha card), else the first.
+  function tipCardFor(ingredientName: string) {
+    const words = ingredientName.toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 4);
+    const index = tipCards.findIndex((card) => words.some((w) => card.toLowerCase().includes(w)));
+    return index === -1 ? 0 : index;
   }
 
   // groupDealItemsTogether (lib/recipes.ts) already sorted these to the
@@ -338,7 +363,7 @@ export default function RecipeScreen() {
                         ignoreExpiry={week === 'next'}
                         text={ingredient.dealDisplayText ?? ingredient.text}
                         dealTag={ingredient.dealTag}
-                        onTipPress={ingredient.didYouKnow && meal.didYouKnow ? scrollToDidYouKnow : undefined}
+                        onTipPress={ingredient.didYouKnow && tipCards.length > 0 ? () => scrollToDidYouKnow(tipCardFor(ingredient.name)) : undefined}
                         estimatedPrice={ingredient.estimatedPrice}
                         useQuantityText={ingredient.useQuantityText}
                         // Deal-tagged lines' own text never scales with the
@@ -402,7 +427,7 @@ export default function RecipeScreen() {
                       text={ingredient.text}
                       estimatedPrice={ingredient.estimatedPrice}
                       bulleted
-                      onTipPress={ingredient.didYouKnow && meal.didYouKnow ? scrollToDidYouKnow : undefined}
+                      onTipPress={ingredient.didYouKnow && tipCards.length > 0 ? () => scrollToDidYouKnow(tipCardFor(ingredient.name)) : undefined}
                       useQuantityText={ingredient.useQuantityText}
                     />
                   ))}
@@ -427,7 +452,7 @@ export default function RecipeScreen() {
                         text={ingredient.text}
                         estimatedPrice={ingredient.estimatedPrice}
                         bulleted
-                        onTipPress={ingredient.didYouKnow && meal.didYouKnow ? scrollToDidYouKnow : undefined}
+                        onTipPress={ingredient.didYouKnow && tipCards.length > 0 ? () => scrollToDidYouKnow(tipCardFor(ingredient.name)) : undefined}
                         useQuantityText={ingredient.useQuantityText}
                       />
                     );
@@ -535,12 +560,15 @@ export default function RecipeScreen() {
             unfamiliar ingredient (what it is, where to find it, what to
             swap in), at the very bottom. The chef hat next to that
             ingredient jumps here. Same card look as Leftovers. */}
-        {!!meal.didYouKnow && (
+        {tipCards.map((card, cardIndex) => (
           <View
+            key={cardIndex}
+            ref={(node) => {
+              didYouKnowCards.current[cardIndex] = node;
+            }}
             style={styles.leftoversCard}
             onLayout={(e) => {
-              const y = e.nativeEvent.layout.y;
-              setDidYouKnowY(y);
+              didYouKnowY.current[cardIndex] = e.nativeEvent.layout.y;
             }}
           >
             <View style={styles.leftoversHeadingRow}>
@@ -549,13 +577,13 @@ export default function RecipeScreen() {
               </View>
               <Text style={styles.optionalHeading}>Did you know?</Text>
             </View>
-            {meal.didYouKnow.split('\n\n').map((paragraph, i) => (
+            {card.split('\n\n').map((paragraph, i) => (
               <Text key={i} style={[styles.optionalText, i > 0 && styles.didYouKnowParagraph]}>
                 {paragraph}
               </Text>
             ))}
           </View>
-        )}
+        ))}
       </ScrollView>
     </View>
   );
