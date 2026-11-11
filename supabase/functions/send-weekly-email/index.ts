@@ -122,7 +122,12 @@ function priceUnitSuffix(deal: Deal): string {
   const trim = (v: number) => String(Math.round(v * 100) / 100);
   // The size unit the flyer prints, when known ("/5 lb").
   if (deal.package_weight_g) {
-    if (deal.package_size_unit === "lb") return `/${trim(deal.package_weight_g / 453.592)}&nbsp;lb`;
+    if (deal.package_size_unit === "lb") {
+      // Within 0.02 lb of a tenth reads as that tenth (4540 g = "10 lb").
+      const lb = deal.package_weight_g / 453.592;
+      const tenth = Math.round(lb * 10) / 10;
+      return `/${Math.abs(lb - tenth) < 0.02 ? tenth : trim(lb)}&nbsp;lb`;
+    }
     if (deal.package_size_unit === "g") return `/${Math.round(deal.package_weight_g)}&nbsp;g`;
     if (deal.package_size_unit === "kg") return `/${trim(deal.package_weight_g / 1000)}&nbsp;kg`;
     return deal.package_weight_g >= 1000

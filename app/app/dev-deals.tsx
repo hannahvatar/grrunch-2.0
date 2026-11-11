@@ -18,6 +18,7 @@ import {
   formatGreatReferenceValueLabel,
   formatRealDiscountLabel,
   isGreatReferenceValue,
+  poundsLabel,
   showsRealDiscount,
 } from '../lib/curatedDeals';
 import { sizeFromItemName, splitMultiItemName } from '../lib/dealNames';
@@ -211,9 +212,9 @@ function inPrintedUnit(deal: CuratedDeal): { qty: string; unit: PerUnit } | null
   const g = deal.package_weight_g;
   const ml = deal.package_volume_ml;
   if (g != null && (unit === 'lb' || unit === 'kg')) {
-    const qty = unit === 'lb' ? g / GRAMS_PER_LB : g / 1000;
-    if (Math.round(qty * 100) / 100 === 1) return { qty: String(Math.round(g)), unit: 'g' };
-    return { qty: trim(qty), unit };
+    const qty = unit === 'lb' ? poundsLabel(g) : trim(g / 1000);
+    if (parseFloat(qty) === 1) return { qty: String(Math.round(g)), unit: 'g' };
+    return { qty, unit };
   }
   if (g != null && unit === 'g') return { qty: String(g), unit: 'g' };
   if (ml != null && unit === 'L') return { qty: trim(ml / 1000), unit: 'L' };

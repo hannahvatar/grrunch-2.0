@@ -160,7 +160,7 @@ export function priceUnitSuffix(
   if (priceUnit === 'kg') return '/kg';
   if (priceUnit === '100g') return '/100\u00A0g';
   if (packageWeightG) {
-    if (sizeUnit === 'lb') return `/${trimAmount(packageWeightG / GRAMS_PER_LB)}\u00A0lb`;
+    if (sizeUnit === 'lb') return `/${poundsLabel(packageWeightG)}\u00A0lb`;
     if (sizeUnit === 'g') return `/${Math.round(packageWeightG)}\u00A0g`;
     if (sizeUnit === 'kg') return `/${trimAmount(packageWeightG / 1000)}\u00A0kg`;
     return packageWeightG >= 1000 ? `/${trimAmount(packageWeightG / 1000)}\u00A0kg` : `/${Math.round(packageWeightG)}\u00A0g`;
@@ -171,6 +171,15 @@ export function priceUnitSuffix(
     return packageVolumeMl >= 1000 ? `/${trimAmount(packageVolumeMl / 1000)}\u00A0L` : `/${Math.round(packageVolumeMl)}\u00A0ml`;
   }
   return '/pkg';
+}
+
+// A size bought in pounds is stored as rounded grams (10 lb printed as
+// 4.54 kg = 4540 g), so a weight within 0.02 lb of a tenth reads as that
+// tenth: "10 lb", not "10.01 lb".
+export function poundsLabel(grams: number): string {
+  const lb = grams / GRAMS_PER_LB;
+  const tenth = Math.round(lb * 10) / 10;
+  return Math.abs(lb - tenth) < 0.02 ? String(tenth) : trimAmount(lb);
 }
 
 // 1.5 -> "1.5", 1.36 -> "1.36", 2 -> "2".
