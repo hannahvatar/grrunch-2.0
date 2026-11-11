@@ -1900,6 +1900,8 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
   const [aiQuery, setAiQuery] = useState(itemName);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  // Set once any AI estimate is rejected on this deal (see getAiEstimate).
+  const [aiRejected, setAiRejected] = useState(false);
 
   // Anabelle: "If statcan doesnt have a reference i think i want to be able
   // to input an ai one" -- asks Claude (estimate-reference-price) for this
@@ -1914,13 +1916,12 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
     }
     setAiError(null);
     // The weekly fetch already estimated this exact wording on this basis:
-    // use it instead of asking again -- unless that's the estimate she just
-    // rejected. Reusing it then handed the rejected estimate straight back
-    // (Anabelle, 2026-11-11, Safeway Whole Tilapia: "I'm rejecting the
-    // estimated item and it won't take it"), so a reject asks the AI fresh.
-    const rejectedSuggestion =
-      decision === 'rejected' && reference?.aiReasoning !== undefined && reference.aiReasoning === suggestedShown?.aiReasoning;
-    if (query === itemName && suggestedShown && !rejectedSuggestion) {
+    // use it instead of asking again -- but only until she rejects an AI
+    // estimate on this deal. After that, every Get AI estimate asks fresh:
+    // reusing the prepared one handed a rejected estimate straight back
+    // (Anabelle, 2026-11-11: "I'm rejecting the estimated item and it won't
+    // take it", then "I need to reject twice an automated estimate").
+    if (query === itemName && suggestedShown && !aiRejected) {
       setPickedReference(suggestedShown);
       setDecision('undecided');
       setSearchOpen(false);
@@ -1962,7 +1963,8 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
       avgPrice: data.price,
       // "each" -> "1 ea", which splitReferenceUnit reads as a count.
       unit: `${data.quantity} ${data.unit === 'each' ? 'ea' : data.unit}`,
-      aiReasoning: data.reasoning,
+      // Always set (even empty) -- it's what marks this as an AI estimate.
+      aiReasoning: data.reasoning ?? '',
     });
     setDecision('undecided');
     setSearchOpen(false);
@@ -2406,7 +2408,13 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
                       </Pressable>
                     ) : (
                       <View style={styles.refActionRow}>
-                        <Pressable style={styles.refRejectButton} onPress={() => setDecision('rejected')}>
+                        <Pressable
+                          style={styles.refRejectButton}
+                          onPress={() => {
+                            if (reference.aiReasoning !== undefined) setAiRejected(true);
+                            setDecision('rejected');
+                          }}
+                        >
                           <Text style={styles.refRejectButtonText}>Reject</Text>
                         </Pressable>
                         <Pressable
