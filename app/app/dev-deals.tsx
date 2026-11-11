@@ -1914,8 +1914,13 @@ function DealEditView({ deal, backLabel, onBack, onSaved, onStartSplit }: DealEd
     }
     setAiError(null);
     // The weekly fetch already estimated this exact wording on this basis:
-    // use it instead of asking again.
-    if (query === itemName && suggestedShown) {
+    // use it instead of asking again -- unless that's the estimate she just
+    // rejected. Reusing it then handed the rejected estimate straight back
+    // (Anabelle, 2026-11-11, Safeway Whole Tilapia: "I'm rejecting the
+    // estimated item and it won't take it"), so a reject asks the AI fresh.
+    const rejectedSuggestion =
+      decision === 'rejected' && reference?.aiReasoning !== undefined && reference.aiReasoning === suggestedShown?.aiReasoning;
+    if (query === itemName && suggestedShown && !rejectedSuggestion) {
       setPickedReference(suggestedShown);
       setDecision('undecided');
       setSearchOpen(false);
