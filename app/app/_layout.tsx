@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AnimatedSplashScreen } from '../components/AnimatedSplashScreen';
+import { MaintenanceGate } from '../components/MaintenanceGate';
 import { WeekLifecycle } from '../components/WeekLifecycle';
 import { SupportBubble } from '../components/SupportBubble';
 import { WebFrame } from '../components/WebFrame';
@@ -260,6 +261,7 @@ function RootLayout() {
                   <WeekLifecycle />
                   <SupportBubble />
                   <CookieConsentBanner />
+                  <MaintenanceGate />
                   </WebFrame>
                 </StoreFilterProvider>
                 </SelectedDealsProvider>

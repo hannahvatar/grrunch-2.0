@@ -139,6 +139,10 @@ ${body}
 `;
 }
 
+// Grrunch is on pause (Anabelle, 2026-11-18): the home page says so
+// instead of "coming soon". Set to false when it's back.
+const MAINTENANCE = true;
+
 // -- Pages --
 const landing = page({
   title: 'Grrunch: recipes from this week’s grocery deals',
@@ -150,7 +154,7 @@ const landing = page({
   <div class="hero-face" aria-hidden="true">${MASCOT}</div>
   <h1>Let the deals decide dinner</h1>
   <p class="lede">Every week, Grrunch scans the grocery flyers, picks the deals actually worth buying, and turns them into affordable recipes and your grocery list.</p>
-  <p class="soon">Coming soon to iPhone and Android</p>
+  ${MAINTENANCE ? '' : '<p class="soon">Coming soon to iPhone and Android</p>'}
   <!-- Official badges (Anabelle, 2026-09-29), from Apple's marketing
        toolbox and Google's badge page, unmodified. Not links yet: both
        stores expect the badge to link to the app's listing, so wrap each
@@ -160,7 +164,7 @@ const landing = page({
     <img class="badge badge-play" src="/badges/google-play.png" alt="Get it on Google Play">
   </div>
   <!-- Same look as the app's info AlertBanner (components/AlertBanner.tsx). -->
-  <p class="info-banner"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg><span>Launching first in British Columbia.</span></p>
+  <p class="info-banner"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/></svg><span>${MAINTENANCE ? 'Grrunch is taking a break. We’ll be back soon.' : 'Launching first in British Columbia.'}</span></p>
 </section>
 <section class="cards">
   <article class="card">
